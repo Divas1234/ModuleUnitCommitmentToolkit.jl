@@ -1,4 +1,6 @@
 
+ENV["JULIA_SHOW_ASCII"] = true
+
 include(joinpath(pwd(), "src", "environment_config.jl"));
 include(joinpath(pwd(), "src", "renewableresource_modules", "stochasticsimulation.jl"));
 include(joinpath(pwd(), "src", "read_inputdata_modules", "readdatas.jl"));
@@ -8,7 +10,16 @@ include("define_master_sub_problems/construct_rmp_sub_models.jl")
 include("construct_multicuts_lib/construct_multicuts.jl")
 include("benderdecomposition_module.jl")
 
-function main()
+# include("benders_mainfunc.jl");
+# function main()
+# 	scuc_masterproblem, scuc_subproblem, master_model_struct, sub_model_struct, batch_sub_model_struct_dic, config_param, units,
+# 	lines, loads, winds, psses, NB, NG, NL, ND, NS, NT, NC, ND2, DataCentras = benders_mainfunc_modules();
+
+# 	bd_framework(scuc_masterproblem, scuc_subproblem, master_model_struct,
+# 		batch_sub_model_struct_dic, winds, config_param)
+# end
+
+function benders_mainfunc_modules()
 	UnitsFreqParam, WindsFreqParam, StrogeData, DataGen, GenCost, DataBranch, LoadCurve, DataLoad, datacentra_Data = readxlssheet()
 
 	# Form input data for the model
@@ -31,7 +42,8 @@ function main()
 	scuc_masterproblem, master_model_struct = bd_masterfunction(
 		NT, NB, NG, ND, NC, ND2, NS, units, config_param, scenarios_prob
 	)
-	scuc_subproblem, sub_model_struct = bd_subfunction(
+	scuc_subproblem,
+	sub_model_struct = bd_subfunction(
 		NT, NB, NL, NG, ND, NC, ND2, NS, NW, units, winds, loads, lines, DataCentras, psses, scenarios_prob, config_param
 	)
 	# Make sure refcost and eachslope are defined before using them in the subproblem

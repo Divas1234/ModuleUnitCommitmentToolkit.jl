@@ -23,7 +23,7 @@ function bd_framework(scuc_masterproblem::Model, scuc_subproblem::Model, master_
 
 	# Constants and parameters
 	MAXIMUM_ITERATIONS = 10000 # Maximum number of iterations for Bender's decomposition
-	ABSOLUTE_OPTIMIZATION_GAP = 1e-3 # Absolute gap for optimality
+	ABSOLUTE_OPTIMIZATION_GAP = 5e-2 # Absolute gap for optimality
 	NUMERICAL_TOLERANCE = 1e-6 # Numerical tolerance for stability
 
 	# Initialize bounds
