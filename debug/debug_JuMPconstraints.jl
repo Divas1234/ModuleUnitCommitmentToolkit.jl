@@ -6,11 +6,12 @@ include(joinpath(pwd(), "src", "unitcommitment_model_modules", "SUCuccommitmentm
 include("define_masterproblem.jl")
 include("define_subproblem.jl")
 include("benderdecomposition_module.jl")
-UnitsFreqParam, WindsFreqParam, StrogeData, DataGen, GenCost, DataBranch, LoadCurve, DataLoad, datacentra_Data = readxlssheet()
+UnitsFreqParam, WindsFreqParam, StrogeData, DataGen, GenCost, DataBranch, LoadCurve, DataLoad, datacentra_Data =
+    readxlssheet()
 
 # Form input data for the model
-config_param, units, lines, loads, psses, NB, NG, NL, ND, NT, NC, ND2, DataCentras = forminputdata(
-	DataGen, DataBranch, DataLoad, LoadCurve, GenCost, UnitsFreqParam, StrogeData, datacentra_Data)
+config_param, units, lines, loads, psses, NB, NG, NL, ND, NT, NC, ND2, DataCentras =
+    forminputdata(DataGen, DataBranch, DataLoad, LoadCurve, GenCost, UnitsFreqParam, StrogeData, datacentra_Data)
 
 # Generate wind scenarios
 winds, NW = genscenario(WindsFreqParam, 1)
@@ -30,15 +31,11 @@ set_silent(scuc_subproblem)
 # set_silent(scuc_subproblem)
 # --- Define Variables ---
 # Define decision variables for the optimization model
-define_subproblem_decision_variables!(
-	scuc_subproblem::Model, NT, NG, ND, NC, ND2, NS, NW, config_param
-)
+define_subproblem_decision_variables!(scuc_subproblem::Model, NT, NG, ND, NC, ND2, NS, NW, config_param)
 
 # --- Set Objective ---
 # Set the objective function to be minimized
-set_subproblem_objective_economic!(
-	scuc_subproblem::Model, NT, NG, ND, NW, NS, units, config_param, scenarios_prob
-)
+set_subproblem_objective_economic!(scuc_subproblem::Model, NT, NG, ND, NW, NS, units, config_param, scenarios_prob)
 
 # NS = winds.scenarios_nums
 # NW = length(winds.index)
@@ -51,23 +48,32 @@ onoffinit = calculate_initial_unit_status(units, NG)
 # --- Add Constraints ---
 all_constr_sets = []
 # Add the constraints to the optimization model
-units_minuptime_constr, units_mindowntime_constr, units_init_stateslogic_consist_constr, units_states_consist_constr, units_init_shutup_cost_constr, units_init_shutdown_cost_costr, units_shutup_cost_constr,
+units_minuptime_constr,
+units_mindowntime_constr,
+units_init_stateslogic_consist_constr,
+units_states_consist_constr,
+units_init_shutup_cost_constr,
+units_init_shutdown_cost_costr,
+units_shutup_cost_constr,
 units_shutdown_cost_constr = add_unit_operation_constraints!(scuc_subproblem, NT, NG, units, onoffinit)
 winds_curt_constr, loads_curt_const = add_curtailment_constraints!(scuc_subproblem, NT, ND, NW, NS, loads, winds)
 units_minpower_constr, units_maxpower_constr = add_generator_power_constraints!(scuc_subproblem, NT, NG, NS, units)
-sys_upreserve_constr, sys_down_reserve_constr = add_reserve_constraints!(scuc_subproblem, NT, NG, NC, NS, units, loads, winds, config_param)
-sys_balance_constr = add_power_balance_constraints!(scuc_subproblem, NT, NG, ND, NC, NW, NS, loads, winds, config_param, ND2)
+sys_upreserve_constr, sys_down_reserve_constr =
+    add_reserve_constraints!(scuc_subproblem, NT, NG, NC, NS, units, loads, winds, config_param)
+sys_balance_constr =
+    add_power_balance_constraints!(scuc_subproblem, NT, NG, ND, NC, NW, NS, loads, winds, config_param, ND2)
 units_upramp_constr, units_downramp_constr = add_ramp_constraints!(scuc_subproblem, NT, NG, NS, units, onoffinit)
-units_pwlpower_sum_constr, units_pwlblock_upbound_constr, units_pwlblock_dwbound_constr = add_pwl_constraints!(scuc_subproblem, NT, NG, NS, units)
+units_pwlpower_sum_constr, units_pwlblock_upbound_constr, units_pwlblock_dwbound_constr =
+    add_pwl_constraints!(scuc_subproblem, NT, NG, NS, units)
 transmissionline_powerflow_upbound_constr, transmissionline_powerflow_downbound_constr = add_transmission_constraints!(
-	scuc_subproblem, NT, NG, ND, NC, NW, NL, NS, units, loads, winds, lines, psses, Gsdf, config_param, ND2, DataCentras)
+    scuc_subproblem, NT, NG, ND, NC, NW, NL, NS, units, loads, winds, lines, psses, Gsdf, config_param, ND2, DataCentras,
+)
 # add_storage_constraints!(scuc_subproblem, NT, NC, NS, config_param, psses)
 # add_datacentra_constraints!(scuc_subproblem, NT, NS, config_param, ND2, DataCentras)
 # add_frequency_constraints!(scuc_subproblem, NT, NG, NC, NS, units, psses, config_param, Δp_contingency)
 # @show model_summary(scuc_subproblem)
 
 # typeof(vec(sys_balance_constr[1])) <: AbstractVector
-
 
 vec(sys_balance_constr[1])
 

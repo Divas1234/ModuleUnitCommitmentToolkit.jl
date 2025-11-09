@@ -1,5 +1,5 @@
 #LINK -  exported details scheduled results as a .csv file
-function save_powerbalance_scheduled_results(units, winds, config_param, results, pcm_scheduling_intervels_id=0)
+function save_powerbalance_scheduled_results(units, winds, config_param, results, pcm_scheduling_intervels_id = 0)
     # Check if optimization was successful and extract results
     if results !== nothing
         println("Extracting results from dictionary...")
@@ -54,16 +54,36 @@ function save_powerbalance_scheduled_results(units, winds, config_param, results
     if results !== nothing && bench_p₀ !== nothing # Check if variables are valid
         flag = 1 # mac path identification
         savebalance_result(
-            units, winds, bench_x₀, bench_p₀, bench_pᵨ, bench_pᵩ, bench_pss_charge_p⁺, bench_pss_charge_p⁻, bench_ph, flag, pcm_scheduling_intervels_id)
+            units,
+            winds,
+            bench_x₀,
+            bench_p₀,
+            bench_pᵨ,
+            bench_pᵩ,
+            bench_pss_charge_p⁺,
+            bench_pss_charge_p⁻,
+            bench_ph,
+            flag,
+            pcm_scheduling_intervels_id,
+        )
     else
         println("Skipping saving results due to optimization failure.")
     end
 end
 
-
-
 function savebalance_result(
-    units, winds, bench_x₀, bench_p₀, bench_pᵨ, bench_pᵩ, bench_pss_charge_p⁺, bench_pss_charge_p⁻, bench_ph, flag, pcm_scheduling_intervels_id)
+    units,
+    winds,
+    bench_x₀,
+    bench_p₀,
+    bench_pᵨ,
+    bench_pᵩ,
+    bench_pss_charge_p⁺,
+    bench_pss_charge_p⁻,
+    bench_ph,
+    flag,
+    pcm_scheduling_intervels_id,
+)
     # @show DataFrame(bench_p₀[1:3,:],:auto)
     tem_NG, tem_NT = size(bench_p₀)
     thermalunits_output = zeros(tem_NT, 1)
@@ -77,8 +97,7 @@ function savebalance_result(
     tem_NW = size(bench_pᵩ, 1)
     windunits_output = zeros(tem_NT, 1)
     for i in 1:tem_NT
-        windunits_output[i, 1] = sum(winds.p_max) * winds.scenarios_curve[1, i] -
-                                 sum(bench_pᵩ[1:tem_NW, i])
+        windunits_output[i, 1] = sum(winds.p_max) * winds.scenarios_curve[1, i] - sum(bench_pᵩ[1:tem_NW, i])
     end
 
     details_windunits_output, details_windunits_wasted_output = zeros(tem_NW, tem_NT), zeros(tem_NW, tem_NT)
@@ -126,24 +145,24 @@ function savebalance_result(
 
     # Helper to write a result array to CSV
 
-    write_result(outdir, "sum_thermalunits.csv", round.(thermalunits_output, digits=5))
-    write_result(outdir, "sum_windunits.csv", round.(windunits_output, digits=5))
-    write_result(outdir, "sum_forcedloadcurtailment.csv", round.(forceloadcurtailment, digits=5))
-    write_result(outdir, "sum_bess_charging.csv", round.(BESScharging_output, digits=5))
-    write_result(outdir, "sum_bess_discharging.csv", round.(BESSdischarging_output, digits=5))
+    write_result(outdir, "sum_thermalunits.csv", round.(thermalunits_output, digits = 5))
+    write_result(outdir, "sum_windunits.csv", round.(windunits_output, digits = 5))
+    write_result(outdir, "sum_forcedloadcurtailment.csv", round.(forceloadcurtailment, digits = 5))
+    write_result(outdir, "sum_bess_charging.csv", round.(BESScharging_output, digits = 5))
+    write_result(outdir, "sum_bess_discharging.csv", round.(BESSdischarging_output, digits = 5))
 
-    write_result(outdir, "details_thermalunits_output.csv", round.(bench_p₀, digits=5))
-    rounded_bench_x₀ = map(x -> x >= 0.5 ? Int64(1) : Int64(0), round.(bench_x₀, digits=0))
+    write_result(outdir, "details_thermalunits_output.csv", round.(bench_p₀, digits = 5))
+    rounded_bench_x₀ = map(x -> x >= 0.5 ? Int64(1) : Int64(0), round.(bench_x₀, digits = 0))
     write_result(outdir, "details_thermalunits_statues.csv", rounded_bench_x₀)
-    write_result(outdir, "details_forced_load_curtailment.csv", round.(bench_pᵨ, digits=5))
-    write_result(outdir, "details_windunits_output.csv", round.(details_windunits_output, digits=5))
-    write_result(outdir, "details_windunits_wasted_output.csv", round.(details_windunits_wasted_output, digits=5))
+    write_result(outdir, "details_forced_load_curtailment.csv", round.(bench_pᵨ, digits = 5))
+    write_result(outdir, "details_windunits_output.csv", round.(details_windunits_output, digits = 5))
+    write_result(outdir, "details_windunits_wasted_output.csv", round.(details_windunits_wasted_output, digits = 5))
     if config_param.is_ConsiderBESS == 1
-        write_result(outdir, "details_bess_charging_output.csv", round.(bench_pss_charge_p⁺, digits=5))
-        write_result(outdir, "details_bess_discharging_output.csv", round.(bench_pss_charge_p⁻, digits=5))
+        write_result(outdir, "details_bess_charging_output.csv", round.(bench_pss_charge_p⁺, digits = 5))
+        write_result(outdir, "details_bess_discharging_output.csv", round.(bench_pss_charge_p⁻, digits = 5))
     end
     if config_param.is_HydroUnitCon == 1
-        write_result(outdir, "details_hydros_output.csv", round.(bench_ph, digits=5))
+        write_result(outdir, "details_hydros_output.csv", round.(bench_ph, digits = 5))
     end
     # open(filepath * "res_thermalunits.csv", "w") do io
     # 	# writedlm(io, [" "])
@@ -206,46 +225,108 @@ function creat_outputfilepath(pcm_scheduling_intervels_id, flag)
 end
 
 #LINK -  save the main results as .txt file
-function save_UCresults(x₀, bench_x₀, p₀, pᵨ, pᵩ, seq_sr⁺, seq_sr⁻, pss_charge_p⁺,
-    pss_charge_p⁻, su_cost, sd_cost, prod_cost, cost_sr⁺,
-    cost_sr⁻, bench_p₀, bench_pᵨ, bench_pᵩ, bench_seq_sr⁺,
-    bench_seq_sr⁻, bench_pss_charge_p⁺, bench_pss_charge_p⁻,
-    bench_su_cost, bench_sd_cost, bench_prod_cost, bench_cost_sr⁺,
-    bench_cost_sr⁻, NT, NG, ND, NW, units, winds)
+function save_UCresults(
+    x₀,
+    bench_x₀,
+    p₀,
+    pᵨ,
+    pᵩ,
+    seq_sr⁺,
+    seq_sr⁻,
+    pss_charge_p⁺,
+    pss_charge_p⁻,
+    su_cost,
+    sd_cost,
+    prod_cost,
+    cost_sr⁺,
+    cost_sr⁻,
+    bench_p₀,
+    bench_pᵨ,
+    bench_pᵩ,
+    bench_seq_sr⁺,
+    bench_seq_sr⁻,
+    bench_pss_charge_p⁺,
+    bench_pss_charge_p⁻,
+    bench_su_cost,
+    bench_sd_cost,
+    bench_prod_cost,
+    bench_cost_sr⁺,
+    bench_cost_sr⁻,
+    NT,
+    NG,
+    ND,
+    NW,
+    units,
+    winds,
+)
     # filepath = pwd()
-    return save("D:/ieee_tpws/code/littlecase//output/bench/" * "mydata_1.jld",
-        "x₀", x₀,
-        "p₀", p₀,
-        "pᵨ", pᵨ,
-        "pᵩ", pᵩ,
-        "seq_sr⁺", seq_sr⁺,
-        "seq_sr⁻", seq_sr⁻,
-        "pss_charge_p⁺", pss_charge_p⁺,
-        "pss_charge_p⁻", pss_charge_p⁻,
-        "su_cost", su_cost,
-        "sd_cost", sd_cost,
-        "prod_cost", prod_cost,
-        "cost_sr⁺", cost_sr⁺,
-        "cost_sr⁻", cost_sr⁻,
-        "NT", NT,
-        "NG", NG,
-        "ND", ND,
-        "NW", NW,
-        "winds", winds,
-        "units", units,
-        "bench_x₀", bench_x₀,
-        "bench_p₀", bench_p₀,
-        "bench_pᵨ", bench_pᵨ,
-        "bench_pᵩ", bench_pᵩ,
-        "bench_seq_sr⁺", bench_seq_sr⁺,
-        "bench_seq_sr⁻", bench_seq_sr⁻,
-        "bench_pss_charge_p⁺", bench_pss_charge_p⁺,
-        "bench_pss_charge_p⁻", bench_pss_charge_p⁻,
-        "bench_su_cost", bench_su_cost,
-        "bench_sd_cost", bench_sd_cost,
-        "bench_prod_cost", bench_prod_cost,
-        "bench_cost_sr⁺", bench_cost_sr⁺,
-        "bench_cost_sr⁻", bench_cost_sr⁻)
+    return save(
+        "D:/ieee_tpws/code/littlecase//output/bench/" * "mydata_1.jld",
+        "x₀",
+        x₀,
+        "p₀",
+        p₀,
+        "pᵨ",
+        pᵨ,
+        "pᵩ",
+        pᵩ,
+        "seq_sr⁺",
+        seq_sr⁺,
+        "seq_sr⁻",
+        seq_sr⁻,
+        "pss_charge_p⁺",
+        pss_charge_p⁺,
+        "pss_charge_p⁻",
+        pss_charge_p⁻,
+        "su_cost",
+        su_cost,
+        "sd_cost",
+        sd_cost,
+        "prod_cost",
+        prod_cost,
+        "cost_sr⁺",
+        cost_sr⁺,
+        "cost_sr⁻",
+        cost_sr⁻,
+        "NT",
+        NT,
+        "NG",
+        NG,
+        "ND",
+        ND,
+        "NW",
+        NW,
+        "winds",
+        winds,
+        "units",
+        units,
+        "bench_x₀",
+        bench_x₀,
+        "bench_p₀",
+        bench_p₀,
+        "bench_pᵨ",
+        bench_pᵨ,
+        "bench_pᵩ",
+        bench_pᵩ,
+        "bench_seq_sr⁺",
+        bench_seq_sr⁺,
+        "bench_seq_sr⁻",
+        bench_seq_sr⁻,
+        "bench_pss_charge_p⁺",
+        bench_pss_charge_p⁺,
+        "bench_pss_charge_p⁻",
+        bench_pss_charge_p⁻,
+        "bench_su_cost",
+        bench_su_cost,
+        "bench_sd_cost",
+        bench_sd_cost,
+        "bench_prod_cost",
+        bench_prod_cost,
+        "bench_cost_sr⁺",
+        bench_cost_sr⁺,
+        "bench_cost_sr⁻",
+        bench_cost_sr⁻,
+    )
 end
 
 #LINK -  sub exported modelue for saving results as .txt file
@@ -285,8 +366,36 @@ function read_UCresults()
         write(file, "bench_cost_sr⁺", bench_cost_sr⁺)
         return write(file, "bench_cost_sr⁻", bench_cost_sr⁻)
     end
-    return x₀, bench_x₀, p₀, pᵨ, pᵩ, seq_sr⁺, seq_sr⁻, pss_charge_p⁺, pss_charge_p⁻, su_cost,
-    sd_cost, prod_cost, cost_sr⁺, cost_sr⁻, bench_p₀, bench_pᵨ, bench_pᵩ, bench_seq_sr⁺,
-    bench_seq_sr⁻, bench_pss_charge_p⁺, bench_pss_charge_p⁻, bench_su_cost, bench_sd_cost,
-    bench_prod_cost, bench_cost_sr⁺, bench_cost_sr⁻, NT, NG, ND, NW, units, winds
+    return x₀,
+    bench_x₀,
+    p₀,
+    pᵨ,
+    pᵩ,
+    seq_sr⁺,
+    seq_sr⁻,
+    pss_charge_p⁺,
+    pss_charge_p⁻,
+    su_cost,
+    sd_cost,
+    prod_cost,
+    cost_sr⁺,
+    cost_sr⁻,
+    bench_p₀,
+    bench_pᵨ,
+    bench_pᵩ,
+    bench_seq_sr⁺,
+    bench_seq_sr⁻,
+    bench_pss_charge_p⁺,
+    bench_pss_charge_p⁻,
+    bench_su_cost,
+    bench_sd_cost,
+    bench_prod_cost,
+    bench_cost_sr⁺,
+    bench_cost_sr⁻,
+    NT,
+    NG,
+    ND,
+    NW,
+    units,
+    winds
 end

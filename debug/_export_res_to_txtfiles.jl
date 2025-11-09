@@ -1,12 +1,43 @@
-function exported_scheduling_cost(NS::Int64, NT::Int64, NB::Int64, NG::Int64, ND::Int64, NC::Int64,
-    ND2::Int64, NH::Int64, units::unit, loads::load,
-    winds::wind, lines::transmissionline, DataCentras::data_centra, config_param::config,
-    interval_scheduling_id, su_cost, sd_cost, pgₖ, pg₀, x₀,
-    seq_sr⁺, seq_sr⁻, pᵨ, pᵩ, eachslope, refcost,
-    pss_charge_state⁺=nothing, pss_charge_state⁻=nothing,
-    pss_charge_p⁺=nothing, pss_charge_p⁻=nothing, pss_Qc=nothing,
-    dc_p_res=nothing, dc_f_res=nothing, dc_v²_res=nothing, dc_λ_res=nothing,
-    dc_Δu1_res=nothing, dc_Δu2_res=nothing, ph=nothing)
+function exported_scheduling_cost(
+    NS::Int64,
+    NT::Int64,
+    NB::Int64,
+    NG::Int64,
+    ND::Int64,
+    NC::Int64,
+    ND2::Int64,
+    NH::Int64,
+    units::unit,
+    loads::load,
+    winds::wind,
+    lines::transmissionline,
+    DataCentras::data_centra,
+    config_param::config,
+    interval_scheduling_id,
+    su_cost,
+    sd_cost,
+    pgₖ,
+    pg₀,
+    x₀,
+    seq_sr⁺,
+    seq_sr⁻,
+    pᵨ,
+    pᵩ,
+    eachslope,
+    refcost,
+    pss_charge_state⁺ = nothing,
+    pss_charge_state⁻ = nothing,
+    pss_charge_p⁺ = nothing,
+    pss_charge_p⁻ = nothing,
+    pss_Qc = nothing,
+    dc_p_res = nothing,
+    dc_f_res = nothing,
+    dc_v²_res = nothing,
+    dc_λ_res = nothing,
+    dc_Δu1_res = nothing,
+    dc_Δu2_res = nothing,
+    ph = nothing,
+)
     c₀ = config_param.is_CoalPrice  # Base cost of coal
     pₛ = scenarios_prob  # Probability of scenarios
 
@@ -17,23 +48,17 @@ function exported_scheduling_cost(NS::Int64, NT::Int64, NB::Int64, NG::Int64, ND
     ρ⁺ = c₀ * 2
     ρ⁻ = c₀ * 2
 
-    rounded_x₀ = map(x -> x >= 0.5 ? Int64(1) : Int64(0), round.(x₀, digits=0))
+    rounded_x₀ = map(x -> x >= 0.5 ? Int64(1) : Int64(0), round.(x₀, digits = 0))
 
     prod_cost =
-        pₛ * c₀ *
+        pₛ *
+        c₀ *
         (
-            sum(
-                sum(sum(sum(pgₖ[i+(s-1)*NG, t, :] .* eachslope[:, i] for t in 1:NT)) for s in 1:NS)
-                for i in 1:NG
-            ) +
+            sum(sum(sum(sum(pgₖ[i+(s-1)*NG, t, :] .* eachslope[:, i] for t in 1:NT)) for s in 1:NS) for i in 1:NG) +
             sum(sum(sum(x₀[:, t] .* refcost[:, 1] for t in 1:NT)) for s in 1:NS)
         )
-    cr⁺ =
-        pₛ * c₀ *
-        sum(sum(sum(ρ⁺ * seq_sr⁺[i+(s-1)*NG, t] for i in 1:NG) for t in 1:NT) for s in 1:NS)
-    cr⁻ =
-        pₛ * c₀ *
-        sum(sum(sum(ρ⁺ * seq_sr⁻[i+(s-1)*NG, t] for i in 1:NG) for t in 1:NT) for s in 1:NS)
+    cr⁺ = pₛ * c₀ * sum(sum(sum(ρ⁺ * seq_sr⁺[i+(s-1)*NG, t] for i in 1:NG) for t in 1:NT) for s in 1:NS)
+    cr⁻ = pₛ * c₀ * sum(sum(sum(ρ⁺ * seq_sr⁻[i+(s-1)*NG, t] for i in 1:NG) for t in 1:NT) for s in 1:NS)
     # seq_sr⁺   = pₛ * c₀ * sum(ρ⁺ * seq_sr⁺[i, :] for i in 1:NG)
     # seq_sr⁻   = pₛ * c₀ * sum(ρ⁺ * seq_sr⁻[i, :] for i in 1:NG)
     𝜟pd = pₛ * sum(sum(sum(pᵨ[(1+(s-1)*ND):(s*ND), t]) for t in 1:NT) for s in 1:NS)
@@ -59,14 +84,11 @@ function exported_scheduling_cost(NS::Int64, NT::Int64, NB::Int64, NG::Int64, ND
     if interval_scheduling_id != 0
         # output_dir = joinpath(output_dir, "pcm_simulation_results")
         # output_dir = output_dir * "<interval_$interval_scheduling_id>"
-        output_dir =
-            output_dir *
-            "details_schedule_results/pcm_simulation_results/intervels_[$interval_scheduling_id]/"
+        output_dir = output_dir * "details_schedule_results/pcm_simulation_results/intervels_[$interval_scheduling_id]/"
         mkpath(dirname(output_dir))
     end
     # Create directory if it doesn't exist
     try
-
         if interval_scheduling_id == 0
             output_file = joinpath(output_dir, "Bench_schedule_commitment_result.txt")
         else
@@ -174,7 +196,6 @@ function exported_scheduling_cost(NS::Int64, NT::Int64, NB::Int64, NG::Int64, ND
         end
 
         if config_param.is_ConsiderDataCentra == 1 && ND2 > 0
-
             if interval_scheduling_id == 0
                 output_file = joinpath(output_dir, "Bench_datacentra_result.txt")
             else
@@ -203,9 +224,7 @@ function exported_scheduling_cost(NS::Int64, NT::Int64, NB::Int64, NG::Int64, ND
                 return writedlm(io, dc_Δu2_res[1:(ND2), 1:NT], '\t')
             end
             println("PART2: [data-centra] calculation result has been saved to: $output_file")
-            println(
-                "+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++",
-            )
+            println("+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++")
 
             # Open output file for csv writing results
             # output_dir = "D:/GithubClonefiles/datacentra_unitcommitment/output/data_centra/"
@@ -215,24 +234,20 @@ function exported_scheduling_cost(NS::Int64, NT::Int64, NB::Int64, NG::Int64, ND
             iter_block = Int64(round(NT / iter_num))
 
             s = 1
-            data_to_write = [("dc_Δu2.csv", (dc_Δu2_res[1:(ND2), 1:NT])),
+            data_to_write = [
+                ("dc_Δu2.csv", (dc_Δu2_res[1:(ND2), 1:NT])),
                 ("dc_Δu1.csv", (dc_Δu1_res[1:(ND2), 1:NT])),
                 ("dc_v².csv", (dc_v²_res[1:(ND2), 1:NT])),
                 ("dc_λ.csv", (dc_λ_res[1:(ND2), 1:NT])),
                 ("dc_f.csv", (dc_f_res[1:(ND2), 1:NT])),
                 ("dc_p.csv", (dc_p_res[1:(ND2), 1:NT])),
-                ("dc_debug_tasks_1.csv",
-                    ((dc_λ_res[((s-1)*ND2+1):(s*ND2), ((1-1)*iter_block+1):(1*iter_block)]))),
-                ("dc_debug_tasks_2.csv",
-                    ((dc_λ_res[((s-1)*ND2+1):(s*ND2), ((2-1)*iter_block+1):(2*iter_block)]))),
-                ("dc_debug_tasks_3.csv",
-                    ((dc_λ_res[((s-1)*ND2+1):(s*ND2), ((3-1)*iter_block+1):(3*iter_block)]))),
-                ("dc_debug_tasks_4.csv",
-                    ((dc_λ_res[((s-1)*ND2+1):(s*ND2), ((4-1)*iter_block+1):(4*iter_block)]))),
-                ("dc_debug_tasks_5.csv",
-                    ((dc_λ_res[((s-1)*ND2+1):(s*ND2), ((5-1)*iter_block+1):(5*iter_block)]))),
-                ("dc_debug_tasks_6.csv",
-                    ((dc_λ_res[((s-1)*ND2+1):(s*ND2), ((6-1)*iter_block+1):(6*iter_block)])))]
+                ("dc_debug_tasks_1.csv", ((dc_λ_res[((s-1)*ND2+1):(s*ND2), ((1-1)*iter_block+1):(1*iter_block)]))),
+                ("dc_debug_tasks_2.csv", ((dc_λ_res[((s-1)*ND2+1):(s*ND2), ((2-1)*iter_block+1):(2*iter_block)]))),
+                ("dc_debug_tasks_3.csv", ((dc_λ_res[((s-1)*ND2+1):(s*ND2), ((3-1)*iter_block+1):(3*iter_block)]))),
+                ("dc_debug_tasks_4.csv", ((dc_λ_res[((s-1)*ND2+1):(s*ND2), ((4-1)*iter_block+1):(4*iter_block)]))),
+                ("dc_debug_tasks_5.csv", ((dc_λ_res[((s-1)*ND2+1):(s*ND2), ((5-1)*iter_block+1):(5*iter_block)]))),
+                ("dc_debug_tasks_6.csv", ((dc_λ_res[((s-1)*ND2+1):(s*ND2), ((6-1)*iter_block+1):(6*iter_block)]))),
+            ]
 
             # iter = 1
             # println("===============================================================================")
