@@ -237,9 +237,10 @@
             ]
         },
         "textMateRules": [],
-        "comments": ""
+        // "comments": "<comments>"
     },
-    "editor.fontFamily": "Fira Code, Monaspace Neon, Monaspace Argon, Maple Mono, Droid Sans Mono, Fira Code, Hack, Julia Mono, Geist Mono, DejaVu Code, mononoki, Inconsolata, Geist Mono, JetBrains Mono, Menlo, Monaco, 'Courier New', monospace",
+    // Global font family for non-Julia files: prefer Roboto (requires installation) with sensible fallbacks
+    "editor.fontFamily": "Roboto, Roboto Mono, Geist Mono, Fira Code, Hack, JetBrains Mono, Menlo, Monaco, 'Courier New', monospace",
     "workbench.tree.indent": 18,
     "material-icon-theme.hidesExplorerArrows": true,
     "workbench.tree.renderIndentGuides": "onHover",
@@ -308,6 +309,10 @@
         "julia": true,
         "python": true
     },
+    // Language specific override: all .jl files use JuliaMono font
+    "[julia]": {
+        "editor.fontFamily": "JuliaMono, Julia Mono, Roboto Mono, Menlo, Monaco, 'Courier New', monospace"
+    },
     "terminal.integrated.tabs.defaultColor": "terminal.ansiCyan",
     "window.autoDetectColorScheme": true,
     "bookmarks.saveBookmarksInProject": true,
@@ -341,5 +346,6 @@
     "errorLens.gutterIconsEnabled": true,
     "errorLens.statusBarIconsEnabled": true,
     "julia-format.inop": "= ∈",
-    "juliaFormatter.overwriteFlags": true
+    "juliaFormatter.overwriteFlags": true,
+    "julia-format.flag": "style=SciMLStyle(), indent=4, margin=256, always_for_in=true, for_in_replacement=\"∈\", whitespace_typedefs=true, import_to_using=true, whitespace_ops_in_indices =true, remove_extra_newlines=true, force_long_function_def =true, format_docstrings = true, trailing_comma =true,separate_kwargs_with_semicolon=true, disallow_single_arg_nesting = true,whitespace_in_kwargs=true, align_struct_field=true, align_assignment=true, align_conditional=true, align_pair_arrow=true, normalize_line_endings=\"unix\", align_matrix=true, indent_submodule=true, surround_whereop_typeparameters=false,yas_style_nesting=false, "
 }
