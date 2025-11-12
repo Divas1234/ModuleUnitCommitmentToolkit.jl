@@ -22,7 +22,9 @@ function load_vertices(data_file::String)::Matrix{Float64}
             error("Vertex data file is empty: $data_file")
         end
         if size(vertices, 2) != 3
-            error("Vertex data must have 3 columns (x, y, z), found $(size(vertices, 2)) in $data_file")
+            error(
+                "Vertex data must have 3 columns (x, y, z), found $(size(vertices, 2)) in $data_file",
+            )
         end
         return Matrix{Float64}(vertices) # Ensure type stability
     catch e
@@ -36,9 +38,9 @@ end
 Groups vertices by their unique x-coordinates.
 Returns a dictionary mapping x-coordinate to a matrix of points at that x.
 """
-function group_points_by_x(vertices::Matrix{Float64})::Dict{Float64, Matrix{Float64}}
-    grouped_points = Dict{Float64, Matrix{Float64}}()
-    for i in 1:size(vertices, 1)
+function group_points_by_x(vertices::Matrix{Float64})::Dict{Float64,Matrix{Float64}}
+    grouped_points = Dict{Float64,Matrix{Float64}}()
+    for i = 1:size(vertices, 1)
         x = vertices[i, 1]
         point_row = vertices[i:i, :] # Keep as a 1xN matrix slice
         if haskey(grouped_points, x)
@@ -83,7 +85,7 @@ function plot_convex_hull_slice!(plt::Plots.Plot, points_at_x::Matrix{Float64})
 
         # Plot the edges of the convex hull polygon
         n_hull = size(hull_points_3d, 1)
-        for i in 1:n_hull
+        for i = 1:n_hull
             current_point = hull_points_3d[i, :]
             # Connect to the next point, wrapping around to the first
             next_point = hull_points_3d[mod1(i + 1, n_hull), :]
@@ -120,7 +122,11 @@ Saves the resulting plot to PDF and PNG formats.
 # Returns
 - `Plots.Plot`: The generated plot object.
 """
-function plot_polygon_figures(data_dir::String, output_dir::String; filename_base::String = "polygon_figure")
+function plot_polygon_figures(
+    data_dir::String,
+    output_dir::String;
+    filename_base::String = "polygon_figure",
+)
     vertex_file = joinpath(data_dir, "all_vertices.txt")
     println("Loading vertices from: $vertex_file")
     vertices = load_vertices(vertex_file)

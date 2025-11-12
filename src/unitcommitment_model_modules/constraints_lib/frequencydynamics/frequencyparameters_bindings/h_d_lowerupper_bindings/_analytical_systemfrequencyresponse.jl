@@ -24,7 +24,10 @@ function generate_extreme_inertia(
     ll = 25
 
     nadir_vector, inertia_vector, extreme_inertia, selected_ids =
-        zeros(length(damping), ll), zeros(length(damping), ll), zeros(length(damping), 1), zeros(length(damping), 1)
+        zeros(length(damping), ll),
+        zeros(length(damping), ll),
+        zeros(length(damping), 1),
+        zeros(length(damping), 1)
 
     if flag_converter == 0
         frequency_nadir_threshold = 0.25 # for traditiaonal power grids
@@ -36,7 +39,11 @@ function generate_extreme_inertia(
 
     for i in eachindex(damping)
         candidate_inertia = collect(
-            range(start = inertia_updown_bindings[i, 2], stop = inertia_updown_bindings[i, 1], length = ll + 10),
+            range(
+                start = inertia_updown_bindings[i, 2],
+                stop = inertia_updown_bindings[i, 1],
+                length = ll + 10,
+            ),
         )
 
         candidate_inertia = candidate_inertia[5:(end-6)]
@@ -98,7 +105,12 @@ function calculate_frequencynadir(
     # time_content = 0.1:0.1:5
     # droop = 0.1:0.1:5
     # Check for invalid inputs
-    if inertia <= 0 || time_content <= 0 || damping < 0 || droop < 0 || factorial_coefficient < 0 || delta_p < 0
+    if inertia <= 0 ||
+       time_content <= 0 ||
+       damping < 0 ||
+       droop < 0 ||
+       factorial_coefficient < 0 ||
+       delta_p < 0
         return NaN # Or throw an error
     end
 
@@ -129,14 +141,25 @@ function calculate_frequencynadir(
         t = 1 / ωₜ * atan(ωₜ / (ζ * ωₙ - time_content^(-1))) + (k * 2 * π / ωₜ)
 
         res =
-            delta_p / (damping + droop) *
-            (1 + (-1)^(k) * sqrt(time_content * (droop - factorial_coefficient) / (2 * inertia)) * exp(-1 * ζ * ωₙ * t))
+            delta_p / (damping + droop) * (
+                1 +
+                (-1)^(k) *
+                sqrt(time_content * (droop - factorial_coefficient) / (2 * inertia)) *
+                exp(-1 * ζ * ωₙ * t)
+            )
 
     else
         combinded_inertia = (inertia + converter_vsm_parameters["inertia"])
-        combinded_damping = (damping + converter_vsm_parameters["damping"] + 1 / converter_droop_parameters["droop"])
+        combinded_damping = (
+            damping +
+            converter_vsm_parameters["damping"] +
+            1 / converter_droop_parameters["droop"]
+        )
         ζ =
-            (2 * (combinded_inertia) + time_content * (combinded_damping + factorial_coefficient)) /
+            (
+                2 * (combinded_inertia) +
+                time_content * (combinded_damping + factorial_coefficient)
+            ) /
             (2 * sqrt(2 * combinded_inertia * time_content * (combinded_damping + droop)))
 
         # Check for NaN or Inf
@@ -164,7 +187,10 @@ function calculate_frequencynadir(
             delta_p / (combinded_damping + droop) * (
                 1 +
                 (-1)^(k) *
-                sqrt(time_content * (droop - factorial_coefficient) / (2 * combinded_inertia)) *
+                sqrt(
+                    time_content * (droop - factorial_coefficient) /
+                    (2 * combinded_inertia),
+                ) *
                 exp(-1 * ζ * ωₙ * t)
             )
     end

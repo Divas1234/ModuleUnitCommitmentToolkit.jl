@@ -60,7 +60,21 @@ function SUC_scucmodel(
 
     # --- Input Validation ---
     if !validate_inputs(
-        NT, NB, NG, ND, NC, ND2, units, loads, winds, lines, DataCentras, config_param, stroges, scenarios_prob, NL,
+        NT,
+        NB,
+        NG,
+        ND,
+        NC,
+        ND2,
+        units,
+        loads,
+        winds,
+        lines,
+        DataCentras,
+        config_param,
+        stroges,
+        scenarios_prob,
+        NL,
     )
         error("Input validation failed. Check your data.")
     end
@@ -85,7 +99,19 @@ function SUC_scucmodel(
 
     # --- Set Objective ---
     # Set the objective function to be minimized
-    set_objective!(scuc, NT, NG, ND, NW, NS, units, config_param, scenarios_prob, refcost, eachslope)
+    set_objective!(
+        scuc,
+        NT,
+        NG,
+        ND,
+        NW,
+        NS,
+        units,
+        config_param,
+        scenarios_prob,
+        refcost,
+        eachslope,
+    )
 
     println("subject to.") # Indicate the start of constraint definitions
 
@@ -94,16 +120,66 @@ function SUC_scucmodel(
     add_unit_operation_constraints!(scuc, NT, NG, units, onoffinit)
     add_curtailment_constraints!(scuc, NT, ND, NW, NS, loads, winds)
     add_generator_power_constraints!(scuc, NT, NG, NS, units)
-    add_reserve_constraints!(scuc, NT, NG, NC, NS, units, loads, winds, config_param, hydros)
-    add_power_balance_constraints!(scuc, NT, NG, ND, NC, NW, NS, loads, winds, config_param, ND2)
+    add_reserve_constraints!(
+        scuc,
+        NT,
+        NG,
+        NC,
+        NS,
+        units,
+        loads,
+        winds,
+        config_param,
+        hydros,
+    )
+    add_power_balance_constraints!(
+        scuc,
+        NT,
+        NG,
+        ND,
+        NC,
+        NW,
+        NS,
+        loads,
+        winds,
+        config_param,
+        ND2,
+    )
     add_ramp_constraints!(scuc, NT, NG, NS, units, onoffinit)
     add_pwl_constraints!(scuc, NT, NG, NS, units)
     add_transmission_constraints!(
-        scuc, NT, NG, ND, NC, NW, NL, NS, units, loads, winds, lines, stroges, Gsdf, config_param, ND2, DataCentras, hydros,
+        scuc,
+        NT,
+        NG,
+        ND,
+        NC,
+        NW,
+        NL,
+        NS,
+        units,
+        loads,
+        winds,
+        lines,
+        stroges,
+        Gsdf,
+        config_param,
+        ND2,
+        DataCentras,
+        hydros,
     )
     add_storage_constraints!(scuc, NT, NC, NS, config_param, stroges)
     add_datacentra_constraints!(scuc, NT, NS, config_param, ND2, DataCentras)
-    add_frequency_constraints!(scuc, NT, NG, NC, NS, units, stroges, config_param, Δp_contingency)
+    add_frequency_constraints!(
+        scuc,
+        NT,
+        NG,
+        NC,
+        NS,
+        units,
+        stroges,
+        config_param,
+        Δp_contingency,
+    )
     add_hydros_constraints!(scuc::Model, NT, NH, NS, hydros)
 
     # --- Solve and Extract Results ---
@@ -111,7 +187,20 @@ function SUC_scucmodel(
     try
         # Attempt to solve the SCUC model
         results = solve_and_extract_results(
-            scuc, NT, NG, ND, NC, NW, NS, ND2, NH, scenarios_prob, eachslope, refcost, config_param,)
+            scuc,
+            NT,
+            NG,
+            ND,
+            NC,
+            NW,
+            NS,
+            ND2,
+            NH,
+            scenarios_prob,
+            eachslope,
+            refcost,
+            config_param,
+        )
 
         # --- Return Results ---
         # Check if the optimization was successful

@@ -56,18 +56,19 @@ function get_v_coeff_vectors_from_constr(nam, current_model, constr, NT, NG)
     is_included_in_current_constr = true # check current variable is in the constraint or not
 
     try
-        for t in 2:NT
+        for t = 2:NT
             if is_included_in_current_constr == false
                 break
             end
 
-            for g in 1:NG
+            for g = 1:NG
                 target_var = current_model[:v][g, t]
                 idx = JuMP.index(constr[NG*(t-1)+g])
                 func = MOI.get(JuMP.backend(current_model), MOI.ConstraintFunction(), idx)
 
                 im_idx = JuMP.index(constr[NT*(g-1)+t])
-                im_func = MOI.get(JuMP.backend(current_model), MOI.ConstraintFunction(), im_idx)
+                im_func =
+                    MOI.get(JuMP.backend(current_model), MOI.ConstraintFunction(), im_idx)
 
                 f = get_coeff_from_constr(func, target_var)
                 im_f = get_coeff_from_constr(im_func, target_var)
@@ -92,13 +93,14 @@ function get_v_coeff_vectors_from_constr(nam, current_model, constr, NT, NG)
 
         if is_included_in_current_constr == true
             t = 1
-            for g in 1:NG
+            for g = 1:NG
                 target_var = current_model[:v][g, t]
                 idx = JuMP.index(constr[NG*(t-1)+g])
                 func = MOI.get(JuMP.backend(current_model), MOI.ConstraintFunction(), idx)
 
                 im_idx = JuMP.index(constr[NT*(g-1)+t])
-                im_func = MOI.get(JuMP.backend(current_model), MOI.ConstraintFunction(), im_idx)
+                im_func =
+                    MOI.get(JuMP.backend(current_model), MOI.ConstraintFunction(), im_idx)
 
                 f = get_coeff_from_constr(func, target_var)
                 im_f = get_coeff_from_constr(im_func, target_var)
@@ -127,18 +129,19 @@ function get_u_coeff_vectors_from_constr(nam, current_model, constr, NT, NG)
     is_included_in_current_constr = true # check current variable is in the constraint or not
 
     try
-        for t in 2:NT
+        for t = 2:NT
             if is_included_in_current_constr == false
                 break
             end
 
-            for g in 1:NG
+            for g = 1:NG
                 target_var = current_model[:u][g, t]
                 idx = JuMP.index(constr[NG*(t-1)+g])
                 func = MOI.get(JuMP.backend(current_model), MOI.ConstraintFunction(), idx)
 
                 im_idx = JuMP.index(constr[NT*(g-1)+t])
-                im_func = MOI.get(JuMP.backend(current_model), MOI.ConstraintFunction(), im_idx)
+                im_func =
+                    MOI.get(JuMP.backend(current_model), MOI.ConstraintFunction(), im_idx)
 
                 f = get_coeff_from_constr(func, target_var)
                 im_f = get_coeff_from_constr(im_func, target_var)
@@ -162,13 +165,14 @@ function get_u_coeff_vectors_from_constr(nam, current_model, constr, NT, NG)
         # initial time constraints
         if is_included_in_current_constr == true
             t = 1
-            for g in 1:NG
+            for g = 1:NG
                 target_var = current_model[:u][g, t]
                 idx = JuMP.index(constr[NG*(t-1)+g])
                 func = MOI.get(JuMP.backend(current_model), MOI.ConstraintFunction(), idx)
 
                 im_idx = JuMP.index(constr[NT*(g-1)+t])
-                im_func = MOI.get(JuMP.backend(current_model), MOI.ConstraintFunction(), im_idx)
+                im_func =
+                    MOI.get(JuMP.backend(current_model), MOI.ConstraintFunction(), im_idx)
 
                 f = get_coeff_from_constr(func, target_var)
                 im_f = get_coeff_from_constr(im_func, target_var)
@@ -196,19 +200,20 @@ function get_x_coeff_vectors_from_constr(nam, current_model, constr, NT, NG)
     is_included_in_current_constr = true # check current variable is in the constraint or not
 
     try
-        for t in 2:NT
+        for t = 2:NT
             if is_included_in_current_constr == false
                 break
             end
 
-            for g in 1:NG
+            for g = 1:NG
                 # println("t:", t, "g:", g)
                 target_var = current_model[:x][g, t]
                 idx = JuMP.index(constr[NG*(t-1)+g])
                 func = MOI.get(JuMP.backend(current_model), MOI.ConstraintFunction(), idx)
 
                 im_idx = JuMP.index(constr[NT*(g-1)+t])
-                im_func = MOI.get(JuMP.backend(current_model), MOI.ConstraintFunction(), im_idx)
+                im_func =
+                    MOI.get(JuMP.backend(current_model), MOI.ConstraintFunction(), im_idx)
 
                 f = get_coeff_from_constr(func, target_var)
                 im_f = get_coeff_from_constr(im_func, target_var)
@@ -233,13 +238,14 @@ function get_x_coeff_vectors_from_constr(nam, current_model, constr, NT, NG)
         # initial time constraints
         if is_included_in_current_constr == true
             t = 1
-            for g in 1:NG
+            for g = 1:NG
                 target_var = current_model[:x][g, t]
                 idx = JuMP.index(constr[NG*(t-1)+g])
                 func = MOI.get(JuMP.backend(current_model), MOI.ConstraintFunction(), idx)
 
                 im_idx = JuMP.index(constr[NT*(g-1)+t])
-                im_func = MOI.get(JuMP.backend(current_model), MOI.ConstraintFunction(), im_idx)
+                im_func =
+                    MOI.get(JuMP.backend(current_model), MOI.ConstraintFunction(), im_idx)
 
                 f = get_coeff_from_constr(func, target_var)
                 im_f = get_coeff_from_constr(im_func, target_var)

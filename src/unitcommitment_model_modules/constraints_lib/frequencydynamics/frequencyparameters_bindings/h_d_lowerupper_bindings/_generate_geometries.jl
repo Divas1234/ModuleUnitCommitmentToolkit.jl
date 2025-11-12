@@ -24,7 +24,9 @@ function load_geometry_from_txt(filepath)
             return nothing
         end
         if size(vertices_data, 2) != 3
-            println("Warning: File $filepath is not a n*3 matrix, it is $(size(vertices_data))")
+            println(
+                "Warning: File $filepath is not a n*3 matrix, it is $(size(vertices_data))",
+            )
             return nothing
         end
 
@@ -33,14 +35,16 @@ function load_geometry_from_txt(filepath)
 
         # Check if there are enough vertices to form a triangle
         if length(vertices) < 3
-            println("Warning: File $filepath does not contain enough vertices (at least 3) to form a triangle.")
+            println(
+                "Warning: File $filepath does not contain enough vertices (at least 3) to form a triangle.",
+            )
             return nothing
         end
 
         # Create faces (triangles). Assuming vertices form a triangulated surface.
         # We'll triangulate assuming a fan pattern from the first vertex.
         faces = []
-        for i in 2:(length(vertices)-1)
+        for i = 2:(length(vertices)-1)
             push!(faces, TriangleFace{Int}(1, i, i + 1))
         end
 

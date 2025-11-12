@@ -81,29 +81,50 @@ function get_v_coeff_vectors_from_constr(nam, current_model, constr, NT, NG)
     # 	# @info "v coeffs = zeros, default"
     # end
 
-    alignment_cons, sort_order = check_var_alignment_with_constraints(current_model, constr, NG, NT, dec_symbol)
+    alignment_cons, sort_order =
+        check_var_alignment_with_constraints(current_model, constr, NG, NT, dec_symbol)
 
     if !isnothing(alignment_cons)
         coeffs = zeros(NG * NT, 1)
 
-        for t in 2:NT, g in 1:NG
-            target_var = ((alignment_cons == 0) ? current_model[:v][g, t] : current_model[:v][g, t-1])
-            res, _, _ = get_index_in_constraint(target_var, current_model, constr, NG, NT, g, t, sort_order)
+        for t = 2:NT, g = 1:NG
+            target_var = (
+                (alignment_cons == 0) ? current_model[:v][g, t] : current_model[:v][g, t-1]
+            )
+            res, _, _ = get_index_in_constraint(
+                target_var,
+                current_model,
+                constr,
+                NG,
+                NT,
+                g,
+                t,
+                sort_order,
+            )
             idx = ((sort_order == 0) ? NG * (t - 1) + g : NT * (g - 1) + t)
             coeffs[idx, 1] = res
         end
 
         t = 1
         if alignment_cons == 0
-            for g in 1:NG
+            for g = 1:NG
                 target_var = current_model[:v][g, t]
-                res, _, _ = get_index_in_constraint(target_var, current_model, constr, NG, NT, g, t, sort_order)
+                res, _, _ = get_index_in_constraint(
+                    target_var,
+                    current_model,
+                    constr,
+                    NG,
+                    NT,
+                    g,
+                    t,
+                    sort_order,
+                )
                 idx = ((sort_order == 0) ? NG * (t - 1) + g : NT * (g - 1) + t)
                 coeffs[idx, 1] = res
             end
         else
             res = 0
-            for g in 1:NG
+            for g = 1:NG
                 idx = ((sort_order == 0) ? NG * (t - 1) + g : NT * (g - 1) + t)
                 coeffs[idx, 1] = res
             end
@@ -151,29 +172,50 @@ function get_u_coeff_vectors_from_constr(nam, current_model, constr, NT, NG)
     # 	# @info "coeffs = zeros, default"
     # end
 
-    alignment_cons, sort_order = check_var_alignment_with_constraints(current_model, constr, NG, NT, dec_symbol)
+    alignment_cons, sort_order =
+        check_var_alignment_with_constraints(current_model, constr, NG, NT, dec_symbol)
 
     if !isnothing(alignment_cons)
         coeffs = zeros(NG * NT, 1)
 
-        for t in 2:NT, g in 1:NG
-            target_var = ((alignment_cons == 0) ? current_model[:u][g, t] : current_model[:u][g, t-1])
-            res, _, _ = get_index_in_constraint(target_var, current_model, constr, NG, NT, g, t, sort_order)
+        for t = 2:NT, g = 1:NG
+            target_var = (
+                (alignment_cons == 0) ? current_model[:u][g, t] : current_model[:u][g, t-1]
+            )
+            res, _, _ = get_index_in_constraint(
+                target_var,
+                current_model,
+                constr,
+                NG,
+                NT,
+                g,
+                t,
+                sort_order,
+            )
             idx = ((sort_order == 0) ? NG * (t - 1) + g : NT * (g - 1) + t)
             coeffs[idx, 1] = res
         end
 
         t = 1
         if alignment_cons == 0
-            for g in 1:NG
+            for g = 1:NG
                 target_var = current_model[:u][g, t]
-                res, _, _ = get_index_in_constraint(target_var, current_model, constr, NG, NT, g, t, sort_order)
+                res, _, _ = get_index_in_constraint(
+                    target_var,
+                    current_model,
+                    constr,
+                    NG,
+                    NT,
+                    g,
+                    t,
+                    sort_order,
+                )
                 idx = ((sort_order == 0) ? NG * (t - 1) + g : NT * (g - 1) + t)
                 coeffs[idx, 1] = res
             end
         else
             res = 0
-            for g in 1:NG
+            for g = 1:NG
                 idx = ((sort_order == 0) ? NG * (t - 1) + g : NT * (g - 1) + t)
                 coeffs[idx, 1] = res
             end
@@ -227,29 +269,50 @@ function get_x_coeff_vectors_from_constr(nam, current_model, constr, NT, NG)
 
     dec_symbol = "x"
 
-    alignment_cons, sort_order = check_var_alignment_with_constraints(current_model, constr, NG, NT, dec_symbol)
+    alignment_cons, sort_order =
+        check_var_alignment_with_constraints(current_model, constr, NG, NT, dec_symbol)
 
     if !isnothing(alignment_cons)
         coeffs = zeros(NG * NT, 1)
 
-        for t in 2:NT, g in 1:NG
-            target_var = ((alignment_cons == 0) ? current_model[:x][g, t] : current_model[:x][g, t-1])
-            res, _, _ = get_index_in_constraint(target_var, current_model, constr, NG, NT, g, t, sort_order)
+        for t = 2:NT, g = 1:NG
+            target_var = (
+                (alignment_cons == 0) ? current_model[:x][g, t] : current_model[:x][g, t-1]
+            )
+            res, _, _ = get_index_in_constraint(
+                target_var,
+                current_model,
+                constr,
+                NG,
+                NT,
+                g,
+                t,
+                sort_order,
+            )
             idx = ((sort_order == 0) ? NG * (t - 1) + g : NT * (g - 1) + t)
             coeffs[idx, 1] = res
         end
 
         t = 1
         if alignment_cons == 0
-            for g in 1:NG
+            for g = 1:NG
                 target_var = current_model[:x][g, t]
-                res, _, _ = get_index_in_constraint(target_var, current_model, constr, NG, NT, g, t, sort_order)
+                res, _, _ = get_index_in_constraint(
+                    target_var,
+                    current_model,
+                    constr,
+                    NG,
+                    NT,
+                    g,
+                    t,
+                    sort_order,
+                )
                 idx = ((sort_order == 0) ? NG * (t - 1) + g : NT * (g - 1) + t)
                 coeffs[idx, 1] = res
             end
         else
             res = 0
-            for g in 1:NG
+            for g = 1:NG
                 idx = ((sort_order == 0) ? NG * (t - 1) + g : NT * (g - 1) + t)
                 coeffs[idx, 1] = res
             end
@@ -295,7 +358,16 @@ function check_var_alignment_with_constraints(current_model, constr, NG, NT, dec
     return alignment_cons, sort_order
 end
 
-function get_index_in_constraint(target_var, current_model, constr, NG, NT, g, t, order = -2)
+function get_index_in_constraint(
+    target_var,
+    current_model,
+    constr,
+    NG,
+    NT,
+    g,
+    t,
+    order = -2,
+)
     if order == -2
         idx = JuMP.index(constr[NG*(t-1)+g])
         func = MOI.get(JuMP.backend(current_model), MOI.ConstraintFunction(), idx)

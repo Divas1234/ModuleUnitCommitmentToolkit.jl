@@ -70,8 +70,9 @@ function inertia_damping_relations(
         # @show tem2 = tem1^2 - (damping + factorial_coefficient)^2
     else
         tem1 = (
-            damping + converter_vsm_parameters["damping"] + 1 / converter_droop_parameters["droop"] -
-            factorial_coefficient + 2 * droop
+            damping +
+            converter_vsm_parameters["damping"] +
+            1 / converter_droop_parameters["droop"] - factorial_coefficient + 2 * droop
         )
         tem2 =
             tem1^2 -
@@ -167,7 +168,11 @@ function calculate_inertia_parameters(
     # Further validation (example - check dimensions)
     # @assert length(nadir_vector) == length(damping_range) "Nadir vector length should match damping range."
 
-    return inertia_updown_bindings, extreme_inertia, nadir_vector, inertia_vector, selected_ids
+    return inertia_updown_bindings,
+    extreme_inertia,
+    nadir_vector,
+    inertia_vector,
+    selected_ids
 end
 
 """

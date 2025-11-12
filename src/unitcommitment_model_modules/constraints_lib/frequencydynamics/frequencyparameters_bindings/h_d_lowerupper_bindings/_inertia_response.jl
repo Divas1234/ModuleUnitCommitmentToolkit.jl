@@ -15,7 +15,14 @@ Estimate the minimum inertia based on given parameters.
 - `lower_bound`: Lower bound of inertia estimation.
 - `upper_bound`: Upper bound of inertia estimation.
 """
-function min_inertia_estimation(ROCOF_threshold, delta_p, damping, factorial_coefficient, time_content, droop)
+function min_inertia_estimation(
+    ROCOF_threshold,
+    delta_p,
+    damping,
+    factorial_coefficient,
+    time_content,
+    droop,
+)
 
     # Input validation
     if ROCOF_threshold == 0
@@ -35,7 +42,8 @@ function min_inertia_estimation(ROCOF_threshold, delta_p, damping, factorial_coe
 
     # Upper bound vectorized calculation
     upper_bound .=
-        (PERCENTAGE_BASE / FREQUENCY_BASE) * (droop .+ damping .+ factorial_coefficient) .* (time_content / 2)
+        (PERCENTAGE_BASE / FREQUENCY_BASE) * (droop .+ damping .+ factorial_coefficient) .*
+        (time_content / 2)
 
     return lower_bound, upper_bound
 end

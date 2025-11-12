@@ -9,10 +9,13 @@ function converter_formming_configuations()
                 "time_constant" => 0.05,  # 统一时间系数
             ),
         ),
-        "Droop" => Dict("controller" => "P-Q", "control_parameters" => Dict(
-            "droop" => 0.05,  # 添加Droop的系数
-            "time_constant" => 0.01,  # 统一时间系数
-        )),
+        "Droop" => Dict(
+            "controller" => "P-Q",
+            "control_parameters" => Dict(
+                "droop" => 0.05,  # 添加Droop的系数
+                "time_constant" => 0.01,  # 统一时间系数
+            ),
+        ),
     )
 
     return converter_config

@@ -1,12 +1,23 @@
 using Pkg
 Pkg.activate(".Pkg/")
 
-neededPackages =
-    [:FileIO, :LinearAlgebra, :LinearAlgebra, :Random, :GLM, :Plots, :DelimitedFiles, :GeometryBasics, :QHull, :Printf]
+neededPackages = [
+    :FileIO,
+    :LinearAlgebra,
+    :LinearAlgebra,
+    :Random,
+    :GLM,
+    :Plots,
+    :DelimitedFiles,
+    :GeometryBasics,
+    :QHull,
+    :Printf,
+]
 
 # Make sure all needed Pkg's are ready to go
 for neededpackage in neededPackages
-    (String(neededpackage) in keys(Pkg.project().dependencies)) || Pkg.add(String(neededpackage))
+    (String(neededpackage) in keys(Pkg.project().dependencies)) ||
+        Pkg.add(String(neededpackage))
     # @eval using $neededpackage
 end
 

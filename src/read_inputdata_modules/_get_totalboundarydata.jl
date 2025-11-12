@@ -60,7 +60,7 @@ function forminputdata(
     Loads_Percent = DataLoad[:, 3]
     Loads_SumLoad = LoadCurve[:, 2] / 100
     Loads_PerLoad = zeros(ND, NT)
-    for i in 1:NT
+    for i = 1:NT
         Loads_PerLoad[:, i] = Loads_SumLoad[i, 1] .* Loads_Percent[:, 1]
     end
 
@@ -85,7 +85,8 @@ function forminputdata(
     Pss_δₛ = StrogeData[:, 12]
 
     # renormazied data
-    config_param = config(1, 1, 1, 1, 1, 1, 3, 0.005, 0.005, 1, 1, 1, 1e5, 1e5, 50, 0.01, 0, 0, 0, 1)
+    config_param =
+        config(1, 1, 1, 1, 1, 1, 3, 0.005, 0.005, 1, 1, 1, 1e5, 1e5, 50, 0.01, 0, 0, 0, 1)
 
     units = unit(
         Gens_Index,
@@ -118,7 +119,8 @@ function forminputdata(
     )
     # lines = transmissionline(Trans_From, Trans_To, Trans_x, Trans_b, Trans_Pmax, Trans_Pmin)
 
-    lines = transmissionline(Trans_index, Trans_From, Trans_To, Trans_x, Trans_Pmax, Trans_Pmin)
+    lines =
+        transmissionline(Trans_index, Trans_From, Trans_To, Trans_x, Trans_Pmax, Trans_Pmin)
 
     stroges = pss(
         Pss_index,
@@ -180,10 +182,31 @@ function forminputdata(
     hydros_q0 = HydroData[:, 6]
     hydros_reservoir_curve = HydroCurve[:, 2]
     NH = size(hydros_index)[1]
-    hydros =
-        hydro(hydros_index, hydros_locatebus, hydros_pmax, hydros_pmin, hydros_qmax, hydros_q0, hydros_reservoir_curve)
+    hydros = hydro(
+        hydros_index,
+        hydros_locatebus,
+        hydros_pmax,
+        hydros_pmin,
+        hydros_qmax,
+        hydros_q0,
+        hydros_reservoir_curve,
+    )
 
     println("Step-2: imput data are loaded")
 
-    return config_param, units, lines, loads, stroges, NB, NG, NL, ND, NT, NC, ND2, NH, datacentra_data, hydros
+    return config_param,
+    units,
+    lines,
+    loads,
+    stroges,
+    NB,
+    NG,
+    NL,
+    ND,
+    NT,
+    NC,
+    ND2,
+    NH,
+    datacentra_data,
+    hydros
 end

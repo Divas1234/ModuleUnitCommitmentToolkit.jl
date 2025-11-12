@@ -1,7 +1,7 @@
 using XLSX
 
 """
-    readxlssheet()
+	readxlssheet()
 
 Read input data from Excel file.
 
@@ -10,21 +10,24 @@ This function reads all required input data from the Excel file located in the
 appropriate file path.
 
 # Returns
+
 A tuple containing:
-- `unitsfreqparam`: Generator frequency parameters
-- `windsfreqparam`: Wind frequency parameters  
-- `strogesystemdata`: Energy storage system data
-- `gendata`: Generator unit data
-- `gencost`: Generator cost data
-- `linedata`: Transmission line data
-- `loadcurve`: Load curve data
-- `loaddata`: Load data
-- `data_centra_data`: Data center data
-- `hydropower_data`: Hydroelectric power data
-- `hydropower_curve`: Hydroelectric seasonal curve data
+
+  - `unitsfreqparam`: Generator frequency parameters
+  - `windsfreqparam`: Wind frequency parameters
+  - `strogesystemdata`: Energy storage system data
+  - `gendata`: Generator unit data
+  - `gencost`: Generator cost data
+  - `linedata`: Transmission line data
+  - `loadcurve`: Load curve data
+  - `loaddata`: Load data
+  - `data_centra_data`: Data center data
+  - `hydropower_data`: Hydroelectric power data
+  - `hydropower_curve`: Hydroelectric seasonal curve data
 
 # Throws
-- `SystemError` if the Excel file cannot be found or read
+
+  - `SystemError` if the Excel file cannot be found or read
 """
 function readxlssheet()
     println("Step-1: Loading packages and functions...")
@@ -64,8 +67,8 @@ function readxlssheet()
     unitsfreqparam_range = "A2:G$(size(unitsfreqparam[:], 1))"
     windsfreqparam_range = "A2:F$(size(windsfreqparam[:], 1))"
 
-    unitsfreqparam = convert(Array{Float64, 2}, unitsfreqparam[unitsfreqparam_range])
-    windsfreqparam = convert(Array{Float64, 2}, windsfreqparam[windsfreqparam_range])
+    unitsfreqparam = convert(Array{Float64,2}, unitsfreqparam[unitsfreqparam_range])
+    windsfreqparam = convert(Array{Float64,2}, windsfreqparam[windsfreqparam_range])
 
     # ========================================================================
     # Part 2: Read energy storage system data
@@ -73,7 +76,7 @@ function readxlssheet()
     println("  Reading energy storage system data...")
     strogesystemdata = df["strogesystem_data"]
     strogesystemdata_range = "A2:L$(size(strogesystemdata[:], 1))"
-    strogesystemdata = convert(Array{Float64, 2}, strogesystemdata[strogesystemdata_range])
+    strogesystemdata = convert(Array{Float64,2}, strogesystemdata[strogesystemdata_range])
 
     # ========================================================================
     # Part 3: Read conventional generator, network, and load data
@@ -83,27 +86,27 @@ function readxlssheet()
     # Generator unit data
     gendata = df["units_data"]
     gendata_range = "A2:N$(size(gendata[:], 1))"
-    gendata = convert(Array{Float64, 2}, gendata[gendata_range])
+    gendata = convert(Array{Float64,2}, gendata[gendata_range])
 
     # Generator cost data
     gencost = df["units_cost"]
     gencost_range = "A2:H$(size(gencost[:], 1))"
-    gencost = convert(Array{Float64, 2}, gencost[gencost_range])
+    gencost = convert(Array{Float64,2}, gencost[gencost_range])
 
     # Transmission line data
     linedata = df["branch_data"]
     linedata_range = "A2:E$(size(linedata[:], 1))"
-    linedata = convert(Array{Float64, 2}, linedata[linedata_range])
+    linedata = convert(Array{Float64,2}, linedata[linedata_range])
 
     # Load curve data
     loadcurve = df["load_curve"]
     loadcurve_range = "A2:B$(size(loadcurve[:], 1))"
-    loadcurve = convert(Array{Float64, 2}, loadcurve[loadcurve_range])
+    loadcurve = convert(Array{Float64,2}, loadcurve[loadcurve_range])
 
     # Load data
     loaddata = df["load_data"]
     loaddata_range = "A2:C$(size(loaddata[:], 1))"
-    loaddata = convert(Array{Float64, 2}, loaddata[loaddata_range])
+    loaddata = convert(Array{Float64,2}, loaddata[loaddata_range])
 
     # ========================================================================
     # Part 4: Read data center data
@@ -111,7 +114,7 @@ function readxlssheet()
     println("  Reading data center data...")
     data_centra_data = df["data_centra"]
     data_centra_range = "A2:I$(size(data_centra_data[:], 1))"
-    data_centra_data = convert(Array{Float64, 2}, data_centra_data[data_centra_range])
+    data_centra_data = convert(Array{Float64,2}, data_centra_data[data_centra_range])
 
     # ========================================================================
     # Part 5: Read hydroelectric power data
@@ -119,11 +122,11 @@ function readxlssheet()
     println("  Reading hydroelectric power data...")
     hydropower_data = df["hydro_data"]
     hydropower_data_range = "A2:F$(size(hydropower_data[:], 1))"
-    hydropower_data = convert(Array{Float64, 2}, hydropower_data[hydropower_data_range])
+    hydropower_data = convert(Array{Float64,2}, hydropower_data[hydropower_data_range])
 
     hydropower_curve = df["hydro_seasoncurve"]
     hydropower_curve_range = "A2:B$(size(hydropower_curve[:], 1))"
-    hydropower_curve = convert(Array{Float64, 2}, hydropower_curve[hydropower_curve_range])
+    hydropower_curve = convert(Array{Float64,2}, hydropower_curve[hydropower_curve_range])
 
     println("  ✓ All data successfully loaded from Excel file.")
 

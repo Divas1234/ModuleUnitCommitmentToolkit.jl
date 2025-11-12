@@ -19,11 +19,15 @@ function solve_and_extract_results(
     config_param,
     interval_scheduling_id = 0,
 )
-    println("+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++")
+    println(
+        "+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++",
+    )
     println("Step-4: starting Gurobi solver")
     optimize!(scuc)
     println("Step-5: Gurobi solver finished")
-    println("+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++\n")
+    println(
+        "+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++\n",
+    )
 
     # Check termination status
     @show assert_is_solved_and_feasible(scuc)
@@ -72,7 +76,8 @@ function solve_and_extract_results(
         end
 
         # Data centra results
-        dc_p_res, dc_f_res, dc_v²_res, dc_λ_res, dc_Δu1_res, dc_Δu2_res = ntuple(_ -> nothing, 6) # Initialize as nothing
+        dc_p_res, dc_f_res, dc_v²_res, dc_λ_res, dc_Δu1_res, dc_Δu2_res =
+            ntuple(_ -> nothing, 6) # Initialize as nothing
         if config_param.is_ConsiderDataCentra == 1 && ND2 > 0
             dc_p_res = JuMP.value.(scuc[:dc_p])
             dc_f_res = JuMP.value.(scuc[:dc_f])
@@ -94,7 +99,11 @@ function solve_and_extract_results(
         # Note: Original function returned specific variables directly.
         # Adjust the return statement based on what the caller function `mainfun.jl` expects.
         # Returning a dictionary or a custom struct might be cleaner.
-        results = Dict("objective_value" => objective_value(scuc), "solve_time" => solve_time(scuc), "status" => status)
+        results = Dict(
+            "objective_value" => objective_value(scuc),
+            "solve_time" => solve_time(scuc),
+            "status" => status,
+        )
 
         results = Dict(
             "x₀" => x₀,

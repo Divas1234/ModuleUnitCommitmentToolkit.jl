@@ -65,7 +65,8 @@ function generate_inertia_damping_figure(
 
     # Simplified and safer dictionary access using get with default values
     vsm_params = get(get(controller_configs, "VSM", Dict()), "control_parameters", Dict())
-    droop_params = get(get(controller_configs, "Droop", Dict()), "control_parameters", Dict())
+    droop_params =
+        get(get(controller_configs, "Droop", Dict()), "control_parameters", Dict())
 
     # --- Parameter Retrieval ---
     # Descriptive function name, clearer variable names
@@ -73,7 +74,8 @@ function generate_inertia_damping_figure(
     # TODO: Replace placeholder with actual function call if available
     # initial_inertia, factor_coeff, time_const, _, rocof_limit, nadir_limit, power_dev =
     #     get_system_parameters(flag_converter)
-    initial_inertia, factor_coeff, time_const, _, rocof_limit, nadir_limit, power_dev = get_parmeters(flag_converter) # Keeping original name if rename isn't possible yet
+    initial_inertia, factor_coeff, time_const, _, rocof_limit, nadir_limit, power_dev =
+        get_parmeters(flag_converter) # Keeping original name if rename isn't possible yet
 
     # Use the provided droop setting directly
     droop = droop_setting
@@ -115,7 +117,8 @@ function generate_inertia_damping_figure(
 
     # Calculate the fitted inertia curve using the quadratic model (vectorized)
     # Using @. macro for broadcasting is concise
-    fitted_inertia = @. fit_coeffs[1] + fit_coeffs[2] * damping_values + fit_coeffs[3] * damping_values^2
+    fitted_inertia =
+        @. fit_coeffs[1] + fit_coeffs[2] * damping_values + fit_coeffs[3] * damping_values^2
 
     # Calculate the lower bound for the fill area (vectorized)
     # Takes the maximum of the fitted curve and the minimum inertia limit at each point
@@ -211,7 +214,14 @@ function generate_inertia_damping_figure(
         linestyle = :dashdot,
         color = :grey,
     )
-    Plots.vline!(p, [DEFAULT_DAMPING_MAX], lw = 2, label = "Default Max Damping", linestyle = :dashdot, color = :grey)
+    Plots.vline!(
+        p,
+        [DEFAULT_DAMPING_MAX],
+        lw = 2,
+        label = "Default Max Damping",
+        linestyle = :dashdot,
+        color = :grey,
+    )
 
     # Add title
     # Plots.title!(p, "Inertia vs. Damping Feasible Region (Droop = $droop_setting)")

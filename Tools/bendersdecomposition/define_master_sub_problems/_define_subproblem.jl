@@ -27,9 +27,23 @@ This function defines the subproblem for the Bender's decomposition algorithm. I
 """
 
 function bd_subfunction(
-		NT::Int64, NB::Int64, NL::Int64, NG::Int64, ND::Int64, NC::Int64, ND2::Int64, NS::Int64, NW::Int64,
-		units::unit, winds::wind, loads::load, lines::transmissionline, DataCentras::data_centra, psses::pss,
-		scenarios_prob::Float64, config_param::config
+		NT::Int64,
+		NB::Int64,
+		NL::Int64,
+		NG::Int64,
+		ND::Int64,
+		NC::Int64,
+		ND2::Int64,
+		NS::Int64,
+		NW::Int64,
+		units::unit,
+		winds::wind,
+		loads::load,
+		lines::transmissionline,
+		DataCentras::data_centra,
+		psses::pss,
+		scenarios_prob::Float64,
+		config_param::config,
 )
 	# Input validation
 	@assert NT>0 "Number of time periods (NT) must be positive."
@@ -51,19 +65,20 @@ function bd_subfunction(
 	# α, β = define_subproblem_decision_variables!(
 	# 	scuc_subproblem, NT, NG, ND, NC, ND2, NS, NW, config_param
 	# )
-	scuc_subproblem, x, u, v, pg₀, pgₖ, sr⁺, sr⁻, Δpd, Δpw, κ⁺, κ⁻, pc⁺, pc⁻, qc, pss_sumchargeenergy,
-	α, β = define_subproblem_decision_variables!(
-		scuc_subproblem, NT, NG, ND, NC, ND2, NS, NW, config_param
+	scuc_subproblem, x, u, v, pg₀, pgₖ, sr⁺, sr⁻, Δpd, Δpw, κ⁺, κ⁻, pc⁺, pc⁻, qc, pss_sumchargeenergy, α, β = define_subproblem_decision_variables!(
+		scuc_subproblem, NT, NG, ND, NC, ND2, NS, NW, config_param,
 	)
 	θ = Matrix{VariableRef}(undef, 0, 0)
 
 	# NOTE - save the decision variables in a dictionary for easy access
 	# sub_vars = SCUCModel_decision_variables(u, x, v, su₀, sd₀, pg₀, pgₖ, sr⁺, sr⁻, Δpd, Δpw, κ⁺, κ⁻, pc⁺, pc⁻, qc, pss_sumchargeenergy, α, β,θ)
 	# sub_vars = build_decision_variables(; u, x, v, su₀, sd₀, pg₀, pgₖ, sr⁺, sr⁻, Δpd, Δpw, κ⁺, κ⁻, pc⁺, pc⁻, qc, pss_sumchargeenergy, α, β, θ)
-	sub_vars = build_decision_variables(; x, u, v, pg₀, pgₖ, sr⁺, sr⁻, Δpd, Δpw, κ⁺, κ⁻, pc⁺, pc⁻, qc, pss_sumchargeenergy, α, β, θ)
+	sub_vars = build_decision_variables(;
+		x, u, v, pg₀, pgₖ, sr⁺, sr⁻, Δpd, Δpw, κ⁺, κ⁻, pc⁺, pc⁻, qc, pss_sumchargeenergy, α, β, θ,)
 
 	# Set the objective function
-	scuc_subproblem, obj = set_subproblem_objective_economic!(scuc_subproblem, NT, NG, ND, NW, NS, units, config_param, scenarios_prob)
+	scuc_subproblem, obj = set_subproblem_objective_economic!(
+		scuc_subproblem, NT, NG, ND, NW, NS, units, config_param, scenarios_prob,)
 	# @show typeof(obj)
 	# NOTE - save the objective function in a dictionary for easy access
 	sub_obj = SCUCModel_objective_function(obj)
@@ -86,24 +101,28 @@ function bd_subfunction(
 	# )# Add unit operation constraints
 	scuc_subproblem, _winds_curt_constr, _loads_curt_const = add_curtailment_constraints!(scuc_subproblem, NT, ND, NW, NS_copy, loads, winds)# Add curtailment constraints for wind and loads
 	scuc_subproblem, _units_minpower_constr, _units_maxpower_constr = add_generator_power_constraints!(scuc_subproblem, NT, NG, NS_copy, units)# Add generator power constraints
-	scuc_subproblem, _sys_upreserve_constr,
-	_sys_down_reserve_constr = add_reserve_constraints!(scuc_subproblem, NT, NG, NC, NS_copy, units, loads, winds, config_param)# Add reserve constraints
-	scuc_subproblem,
-	_sys_balance_constr = add_power_balance_constraints!(scuc_subproblem, NT, NG, ND, NC, NW, NS_copy, loads, winds, config_param, ND2)# Add power balance constraints
+	scuc_subproblem, _sys_upreserve_constr, _sys_down_reserve_constr = add_reserve_constraints!(
+		scuc_subproblem, NT, NG, NC, NS_copy, units, loads, winds, config_param,)
+	# Add reserve constraints
+	scuc_subproblem, _sys_balance_constr = add_power_balance_constraints!(
+		scuc_subproblem, NT, NG, ND, NC, NW, NS_copy, loads, winds, config_param, ND2,)# Add power balance constraints
 	scuc_subproblem, _units_upramp_constr, _units_downramp_constr = add_ramp_constraints!(scuc_subproblem, NT, NG, NS_copy, units, onoffinit)# Add ramp constraints
-	scuc_subproblem, _units_pwlpower_sum_constr,
-	_units_pwlblock_upbound_constr, _units_pwlblock_dwbound_constr = add_pwl_constraints!(scuc_subproblem, NT, NG, NS_copy, units)# Add piecewise linear constraints
-	scuc_subproblem, _transmissionline_powerflow_upbound_constr,
+	scuc_subproblem,
+	_units_pwlpower_sum_constr,
+	_units_pwlblock_upbound_constr,
+	_units_pwlblock_dwbound_constr = add_pwl_constraints!(scuc_subproblem, NT, NG, NS_copy, units)# Add piecewise linear constraints
+	scuc_subproblem,
+	_transmissionline_powerflow_upbound_constr,
 	_transmissionline_powerflow_downbound_constr = add_transmission_constraints!(
-		scuc_subproblem, NT, NG, ND, NC, NW, NL, NS_copy, units, loads, winds, lines, psses, gsdf, config_param, ND2, DataCentras)# Add transmission constraints
+		scuc_subproblem, NT, NG, ND, NC, NW, NL, NS_copy, units, loads, winds, lines, psses, gsdf, config_param, ND2, DataCentras,)# Add transmission constraints
 	# add_storage_constraints!(scuc_subproblem, NT, NC, NS, config_param, psses)
 	# add_datacentra_constraints!(scuc_subproblem, NT, NS, config_param, ND2, DataCentras)
 	# add_frequency_constraints!(scuc_subproblem, NT, NG, NC, NS, units, psses, config_param, contingency_size)
 	# @show model_summary(scuc_subproblem)
 
-	println("\n")
+	println("\"")
 	@show scuc_subproblem
-	println("\n")
+	println("\"")
 
 	all_constraints_dict = Dict{Symbol, Any}()
 
@@ -150,16 +169,19 @@ function bd_subfunction(
 	# ]]...
 	# )
 
-	fields = [Symbol(string(k)[5:end]) for k in keys(all_constraints_dict) if startswith(string(k), "key_")]
-	sub_cons = build_constraints(; (
-		f => all_constraints_dict[Symbol("key_", f)]
-	for f in fields
-	)...)
+	fields = [Symbol(string(k)[5:end]) for
+			  k in keys(all_constraints_dict) if startswith(string(k), "key_")]
+	sub_cons = build_constraints(;
+		(f => all_constraints_dict[Symbol("key_", f)] for f in fields)...,
+	)
 
 	# NOTE - save the reformated constraints in a dictionary for easy access
 	all_constr_lessthan_sets, all_constr_greaterthan_sets, all_constr_equalto_sets = reorginze_constraints_sets(all_constraints_dict)
 	sub_reformat_cons = SCUCModel_reformat_constraints(
-		all_constr_equalto_sets, all_constr_greaterthan_sets, all_constr_lessthan_sets)
+		all_constr_equalto_sets,
+		all_constr_greaterthan_sets,
+		all_constr_lessthan_sets,
+	)
 
 	# NOTE - save all scuc model components in struct! SCUC_model
 	sub_scuc_struct = SCUC_Model(
@@ -167,7 +189,7 @@ function bd_subfunction(
 		sub_vars::SCUCModel_decision_variables,
 		sub_obj::SCUCModel_objective_function,
 		sub_cons::SCUCModel_constraints,
-		sub_reformat_cons::SCUCModel_reformat_constraints
+		sub_reformat_cons::SCUCModel_reformat_constraints,
 	)
 
 	return scuc_subproblem, sub_scuc_struct
@@ -182,10 +204,8 @@ function get_reorganize_constraints_struct(all_constraints_dict) #depreated
 	all_reorginzed_constraints_dict[:EqualTo] = collect(Iterators.flatten(all_constr_equalto_sets))
 
 	sub_reformat_cons = SCUCModel_reformat_constraints(
-		[vec(all_reorginzed_constraints_dict[key])
-		 for key in [
-		:EqualTo, :GreaterThan, :LessThan
-	]]...
+		[vec(all_reorginzed_constraints_dict[key]) for
+		 key in [:EqualTo, :GreaterThan, :LessThan]]...,
 	)
 	return sub_reformat_cons
 end
@@ -199,19 +219,22 @@ end
 Define the decision variables for the subproblem.
 
 # Arguments
-- `scuc_subproblem::Model`: The JuMP model for the subproblem.
-- `NT::Int64`: Number of time periods.
-- `NG::Int64`: Number of generators.
-- `ND::Int64`: Number of loads.
-- `NC::Int64`: Number of storage units.
-- `ND2::Int64`: Number of data centers.
-- `NS::Int64`: Number of scenarios.
-- `NW::Int64`: Number of wind power plants.
-+ `NW::Int64`: Number of wind power plants (optional).
-- `config_param::config`: Configuration parameters.
+
+  - `scuc_subproblem::Model`: The JuMP model for the subproblem.
+
+  - `NT::Int64`: Number of time periods.
+  - `NG::Int64`: Number of generators.
+  - `ND::Int64`: Number of loads.
+  - `NC::Int64`: Number of storage units.
+  - `ND2::Int64`: Number of data centers.
+  - `NS::Int64`: Number of scenarios.
+  - `NW::Int64`: Number of wind power plants.
+  - `NW::Int64`: Number of wind power plants (optional).
+  - `config_param::config`: Configuration parameters.
 
 # Returns
-- `scuc_subproblem::Model`: The JuMP model with decision variables defined.
+
+  - `scuc_subproblem::Model`: The JuMP model with decision variables defined.
 """
 function define_subproblem_decision_variables!(
 		scuc_subproblem::Model,
@@ -222,7 +245,7 @@ function define_subproblem_decision_variables!(
 		ND2::Int64,
 		NS::Int64,
 		NW::Int64,
-		config_param::config
+		config_param::config,
 )
 	NS_copy = (config_param.is_ConsiderMultiCUTs == 1) ? NS : Int64(1)
 
@@ -257,11 +280,10 @@ function define_subproblem_decision_variables!(
 		@variable(scuc_subproblem, α[1:(NS_copy * NC), 1:NT], Bin)
 		@variable(scuc_subproblem, β[1:(NS_copy * NC), 1:NT], Bin)
 	else
-		κ⁺, κ⁻,
-		pc⁺,
-		pc⁻,
-		qc = Matrix{VariableRef}(undef, 0, 0),
-		Matrix{VariableRef}(undef, 0, 0), Matrix{VariableRef}(undef, 0, 0), Matrix{VariableRef}(undef, 0, 0),
+		κ⁺, κ⁻, pc⁺, pc⁻, qc = Matrix{VariableRef}(undef, 0, 0),
+		Matrix{VariableRef}(undef, 0, 0),
+		Matrix{VariableRef}(undef, 0, 0),
+		Matrix{VariableRef}(undef, 0, 0),
 		Matrix{VariableRef}(undef, 0, 0)
 		pss_sumchargeenergy = Matrix{VariableRef}(undef, 0, 0)
 		α, β = Matrix{VariableRef}(undef, 0, 0), Matrix{VariableRef}(undef, 0, 0)
@@ -286,7 +308,24 @@ function define_subproblem_decision_variables!(
 	# end
 
 	# println("\t Variables defined.")
-	return scuc_subproblem, x, u, v, pg₀, pgₖ, sr⁺, sr⁻, Δpd, Δpw, κ⁺, κ⁻, pc⁺, pc⁻, qc, pss_sumchargeenergy, α, β
+	return scuc_subproblem,
+	x,
+	u,
+	v,
+	pg₀,
+	pgₖ,
+	sr⁺,
+	sr⁻,
+	Δpd,
+	Δpw,
+	κ⁺,
+	κ⁻,
+	pc⁺,
+	pc⁻,
+	qc,
+	pss_sumchargeenergy,
+	α,
+	β
 end
 
 """
@@ -295,15 +334,16 @@ end
 Set the objective function for the subproblem, aiming to minimize the total cost of operation.
 
 # Arguments
-- `scuc_subproblem::Model`: The JuMP model for the subproblem.
-- `NT::Int64`: Number of time periods.
-- `NG::Int64`: Number of generators.
-- `ND::Int64`: Number of loads.
-- `NW::Int64`: Number of wind power plants.
-- `NS::Int64`: Number of scenarios.
-- `units::unit`: Unit data structure.
-- `config_param::config`: Configuration parameters.
-- `scenarios_prob::Float64`: Probability of each scenario.
+
+  - `scuc_subproblem::Model`: The JuMP model for the subproblem.
+  - `NT::Int64`: Number of time periods.
+  - `NG::Int64`: Number of generators.
+  - `ND::Int64`: Number of loads.
+  - `NW::Int64`: Number of wind power plants.
+  - `NS::Int64`: Number of scenarios.
+  - `units::unit`: Unit data structure.
+  - `config_param::config`: Configuration parameters.
+  - `scenarios_prob::Float64`: Probability of each scenario.
 """
 function set_subproblem_objective_economic!(
 		scuc_subproblem::Model,
@@ -314,7 +354,7 @@ function set_subproblem_objective_economic!(
 		NS::Int64,
 		units::unit,
 		config_param::config,
-		scenarios_prob::Float64
+		scenarios_prob::Float64,
 )
 	# Input validation
 	@assert NT>0 "Number of time periods (NT) must be positive."
@@ -356,26 +396,27 @@ function set_subproblem_objective_economic!(
 	obj = @objective(scuc_subproblem,
 		Min,
 		# sum(sum(su₀[i, t] + sd₀[i, t] for i in 1:NG) for t in 1:NT)+
-		pₛ * c₀ *
+		pₛ *
+		c₀ *
 		(
 			sum(
 				sum(
-					sum(sum(pgₖ[i + (s - 1) * NG, t, :] .* eachslope[:, i] for t in 1:NT))
-				for s in 1:NS_copy
-				) for i in 1:NG
+					sum(sum(pgₖ[i + (s - 1) * NG, t, :] .* eachslope[:, i] for t ∈ 1:NT)) for
+				s ∈ 1:NS_copy
+				) for i ∈ 1:NG
 			) +
-			sum(sum(sum(x[:, t] .* refcost[:, 1] for t in 1:NT)) for s in 1:NS_copy) +
+			sum(sum(sum(x[:, t] .* refcost[:, 1] for t ∈ 1:NT)) for s ∈ 1:NS_copy) +
 			sum(
 				sum(
-					sum(
-						ρ⁺ * sr⁺[i + (s - 1) * NG, t] + ρ⁻ * sr⁻[i + (s - 1) * NG, t]
-					for i in 1:NG
-					) for t in 1:NT
-				) for s in 1:NS_copy
+					sum(ρ⁺ * sr⁺[i + (s - 1) * NG, t] + ρ⁻ * sr⁻[i + (s - 1) * NG, t] for i ∈ 1:NG)
+				for t ∈ 1:NT
+				) for s ∈ 1:NS_copy
 			)
-		)+
-		pₛ*load_curtailment_penalty*sum(sum(sum(Δpd[(1 + (s - 1) * ND):(s * ND), t]) for t in 1:NT) for s in 1:NS_copy)+
-		pₛ*wind_curtailment_penalty*sum(sum(sum(Δpw[(1 + (s - 1) * NW):(s * NW), t]) for t in 1:NT) for s in 1:NS_copy))
+		)+pₛ*load_curtailment_penalty*sum(
+			sum(sum(Δpd[(1 + (s - 1) * ND):(s * ND), t]) for t ∈ 1:NT) for s ∈ 1:NS_copy
+		)+pₛ*wind_curtailment_penalty*sum(
+			sum(sum(Δpw[(1 + (s - 1) * NW):(s * NW), t]) for t ∈ 1:NT) for s ∈ 1:NS_copy
+		))
 
 	# @objective(scuc_subproblem,
 	# 	Min,

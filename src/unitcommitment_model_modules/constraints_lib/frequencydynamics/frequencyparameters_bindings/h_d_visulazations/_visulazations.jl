@@ -81,11 +81,16 @@ function data_visualization(
 
     fillarea = zeros(length(damping))
     for i in eachindex(damping)
-        fitted_value = fittingparameters[1] + fittingparameters[2] * damping[i] + fittingparameters[3] * damping[i]^2
+        fitted_value =
+            fittingparameters[1] +
+            fittingparameters[2] * damping[i] +
+            fittingparameters[3] * damping[i]^2
         fillarea[i] = max(fitted_value, min_inertia)
     end
 
-    fitted_curve = fittingparameters[1] .+ fittingparameters[2] .* damping .+ fittingparameters[3] .* damping .^ 2
+    fitted_curve =
+        fittingparameters[1] .+ fittingparameters[2] .* damping .+
+        fittingparameters[3] .* damping .^ 2
     seq = fitted_curve .- max_inertia
 
     interaction_point = if seq[1] > 0
@@ -356,7 +361,14 @@ function plot_inertia_distribution_with_bounds_improved(
     )
 
     # Add layers to the middle plot
-    plot!(plot_middle, damping, upper_bound, lw = common_line_width, color = :blue, label = "Upper Bound") # Draw upper bound line
+    plot!(
+        plot_middle,
+        damping,
+        upper_bound,
+        lw = common_line_width,
+        color = :blue,
+        label = "Upper Bound",
+    ) # Draw upper bound line
     plot!(
         plot_middle,
         interaction_damping,

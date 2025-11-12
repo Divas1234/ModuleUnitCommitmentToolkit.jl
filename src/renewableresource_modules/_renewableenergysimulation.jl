@@ -1,6 +1,39 @@
-# windsimulation
+# ============================================================================
+# Renewable Energy Scenario Generation
+#
+# This module implements wind power scenario generation using stochastic
+# simulation techniques. It supports both random scenario generation and
+# deterministic predefined scenarios.
+# ============================================================================
+
 using Distributions
 
+# ============================================================================
+# Wind Data Structure
+# ============================================================================
+"""
+	wind
+
+Wind power data structure for scenario-based optimization.
+
+# Fields
+
+  - `index::Vector{Int64}`: Wind farm indices
+  - `locatebus::Vector{Int64}`: Bus location of each wind farm
+  - `p_max::Vector{Float64}`: Maximum wind power capacity (MW)
+  - `scenarios_prob::Float64`: Probability of each scenario (typically 1/NS)
+  - `scenarios_nums::Int64`: Number of scenarios
+  - `scenarios_curve::Array{Float64}`: Wind power scenarios matrix (NS × NT)
+
+## Frequency Control Parameters
+
+  - `Fcmode::Vector{Float64}`: Frequency control mode (1 = droop, 2 = virtual inertia)
+  - `Kw::Vector{Float64}`: Droop control gain (for Fcmode=1)
+  - `Rw::Vector{Float64}`: Droop constant (for Fcmode=1)
+  - `Mw::Vector{Float64}`: Virtual inertia constant (for Fcmode=2)
+  - `Dw::Vector{Float64}`: Virtual damping constant (for Fcmode=2)
+  - `Tw::Vector{Float64}`: Time constant (seconds)
+"""
 mutable struct wind
     index::Vector{Int64}
     locatebus::Vector{Int64}
@@ -9,75 +42,140 @@ mutable struct wind
     scenarios_nums::Int64
     scenarios_curve::Array{Float64}
 
-    # frequency constrol process of renewable energy
-    Fcmode::Vector{Float64}
-    # model-1(drop constrol):Kw/(Rw * (1 + sTw))
-    Kw::Vector{Float64}
-    Rw::Vector{Float64}
-    # model-2(Virtual inertia mechine): (sMw + Dw)/(1 + sTw)
-    Mw::Vector{Float64}
-    Dw::Vector{Float64}
-    Tw::Vector{Float64}
-    # wind(Fcmode,Kw,Rw,Mw,Dw) = new(Fcmode,Kw,Rw,Mw,Dw)
-    function checkvaildity(Fcmode)
-        if Fcmode == 1
-            if Kw != 0 || Rw != 0
-                println("dismathch for Fcmode-1 and related params")
-            end
-        end
-        return if Fcmode == 2
-            if Kw != 0 || Rw != 0
-                println("dismathch for Fcmode-2 and related params")
-            end
-        end
-    end
-    function wind(index, locatebus, p_max, scenarios_prob, scenarios_nums, scenarios_curve, Fcmode, Kw, Rw, Mw, Dw, Tw)
-        return new(index, locatebus, p_max, scenarios_prob, scenarios_nums, scenarios_curve, Fcmode, Kw, Rw, Mw, Dw, Tw)
+    # Frequency control parameters for renewable energy
+    Fcmode::Vector{Float64}  # Frequency control mode
+    Kw::Vector{Float64}      # Droop control gain (model 1)
+    Rw::Vector{Float64}      # Droop constant (model 1)
+    Mw::Vector{Float64}      # Virtual inertia constant (model 2)
+    Dw::Vector{Float64}      # Virtual damping constant (model 2)
+    Tw::Vector{Float64}      # Time constant
+
+    function wind(
+        index,
+        locatebus,
+        p_max,
+        scenarios_prob,
+        scenarios_nums,
+        scenarios_curve,
+        Fcmode,
+        Kw,
+        Rw,
+        Mw,
+        Dw,
+        Tw,
+    )
+        return new(
+            index,
+            locatebus,
+            p_max,
+            scenarios_prob,
+            scenarios_nums,
+            scenarios_curve,
+            Fcmode,
+            Kw,
+            Rw,
+            Mw,
+            Dw,
+            Tw,
+        )
     end
 end
 
-# predefine value
+# ============================================================================
+# Predefined Wind Farm Configuration
+# ============================================================================
+# Default wind farm indices and locations
 index = [1; 2]
 locatebus = [1; 1]
 NW = length(index)
 
-# scenarios_curve = zeros(scenarios_nums, NT)
-NT = 24
-# assum the capacity of each wind is same and reforced as 0.5 p.u.
+# Default time periods
+# NT = 24
+
+# Default wind capacity (0.5 p.u. per farm)
 cap = [0.5] * 5
 p_max = cap .* ones(NW, 1)
 p_max = p_max[:, 1]
-# scenarios_curve = zeros(scenarios_nums, NT)
-scenarios_curvebase =
-    [
-        0.440724927203680 0.420965256587272 0.449034794022911 0.454128108336623 0.436483077739172 0.477450522402300
-        0.443871634609799 0.374756446192485 0.448192193924943 0.431190577826877 0.428867647037057 0.445673091565042
-        0.433764408789611 0.421900481861469 0.429104412188035 0.463277796146724 0.426579282372516 0.448189506134410
-        0.429353980231385 0.434861266141317 0.437494540514197 0.456877055120346 0.425139803090161 0.425629623577982
-    ] * 1.0
-scenarios_curvebase = reshape(scenarios_curvebase, 1, NT)
 
-function genscenario(WindsFreqParam, flag)
+# # Base scenario curve (reference wind power profile)
+# scenarios_curvebase =
+#     [
+#         0.440724927203680 0.420965256587272 0.449034794022911 0.454128108336623 0.436483077739172 0.477450522402300
+#         0.443871634609799 0.374756446192485 0.448192193924943 0.431190577826877 0.428867647037057 0.445673091565042
+#         0.433764408789611 0.421900481861469 0.429104412188035 0.463277796146724 0.426579282372516 0.448189506134410
+#         0.429353980231385 0.434861266141317 0.437494540514197 0.456877055120346 0.425139803090161 0.425629623577982
+#     ] * 1.0
+# scenarios_curvebase = reshape(scenarios_curvebase, 1, NT)
+
+# ============================================================================
+# Scenario Generation Function
+# ============================================================================
+"""
+	genscenario(WindsFreqParam, flag)
+
+Generate wind power scenarios for stochastic optimization.
+
+# Arguments
+
+  - `WindsFreqParam::Matrix{Float64}`: Wind frequency parameters (NW × 6)
+	Columns: [Fcmode, Kw, Rw, Mw, Dw, Tw]
+
+  - `flag::Int`: Generation mode
+
+	  + `1`: Random scenarios using Weibull distribution
+	  + `0`: Predefined deterministic scenarios
+
+# Returns
+
+  - `winds::wind`: Wind data structure
+  - `NW::Int`: Number of wind farms
+"""
+function genscenario(WindsFreqParam, flag, NT = 24)
     if flag == 1
-        rand(123)
-        scenarios_nums = 1
-        sample_sets = rand(Weibull(), scenarios_nums * NT) * 0.01
-        scenarios_curve, scenarios_error =
-            reshape(sample_sets, scenarios_nums, NT), reshape(sample_sets, scenarios_nums, NT)
+        # ====================================================================
+        # Mode 1: Random scenario generation
+        # ====================================================================
 
-        for i in 1:scenarios_nums
-            for j in 1:NT
+        # Base scenario curve (reference wind power profile)
+        scenarios_curvebase =
+            [
+                0.440724927203680 0.420965256587272 0.449034794022911 0.454128108336623 0.436483077739172 0.477450522402300
+                0.443871634609799 0.374756446192485 0.448192193924943 0.431190577826877 0.428867647037057 0.445673091565042
+                0.433764408789611 0.421900481861469 0.429104412188035 0.463277796146724 0.426579282372516 0.448189506134410
+                0.429353980231385 0.434861266141317 0.437494540514197 0.456877055120346 0.425139803090161 0.425629623577982
+            ] * 1.0
+        scenarios_curvebase = reshape(scenarios_curvebase, 1, NT)
+
+        Random.seed!(123)  # Set seed for reproducibility
+        scenarios_nums = 1
+
+        # Generate random samples from Weibull distribution
+        sample_sets = rand(Weibull(), scenarios_nums * NT) * 0.01
+        scenarios_curve = reshape(sample_sets, scenarios_nums, NT)
+        scenarios_error = reshape(sample_sets, scenarios_nums, NT)
+
+        # Add random perturbations to base curve
+        for i = 1:scenarios_nums
+            for j = 1:NT
                 sample_temp = rand()
                 if sample_temp > 0.5
-                    scenarios_curve[i, j] = scenarios_curvebase[1, j] + scenarios_error[i, j]
+                    # Add positive error
+                    scenarios_curve[i, j] =
+                        scenarios_curvebase[1, j] + scenarios_error[i, j]
                 else
-                    scenarios_curve[i, j] = scenarios_curvebase[1, j] - scenarios_error[i, j]
+                    # Add negative error
+                    scenarios_curve[i, j] =
+                        scenarios_curvebase[1, j] - scenarios_error[i, j]
                 end
             end
         end
     else
-        scenarios_nums = Int64(1)
-        # Plots.plot(scenarios_curve')
+        # ====================================================================
+        # Mode 0: Predefined deterministic scenarios
+        # ====================================================================
+        scenarios_nums = Int64(7)  # 7 predefined scenarios
+
+        # Predefined wind power scenarios (7 scenarios × 24 hours)
         scenarios_curve = [
             0.440724927203680 0.420965256587272 0.449034794022911 0.454128108336623 0.436483077739172 0.477450522402300 0.443871634609799 0.374756446192485 0.448192193924943 0.431190577826877 0.428867647037057 0.445673091565042 0.433764408789611 0.421900481861469 0.429104412188035 0.463277796146724 0.426579282372516 0.448189506134410 0.429353980231385 0.434861266141317 0.437494540514197 0.456877055120346 0.425139803090161 0.425629623577982
             0.438145251438362 0.451595831499290 0.434476599311993 0.419306858427854 0.439299123016117 0.402675152643531 0.436348294887821 0.447513027575036 0.445276832579360 0.408448500875771 0.476106019486472 0.451932867123187 0.446968204950444 0.457706023689642 0.454429491703142 0.432489551344388 0.460269791720502 0.417994780067730 0.404420416693225 0.443013967794901 0.407382847053778 0.430503777173583 0.455183618944849 0.443789093804304
@@ -90,16 +188,21 @@ function genscenario(WindsFreqParam, flag)
         scenarios_curve = vec(scenarios_curve')'
     end
 
-    scenarios_prob = 1 / scenarios_nums
+    # Calculate scenario probability (equal probability assumed)
+    scenarios_prob = 1.0 / scenarios_nums
 
+    # ========================================================================
+    # Extract frequency control parameters
+    # ========================================================================
     if !isempty(WindsFreqParam)
-        FCmode = WindsFreqParam[:, 1]
-        KW = WindsFreqParam[:, 2]
-        RW = WindsFreqParam[:, 3]
-        MW = WindsFreqParam[:, 4]
-        DW = WindsFreqParam[:, 5]
-        TW = WindsFreqParam[:, 6]
+        FCmode = WindsFreqParam[:, 1]  # Frequency control mode
+        KW = WindsFreqParam[:, 2]      # Droop gain
+        RW = WindsFreqParam[:, 3]      # Droop constant
+        MW = WindsFreqParam[:, 4]      # Virtual inertia
+        DW = WindsFreqParam[:, 5]      # Virtual damping
+        TW = WindsFreqParam[:, 6]      # Time constant
     else
+        # Default values if parameters not provided
         FCmode = zeros(NW)
         KW = zeros(NW)
         RW = zeros(NW)
@@ -107,8 +210,25 @@ function genscenario(WindsFreqParam, flag)
         DW = zeros(NW)
         TW = zeros(NW)
     end
+
+    # Get actual number of scenarios from generated curve
     scenarios_nums = size(scenarios_curve, 1)
-    winds = wind(index, locatebus, p_max, scenarios_prob, scenarios_nums, scenarios_curve, FCmode, KW, RW, MW, DW, TW)
+
+    # Create wind data structure
+    winds = wind(
+        index,
+        locatebus,
+        p_max,
+        scenarios_prob,
+        scenarios_nums,
+        scenarios_curve,
+        FCmode,
+        KW,
+        RW,
+        MW,
+        DW,
+        TW,
+    )
 
     return winds, NW
 end

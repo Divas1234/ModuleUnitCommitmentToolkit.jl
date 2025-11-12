@@ -77,9 +77,9 @@ function boundrycondition(
     println("  load_curve (ND x NT):")
     # Basic matrix print - adjust formatting as needed
     # Could use PrettyTables.jl for nicer output if it's a dependency
-    for i in 1:ND
+    for i = 1:ND
         print("    Load ", i, ": ")
-        for j in 1:NT
+        for j = 1:NT
             @printf("%8.3f ", loads.load_curve[i, j]) # Adjust format width as needed
         end
         println() # Newline after each load's curve
@@ -140,7 +140,7 @@ function plt_unicodeplot(winds = nothing, loads = nothing, flag = 0)
             xlabel = "t / h",
             ylabel = "output / p.u.",
         )
-        for i in 2:NS
+        for i = 2:NS
             lineplot!(plt, xdata, winds.scenarios_curve[i, :])
         end
     else

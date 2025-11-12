@@ -11,7 +11,15 @@ function main_module(droop_parameter)
     y_coords = [v[3] for v in sub_vertices]
 
     # 在原图上添加多面体
-    plot!(p, x_coords, y_coords; seriestype = :shape, fillalpha = 0.2, fillcolor = :red, label = "Feasible Region")
+    plot!(
+        p,
+        x_coords,
+        y_coords;
+        seriestype = :shape,
+        fillalpha = 0.2,
+        fillcolor = :red,
+        label = "Feasible Region",
+    )
 
     return p, sub_vertices
 end

@@ -1,4 +1,9 @@
-function add_optimitycut_constraints!(scuc_masterproblem::JuMP.Model, sub_model_struct::SCUC_Model, ret, iter_value)
+function add_optimitycut_constraints!(
+    scuc_masterproblem::JuMP.Model,
+    sub_model_struct::SCUC_Model,
+    ret,
+    iter_value,
+)
     # @assert termination_status(sub_model_struct[1].model)
     x⁽⁰⁾ = iter_value[1]
     u⁽⁰⁾ = iter_value[2]
@@ -15,7 +20,12 @@ function add_optimitycut_constraints!(scuc_masterproblem::JuMP.Model, sub_model_
     return scuc_masterproblem, add_optimity_cut
 end
 
-function add_feasibilitycut_constraints!(scuc_masterproblem::JuMP.Model, sub_model_struct::SCUC_Model, ret, iter_value)
+function add_feasibilitycut_constraints!(
+    scuc_masterproblem::JuMP.Model,
+    sub_model_struct::SCUC_Model,
+    ret,
+    iter_value,
+)
     # @assert!(ret.is_feasible)
     # @assert !termination_status(sub_model_struct[1].model)
     x⁽⁰⁾ = iter_value[1]
@@ -45,8 +55,15 @@ function add_benders_multicuts_constraints!(
     ND,
     NL,
 )
-    scuc_masterproblem, benders_cut =
-        get_benders_cumulative_multicuts_expression(scuc_masterproblem, dual_coeffs, NG, NT, NW, ND, NL)
+    scuc_masterproblem, benders_cut = get_benders_cumulative_multicuts_expression(
+        scuc_masterproblem,
+        dual_coeffs,
+        NG,
+        NT,
+        NW,
+        ND,
+        NL,
+    )
 
     """
     	If the subproblem is feasible, we add an optimality cut
@@ -63,7 +80,8 @@ function add_benders_multicuts_constraints!(
     """
 
     if is_feasible == true
-        add_optimity_multiCUTs = @constraint(scuc_masterproblem, scuc_masterproblem[:θ] >= benders_cut)
+        add_optimity_multiCUTs =
+            @constraint(scuc_masterproblem, scuc_masterproblem[:θ] >= benders_cut)
         return scuc_masterproblem, add_optimity_multiCUTs
     else
         add_feasibility_multiCUTs = @constraint(scuc_masterproblem, benders_cut <= 0)

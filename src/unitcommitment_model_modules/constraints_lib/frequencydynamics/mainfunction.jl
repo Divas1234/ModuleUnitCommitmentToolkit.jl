@@ -10,7 +10,8 @@ if !haskey(controller_config, "VSM") || !haskey(controller_config, "Droop")
     error("Error: 'VSM' or 'Droop' keys are missing in the controller configuration.")
 end
 
-if !haskey(controller_config["VSM"], "control_parameters") || !haskey(controller_config["Droop"], "control_parameters")
+if !haskey(controller_config["VSM"], "control_parameters") ||
+   !haskey(controller_config["Droop"], "control_parameters")
     error("Error: 'control_parameters' key is missing in 'VSM' or 'Droop' configuration.")
 end
 
@@ -41,8 +42,13 @@ validate_parameters(converter_droop_parameters, ["droop", "time_constant"])
 println("Converter parameters validated successfully.")
 
 # Get parameters from boundary conditions
-initial_inertia, factorial_coefficient, time_constant, droop, ROCOF_threshold, NADIR_threshold, power_deviation =
-    get_parmeters(flag_converter)
+initial_inertia,
+factorial_coefficient,
+time_constant,
+droop,
+ROCOF_threshold,
+NADIR_threshold,
+power_deviation = get_parmeters(flag_converter)
 
 # --- Enhanced Parameter Validation for get_parameters output ---
 function validate_get_parameters_output(params::Tuple)
@@ -57,10 +63,14 @@ function validate_get_parameters_output(params::Tuple)
     ]
     for (i, param) in enumerate(params)
         if !isa(param, Number)
-            error("Error: Parameter '$(param_names[i])' from get_parameters must be a number.")
+            error(
+                "Error: Parameter '$(param_names[i])' from get_parameters must be a number.",
+            )
         end
         if param <= 0 && param_names[i] != "droop"
-            error("Error: Parameter '$(param_names[i])' from get_parameters must be positive.")
+            error(
+                "Error: Parameter '$(param_names[i])' from get_parameters must be positive.",
+            )
         end
     end
 end
@@ -82,17 +92,18 @@ println("Parameters from get_parmeters validated successfully.")
 # NOTE - reseting the droop value to 36.0 for testing purposes
 # droop = 36.0
 
-inertia_updown_bindings, extreme_inertia, nadir_vector, inertia_vector, selected_ids = calculate_inertia_parameters(
-    initial_inertia,
-    factorial_coefficient,
-    time_constant,
-    droop,
-    power_deviation,
-    DAMPING_RANGE,
-    converter_vsm_parameters,
-    converter_droop_parameters,
-    flag_converter,
-)
+inertia_updown_bindings, extreme_inertia, nadir_vector, inertia_vector, selected_ids =
+    calculate_inertia_parameters(
+        initial_inertia,
+        factorial_coefficient,
+        time_constant,
+        droop,
+        power_deviation,
+        DAMPING_RANGE,
+        converter_vsm_parameters,
+        converter_droop_parameters,
+        flag_converter,
+    )
 
 println("Output from calculate_inertia_parameters validated successfully.")
 
