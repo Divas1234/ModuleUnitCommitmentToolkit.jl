@@ -11,7 +11,7 @@ include(
 	pwd(),
 	"src/unitcommitment_model_modules",
 	"constraints_lib",
-	"constraints.jl",
+	"constraints.jl"
 ),
 );
 include(
@@ -22,7 +22,7 @@ include(
 	pwd(),
 	"src/unitcommitment_model_modules",
 	"utilitie_modules_lib",
-	"utilities.jl",
+	"utilities.jl"
 ),
 );
 include(joinpath(pwd(), "src/unitcommitment_model_modules", "tests_lib", "tests.jl"));
@@ -61,7 +61,7 @@ function update_boundary_conditions(
 		units::unit,
 		loads::load,
 		winds::wind,
-		results::Dict{String, Array{Float64}},
+		results::Dict{String, Array{Float64}}
 )
 
 	# FIXME -  update generators parameter_value
@@ -95,7 +95,7 @@ function get_generators_upoff_durations(units, shutup_states, shutdown_states, N
 		res_up[i, 1] = min(units.min_shutup_time[i, 1], findlast(x -> x > 0.5, shutup_states[i, :]))
 		res_down[i, 1] = min(
 			units.min_shutdown_time[i, 1],
-			findlast(x -> x > 0.5, shutdown_states[i, :]),
+			findlast(x -> x > 0.5, shutdown_states[i, :])
 		)
 	end
 	res_up = convert(Matrix{Int64}, res_up)
@@ -105,44 +105,14 @@ end
 
 # NOTE - baseline UC function module
 function each_period_scucmodel_modules(
-		NT::Int64,
-		NB::Int64,
-		NG::Int64,
-		ND::Int64,
-		NC::Int64,
-		ND2::Int64,
-		units::unit,
-		loads::load,
-		winds::wind,
-		lines::transmissionline,
-		DataCentras::data_centra,
-		config_param::config,
-		stroges::Any,
-		scenarios_prob::Float64,
-		NL::Int64,
-		interval_scheduling_id::Int64,
-		hydros::hydro,
-		NH::Int64,
+		NT::Int64, NB::Int64, NG::Int64, ND::Int64, NC::Int64, ND2::Int64, units::unit, loads::load, winds::wind, lines::transmissionline, DataCentras::data_centra,
+		config_param::config, stroges::Any, scenarios_prob::Float64, NL::Int64, interval_scheduling_id::Int64, hydros::hydro, NH::Int64
 )
 	println("Step-3: Creating dispatching model (Refactored & Modularized)")
 
 	# --- Input Validation ---
 	if !validate_inputs(
-		NT,
-		NB,
-		NG,
-		ND,
-		NC,
-		ND2,
-		units,
-		loads,
-		winds,
-		lines,
-		DataCentras,
-		config_param,
-		stroges,
-		scenarios_prob,
-		NL,
+		NT, NB, NG, ND, NC, ND2, units, loads, winds, lines, DataCentras, config_param, stroges, scenarios_prob, NL
 	)
 		error("Input validation failed. Check your data.")
 	end
@@ -168,18 +138,7 @@ function each_period_scucmodel_modules(
 	# --- Set Objective ---
 	# Set the objective function to be minimized
 	set_objective!(
-		scuc,
-		NT,
-		NG,
-		ND,
-		NW,
-		NS,
-		units,
-		config_param,
-		scenarios_prob,
-		refcost,
-		eachslope,
-	)
+		scuc, NT, NG, ND, NW, NS, units, config_param, scenarios_prob, refcost, eachslope)
 
 	println("subject to.") # Indicate the start of constraint definitions
 
@@ -190,52 +149,16 @@ function each_period_scucmodel_modules(
 	add_generator_power_constraints!(scuc, NT, NG, NS, units)
 	add_reserve_constraints!(scuc, NT, NG, NC, NS, units, loads, winds, config_param)
 	add_power_balance_constraints!(
-		scuc,
-		NT,
-		NG,
-		ND,
-		NC,
-		NW,
-		NS,
-		loads,
-		winds,
-		config_param,
-		ND2,
-	)
+		scuc, NT, NG, ND, NC, NW, NS, loads, winds, config_param, ND2)
 	add_ramp_constraints!(scuc, NT, NG, NS, units, onoffinit)
 	add_pwl_constraints!(scuc, NT, NG, NS, units)
 	add_transmission_constraints!(
-		scuc,
-		NT,
-		NG,
-		ND,
-		NC,
-		NW,
-		NL,
-		NS,
-		units,
-		loads,
-		winds,
-		lines,
-		stroges,
-		Gsdf,
-		config_param,
-		ND2,
-		DataCentras,
-		hydros,
+		scuc, NT, NG, ND, NC, NW, NL, NS, units, loads, winds, lines, stroges, Gsdf, config_param, ND2, DataCentras, hydros
 	)
 	add_storage_constraints!(scuc, NT, NC, NS, config_param, stroges)
 	add_datacentra_constraints!(scuc, NT, NS, config_param, ND2, DataCentras)
 	add_frequency_constraints!(
-		scuc,
-		NT,
-		NG,
-		NC,
-		NS,
-		units,
-		stroges,
-		config_param,
-		Δp_contingency,
+		scuc, NT, NG, NC, NS, units, stroges, config_param, Δp_contingency
 	)
 	add_hydros_constraints!(scuc::Model, NT, NH, NS, hydros)
 	# --- Solve and Extract Results ---
@@ -243,20 +166,7 @@ function each_period_scucmodel_modules(
 	try
 		# Attempt to solve the SCUC model
 		results = solve_and_extract_results(
-			scuc,
-			NT,
-			NG,
-			ND,
-			NC,
-			NW,
-			NS,
-			ND2,
-			NH,
-			scenarios_prob,
-			eachslope,
-			refcost,
-			config_param,
-			interval_scheduling_id,
+			scuc, NT, NG, ND, NC, NW, NS, ND2, NH, scenarios_prob, eachslope, refcost, config_param, interval_scheduling_id
 		)
 		# --- Return Results ---
 		# Check if the optimization was successful

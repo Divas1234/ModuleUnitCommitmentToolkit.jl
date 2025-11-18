@@ -1,401 +1,423 @@
+"""
+	get_benders_multicuts_expression(...)
+
+	Generate Benders decomposition multi-cut expressions for each constraint.
+
+	This function constructs the multi-cut formulation used in Benders decomposition,
+	which creates separate optimality cuts for different scenarios or constraint groups
+	rather than aggregating them into a single cut. This approach can improve convergence
+	in some cases by providing more detailed information to the master problem.
+
+	# Arguments
+	- The specific arguments depend on the implementation, but typically include:
+	- Master problem variables
+	- Subproblem dual values/solutions
+	- Constraint coefficients
+	- Scenario/group indices
+
+	# Returns
+	- A collection of Benders multi-cut expressions, one for each constraint group
+
+	# Notes
+	- Multi-cuts provide tighter approximations of the recourse function compared to single cuts
+	- Each cut corresponds to a different constraint or scenario in the subproblem
+	- The function processes constraints individually to maintain separate cutting planes
+	- This is part of the Benders decomposition framework for unit commitment problems
+
+	# Implementation Details
+	- Iterates through each constraint/scenario group
+	- Computes dual values from subproblem solutions
+	- Constructs cut expressions using dual multipliers and master problem variables
+	- Maintains separate cuts to preserve problem structure information
+
+  - Benders decomposition algorithm
+  - Unit commitment optimization
+"""
+
 function get_benders_multicuts_expression(
-    scuc_masterproblem::JuMP.Model,
-    coeff,
-    keys_name,
-    NG,
-    NT,
-    NW,
-    ND,
-    NL,
-    NC = 3,
+		scuc_masterproblem::JuMP.Model, coeff, keys_name, NG, NT, NW, ND, NL, NC = 3
 )
+	# Unpack coefficients and related metadata from the coeff struct for clarity and maintainability
+	x_coefficient = coeff.x  # Coefficients for commitment variables
+	u_coefficient = coeff.u  # Coefficients for startup variables
+	v_coefficient = coeff.v  # Coefficients for shutdown variables
+	x_order = coeff.x_sort_order  # Sorting order for x variables (0: time-major, 1: unit-major)
+	u_order = coeff.u_sort_order  # Sorting order for u variables
+	v_order = coeff.v_sort_order  # Sorting order for v variables
+	rhs = coeff.rhs  # Right-hand side values of constraints
+	dual_coefficient = coeff.dual_coeffVector  # Dual variable values from subproblem
+	operator_precedence = coeff.operator_associativity  # Sign operators (+1 or -1) for constraint terms
 
-    # Unpack coefficients and related metadata from the coeff struct for clarity and maintainability
-    x_coefficient = coeff.x
-    u_coefficient = coeff.u
-    v_coefficient = coeff.v
-    x_order = coeff.x_sort_order
-    u_order = coeff.u_sort_order
-    v_order = coeff.v_sort_order
-    rhs = coeff.rhs
-    dual_coefficient = coeff.dual_coeffVector
-    operator_precedence = coeff.operator_associativity
+	# Check if all variable orders are nothing (indicates non-unit-related constraints)
+	if all(x -> x === nothing, (x_order, u_order, v_order))
 
-    if all(x -> x === nothing, (x_order, u_order, v_order))
+		# ===== Handle non-unit-related constraints =====
+		"""
+			Constraint types handled in this section:
+			- key_winds_curt_constr: Wind curtailment constraints (NW * NT)
+			- key_loads_curt_constr: Load curtailment constraints (ND * NT)
+			- key_balance_constr: Power balance constraints (NT)
+			- key_sys_down_reserve_constr: System down reserve constraints (NT)
+			- key_transmissionline_powerflow_upbound_constr: Transmission line upper bound (NL * NT)
+			- key_transmissionline_powerflow_downbound_constr: Transmission line lower bound (NL * NT)
+			- key_units_pwlblock_dwbound_constr: Piecewise linear block lower bound (NG * NT * NC)
+		"""
 
-        # for none unit-related constraints
-        """
-        	alignment type constraints
-        	- key_winds_curt_constr # NW * NT
-        	- key_loads_curt_constr # NW * NT
-        	- key_balance_constr
-        	- key_sys_down_reserve_constr
-        	- key_transmissionline_powerflow_upbound_constr
-        	- key_transmissionline_powerflow_downbound_constr
-        """
+		# Wind power curtailment constraints: iterate over wind units and time periods
+		if occursin("winds_curt_constr", String(keys_name))
+			dual_expression_cut = @expression(scuc_masterproblem,
+				sum(
+				sum(
+					(
+						operator_precedence[(t - 1) * NW + w, 1] *  # Sign of the term
+						dual_coefficient[(t - 1) * NW + w, 1] *      # Dual value
+						rhs[(t - 1) * NW + w, 1]                     # RHS constant
+					) for w ∈ 1:NW  # Loop over wind units
+				) for t ∈ 1:NT  # Loop over time periods
+			))
+		end
 
-        # for wind power generation constraints
-        if occursin("winds_curt_constr", String(keys_name))
-            dual_expression_cut = @expression(
-                scuc_masterproblem,
-                sum(
-                    sum(
-                        (
-                            operator_precedence[(t-1)*NW+w, 1] *
-                            dual_coefficient[(t-1)*NW+w, 1] *
-                            rhs[(t-1)*NW+w, 1]
-                        ) for w = 1:NW
-                    ) for t = 1:NT
-                )
-            )
-        end
+		# Load curtailment constraints: iterate over demand points and time periods
+		if occursin("loads_curt_constr", String(keys_name))
+			dual_expression_cut = @expression(scuc_masterproblem,
+				sum(
+				sum(
+					operator_precedence[(t - 1) * ND + d, 1] *
+					dual_coefficient[(t - 1) * ND + d, 1] *
+					rhs[(t - 1) * ND + d, 1] for d ∈ 1:ND  # Loop over demand points
+				) for t ∈ 1:NT  # Loop over time periods
+			))
+		end
 
-        # for load curtailment constraints
-        if occursin("loads_curt_constr", String(keys_name))
-            dual_expression_cut = @expression(
-                scuc_masterproblem,
-                sum(
-                    sum(
-                        operator_precedence[(t-1)*ND+d, 1] *
-                        dual_coefficient[(t-1)*ND+d, 1] *
-                        rhs[(t-1)*ND+d, 1] for d = 1:ND
-                    ) for t = 1:NT
-                )
-            )
-        end
+		# Piecewise linear block lower bound constraints: iterate over units, time, and blocks
+		if occursin("units_pwlblock_dwbound_constr", String(keys_name))
+			dual_expression_cut = @expression(scuc_masterproblem,
+				sum(
+				sum(
+					sum(
+						operator_precedence[(NG * NT) * (k - 1) + (t - 1) * NG + g, 1] *
+						dual_coefficient[(NG * NT) * (k - 1) + (t - 1) * NG + g, 1] *
+						rhs[(NG * NT) * (k - 1) + (t - 1) * NG + g, 1] for g ∈ 1:NG  # Loop over units
+					) for t ∈ 1:NT  # Loop over time periods
+				) for k ∈ 1:NC  # Loop over piecewise linear blocks
+			))
+		end
 
-        # for units_pwlblock_dwbound_constr
-        if occursin("units_pwlblock_dwbound_constr", String(keys_name))
-            dual_expression_cut = @expression(
-                scuc_masterproblem,
-                sum(
-                    sum(
-                        sum(
-                            operator_precedence[(NG*NT)*(k-1)+(t-1)*NG+g, 1] *
-                            dual_coefficient[(NG*NT)*(k-1)+(t-1)*NG+g, 1] *
-                            rhs[(NG*NT)*(k-1)+(t-1)*NG+g, 1] for g = 1:NG
-                        ) for t = 1:NT
-                    ) for k = 1:NC
-                )
-            )
-        end
+		# System-level constraints (balance and reserve): iterate over time periods only
+		if occursin("balance_constr", String(keys_name)) ||
+		   occursin("sys_down_reserve_constr", String(keys_name))
+			dual_expression_cut = @expression(scuc_masterproblem,
+				sum(
+				operator_precedence[t, 1] * dual_coefficient[t, 1] * rhs[t, 1] for
+			t ∈ 1:NT  # Loop over time periods
+			))
+		end
 
-        # for system balance_constr
-        if occursin("balance_constr", String(keys_name)) ||
-           occursin("sys_down_reserve_constr", String(keys_name))
-            dual_expression_cut = @expression(
-                scuc_masterproblem,
-                sum(
-                    operator_precedence[t, 1] * dual_coefficient[t, 1] * rhs[t, 1] for
-                    t = 1:NT
-                )
-            )
-        end
+		# Transmission line upper bound constraints: iterate over lines and time periods
+		if occursin("transmissionline_powerflow_upbound_constr", String(keys_name))
+			dual_expression_cut = @expression(scuc_masterproblem,
+				sum(
+				sum(
+					operator_precedence[(t - 1) * NL + l, 1] *
+					dual_coefficient[(t - 1) * NL + l, 1] *
+					rhs[(t - 1) * NL + l, 1] for l ∈ 1:NL  # Loop over transmission lines
+				) for t ∈ 1:NT  # Loop over time periods
+			))
+		end
 
-        # for key_transmissionline_powerflow_upbound_constr and key_transmissionline_powerflow_downbound_constr
-        if occursin("transmissionline_powerflow_upbound_constr", String(keys_name))
-            dual_expression_cut = @expression(
-                scuc_masterproblem,
-                sum(
-                    sum(
-                        operator_precedence[(t-1)*NL+l, 1] *
-                        dual_coefficient[(t-1)*NL+l, 1] *
-                        rhs[(t-1)*NL+l, 1] for l = 1:NL
-                    ) for t = 1:NT
-                )
-            )
-        end
+		# Transmission line lower bound constraints: iterate over lines and time periods
+		if occursin("transmissionline_powerflow_downbound_constr", String(keys_name))
+			dual_expression_cut = @expression(scuc_masterproblem,
+				sum(
+				sum(
+					operator_precedence[(t - 1) * NL + l, 1] *
+					dual_coefficient[(t - 1) * NL + l, 1] *
+					rhs[(t - 1) * NL + l, 1] for l ∈ 1:NL  # Loop over transmission lines
+				) for t ∈ 1:NT  # Loop over time periods
+			))
+		end
 
-        if occursin("transmissionline_powerflow_downbound_constr", String(keys_name))
-            dual_expression_cut = @expression(
-                scuc_masterproblem,
-                sum(
-                    sum(
-                        operator_precedence[(t-1)*NL+l, 1] *
-                        dual_coefficient[(t-1)*NL+l, 1] *
-                        rhs[(t-1)*NL+l, 1] for l = 1:NL
-                    ) for t = 1:NT
-                )
-            )
-        end
+	else
+		# ===== Handle unit-related constraints =====
+		"""
+			Constraint types handled in this section:
+			- key_sys_upreserve_constr: System up reserve constraints (NG * NT)
+			- key_units_minpower_constr: Unit minimum power constraints (NG * NT)
+			- key_units_maxpower_constr: Unit maximum power constraints (NG * NT)
+			- key_units_pwlpower_sum_constr: Piecewise linear power sum (NG * NT)
+			- key_units_downramp_constr: Unit ramping down constraints (NG * NT)
+			- key_units_upramp_constr: Unit ramping up constraints (NG * NT)
+			- key_units_pwlblock_upbound_constr: PWL block upper bound (NG * NT * NC)
+		"""
 
-    else
+		# Define pattern list for regular unit-related constraints (NG * NT)
+		patterns = [
+			"units_minpower_constr",
+			"units_maxpower_constr",
+			"sys_upreserve_constr",
+			"units_downramp_constr",
+			"units_pwlpower_sum_constr"
+		]
+		RE_FLAG = any(p -> occursin(p, String(keys_name)), patterns)
 
-        # for unit-related constraints with NG * NT
-        """
-        	alignment type constraints
-        	- key_sys_down_reserve_constr
-        	- key_sys_upreserve_constr
-        	- key_units_minpower_constr NG * NT
-        	- key_units_maxpower_constr NG * NT
-        	- key_units_pwlpower_sum_constr NG * NT * NZ
-        """
-        # RE_FLAG = occursin("units_minpower_constr", String(keys_name)) || occursin("units_maxpower_constr", String(keys_name)) || occursin("sys_upreserve_constr", String(keys_name)) || occursin("units_downramp_constr", String(keys_name))
-        patterns = [
-            "units_minpower_constr",
-            "units_maxpower_constr",
-            "sys_upreserve_constr",
-            "units_downramp_constr",
-            "units_pwlpower_sum_constr",
-        ]
-        RE_FLAG = any(p -> occursin(p, String(keys_name)), patterns)
-        if RE_FLAG
-            dual_expression_cut = @expression(
-                scuc_masterproblem,
-                sum(
-                    sum(
-                        (
-                            if isnothing(x_order)
-                                0
-                            else
-                                (
-                                    if x_order == 0
-                                        (
-                                            dual_coefficient[(t-1)*NG+g, 1] *
-                                            operator_precedence[(t-1)*NG+g, 1] *
-                                            x_coefficient[(t-1)*NG+g, 1] *
-                                            scuc_masterproblem[:x][g, t]
-                                        )
-                                    else
-                                        (
-                                            dual_coefficient[(g-1)*NT+t, 1] *
-                                            operator_precedence[(g-1)*NT+t, 1] *
-                                            x_coefficient[(g-1)*NT+t, 1] *
-                                            scuc_masterproblem[:x][g, t]
-                                        )
-                                    end
-                                )
-                            end
-                        ) +
-                        (
-                            if isnothing(u_order)
-                                0
-                            else
-                                (
-                                    if u_order == 0
-                                        (
-                                            dual_coefficient[(t-1)*NG+g, 1] *
-                                            operator_precedence[(t-1)*NG+g, 1] *
-                                            u_coefficient[(t-1)*NG+g, 1] *
-                                            scuc_masterproblem[:u][g, t]
-                                        )
-                                    else
-                                        (
-                                            dual_coefficient[(g-1)*NT+t, 1] *
-                                            operator_precedence[(g-1)*NT+t, 1] *
-                                            u_coefficient[(g-1)*NT+t, 1] *
-                                            scuc_masterproblem[:u][g, t]
-                                        )
-                                    end
-                                )
-                            end
-                        ) +
-                        (
-                            if isnothing(v_order)
-                                0
-                            else
-                                (
-                                    if v_order == 0
-                                        (
-                                            dual_coefficient[(t-1)*NG+g, 1] *
-                                            operator_precedence[(t-1)*NG+g, 1] *
-                                            v_coefficient[(t-1)*NG+g, 1] *
-                                            scuc_masterproblem[:v][g, t]
-                                        )
-                                    else
-                                        (
-                                            dual_coefficient[(g-1)*NT+t, 1] *
-                                            operator_precedence[(g-1)*NT+t, 1] *
-                                            v_coefficient[(g-1)*NT+t, 1] *
-                                            scuc_masterproblem[:v][g, t]
-                                        )
-                                    end
-                                )
-                            end
-                        ) +
-                        ((
-                            if isnothing(x_order)
-                                (
-                                    dual_coefficient[(t-1)*NG+g, 1] *
-                                    operator_precedence[(t-1)*NG+g, 1] *
-                                    rhs[(t-1)*NG+g, 1]
-                                )
-                            else
-                                (
-                                    dual_coefficient[(g-1)*NT+t, 1] *
-                                    operator_precedence[(g-1)*NT+t, 1] *
-                                    rhs[(g-1)*NT+t, 1]
-                                )
-                            end
-                        )) for g = 1:NG
-                    ) for t = 1:NT
-                )
-            )
-        end
+		# Handle regular unit-related constraints (NG * NT)
+		if RE_FLAG
+			dual_expression_cut = @expression(scuc_masterproblem,
+				sum(
+				sum(
+				# Contribution from commitment variable x[g,t]
+					(
+						if isnothing(x_order)
+						0  # No x variable in this constraint
+					else
+						(
+							if x_order == 0  # Time-major ordering: (t-1)*NG + g
+							(
+								dual_coefficient[(t - 1) * NG + g, 1] *
+								operator_precedence[(t - 1) * NG + g, 1] *
+								x_coefficient[(t - 1) * NG + g, 1] *
+								scuc_masterproblem[:x][g, t]
+							)
+						else  # Unit-major ordering: (g-1)*NT + t
+							(
+								dual_coefficient[(g - 1) * NT + t, 1] *
+								operator_precedence[(g - 1) * NT + t, 1] *
+								x_coefficient[(g - 1) * NT + t, 1] *
+								scuc_masterproblem[:x][g, t]
+							)
+						end
+						)
+					end
+					) +
+					# Contribution from startup variable u[g,t]
+					(
+						if isnothing(u_order)
+						0  # No u variable in this constraint
+					else
+						(
+							if u_order == 0  # Time-major ordering
+							(
+								dual_coefficient[(t - 1) * NG + g, 1] *
+								operator_precedence[(t - 1) * NG + g, 1] *
+								u_coefficient[(t - 1) * NG + g, 1] *
+								scuc_masterproblem[:u][g, t]
+							)
+						else  # Unit-major ordering
+							(
+								dual_coefficient[(g - 1) * NT + t, 1] *
+								operator_precedence[(g - 1) * NT + t, 1] *
+								u_coefficient[(g - 1) * NT + t, 1] *
+								scuc_masterproblem[:u][g, t]
+							)
+						end
+						)
+					end
+					) +
+					# Contribution from shutdown variable v[g,t]
+					(
+						if isnothing(v_order)
+						0  # No v variable in this constraint
+					else
+						(
+							if v_order == 0  # Time-major ordering
+							(
+								dual_coefficient[(t - 1) * NG + g, 1] *
+								operator_precedence[(t - 1) * NG + g, 1] *
+								v_coefficient[(t - 1) * NG + g, 1] *
+								scuc_masterproblem[:v][g, t]
+							)
+						else  # Unit-major ordering
+							(
+								dual_coefficient[(g - 1) * NT + t, 1] *
+								operator_precedence[(g - 1) * NT + t, 1] *
+								v_coefficient[(g - 1) * NT + t, 1] *
+								scuc_masterproblem[:v][g, t]
+							)
+						end
+						)
+					end
+					) +
+					# Contribution from RHS constant term
+					((
+						if isnothing(x_order)
+						(
+							dual_coefficient[(t - 1) * NG + g, 1] *
+							operator_precedence[(t - 1) * NG + g, 1] *
+							rhs[(t - 1) * NG + g, 1]
+						)
+					else
+						(
+							dual_coefficient[(g - 1) * NT + t, 1] *
+							operator_precedence[(g - 1) * NT + t, 1] *
+							rhs[(g - 1) * NT + t, 1]
+						)
+					end
+					)) for g ∈ 1:NG  # Loop over generating units
+				) for t ∈ 1:NT  # Loop over time periods
+			))
+		end
 
-        # for unit-related constraints with NG * NT * NZ
-        # NOTE: Implement the constraints for NG * NT * NZ
-        """
-        alignment type constraints
-        	- key_units_pwlblock_upbound_constr NG * NT * NZ
-        	- key_units_pwlblock_dwbound_constr NG * NT * NZ (>=0)
-        """
-        # key_units_pwlblock_upbound_constr
-        if occursin("units_pwlblock_upbound_constr", String(keys_name))
-            dual_expression_cut = @expression(
-                scuc_masterproblem,
-                sum(
-                    sum(
-                        sum(
-                            (
-                                operator_precedence[t, 1] *
-                                dual_coefficient[t, 1] *
-                                rhs[t, 1]
-                            ) +
-                            (
-                                if x_order == 0
-                                    (
-                                        dual_coefficient[(NG*NT)*(k-1)+(t-1)*NG+g, 1] *
-                                        operator_precedence[(NG*NT)*(k-1)+(t-1)*NG+g, 1] *
-                                        x_coefficient[(t-1)*NG+g, 1] *
-                                        scuc_masterproblem[:x][g, t]
-                                    )
-                                else
-                                    (
-                                        dual_coefficient[(g-1)*NT+t, 1] *
-                                        operator_precedence[(NG*NT)*(k-1)+(g-1)*NT+t, 1] *
-                                        x_coefficient[(g-1)*NT+t, 1] *
-                                        scuc_masterproblem[:x][g, t]
-                                    )
-                                end
-                            ) +
-                            (
-                                if x_order == 0
-                                    (
-                                        dual_coefficient[(NG*NT)*(k-1)+(t-1)*NG+g, 1] *
-                                        operator_precedence[(NG*NT)*(k-1)+(t-1)*NG+g, 1] *
-                                        rhs[(NG*NT)*(k-1)+(t-1)*NG+g, 1]
-                                    )
-                                else
-                                    (
-                                        dual_coefficient[(NG*NT)*(k-1)+(g-1)*NT+t, 1] *
-                                        operator_precedence[(NG*NT)*(k-1)+(g-1)*NT+t, 1] *
-                                        rhs[(NG*NT)*(k-1)+(g-1)*NT+t, 1]
-                                    )
-                                end
-                            ) for g = 1:NG
-                        ) for t = 1:NT
-                    ) for k = 1:NC
-                )
-            )
-        end
+		# Handle piecewise linear block upper bound constraints (NG * NT * NC)
+		if occursin("units_pwlblock_upbound_constr", String(keys_name))
+			dual_expression_cut = @expression(scuc_masterproblem,
+				sum(
+				sum(
+					sum(
+					# System-level contribution (time-dependent only)
+						(
+							operator_precedence[t, 1] *
+							dual_coefficient[t, 1] *
+							rhs[t, 1]
+						) +
+						# Unit commitment variable contribution
+						(
+							if x_order == 0  # Time-major ordering
+							(
+								dual_coefficient[(NG * NT) * (k - 1) + (t - 1) * NG + g, 1] *
+								operator_precedence[(NG * NT) * (k - 1) + (t - 1) * NG + g, 1] *
+								x_coefficient[(t - 1) * NG + g, 1] *
+								scuc_masterproblem[:x][g, t]
+							)
+						else  # Unit-major ordering
+							(
+								dual_coefficient[(g - 1) * NT + t, 1] *
+								operator_precedence[(NG * NT) * (k - 1) + (g - 1) * NT + t, 1] *
+								x_coefficient[(g - 1) * NT + t, 1] *
+								scuc_masterproblem[:x][g, t]
+							)
+						end
+						) +
+						# RHS constant contribution
+						(
+							if x_order == 0  # Time-major ordering
+							(
+								dual_coefficient[(NG * NT) * (k - 1) + (t - 1) * NG + g, 1] *
+								operator_precedence[(NG * NT) * (k - 1) + (t - 1) * NG + g, 1] *
+								rhs[(NG * NT) * (k - 1) + (t - 1) * NG + g, 1]
+							)
+						else  # Unit-major ordering
+							(
+								dual_coefficient[(NG * NT) * (k - 1) + (g - 1) * NT + t, 1] *
+								operator_precedence[(NG * NT) * (k - 1) + (g - 1) * NT + t, 1] *
+								rhs[(NG * NT) * (k - 1) + (g - 1) * NT + t, 1]
+							)
+						end
+						) for g ∈ 1:NG  # Loop over generating units
+					) for t ∈ 1:NT  # Loop over time periods
+				) for k ∈ 1:NC  # Loop over piecewise linear blocks
+			))
+		end
 
-        # for units rampingup and ramping down constraints
-        # in which, the unit ramping down is regular constraints where unit[g,t] is related to p[g,t], but rampingup constraints not
-        # NOTE: Implement the constraints for unit ramping up
-        if occursin("units_upramp_constr", String(keys_name))
-            dual_expression_cut = @expression(
-                scuc_masterproblem,
-                sum(
-                    sum(
-                        (
-                            if isnothing(x_order)
-                                0
-                            else
-                                (
-                                    if x_order == 0
-                                        (
-                                            dual_coefficient[(t-1)*NG+g, 1] *
-                                            operator_precedence[(t-1)*NG+g, 1] *
-                                            x_coefficient[(t-1)*NG+g, 1] *
-                                            (1) *
-                                            ((t == 1) ? 0 : scuc_masterproblem[:x][g, t-1])
-                                        )
-                                    else
-                                        (
-                                            dual_coefficient[(g-1)*NT+t, 1] *
-                                            operator_precedence[(g-1)*NT+t, 1] *
-                                            x_coefficient[(g-1)*NT+t, 1] *
-                                            (1) *
-                                            ((t == 1) ? 0 : scuc_masterproblem[:x][g, t-1])
-                                        )
-                                    end
-                                )
-                            end
-                        ) +
-                        (
-                            if isnothing(u_order)
-                                0
-                            else
-                                (
-                                    if u_order == 0
-                                        (
-                                            dual_coefficient[(t-1)*NG+g, 1] *
-                                            operator_precedence[(t-1)*NG+g, 1] *
-                                            u_coefficient[(t-1)*NG+g, 1] *
-                                            (1) *
-                                            ((t == 1) ? 0 : scuc_masterproblem[:x][g, t-1])
-                                        )
-                                    else
-                                        (
-                                            dual_coefficient[(g-1)*NT+t, 1] *
-                                            operator_precedence[(g-1)*NT+t, 1] *
-                                            u_coefficient[(g-1)*NT+t, 1] *
-                                            (1) *
-                                            ((t == 1) ? 0 : scuc_masterproblem[:x][g, t-1])
-                                        )
-                                    end
-                                )
-                            end
-                        ) +
-                        (
-                            if isnothing(v_order)
-                                0
-                            else
-                                (
-                                    if v_order == 0
-                                        (
-                                            dual_coefficient[(t-1)*NG+g, 1] *
-                                            operator_precedence[(t-1)*NG+g, 1] *
-                                            v_coefficient[(t-1)*NG+g, 1] *
-                                            (1) *
-                                            ((t == 1) ? 0 : scuc_masterproblem[:x][g, t-1])
-                                        )
-                                    else
-                                        (
-                                            dual_coefficient[(g-1)*NT+t, 1] *
-                                            operator_precedence[(g-1)*NT+t, 1] *
-                                            v_coefficient[(g-1)*NT+t, 1] *
-                                            (1) *
-                                            ((t == 1) ? 0 : scuc_masterproblem[:x][g, t-1])
-                                        )
-                                    end
-                                )
-                            end
-                        ) +
-                        ((
-                            if isnothing(x_order)
-                                (
-                                    dual_coefficient[(t-1)*NG+g, 1] *
-                                    operator_precedence[(t-1)*NG+g, 1] *
-                                    rhs[(t-1)*NG+g, 1]
-                                )
-                            else
-                                (
-                                    dual_coefficient[(g-1)*NT+t, 1] *
-                                    operator_precedence[(g-1)*NT+t, 1] *
-                                    rhs[(g-1)*NT+t, 1]
-                                )
-                            end
-                        )) for g = 1:NG
-                    ) for t = 1:NT
-                )
-            )
-        end
-    end
+		# Handle unit ramping up constraints (special case: involves x[g,t-1])
+		if occursin("units_upramp_constr", String(keys_name))
+			dual_expression_cut = @expression(scuc_masterproblem,
+				sum(
+				sum(
+				# Contribution from commitment variable x[g,t-1] (lagged commitment status)
+					(
+						if isnothing(x_order)
+						0  # No x variable in this constraint
+					else
+						(
+							if x_order == 0  # Time-major ordering
+							(
+								dual_coefficient[(t - 1) * NG + g, 1] *
+								operator_precedence[(t - 1) * NG + g, 1] *
+								x_coefficient[(t - 1) * NG + g, 1] *
+								(1) *
+								((t == 1) ? 0 : scuc_masterproblem[:x][g, t - 1])  # Use previous period commitment
+							)
+						else  # Unit-major ordering
+							(
+								dual_coefficient[(g - 1) * NT + t, 1] *
+								operator_precedence[(g - 1) * NT + t, 1] *
+								x_coefficient[(g - 1) * NT + t, 1] *
+								(1) *
+								((t == 1) ? 0 : scuc_masterproblem[:x][g, t - 1])  # Use previous period commitment
+							)
+						end
+						)
+					end
+					) +
+					# Contribution from startup variable u (based on previous commitment)
+					(
+						if isnothing(u_order)
+						0  # No u variable in this constraint
+					else
+						(
+							if u_order == 0  # Time-major ordering
+							(
+								dual_coefficient[(t - 1) * NG + g, 1] *
+								operator_precedence[(t - 1) * NG + g, 1] *
+								u_coefficient[(t - 1) * NG + g, 1] *
+								(1) *
+								((t == 1) ? 0 : scuc_masterproblem[:x][g, t - 1])
+							)
+						else  # Unit-major ordering
+							(
+								dual_coefficient[(g - 1) * NT + t, 1] *
+								operator_precedence[(g - 1) * NT + t, 1] *
+								u_coefficient[(g - 1) * NT + t, 1] *
+								(1) *
+								((t == 1) ? 0 : scuc_masterproblem[:x][g, t - 1])
+							)
+						end
+						)
+					end
+					) +
+					# Contribution from shutdown variable v (based on previous commitment)
+					(
+						if isnothing(v_order)
+						0  # No v variable in this constraint
+					else
+						(
+							if v_order == 0  # Time-major ordering
+							(
+								dual_coefficient[(t - 1) * NG + g, 1] *
+								operator_precedence[(t - 1) * NG + g, 1] *
+								v_coefficient[(t - 1) * NG + g, 1] *
+								(1) *
+								((t == 1) ? 0 : scuc_masterproblem[:x][g, t - 1])
+							)
+						else  # Unit-major ordering
+							(
+								dual_coefficient[(g - 1) * NT + t, 1] *
+								operator_precedence[(g - 1) * NT + t, 1] *
+								v_coefficient[(g - 1) * NT + t, 1] *
+								(1) *
+								((t == 1) ? 0 : scuc_masterproblem[:x][g, t - 1])
+							)
+						end
+						)
+					end
+					) +
+					# Contribution from RHS constant term
+					((
+						if isnothing(x_order)
+						(
+							dual_coefficient[(t - 1) * NG + g, 1] *
+							operator_precedence[(t - 1) * NG + g, 1] *
+							rhs[(t - 1) * NG + g, 1]
+						)
+					else
+						(
+							dual_coefficient[(g - 1) * NT + t, 1] *
+							operator_precedence[(g - 1) * NT + t, 1] *
+							rhs[(g - 1) * NT + t, 1]
+						)
+					end
+					)) for g ∈ 1:NG  # Loop over generating units
+				) for t ∈ 1:NT  # Loop over time periods
+			))
+		end
+	end
 
-    return scuc_masterproblem, dual_expression_cut
+	# Return the master problem model and the constructed Benders multi-cut expression
+	return scuc_masterproblem, dual_expression_cut
 end
+
+# ---
+# version - 1.0 discarded
 
 # function construct_benders_cut(scuc_masterproblem::JuMP.Model, units::unit, winds::wind, loads::load, lines::transmission, NG::Int64, NT::Int64, NW::Int64, ND::Int64, NL::Int64, config_param::config)
 

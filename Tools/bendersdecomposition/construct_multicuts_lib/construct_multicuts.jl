@@ -7,10 +7,10 @@ include("_get_benders_cumulative_multicuts.jl")
 include("_get_benders_eachconstraints_multiplecut.jl")
 
 export add_optimitycut_constraints!,
-    add_feasibilitycut_constraints!, get_dual_constrs_coefficient
+	   add_feasibilitycut_constraints!, get_dual_constrs_coefficient
 export get_greater_than_constr_rhs, get_smaller_than_constr_rhs, get_equal_to_constr_rhs
 export get_x_coeff_vectors_from_constr,
-    get_u_coeff_vectors_from_constr, get_v_coeff_vectors_from_constr
+	   get_u_coeff_vectors_from_constr, get_v_coeff_vectors_from_constr
 export get_coeff_from_constr
 export get_benders_multicuts_expression
 export get_benders_cumulative_multicuts_expression

@@ -25,7 +25,7 @@ function bd_framework(
 		master_model_struct::SCUC_Model,
 		batch_scuc_subproblem_dic::OrderedDict{Int64, SCUC_Model},
 		winds::wind,
-		config_param::config,
+		config_param::config
 )
 
 	# Constants and parameters
@@ -66,17 +66,10 @@ function bd_framework(
 		# Solve subproblem with feasibility cut
 		ret_dic = (config_param.is_ConsiderMultiCUTs == 1) ?
 				  batch_solve_subproblem_with_feasibility_cut(
-			batch_scuc_subproblem_dic,
-			x⁽⁰⁾,
-			u⁽⁰⁾,
-			v⁽⁰⁾,
-			NS,
+			batch_scuc_subproblem_dic, x⁽⁰⁾, u⁽⁰⁾, v⁽⁰⁾, NS
 		) :
 				  batch_solve_subproblem_with_feasibility_cut(
-			batch_scuc_subproblem_dic,
-			x⁽⁰⁾,
-			u⁽⁰⁾,
-			v⁽⁰⁾,
+			batch_scuc_subproblem_dic, x⁽⁰⁾, u⁽⁰⁾, v⁽⁰⁾
 		)
 
 		# Update bounds
@@ -91,27 +84,14 @@ function bd_framework(
 			return nothing
 		end
 
-		best_upper_bound,
-		best_lower_bound,
-		current_upper_bound,
-		all_subproblems_feasibility_flag = get_upper_lower_bounds(
-			scuc_masterproblem,
-			ret_dic,
-			best_upper_bound,
-			best_lower_bound,
-			lower_bound,
-			scenarios_prob,
+		best_upper_bound, best_lower_bound, current_upper_bound, all_subproblems_feasibility_flag = get_upper_lower_bounds(
+			scuc_masterproblem, ret_dic, best_upper_bound, best_lower_bound, lower_bound, scenarios_prob
 		) # NOTE - upper bound from subproblem
 
 		# Check for convergence
 		if all_subproblems_feasibility_flag &&
 		   check_Bender_convergence(
-			best_upper_bound,
-			best_lower_bound,
-			current_upper_bound,
-			iteration,
-			ABSOLUTE_OPTIMIZATION_GAP,
-			NUMERICAL_TOLERANCE,
+			best_upper_bound, best_lower_bound, current_upper_bound, iteration, ABSOLUTE_OPTIMIZATION_GAP, NUMERICAL_TOLERANCE
 		) == 1
 			break
 		end
@@ -123,28 +103,20 @@ function bd_framework(
 					scuc_masterproblem,
 					batch_scuc_subproblem_dic[s],
 					ret,
-					iter_value,
+					iter_value
 				)
 			else
 				scuc_masterproblem, _ = add_feasibilitycut_constraints!(
 					scuc_masterproblem,
 					batch_scuc_subproblem_dic[s],
 					ret,
-					iter_value,
+					iter_value
 				)
 			end
 			is_feasible = ret.is_feasible
 			dual_coeffs = ret.dual_coeffs
 			scuc_masterproblem, _ = add_benders_multicuts_constraints!(
-				scuc_masterproblem,
-				sub_model_struct,
-				is_feasible,
-				dual_coeffs,
-				NG,
-				NT,
-				NW,
-				ND,
-				NL,
+				scuc_masterproblem, sub_model_struct, is_feasible, dual_coeffs, NG, NT, NW, ND, NL
 			)
 		end
 	end
@@ -156,7 +128,7 @@ function get_upper_lower_bounds(
 		best_upper_bound,
 		best_lower_bound,
 		lower_bound,
-		scenarios_prob::Float64,
+		scenarios_prob::Float64
 )
 	# flag = all(s -> s.is_feasible, ret_dic)
 	flag = all(ret.is_feasible for ret in values(ret_dic))
@@ -180,7 +152,7 @@ function check_Bender_convergence(
 		current_upper_bound,
 		iteration,
 		ABSOLUTE_OPTIMIZATION_GAP,
-		NUMERICAL_TOLERANCE,
+		NUMERICAL_TOLERANCE
 )
 	flag = 0
 	# Calculate gap with best bounds
@@ -222,19 +194,12 @@ Solves the subproblem with fixed values for the first-stage variables and return
 """
 
 function batch_solve_subproblem_with_feasibility_cut(
-		batch_scuc_subproblem_dic::OrderedDict,
-		x,
-		u,
-		v,
-		NS = 1,
+		batch_scuc_subproblem_dic::OrderedDict, x, u, v, NS = 1
 )
 	ret_dic = OrderedDict{Int64, Any}()
 	for s ∈ 1:NS
 		ret = solve_subproblem_with_feasibility_cut(
-			batch_scuc_subproblem_dic[s]::SCUC_Model,
-			x,
-			u,
-			v,
+			batch_scuc_subproblem_dic[s]::SCUC_Model, x, u, v
 		)
 		ret_dic[s] = ret
 	end
@@ -274,17 +239,17 @@ function solve_subproblem_with_feasibility_cut(scuc_subproblem_dic::SCUC_Model, 
 	res_smaller_than = get_dual_constrs_coefficient(
 		scuc_subproblem_dic,
 		constraints._smaller_than,
-		opti_termination_status,
+		opti_termination_status
 	)
 	res_equal_to = get_dual_constrs_coefficient(
 		scuc_subproblem_dic,
 		constraints._equal_to,
-		opti_termination_status,
+		opti_termination_status
 	)
 	res_greater_than = get_dual_constrs_coefficient(
 		scuc_subproblem_dic,
 		constraints._greater_than,
-		opti_termination_status,
+		opti_termination_status
 	)
 
 	final_dual_subproblem_coefficient_results = merge(res_equal_to, res_smaller_than, res_greater_than)
@@ -314,7 +279,7 @@ function solve_subproblem_with_feasibility_cut(scuc_subproblem_dic::SCUC_Model, 
 			dual_equal_to_constr_dic = Dict(
 				k => dual.(v) for
 			(k, v) in scuc_subproblem_dic.reformated_constraints._equal_to
-			),
+			)
 		)
 	else
 		# Get Farkas certificate (dual rays) for infeasibility
@@ -343,7 +308,7 @@ function solve_subproblem_with_feasibility_cut(scuc_subproblem_dic::SCUC_Model, 
 			dual_equal_to_constr_dic = Dict(
 				k => shadow_price.(v) for
 			(k, v) in scuc_subproblem_dic.reformated_constraints._equal_to
-			),
+			)
 		)
 	end
 end

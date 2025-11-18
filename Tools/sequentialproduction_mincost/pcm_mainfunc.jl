@@ -38,17 +38,7 @@ println("\n" * "="^80)
 println("Step 1: Reading input data from Excel file...")
 println("="^80)
 
-UnitsFreqParam,
-WindsFreqParam,
-StrogeData,
-DataGen,
-GenCost,
-DataBranch,
-LoadCurve,
-DataLoad,
-Datacentra_Data,
-HydroData,
-HydroCurve = readxlssheet()
+UnitsFreqParam, WindsFreqParam, StrogeData, DataGen, GenCost, DataBranch, LoadCurve, DataLoad, Datacentra_Data, HydroData, HydroCurve = readxlssheet()
 
 # ============================================================================
 # Step 3: Format and process input data
@@ -57,32 +47,8 @@ println("\n" * "="^80)
 println("Step 2: Formatting input data for optimization model...")
 println("="^80)
 
-config_param,
-units,
-lines,
-loads,
-stroges,
-NB,
-NG,
-NL,
-ND,
-NT,
-NC,
-ND2,
-NH,
-DataCentras,
-hydros = forminputdata(
-	DataGen,
-	DataBranch,
-	DataLoad,
-	LoadCurve,
-	GenCost,
-	UnitsFreqParam,
-	StrogeData,
-	Datacentra_Data,
-	HydroData,
-	HydroCurve,
-)
+config_param, units, lines, loads, stroges, NB, NG, NL, ND, NT, NC, ND2, NH, DataCentras, hydros = forminputdata(
+	DataGen, DataBranch, DataLoad, LoadCurve, GenCost, UnitsFreqParam, StrogeData, Datacentra_Data, HydroData, HydroCurve)
 
 # ============================================================================
 # Step 4: Generate wind power scenarios
@@ -144,13 +110,7 @@ for interval_scheduling_id ∈ 1:patch_scheduling_ids_numssets
 	# ------------------------------------------------------------------------
 	println("  Updating boundary conditions based on previous interval results...")
 	mini_units, mini_loads, mini_winds = update_boundary_conditions(
-		interval_scheduling_id,
-		NG,
-		mini_NT,
-		units,
-		loads,
-		winds,
-		pre_scheduling_results,
+		interval_scheduling_id, NG, mini_NT, units, loads, winds, pre_scheduling_results
 	)
 
 	# ------------------------------------------------------------------------
@@ -160,25 +120,7 @@ for interval_scheduling_id ∈ 1:patch_scheduling_ids_numssets
 		"  Solving unit commitment optimization for interval $interval_scheduling_id...",
 	)
 	poster_scheduling_results = each_period_scucmodel_modules(
-		mini_NT,
-		NB,
-		NG,
-		ND,
-		NC,
-		ND2,
-		mini_units,
-		mini_loads,
-		mini_winds,
-		lines,
-		DataCentras,
-		config_param,
-		stroges,
-		scenarios_prob,
-		NL,
-		interval_scheduling_id,
-		hydros,
-		NH,
-	)
+		mini_NT, NB, NG, ND, NC, ND2, mini_units, mini_loads, mini_winds, lines, DataCentras, config_param, stroges, scenarios_prob, NL, interval_scheduling_id, hydros, NH)
 
 	# Check if optimization was successful
 	if poster_scheduling_results === nothing
@@ -202,12 +144,7 @@ for interval_scheduling_id ∈ 1:patch_scheduling_ids_numssets
 	# ------------------------------------------------------------------------
 	println("  Saving detailed results for interval $interval_scheduling_id...")
 	save_powerbalance_scheduled_results(
-		mini_units,
-		mini_winds,
-		config_param,
-		poster_scheduling_results,
-		interval_scheduling_id,
-	)
+		mini_units, mini_winds, config_param, poster_scheduling_results, interval_scheduling_id)
 
 	# ------------------------------------------------------------------------
 	# Step 7.5: Update previous scheduling results for next interval
@@ -231,7 +168,7 @@ outdir = creat_outputfilepath(-1, 1)
 write_result(
 	outdir,
 	"total_scheduled_results.csv",
-	round.(total_scheduled_cost; digits = 5),
+	round.(total_scheduled_cost; digits = 5)
 )
 
 println("  ✓ Total scheduling costs saved to: $outdir/total_scheduled_results.csv")

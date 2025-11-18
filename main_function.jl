@@ -44,7 +44,7 @@ hydros = forminputdata(DataGen,
 	StrogeData,
 	Datacentra_Data,
 	HydroData,
-	HydroCurve,)
+	HydroCurve)
 
 # Override time periods if needed (default: 24 hours)
 NT = 24
@@ -70,7 +70,7 @@ scenarios_prob = 1.0 / winds.scenarios_nums
 
 # Solve the optimization problem
 results = SUC_scucmodel(NT, NB, NG, ND, NC, ND2, units, loads, winds, lines, DataCentras, config_param, stroges,
-	scenarios_prob, NL, hydros, NH,)
+	scenarios_prob, NL, hydros, NH)
 # ============================================================================
 # Step 5: Save scheduling results
 # ============================================================================

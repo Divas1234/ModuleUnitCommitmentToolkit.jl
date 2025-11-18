@@ -239,8 +239,6 @@
         "textMateRules": [],
         // "comments": "<comments>"
     },
-    // Global font family for non-Julia files: prefer Roboto (requires installation) with sensible fallbacks
-    "editor.fontFamily": "Roboto, Roboto Mono, Geist Mono, Fira Code, Hack, JetBrains Mono, Menlo, Monaco, 'Courier New', monospace",
     "workbench.tree.indent": 18,
     "material-icon-theme.hidesExplorerArrows": true,
     "workbench.tree.renderIndentGuides": "onHover",
@@ -281,7 +279,7 @@
     "editor.mouseWheelZoom": true,
     "terminal.integrated.defaultProfile.windows": "PowerShell",
     "terminalAllInOne.terminalTheme": "Atelier Cave",
-    "julia.executablePath": "/Applications/Julia-1.11.app/Contents/Resources/julia/bin/julia",
+    "julia.executablePath": "/Applications/Julia-1.12.app/Contents/Resources/julia/bin/julia",
     "julia.execution.inlineResultsForCellEvaluation": true,
     "julia.execution.codeInREPL": true,
     "vim.autoSwitchInputMethod.enable": true,
@@ -308,10 +306,6 @@
         "scminput": false,
         "julia": true,
         "python": true
-    },
-    // Language specific override: all .jl files use JuliaMono font
-    "[julia]": {
-        "editor.fontFamily": "JuliaMono, Julia Mono, Roboto Mono, Menlo, Monaco, 'Courier New', monospace"
     },
     "terminal.integrated.tabs.defaultColor": "terminal.ansiCyan",
     "window.autoDetectColorScheme": true,
@@ -347,5 +341,5 @@
     "errorLens.statusBarIconsEnabled": true,
     "julia-format.inop": "= ∈",
     "juliaFormatter.overwriteFlags": true,
-    "julia-format.flag": "style=SciMLStyle(), indent=4, margin=256, always_for_in=true, for_in_replacement=\"∈\", whitespace_typedefs=true, import_to_using=true, whitespace_ops_in_indices =true, remove_extra_newlines=true, force_long_function_def =true, format_docstrings = true, trailing_comma =true,separate_kwargs_with_semicolon=true, disallow_single_arg_nesting = true,whitespace_in_kwargs=true, align_struct_field=true, align_assignment=true, align_conditional=true, align_pair_arrow=true, normalize_line_endings=\"unix\", align_matrix=true, indent_submodule=true, surround_whereop_typeparameters=false,yas_style_nesting=false, "
+    "julia-format.flag": "style=SciMLStyle(), indent=4, margin=256, always_for_in=true, for_in_replacement=\"∈\", whitespace_typedefs=true, import_to_using=true, whitespace_ops_in_indices=true, remove_extra_newlines=true, short_to_long_function_def=false, format_docstrings=true, trailing_comma=false, separate_kwargs_with_semicolon=true, whitespace_in_kwargs=true, align_struct_field=true, align_assignment=true, align_conditional=true, align_pair_arrow=true, normalize_line_endings=\"unix\", align_matrix=true, indent_submodule=true, surround_whereop_typeparameters=false, yas_style_nesting=false"
 }
