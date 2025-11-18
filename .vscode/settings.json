@@ -134,7 +134,7 @@
                     "scope": "function",
                     "settings": {
                         "foreground": "#0a0ae5",
-                        "fontStyle": "bold"
+                        "fontStyle": "bold underline"
                     }
                 },
                 {
