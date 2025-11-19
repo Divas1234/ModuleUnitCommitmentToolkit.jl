@@ -104,11 +104,11 @@
     "julia-format.inop": "= ∈",
     "juliaFormatter.overwriteFlags": true,
     "julia-format.flag": "style=SciMLStyle(), indent=4, margin=256, always_for_in=true, for_in_replacement=\"∈\", whitespace_typedefs=true, import_to_using=true, whitespace_ops_in_indices=true, remove_extra_newlines=true, short_to_long_function_def=false, format_docstrings=true, trailing_comma=false, separate_kwargs_with_semicolon=true, whitespace_in_kwargs=true, align_struct_field=true, align_assignment=true, align_conditional=true, align_pair_arrow=true, normalize_line_endings=\"unix\", align_matrix=true, indent_submodule=true, surround_whereop_typeparameters=false, yas_style_nesting=false",
-    "julia.environmentPath": "d:\\GithubClonefiles\\module_unitcommitment",
     // "editor.fontFamily": "Fira Code, JuliaMono, Maple Mono NF, JetBrains Mono, Input Mono, Droid Sans Mono, Hack, Monaspace Neon, Google Sans Code, Maple Mono, Fira Code, Hack, Agave Nerd Font, Jetbrains Mono, MonoLisa, Droid Sans Mono, Fira Code, Geist Mono, Fragment Mono, Monaspace Neon, Oxygen Mono, Monaspace Argon, Input Mono, Julia Mono, DejaVu Code, mononoki, Inconsolata, Geist Mono, Menlo, Monaco, 'Courier New', monospace",
     "editor.allowVariableFontsInAccessibilityMode": true,
     "editor.codeLensFontFamily": "JuliaMono, Maple Mono NF, JetBrains Mono, Input Mono",
     "editor.fontFamily": "JuliaMono, Fira Code, Maple Mono NF, JetBrains Mono, Input Mono, Droid Sans Mono, Hack, Monaspace Neon, Google Sans Code, Maple Mono, Fira Code, Hack, Agave Nerd Font, Jetbrains Mono, MonoLisa, Droid Sans Mono, Fira Code, Geist Mono, Fragment Mono, Monaspace Neon, Oxygen Mono, Monaspace Argon, Input Mono, Julia Mono, DejaVu Code, mononoki, Inconsolata, Geist Mono, Menlo, Monaco, 'Courier New', monospace",
     "editor.smoothScrolling": true,
-    "workbench.list.smoothScrolling": true
+    "workbench.list.smoothScrolling": true,
+    "editor.lineHeight": 0
 }

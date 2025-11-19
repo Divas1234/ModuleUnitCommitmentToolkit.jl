@@ -224,33 +224,10 @@ function solve_subproblem_with_feasibility_cut(scuc_subproblem_dic::SCUC_Model, 
 	# Check if subproblem is solved and feasible
 	opti_termination_status = is_solved_and_feasible(scuc_subproblem; dual = true)
 
-	# constrs_smaller_than = scuc_subproblem_dic.reformated_constraints._smaller_than
-	# res_smaller_than = get_dual_constrs_coefficient(
-	# 	scuc_subproblem_dic, constrs_smaller_than, opti_termination_status)
-
-	# constrs_equal_to = scuc_subproblem_dic.reformated_constraints._equal_to
-	# res_equal_to = get_dual_constrs_coefficient(scuc_subproblem_dic, constrs_equal_to, opti_termination_status)
-
-	# constrs_greater_than = scuc_subproblem_dic.reformated_constraints._greater_than
-	# res_greater_than = get_dual_constrs_coefficient(
-	# 	scuc_subproblem_dic, constrs_greater_than, opti_termination_status)
-
 	constraints = scuc_subproblem_dic.reformated_constraints
-	res_smaller_than = get_dual_constrs_coefficient(
-		scuc_subproblem_dic,
-		constraints._smaller_than,
-		opti_termination_status
-	)
-	res_equal_to = get_dual_constrs_coefficient(
-		scuc_subproblem_dic,
-		constraints._equal_to,
-		opti_termination_status
-	)
-	res_greater_than = get_dual_constrs_coefficient(
-		scuc_subproblem_dic,
-		constraints._greater_than,
-		opti_termination_status
-	)
+	res_smaller_than = get_dual_constrs_coefficient(scuc_subproblem_dic, constraints._smaller_than, opti_termination_status)
+	res_equal_to = get_dual_constrs_coefficient(scuc_subproblem_dic, constraints._equal_to, opti_termination_status)
+	res_greater_than = get_dual_constrs_coefficient(scuc_subproblem_dic, constraints._greater_than, opti_termination_status)
 
 	final_dual_subproblem_coefficient_results = merge(res_equal_to, res_smaller_than, res_greater_than)
 

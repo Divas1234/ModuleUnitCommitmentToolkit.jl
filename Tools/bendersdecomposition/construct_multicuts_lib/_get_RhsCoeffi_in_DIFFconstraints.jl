@@ -1,6 +1,16 @@
 using JuMP
 using MathOptInterface
 
+# This file provides utility functions to extract RHS values and variable coefficients
+# from different types of constraints (>=, <=, ==) in a JuMP model, and to build
+# coefficient vectors for multi-cut Benders decomposition (variables u, v, x).
+# Core ideas:
+#   1. Detect whether a decision variable at time t or t-1 is present in a given set
+#      of constraints (alignment logic) and the ordering pattern of constraints.
+#   2. Build dense coefficient vectors (size NG * NT) aligned consistently with
+#      chosen ordering (by time-first or generator-first) for each variable type.
+#   3. Provide helper routines to safely query MOI backend for bounds or equality.
+
 function get_greater_than_constr_rhs(current_model::Model, constr)
 	rhs = Float64[]
 	for con in constr
@@ -20,12 +30,8 @@ function get_smaller_than_constr_rhs(current_model::Model, constr)
 end
 
 function get_equal_to_constr_rhs(current_model::Model, constr)
-	# rhs = Float64[]
-	# for (_, con) in constr
-	# 	idx = JuMP.index(con[1])
-	# 	push!(rhs, MOI.get(JuMP.backend(current_model), MOI.ConstraintSet(), idx).value)
-	# end
-
+	# Extract RHS of equality constraints. Legacy commented code kept for reference.
+	# Each constraint's set has a single value field for equality.
 	rhs = Float64[]
 	for con in constr
 		idx = JuMP.index(con)
@@ -84,6 +90,8 @@ function get_v_coeff_vectors_from_constr(nam, current_model, constr, NT, NG)
 	alignment_cons, sort_order = check_var_alignment_with_constraints(current_model, constr, NG, NT, dec_symbol)
 
 	if !isnothing(alignment_cons)
+		# Initialize coefficient matrix (column vector) for variable v.
+		# Indexing scheme depends on detected sort_order.
 		coeffs = zeros(NG * NT, 1)
 
 		for t ∈ 2:NT, g ∈ 1:NG
@@ -94,6 +102,7 @@ function get_v_coeff_vectors_from_constr(nam, current_model, constr, NT, NG)
 			res, _, _ = get_index_in_constraint(
 				target_var, current_model, constr, NG, NT, g, t, sort_order
 			)
+			# Map (g,t) to linear index; pattern determined by sort_order (0: time-major, 1: generator-major)
 			idx = ((sort_order == 0) ? NG * (t - 1) + g : NT * (g - 1) + t)
 			coeffs[idx, 1] = res
 		end
@@ -161,6 +170,7 @@ function get_u_coeff_vectors_from_constr(nam, current_model, constr, NT, NG)
 	alignment_cons, sort_order = check_var_alignment_with_constraints(current_model, constr, NG, NT, dec_symbol)
 
 	if !isnothing(alignment_cons)
+		# Initialize coefficient vector for variable u.
 		coeffs = zeros(NG * NT, 1)
 
 		for t ∈ 2:NT, g ∈ 1:NG
@@ -201,74 +211,52 @@ function get_u_coeff_vectors_from_constr(nam, current_model, constr, NT, NG)
 end
 
 function get_x_coeff_vectors_from_constr(nam, current_model, constr, NT, NG)
-
-	# dec_symbol = "x"
-
-	# try
-	# 	coeffs = zeros(NG * NT, 1)
-
-	# 	alignment_cons, sort_order = check_var_alignment_with_constraints(current_model, constr, NG, NT, dec_symbol)
-
-	# 	if !isnothing(alignment_cons)
-	# 		for t in 2:NT, g in 1:NG
-
-	# 			target_var = ((alignment_cons == 0) ? current_model[:x][g, t] : current_model[:x][g, t - 1])
-	# 			res, _, _ = get_index_in_constraint(target_var, current_model, constr, NG, NT, g, t, sort_order)
-	# 			idx = ((sort_order == 0) ? NG * (t - 1) + g : NT * (g - 1) + g)
-	# 			coeffs[idx, 1] = res
-	# 		end
-
-	# 		t = 1
-	# 		if alignment_cons == 0
-	# 			for g in 1:NG
-	# 				target_var = current_model[:x][g, t]
-	# 				res, _, _ = get_index_in_constraint(target_var, current_model, constr, NG, NT, g, t, sort_order)
-	# 				idx = ((sort_order == 0) ? NG * (t - 1) + g : NT * (g - 1) + g)
-	# 				coeffs[idx, 1] = res
-	# 			end
-	# 		else
-	# 			res = 0
-	# 			idx = ((sort_order == 0) ? NG * (t - 1) + g : NT * (g - 1) + g)
-	# 			coeffs[idx, 1] = res
-	# 		end
-	# 	end
-	# catch e
-	# 	coeffs = zeros(NG * NT, 1)
-	# 	sort_order = nothing
-	# 	# println("\t x in not in current constraint\t", nam)
-	# 	# @info "x coeffs = zeros, default"
-	# end
-
 	dec_symbol = "x"
 
 	alignment_cons, sort_order = check_var_alignment_with_constraints(current_model, constr, NG, NT, dec_symbol)
 
 	if !isnothing(alignment_cons)
-		coeffs = zeros(NG * NT, 1)
+		"""
+			We have detected that x appears in at least one of the provided constraints.
+			alignment_cons indicates whether constraints reference x at time t (0) or t-1 (1).
+			sort_order specifies packing of constraints: 0 => time-major (all generators per time),
+			1 => generator-major (all times per generator). We mirror that ordering when building
+			the dense coefficient vector so later concatenations stay consistent.
+		"""
+
+		coeffs = zeros(NG * NT, 1) # Column vector of size NG*NT storing coeff of x[g,t]
+
+		"""
+			Fill coefficients for t ≥ 2. For each (g,t) choose the correct variable index depending
+			on alignment_cons. If variable not present a nothing is returned and stored as nothing;
+			callers can test and treat nothing as zero if needed.
+		"""
 
 		for t ∈ 2:NT, g ∈ 1:NG
-
-			target_var = (
-				(alignment_cons == 0) ? current_model[:x][g, t] : current_model[:x][g, t - 1]
-			)
-			res, _, _ = get_index_in_constraint(
-				target_var, current_model, constr, NG, NT, g, t, sort_order
-			)
+			# Select x[g,t] or shifted x[g,t-1] depending on alignment consistency.
+			target_var = ((alignment_cons == 0) ? current_model[:x][g, t] : current_model[:x][g, t - 1])
+			# Obtain coefficient (res) under detected sort_order; ignore auxiliary returns.
+			res, _, _ = get_index_in_constraint(target_var, current_model, constr, NG, NT, g, t, sort_order)
+			# Map (g,t) to linear index respecting the detected ordering.
 			idx = ((sort_order == 0) ? NG * (t - 1) + g : NT * (g - 1) + t)
 			coeffs[idx, 1] = res
 		end
 
+		# Handle the first time period t = 1 separately (no t-1 exists). If alignment uses time t
+		# we query normally; otherwise all coefficients for t=1 default to 0 because constraints
+		# only reference the previous time index which is absent.
 		t = 1
 		if alignment_cons == 0
 			for g ∈ 1:NG
+				# Direct variable since alignment uses current time index.
 				target_var = current_model[:x][g, t]
-				res, _, _ = get_index_in_constraint(
-					target_var, current_model, constr, NG, NT, g, t, sort_order
-				)
+				res, _, _ = get_index_in_constraint(target_var, current_model, constr, NG, NT, g, t, sort_order)
 				idx = ((sort_order == 0) ? NG * (t - 1) + g : NT * (g - 1) + t)
 				coeffs[idx, 1] = res
 			end
 		else
+			# When alignment_cons == 1 the constraint references x at t-1; for t=1 that is an
+			# out-of-range reference, so coefficient is effectively zero.
 			res = 0
 			for g ∈ 1:NG
 				idx = ((sort_order == 0) ? NG * (t - 1) + g : NT * (g - 1) + t)
@@ -276,6 +264,8 @@ function get_x_coeff_vectors_from_constr(nam, current_model, constr, NT, NG)
 			end
 		end
 	else
+		# x does not appear in any provided constraint;
+		# returning nothing flags absence so caller can skip combining or treat as a zero vector lazily.
 		coeffs = nothing
 		sort_order = nothing
 	end
@@ -286,6 +276,12 @@ end
 # TODO
 function check_var_alignment_with_constraints(current_model, constr, NG, NT, dec_symbol)
 	g, t = 2, 2
+	# Determine whether variable at (g,t) or at (g,t-1) is present in constraint set.
+	# Returns alignment_cons:
+	#   0 -> uses time t variable
+	#   1 -> uses time (t-1) variable
+	# nothing -> variable not present at either shift
+	# Also returns sort_order inferred from where coefficient found (0 or 1 ordering pattern).
 	if dec_symbol == "u"
 		target_var = current_model[:u][g, t]
 	elseif dec_symbol == "v"
@@ -317,6 +313,13 @@ end
 function get_index_in_constraint(
 		target_var, current_model, constr, NG, NT, g, t, order = -2
 )
+	# Retrieve coefficient of target_var from constraint collection with flexible order modes.
+	# Parameters:
+	#   order == -2 : auto-detect; try both indexing schemes (time-major and generator-major)
+	#   order == -1 : force miss (return nothing)
+	#   order == 0  : use time-major ordering (idx = NG * (t-1) + g)
+	#   order == 1  : use generator-major ordering (idx = NT * (g-1) + t)
+	# Returns (res, sort_order, is_included_in_current_constr)
 	if order == -2
 		idx = JuMP.index(constr[NG * (t - 1) + g])
 		func = MOI.get(JuMP.backend(current_model), MOI.ConstraintFunction(), idx)
@@ -331,7 +334,7 @@ function get_index_in_constraint(
 		end
 
 		if !isnothing(f) || !isnothing(im_f)
-			# NOTE -  1: active order, 1 : inactive order
+			# Pick whichever ordering produced a coefficient; establish sort_order accordingly.
 			res = (!isnothing(f)) ? f : im_f
 			sort_order = (!isnothing(f)) ? 0 : 1
 			is_included_in_current_constr = true
@@ -342,9 +345,11 @@ function get_index_in_constraint(
 		end
 
 	elseif order == -1
+		# Explicitly indicate target_var absent.
 		res, sort_order, is_included_in_current_constr = nothing, nothing, false
 
 	elseif order == 0
+		# Direct lookup under time-major ordering.
 		idx = JuMP.index(constr[NG * (t - 1) + g])
 		func = MOI.get(JuMP.backend(current_model), MOI.ConstraintFunction(), idx)
 		res = get_coeff_from_constr(func, target_var)
@@ -352,6 +357,7 @@ function get_index_in_constraint(
 		is_included_in_current_constr = true
 
 	elseif order == 1
+		# Direct lookup under generator-major ordering.
 		im_idx = JuMP.index(constr[NT * (g - 1) + t])
 		im_func = MOI.get(JuMP.backend(current_model), MOI.ConstraintFunction(), im_idx)
 		res = get_coeff_from_constr(im_func, target_var)
@@ -363,6 +369,7 @@ function get_index_in_constraint(
 end
 
 function get_coeff_from_constr(func, target_var)
+	# Iterate over affine function terms to find coefficient of target_var.
 	for term in func.terms
 		if term.variable == JuMP.index(target_var)
 			# println("Constraint involving x[$g,$t] → Coefficient: ", term.coefficient)
