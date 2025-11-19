@@ -90,6 +90,8 @@ function bd_subfunction(
 	onoffinit = calculate_initial_unit_status(units, NG)
 
 	# Define contingency size
+	# Define contingency size (bold + underline for display)
+	# **<u>define_contingency_size</u>**
 	contingency_size = define_contingency_size(units, NG)
 
 	NS_copy = (config_param.is_ConsiderMultiCUTs == 1) ? NS : Int64(1)
