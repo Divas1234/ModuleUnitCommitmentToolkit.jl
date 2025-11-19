@@ -1,31 +1,130 @@
 # Datacenter Unit Commitment Model
 
+[![Julia](https://img.shields.io/badge/Julia-1.6+-9558B2?logo=julia&logoColor=white)](https://julialang.org/)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+
+A sophisticated optimization framework for power systems integrated with datacenter operations, implementing stochastic unit commitment with Benders decomposition.
+
 ## Table of Contents
 
 - [Datacenter Unit Commitment Model](#datacenter-unit-commitment-model)
   - [Table of Contents](#table-of-contents)
-  - [Description](#description)
+  - [Overview](#overview)
+  - [Features](#features)
+  - [Quick Start](#quick-start)
   - [Usage](#usage)
-  - [File Structure](#file-structure)
+  - [Project Architecture](#project-architecture)
   - [Benders Decomposition Implementation](#benders-decomposition-implementation)
   - [Dependencies](#dependencies)
+  - [Contributing](#contributing)
   - [License](#license)
 
-## Description
+## Overview
 
-This project implements a unit commitment model for power systems integrated with datacenters. The model optimizes the commitment and dispatch of generation units, considering the power consumption of datacenters, generation costs, transmission constraints, and renewable energy integration. It aims to provide a cost-effective and reliable power system operation.
+This project implements a comprehensive **Stochastic Unit Commitment (SUC)** model for power systems with integrated datacenter operations. The optimization framework considers:
+
+- **Generation Unit Commitment & Dispatch**: Optimal scheduling of thermal generators
+- **Datacenter Power Management**: Flexible load optimization for datacenter operations
+- **Renewable Energy Integration**: Wind and solar power uncertainty modeling
+- **Network Constraints**: Transmission limits and power flow constraints
+- **Energy Storage Systems**: Battery Energy Storage Systems (BESS) optimization
+- **Frequency Dynamics**: System stability and frequency regulation requirements
+
+The model employs **Benders decomposition** to efficiently solve large-scale stochastic programming problems, making it suitable for real-world power system applications.
+
+## Features
+
+✨ **Advanced Optimization Techniques**
+- Multi-cut Benders decomposition for stochastic programming
+- JuMP-based modeling with Gurobi solver integration
+- Linearization techniques for non-linear constraints
+
+📊 **Comprehensive Modeling**
+- Stochastic renewable energy scenario generation
+- Datacenter workload flexibility modeling
+- Generator ramping and minimum up/down time constraints
+- Energy storage charging/discharging optimization
+
+📈 **Visualization & Analysis**
+- Interactive plotting with Plots.jl and PlotlyJS
+- Result export to CSV and text formats
+- Performance benchmarking and debugging tools
+
+🔧 **Modular Design**
+- Clean separation of concerns (constraints, objectives, utilities)
+- Easy-to-extend framework for custom constraints
+- Comprehensive testing and validation modules
+
+## Quick Start
+
+```bash
+# Clone the repository
+git clone https://github.com/Divas1234/module_unitcommitment.git
+cd module_unitcommitment
+
+# Start Julia with the project environment
+julia --project=.
+
+# Install dependencies
+julia> ]instantiate
+
+# Run the main optimization model
+julia> include("main_function.jl")
+```
 
 ## Usage
 
-1.  **Prerequisites:**
-    *   [Julia](https://julialang.org/downloads/) (version 1.6 or higher).
-    *   Install required Julia packages: Run `] instantiate` in the Julia REPL within the project directory. This installs all dependencies from `Project.toml`.
-2.  **Environment Activation:**
-    *   Open a Julia REPL in the project directory.
-    *   Activate the project environment: `julia --project=.` or `julia -p auto --project=.`
-3.  **Model Execution:**
-    *   Run the main script: `julia main_function.jl`
-    *   Alternatively, from within the Julia REPL: `include("main_function.jl")`
+### Prerequisites
+
+- **Julia**: Version 1.6 or higher ([Download](https://julialang.org/downloads/))
+- **Gurobi**: Commercial optimization solver ([License required](https://www.gurobi.com/))
+- **Input Data**: Excel files with system parameters (generators, network, demand, etc.)
+
+### Installation
+
+1. **Clone the Repository**
+   ```bash
+   git clone https://github.com/Divas1234/module_unitcommitment.git
+   cd module_unitcommitment
+   ```
+
+2. **Set Up Julia Environment**
+   ```bash
+   julia --project=.
+   ```
+
+3. **Install Dependencies**
+   ```julia
+   # In Julia REPL
+   using Pkg
+   Pkg.instantiate()
+   ```
+
+### Running the Model
+
+**Basic Execution:**
+```bash
+julia --project=. main_function.jl
+```
+
+**Interactive Mode:**
+```julia
+# In Julia REPL
+include("main_function.jl")
+```
+
+**With Benders Decomposition:**
+```julia
+include("tools/debug_bd.jl")
+```
+
+### Configuration
+
+Edit `src/environment_config.jl` to customize:
+- Optimization solver settings
+- Time horizons and resolution
+- Scenario generation parameters
+- Output directories
 
 ## File Structure
 

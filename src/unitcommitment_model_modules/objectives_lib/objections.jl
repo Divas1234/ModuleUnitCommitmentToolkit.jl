@@ -32,24 +32,28 @@ function set_objective!(
 		config_param,
 		scenarios_prob,
 		refcost,
-		eachslope,
+		eachslope
 )
-	# Check if the input model is a JuMP Model
-	@assert typeof(scuc) == Model "scuc must be a JuMP Model"
+	# Ensure scuc is a JuMP.Model
+	@assert scuc isa Model "scuc must be a JuMP.Model"
 
-	return set_objective_economic!(
-		scuc::Model,
-		NT,
-		NG,
-		ND,
-		NW,
-		NS,
-		units,
-		config_param,
-		scenarios_prob,
-		refcost,
-		eachslope,
-	)
+	# Use Symbol key (was String) for consistency with error message and typical config param usage
+	objtype = config_param.is_SchedulingObjFuncType
+	if objtype === nothing
+		error("config_param must have field :is_SchedulingObjFuncType")
+	end
+
+	if objtype == 2
+		return set_objective_lowcarbon!(
+			scuc, NT, NG, ND, NW, NS, units, config_param, scenarios_prob, refcost, eachslope
+		)
+	elseif objtype == 1
+		return set_objective_economic!(
+			scuc, NT, NG, ND, NW, NS, units, config_param, scenarios_prob, refcost, eachslope
+		)
+	else
+		error("Unsupported SchedulingObjFuncType: $objtype")
+	end
 end
 
 println("\t→ Objective functions module loaded and exported.")

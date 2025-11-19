@@ -64,6 +64,16 @@
 					"label": ""
 				}
 			]
+		},
+		{
+			"path": "src/renewableresource_modules/_renewableenergysimulation.jl",
+			"bookmarks": [
+				{
+					"line": 124,
+					"column": 19,
+					"label": ""
+				}
+			]
 		}
 	]
 }

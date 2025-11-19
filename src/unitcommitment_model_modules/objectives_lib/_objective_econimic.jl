@@ -19,6 +19,7 @@ Set the low-carbon dispatch objective function.
 This objective adds carbon emission cost to the economic objective, enabling low-carbon dispatch.
 
 # Arguments
+
 	- `scuc::Model`: JuMP optimization model
 	- `NT::Int`: Number of time periods
 	- `NG::Int`: Number of generators
@@ -34,6 +35,7 @@ This objective adds carbon emission cost to the economic objective, enabling low
 	- `carbon_price::Float64`: Carbon price (CNY/tCO2)
 
 # Objective Function Structure
+
 Economic cost + carbon emission cost:
 
 ```
@@ -41,19 +43,10 @@ Objective = Economic cost + pₛ * carbon_price * ∑_{s=1}^{NS} ∑_{i=1}^{NG} 
 ```
 """
 function set_objective_lowcarbon!(
-	scuc::Model,
-	NT,
-	NG,
-	ND,
-	NW,
-	NS,
-	units,
-	config_param,
-	scenarios_prob,
-	refcost::AbstractVector,
-	eachslope::AbstractMatrix,
-	emission_factors::AbstractVector,
-	carbon_price::Float64
+		scuc::Model,
+		NT, NG, ND, NW, NS, units, config_param, scenarios_prob, refcost::AbstractVector, eachslope::AbstractMatrix,
+		# emission_factors::AbstractVector,
+		# carbon_price::Float64
 )
 	c₀ = config_param.is_CoalPrice
 	pₛ = scenarios_prob
@@ -77,28 +70,29 @@ function set_objective_lowcarbon!(
 	fuel_piecewise = c₀ * (
 		sum(refcost[i] * x[i, t] for i in 1:NG, t in 1:NT) +
 		pₛ * sum(pgₖ[i + (s - 1) * NG, t, k] * eachslope[k, i]
-			for s in 1:NS, i in 1:NG, t in 1:NT, k in 1:K) +
+		for s in 1:NS, i in 1:NG, t in 1:NT, k in 1:K) +
 		pₛ * sum(ρ⁺ * sr⁺[i + (s - 1) * NG, t] + ρ⁻ * sr⁻[i + (s - 1) * NG, t]
-			for s in 1:NS, i in 1:NG, t in 1:NT)
+		for s in 1:NS, i in 1:NG, t in 1:NT)
 	)
 
 	load_penalty = pₛ * load_curtailment_penalty *
-		sum(Δpd[d + (s - 1) * ND, t] for s in 1:NS, d in 1:ND, t in 1:NT)
+				   sum(Δpd[d + (s - 1) * ND, t] for s in 1:NS, d in 1:ND, t in 1:NT)
 
 	wind_penalty = pₛ * wind_curtailment_penalty *
-		sum(Δpw[w + (s - 1) * NW, t] for s in 1:NS, w in 1:NW, t in 1:NT)
+				   sum(Δpw[w + (s - 1) * NW, t] for s in 1:NS, w in 1:NW, t in 1:NT)
 
 	# Carbon emission cost
+	# TODO: Provide a suitable emission_factors vector (NG × 1, tCO2/MWh) for your generators.
+	# Example: emission_factors = [0.9, 0.7, 0.0, ...]  # Replace with actual values for each generator
+	# emission_factors should be passed as an argument to this function.
+	emission_factors = ones(NG, 1) * 0.5 / 100 # Placeholder: 0.5 tCO2/MWh for all generators; replace with actual data
+	carbon_price = 61.76
 	carbon_cost = pₛ * carbon_price * sum(
 		emission_factors[i] * sum(pgₖ[i + (s - 1) * NG, t, k] for k in 1:K)
-		for s in 1:NS, i in 1:NG, t in 1:NT)
+	for s in 1:NS, i in 1:NG, t in 1:NT)
 
 	@objective(scuc, Min,
-		startup_shutdown +
-		fuel_piecewise +
-		load_penalty +
-		wind_penalty +
-		carbon_cost)
+		startup_shutdown + fuel_piecewise + load_penalty + wind_penalty + carbon_cost)
 
 	println("objective_function\n\tMILP low-carbon objective set")
 	return nothing
@@ -169,16 +163,7 @@ pₛ * [load_penalty * ∑_{s=1}^{NS} ∑_{t=1}^{NT} ∑_{d=1}^{ND} Δpd[d+(s-1)
 """
 function set_objective_economic!(
 		scuc::Model,
-		NT,
-		NG,
-		ND,
-		NW,
-		NS,
-		units,
-		config_param,
-		scenarios_prob,
-		refcost::AbstractVector,
-		eachslope::AbstractMatrix
+		NT, NG, ND, NW, NS, units, config_param, scenarios_prob, refcost::AbstractVector, eachslope::AbstractMatrix
 )
 	c₀ = config_param.is_CoalPrice
 	pₛ = scenarios_prob
@@ -216,12 +201,7 @@ function set_objective_economic!(
 	wind_penalty = pₛ * wind_curtailment_penalty *
 				   sum(Δpw[w + (s - 1) * NW, t] for s in 1:NS, w in 1:NW, t in 1:NT)
 
-	@objective(scuc, Min,
-		startup_shutdown +
-		fuel_piecewise +
-		load_penalty +
-		wind_penalty)
-
+	@objective(scuc, Min, startup_shutdown + fuel_piecewise + load_penalty + wind_penalty)
 	println("objective_function\n\tMILP economic objective set")
 	return nothing
 end
