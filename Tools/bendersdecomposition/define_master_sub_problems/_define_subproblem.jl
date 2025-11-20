@@ -43,7 +43,7 @@ function bd_subfunction(
 		DataCentras::data_centra,
 		psses::pss,
 		scenarios_prob::Float64,
-		config_param::config,
+		config_param::config
 )
 	# Input validation
 	@assert NT>0 "Number of time periods (NT) must be positive."
@@ -59,6 +59,10 @@ function bd_subfunction(
 	# Create the subproblem model
 	scuc_subproblem = Model(Gurobi.Optimizer)
 	set_silent(scuc_subproblem)
+	set_optimizer_attribute(scuc_subproblem, "DualReductions", 0)
+	set_optimizer_attribute(scuc_subproblem, "InfUnbdInfo", 1)
+	set_optimizer_attribute(scuc_subproblem, "Presolve", 0)
+	set_optimizer_attribute(scuc_subproblem, "Method", 2)
 
 	# Define decision variables
 	# scuc_subproblem, x, u, v, su₀, sd₀, pg₀, pgₖ, sr⁺, sr⁻, Δpd, Δpw, κ⁺, κ⁻, pc⁺, pc⁻, qc, pss_sumchargeenergy,
@@ -66,7 +70,7 @@ function bd_subfunction(
 	# 	scuc_subproblem, NT, NG, ND, NC, ND2, NS, NW, config_param
 	# )
 	scuc_subproblem, x, u, v, pg₀, pgₖ, sr⁺, sr⁻, Δpd, Δpw, κ⁺, κ⁻, pc⁺, pc⁻, qc, pss_sumchargeenergy, α, β = define_subproblem_decision_variables!(
-		scuc_subproblem, NT, NG, ND, NC, ND2, NS, NW, config_param,
+		scuc_subproblem, NT, NG, ND, NC, ND2, NS, NW, config_param
 	)
 	θ = Matrix{VariableRef}(undef, 0, 0)
 
@@ -74,11 +78,11 @@ function bd_subfunction(
 	# sub_vars = SCUCModel_decision_variables(u, x, v, su₀, sd₀, pg₀, pgₖ, sr⁺, sr⁻, Δpd, Δpw, κ⁺, κ⁻, pc⁺, pc⁻, qc, pss_sumchargeenergy, α, β,θ)
 	# sub_vars = build_decision_variables(; u, x, v, su₀, sd₀, pg₀, pgₖ, sr⁺, sr⁻, Δpd, Δpw, κ⁺, κ⁻, pc⁺, pc⁻, qc, pss_sumchargeenergy, α, β, θ)
 	sub_vars = build_decision_variables(;
-		x, u, v, pg₀, pgₖ, sr⁺, sr⁻, Δpd, Δpw, κ⁺, κ⁻, pc⁺, pc⁻, qc, pss_sumchargeenergy, α, β, θ,)
+		x, u, v, pg₀, pgₖ, sr⁺, sr⁻, Δpd, Δpw, κ⁺, κ⁻, pc⁺, pc⁻, qc, pss_sumchargeenergy, α, β, θ)
 
 	# Set the objective function
 	scuc_subproblem, obj = set_subproblem_objective_economic!(
-		scuc_subproblem, NT, NG, ND, NW, NS, units, config_param, scenarios_prob,)
+		scuc_subproblem, NT, NG, ND, NW, NS, units, config_param, scenarios_prob)
 	# @show typeof(obj)
 	# NOTE - save the objective function in a dictionary for easy access
 	sub_obj = SCUCModel_objective_function(obj)
@@ -94,6 +98,7 @@ function bd_subfunction(
 
 	NS_copy = (config_param.is_ConsiderMultiCUTs == 1) ? NS : Int64(1)
 
+	#!DEBUG - the constructed sub-problems constraints have s * (NG * NT), other than (NG * NT) for each stochastic scenario.
 	# scuc_subproblem, _units_minuptime_constr, _units_mindowntime_constr, _units_init_stateslogic_consist_constr, _units_states_consist_constr,
 	# _units_init_shutup_cost_constr, _units_init_shutdown_cost_constr,
 	# _units_shutup_cost_constr, _units_shutdown_cost_constr = add_unit_operation_constraints!(
@@ -102,19 +107,15 @@ function bd_subfunction(
 	scuc_subproblem, _winds_curt_constr, _loads_curt_const = add_curtailment_constraints!(scuc_subproblem, NT, ND, NW, NS_copy, loads, winds)# Add curtailment constraints for wind and loads
 	scuc_subproblem, _units_minpower_constr, _units_maxpower_constr = add_generator_power_constraints!(scuc_subproblem, NT, NG, NS_copy, units)# Add generator power constraints
 	scuc_subproblem, _sys_upreserve_constr, _sys_down_reserve_constr = add_reserve_constraints!(
-		scuc_subproblem, NT, NG, NC, NS_copy, units, loads, winds, config_param,)
+		scuc_subproblem, NT, NG, NC, NS_copy, units, loads, winds, config_param)
 	# Add reserve constraints
 	scuc_subproblem, _sys_balance_constr = add_power_balance_constraints!(
-		scuc_subproblem, NT, NG, ND, NC, NW, NS_copy, loads, winds, config_param, ND2,)# Add power balance constraints
+		scuc_subproblem, NT, NG, ND, NC, NW, NS_copy, loads, winds, config_param, ND2)# Add power balance constraints
 	scuc_subproblem, _units_upramp_constr, _units_downramp_constr = add_ramp_constraints!(scuc_subproblem, NT, NG, NS_copy, units, onoffinit)# Add ramp constraints
-	scuc_subproblem,
-	_units_pwlpower_sum_constr,
-	_units_pwlblock_upbound_constr,
-	_units_pwlblock_dwbound_constr = add_pwl_constraints!(scuc_subproblem, NT, NG, NS_copy, units)# Add piecewise linear constraints
-	scuc_subproblem,
-	_transmissionline_powerflow_upbound_constr,
+	scuc_subproblem, _units_pwlpower_sum_constr, _units_pwlblock_upbound_constr, _units_pwlblock_dwbound_constr = add_pwl_constraints!(scuc_subproblem, NT, NG, NS_copy, units)# Add piecewise linear constraints
+	scuc_subproblem, _transmissionline_powerflow_upbound_constr,
 	_transmissionline_powerflow_downbound_constr = add_transmission_constraints!(
-		scuc_subproblem, NT, NG, ND, NC, NW, NL, NS_copy, units, loads, winds, lines, psses, gsdf, config_param, ND2, DataCentras,)# Add transmission constraints
+		scuc_subproblem, NT, NG, ND, NC, NW, NL, NS_copy, units, loads, winds, lines, psses, gsdf, config_param, ND2, DataCentras)# Add transmission constraints
 	# add_storage_constraints!(scuc_subproblem, NT, NC, NS, config_param, psses)
 	# add_datacentra_constraints!(scuc_subproblem, NT, NS, config_param, ND2, DataCentras)
 	# add_frequency_constraints!(scuc_subproblem, NT, NG, NC, NS, units, psses, config_param, contingency_size)
@@ -180,7 +181,7 @@ function bd_subfunction(
 	sub_reformat_cons = SCUCModel_reformat_constraints(
 		all_constr_equalto_sets,
 		all_constr_greaterthan_sets,
-		all_constr_lessthan_sets,
+		all_constr_lessthan_sets
 	)
 
 	# NOTE - save all scuc model components in struct! SCUC_model
@@ -189,7 +190,7 @@ function bd_subfunction(
 		sub_vars::SCUCModel_decision_variables,
 		sub_obj::SCUCModel_objective_function,
 		sub_cons::SCUCModel_constraints,
-		sub_reformat_cons::SCUCModel_reformat_constraints,
+		sub_reformat_cons::SCUCModel_reformat_constraints
 	)
 
 	return scuc_subproblem, sub_scuc_struct
@@ -245,7 +246,7 @@ function define_subproblem_decision_variables!(
 		ND2::Int64,
 		NS::Int64,
 		NW::Int64,
-		config_param::config,
+		config_param::config
 )
 	NS_copy = (config_param.is_ConsiderMultiCUTs == 1) ? NS : Int64(1)
 
@@ -308,24 +309,7 @@ function define_subproblem_decision_variables!(
 	# end
 
 	# println("\t Variables defined.")
-	return scuc_subproblem,
-	x,
-	u,
-	v,
-	pg₀,
-	pgₖ,
-	sr⁺,
-	sr⁻,
-	Δpd,
-	Δpw,
-	κ⁺,
-	κ⁻,
-	pc⁺,
-	pc⁻,
-	qc,
-	pss_sumchargeenergy,
-	α,
-	β
+	return scuc_subproblem, x, u, v, pg₀, pgₖ, sr⁺, sr⁻, Δpd, Δpw, κ⁺, κ⁻, pc⁺, pc⁻, qc, pss_sumchargeenergy, α, β
 end
 
 """
@@ -354,7 +338,7 @@ function set_subproblem_objective_economic!(
 		NS::Int64,
 		units::unit,
 		config_param::config,
-		scenarios_prob::Float64,
+		scenarios_prob::Float64
 )
 	# Input validation
 	@assert NT>0 "Number of time periods (NT) must be positive."
@@ -390,58 +374,19 @@ function set_subproblem_objective_economic!(
 	Δpd = scuc_subproblem[:Δpd]
 	Δpw = scuc_subproblem[:Δpw]
 
-	# Linearize fuel cost curve (assuming function is in linearization.jl)
+	#NOTE - Linearize fuel cost curve (assuming function is in linearization.jl)
 	refcost, eachslope = linearizationfuelcurve(units, NG)
 
 	obj = @objective(scuc_subproblem,
 		Min,
 		# sum(sum(su₀[i, t] + sd₀[i, t] for i in 1:NG) for t in 1:NT)+
-		pₛ *
-		c₀ *
-		(
-			sum(
-				sum(
-					sum(sum(pgₖ[i + (s - 1) * NG, t, :] .* eachslope[:, i] for t ∈ 1:NT)) for
-				s ∈ 1:NS_copy
-				) for i ∈ 1:NG
-			) +
-			sum(sum(sum(x[:, t] .* refcost[:, 1] for t ∈ 1:NT)) for s ∈ 1:NS_copy) +
-			sum(
-				sum(
-					sum(ρ⁺ * sr⁺[i + (s - 1) * NG, t] + ρ⁻ * sr⁻[i + (s - 1) * NG, t] for i ∈ 1:NG)
-				for t ∈ 1:NT
-				) for s ∈ 1:NS_copy
-			)
-		)+pₛ*load_curtailment_penalty*sum(
-			sum(sum(Δpd[(1 + (s - 1) * ND):(s * ND), t]) for t ∈ 1:NT) for s ∈ 1:NS_copy
-		)+pₛ*wind_curtailment_penalty*sum(
-			sum(sum(Δpw[(1 + (s - 1) * NW):(s * NW), t]) for t ∈ 1:NT) for s ∈ 1:NS_copy
-		))
+		pₛ * c₀ *
+		(sum(sum(sum(sum(pgₖ[i + (s - 1) * NG, t, :] .* eachslope[:, i] for t ∈ 1:NT)) for
+			 s ∈ 1:NS_copy) for i ∈ 1:NG) +
+		 sum(sum(sum(x[:, t] .* refcost[:, 1] for t ∈ 1:NT)) for s ∈ 1:NS_copy) +
+		 sum(sum(sum(ρ⁺ * sr⁺[i + (s - 1) * NG, t] + ρ⁻ * sr⁻[i + (s - 1) * NG, t] for i ∈ 1:NG) for t ∈ 1:NT) for s ∈ 1:NS_copy)
+		)+pₛ*load_curtailment_penalty*sum(sum(sum(Δpd[(1 + (s - 1) * ND):(s * ND), t]) for t ∈ 1:NT) for s ∈ 1:NS_copy)+pₛ*wind_curtailment_penalty*sum(sum(sum(Δpw[(1 + (s - 1) * NW):(s * NW), t]) for t ∈ 1:NT) for s ∈ 1:NS_copy))
 
-	# @objective(scuc_subproblem,
-	# 	Min,
-	# 	sum(sum(su₀[i, t] + sd₀[i, t] for i in 1:NG) for t in 1:NT) +
-	# 		pₛ * c₀ *
-	# 		(
-	# 			sum(
-	# 				sum(
-	# 					sum(sum(pgₖ[i + (s - 1) * NG, t, :] .* eachslope[:, i] for t in 1:NT))
-	# 					for s in 1:NS
-	# 				) for i in 1:NG
-	# 			) +
-	# 			sum(sum(sum(x[:, t] .* refcost[:, 1] for t in 1:NT)) for s in 1:NS) +
-	# 			sum(
-	# 				sum(
-	# 					sum(
-	# 						ρ⁺ * sr⁺[i + (s - 1) * NG, t] + ρ⁻ * sr⁻[i + (s - 1) * NG, t]
-	# 						for i in 1:NG
-	# 					) for t in 1:NT
-	# 				) for s in 1:NS
-	# 			)
-	# 		) +
-	# 		pₛ * load_curtailment_penalty * sum(sum(sum(Δpd[(1 + (s - 1) * ND):(s * ND), t]) for t in 1:NT) for s in 1:NS) +
-	# 		pₛ * wind_curtailment_penalty * sum(sum(sum(Δpw[(1 + (s - 1) * NW):(s * NW), t]) for t in 1:NT) for s in 1:NS))
-	# println("objective_function")
 	println("\t LP_type subproblem objective_function \t\t\t\t\t done")
 
 	println("Objective function has been set.")

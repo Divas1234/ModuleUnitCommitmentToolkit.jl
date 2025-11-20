@@ -9,7 +9,7 @@ function estimate_initial_status(
 		NT,
 		onoffinit,
 		units_initial_startup_time,
-		units_initial_shutdown_time = zeros(NG, 1),
+		units_initial_shutdown_time = zeros(NG, 1)
 )
 
 	# onoffinit = zeros(NG, 1)
@@ -18,14 +18,8 @@ function estimate_initial_status(
 
 	for i ∈ 1:NG
 		# Calculate minimum up/down time limits
-		Lupmin[i] = min(
-			NT,
-			Int64(units.min_shutup_time[i, 1] - units_initial_startup_time[i, 1] + 1) *
-			onoffinit[i],
-		)
-		Ldownmin[i] = min(
-			NT,
-			Int64(units.min_shutdown_time[i, 1] - units_initial_shutdown_time[i, 1] + 1) * (1 - onoffinit[i]),
+		Lupmin[i] = min(NT, Int64(units.min_shutup_time[i, 1] - units_initial_startup_time[i, 1] + 1) * onoffinit[i])
+		Ldownmin[i] = min(NT, Int64(units.min_shutdown_time[i, 1] - units_initial_shutdown_time[i, 1] + 1) * (1 - onoffinit[i])
 		)
 	end
 	return Lupmin, Ldownmin
@@ -42,13 +36,7 @@ function add_unit_operation_constraints!(scuc::Model, NT, NG, units, onoffinit)
 	units_initial_startup_time = units.t_0
 	units_initial_shutdown_time = units.t_1
 	Lupmin, Ldownmin = estimate_initial_status(
-		units,
-		NG,
-		NT,
-		onoffinit,
-		units_initial_startup_time,
-		units_initial_shutdown_time,
-	)
+		units, NG, NT, onoffinit, units_initial_startup_time, units_initial_shutdown_time)
 
 	units_minuptime_constr = Vector{ConType}()
 	units_mindowntime_constr = Vector{ConType}()
@@ -111,12 +99,10 @@ function add_generator_power_constraints!(scuc::Model, NT, NG, NS, units)
 
 	units_minpower_constr = @constraint(scuc,
 		[s = 1:NS, t = 1:NT],
-		pg₀[(1 + (s - 1) * NG):(s * NG), t] + sr⁺[(1 + (s - 1) * NG):(s * NG), t] .<=
-		units.p_max[:, 1] .* x[:, t])
+		pg₀[(1 + (s - 1) * NG):(s * NG), t] + sr⁺[(1 + (s - 1) * NG):(s * NG), t] .<= units.p_max[:, 1] .* x[:, t])
 	units_maxpower_constr = @constraint(scuc,
 		[s = 1:NS, t = 1:NT],
-		pg₀[(1 + (s - 1) * NG):(s * NG), t] - sr⁻[(1 + (s - 1) * NG):(s * NG), t] .>=
-		units.p_min[:, 1] .* x[:, t])
+		pg₀[(1 + (s - 1) * NG):(s * NG), t] - sr⁻[(1 + (s - 1) * NG):(s * NG), t] .>= units.p_min[:, 1] .* x[:, t])
 	println("\t constraints: 5) generatos power limits\t\t\t\t\t done")
 	return scuc, units_minpower_constr, units_maxpower_constr
 end

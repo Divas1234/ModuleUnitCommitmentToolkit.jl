@@ -1,5 +1,6 @@
 # include(joinpath(pwd(), "src", "environment_config.jl"))
-include(joinpath(pwd(), "src", "unitcommitment_model_modules", "SUCuccommitmentmodel.jl"))
+project_root = joinpath(@__DIR__, "..", "..", "..")
+include(joinpath(project_root, "src", "unitcommitment_model_modules", "SUCuccommitmentmodel.jl"))
 
 function bd_masterfunction(
 		NT::Int64, NB::Int64, NG::Int64, ND::Int64, NC::Int64, ND2::Int64, NS::Int64, units::unit, config_param::config, scenarios_prob::Float64

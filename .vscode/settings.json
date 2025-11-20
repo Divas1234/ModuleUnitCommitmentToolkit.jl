@@ -45,7 +45,7 @@
     "editor.mouseWheelZoom": true,
     "terminal.integrated.defaultProfile.windows": "PowerShell",
     "terminalAllInOne.terminalTheme": "Atelier Cave",
-    "julia.executablePath": "",
+    "julia.executablePath": "D:\\CommonSoftwares\\ProductiveCodingEditors\\Julia\\bin\\julia.exe",
     "julia.execution.inlineResultsForCellEvaluation": true,
     "julia.execution.codeInREPL": false,
     "vim.autoSwitchInputMethod.enable": true,
@@ -63,7 +63,7 @@
     "powershell.codeFormatting.avoidSemicolonsAsLineTerminators": true,
     "editor.scrollbar.horizontalScrollbarSize": 88,
     "editor.scrollbar.verticalScrollbarSize": 5,
-    "editor.wordWrapColumn": 150,
+    "editor.wordWrapColumn": 256,
     "vim.textwidth": 1,
     "github.copilot.enable": {
         "*": true,
@@ -72,6 +72,9 @@
         "scminput": false,
         "julia": true,
         "python": true
+    },
+    "[julia]": {
+        "editor.wordWrap": "off"
     },
     "terminal.integrated.tabs.defaultColor": "terminal.ansiCyan",
     "window.autoDetectColorScheme": true,
@@ -107,8 +110,489 @@
     // "editor.fontFamily": "Fira Code, JuliaMono, Maple Mono NF, JetBrains Mono, Input Mono, Droid Sans Mono, Hack, Monaspace Neon, Google Sans Code, Maple Mono, Fira Code, Hack, Agave Nerd Font, Jetbrains Mono, MonoLisa, Droid Sans Mono, Fira Code, Geist Mono, Fragment Mono, Monaspace Neon, Oxygen Mono, Monaspace Argon, Input Mono, Julia Mono, DejaVu Code, mononoki, Inconsolata, Geist Mono, Menlo, Monaco, 'Courier New', monospace",
     "editor.allowVariableFontsInAccessibilityMode": true,
     "editor.codeLensFontFamily": "JuliaMono, Maple Mono NF, JetBrains Mono, Input Mono",
-    "editor.fontFamily": "JuliaMono, Fira Code, Maple Mono NF, JetBrains Mono, Input Mono, Droid Sans Mono, Hack, Monaspace Neon, Google Sans Code, Maple Mono, Fira Code, Hack, Agave Nerd Font, Jetbrains Mono, MonoLisa, Droid Sans Mono, Fira Code, Geist Mono, Fragment Mono, Monaspace Neon, Oxygen Mono, Monaspace Argon, Input Mono, Julia Mono, DejaVu Code, mononoki, Inconsolata, Geist Mono, Menlo, Monaco, 'Courier New', monospace",
+    "editor.fontFamily": "JuliaMono, FiraCode Nerd Font, Cascadia Code, Geist Mono, JetBrainsMono Nerd Font, Fira Code, JuliaMono",
     "editor.smoothScrolling": true,
     "workbench.list.smoothScrolling": true,
-    "editor.lineHeight": 0
+    "editor.lineHeight": 0,
+    "editor.wrapOnEscapedLineFeeds": true,
+    "editor.wordWrap": "bounded",
+    // "julia.environmentPath": "C:\\Users\\YUAN\\.julia\\environments\\v1.12",
+    "julia.deleteJuliaCovFiles": false,
+    "editor.tokenColorCustomizations": {
+        "textMateRules": [
+            {
+                "name": "Comments",
+                "scope": [
+                    "comment",
+                    "punctuation.definition.comment"
+                ],
+                "settings": {
+                    "fontStyle": "italic"
+                }
+            },
+            {
+                "name": "Doc Comments",
+                "scope": [
+                    "comment.block.documentation",
+                    "comment.line.documentation"
+                ],
+                "settings": {
+                    "fontStyle": "italic"
+                }
+            },
+            {
+                "name": "Class / Type Names",
+                "scope": [
+                    "entity.name.type",
+                    "entity.name.type.class",
+                    "storage.type.class"
+                ],
+                "settings": {
+                    "fontStyle": "bold underline"
+                }
+            },
+            {
+                "name": "Function Names",
+                "scope": [
+                    "entity.name.function",
+                    "meta.function.identifier"
+                ],
+                "settings": {
+                    "fontStyle": "bold underline"
+                }
+            },
+            {
+                "name": "Keywords",
+                "scope": [
+                    "keyword",
+                    "keyword.control",
+                    "storage.type",
+                    "storage.modifier"
+                ],
+                "settings": {
+                    "fontStyle": ""
+                }
+            },
+            {
+                "name": "Variables (built-ins)",
+                "scope": [
+                    "variable.language",
+                    "variable.language.this",
+                    "variable.language.super"
+                ],
+                "settings": {
+                    "fontStyle": "italic"
+                }
+            },
+            {
+                "name": "Punctuation / Delimiters",
+                "scope": [
+                    "punctuation",
+                    "punctuation.separator",
+                    "punctuation.accessor",
+                    "punctuation.definition.parameters",
+                    "punctuation.definition.string"
+                ],
+                "settings": {
+                    "fontStyle": ""
+                }
+            },
+            {
+                "name": "Numeric & Units",
+                "scope": [
+                    "constant.numeric",
+                    "constant.numeric.decimal",
+                    "constant.numeric.hex",
+                    "constant.numeric.binary",
+                    "keyword.other.unit"
+                ],
+                "settings": {
+                    "fontStyle": ""
+                }
+            },
+            {
+                "name": "Invalid / Errors",
+                "scope": [
+                    "invalid",
+                    "invalid.illegal",
+                    "invalid.deprecated"
+                ],
+                "settings": {
+                    "fontStyle": ""
+                }
+            }
+        ],
+        "[GitHub Light Colorblind (Beta)]": {
+            "textMateRules": [
+                {
+                    "scope": "keyword",
+                    "settings": {
+                        "foreground": "#d73a49",
+                        "fontStyle": "italic"
+                    }
+                },
+                {
+                    "scope": "comment",
+                    "settings": {
+                        "foreground": "#b4c3d2",
+                        "fontStyle": "italic"
+                    }
+                },
+                {
+                    "scope": "string",
+                    "settings": {
+                        "foreground": "#144989"
+                    }
+                },
+                {
+                    "scope": "entity.name.type",
+                    "settings": {
+                        "foreground": "#618dbf",
+                        "fontStyle": "bold"
+                    }
+                },
+                {
+                    "scope": "entity.name.function",
+                    "settings": {
+                        "foreground": "#0a0ae5",
+                        "fontStyle": "bold underline"
+                    }
+                },
+                {
+                    "scope": "constant.numeric",
+                    "settings": {
+                        "foreground": "#c4570e",
+                        "fontStyle": "bold"
+                    }
+                }
+            ]
+        },
+        "[Cursor Light]": {
+            "textMateRules": [
+                {
+                    "scope": "keyword",
+                    "settings": {
+                        "foreground": "#d73a49",
+                        "fontStyle": "italic"
+                    }
+                },
+                {
+                    "scope": "comment",
+                    "settings": {
+                        "foreground": "#b4c3d2",
+                        "fontStyle": "italic"
+                    }
+                },
+                {
+                    "scope": "string",
+                    "settings": {
+                        "foreground": "#144989"
+                    }
+                },
+                {
+                    "scope": "entity.name.type",
+                    "settings": {
+                        "foreground": "#618dbf",
+                        "fontStyle": "bold"
+                    }
+                },
+                {
+                    "scope": "entity.name.function",
+                    "settings": {
+                        "foreground": "#0a0ae5",
+                        "fontStyle": "bold underline"
+                    }
+                },
+                {
+                    "scope": "constant.numeric",
+                    "settings": {
+                        "foreground": "#c4570e",
+                        "fontStyle": "bold"
+                    }
+                }
+            ]
+        },
+        "[GitHub Sharp]": {
+            "textMateRules": [
+                {
+                    "scope": "keyword",
+                    "settings": {
+                        "foreground": "#d73a49",
+                        "fontStyle": "italic"
+                    }
+                },
+                {
+                    "scope": "comment",
+                    "settings": {
+                        "foreground": "#b4c3d2",
+                        "fontStyle": "italic"
+                    }
+                },
+                {
+                    "scope": "string",
+                    "settings": {
+                        "foreground": "#144989"
+                    }
+                },
+                {
+                    "scope": "entity.name.type",
+                    "settings": {
+                        "foreground": "#618dbf",
+                        "fontStyle": "bold"
+                    }
+                },
+                {
+                    "scope": "entity.name.function",
+                    "settings": {
+                        "foreground": "#c56ec1",
+                        "fontStyle": "bold underline"
+                    }
+                },
+                {
+                    "scope": "constant.numeric",
+                    "settings": {
+                        "foreground": "#c4570e",
+                        "fontStyle": "bold"
+                    }
+                }
+            ]
+        },
+        "[GitHub Light]": {
+            "textMateRules": [
+                {
+                    "scope": "keyword",
+                    "settings": {
+                        "foreground": "#8758a6",
+                        "fontStyle": "italic"
+                    }
+                },
+                {
+                    "scope": "comment",
+                    "settings": {
+                        "foreground": "#ccd2da",
+                        "fontStyle": "italic"
+                    }
+                },
+                {
+                    "scope": "string",
+                    "settings": {
+                        "foreground": "#3A7A74"
+                    }
+                },
+                {
+                    "scope": "entity.name.type",
+                    "settings": {
+                        "foreground": "#85A7C8",
+                        "fontStyle": "bold"
+                    }
+                },
+                {
+                    "scope": "entity.name.function",
+                    "settings": {
+                        "foreground": "#5563bf",
+                        "fontStyle": "bold italic underline"
+                    }
+                },
+                {
+                    "scope": "support.function",
+                    "settings": {
+                        "foreground": "#7C8FC2",
+                        "fontStyle": "bold"
+                    }
+                },
+                {
+                    "scope": "variable.function",
+                    "settings": {
+                        "foreground": "#5F70B8",
+                        "fontStyle": "bold underline"
+                    }
+                },
+                {
+                    "scope": "constant.numeric",
+                    "settings": {
+                        "foreground": "#C8895F",
+                        "fontStyle": "bold"
+                    }
+                }
+            ]
+        },
+        "[GitHub Dark Colorblind (Beta)]": {
+            "textMateRules": [
+                {
+                    "scope": "keyword",
+                    "settings": {
+                        "foreground": "#d73a49",
+                        "fontStyle": "italic"
+                    }
+                },
+                {
+                    "scope": "comment",
+                    "settings": {
+                        "foreground": "#213c56",
+                        "fontStyle": "italic"
+                    }
+                },
+                {
+                    "scope": "string",
+                    "settings": {
+                        "foreground": "#59708a"
+                    }
+                },
+                {
+                    "scope": "entity.name.type",
+                    "settings": {
+                        "foreground": "#618dbf",
+                        "fontStyle": "bold"
+                    }
+                },
+                {
+                    "scope": "entity.name.function",
+                    "settings": {
+                        "foreground": "#a59223",
+                        "fontStyle": "bold underline"
+                    }
+                },
+                {
+                    "scope": "support.function",
+                    "settings": {
+                        "foreground": "#7C8FC2",
+                        "fontStyle": "bold"
+                    }
+                },
+                {
+                    "scope": "variable.function",
+                    "settings": {
+                        "foreground": "#5F70B8",
+                        "fontStyle": "bold underline"
+                    }
+                },
+                {
+                    "scope": "constant.numeric",
+                    "settings": {
+                        "foreground": "#c4570e",
+                        "fontStyle": "bold"
+                    }
+                }
+            ]
+        },
+        "[Dark Aether Theme]": {
+            "textMateRules": [
+                {
+                    "scope": "keyword",
+                    "settings": {
+                        "foreground": "#d73a49",
+                        "fontStyle": "italic"
+                    }
+                },
+                {
+                    "scope": "comment",
+                    "settings": {
+                        "foreground": "#314151",
+                        "fontStyle": "italic"
+                    }
+                },
+                {
+                    "scope": "string",
+                    "settings": {
+                        "foreground": "#59708a"
+                    }
+                },
+                {
+                    "scope": "entity.name.type",
+                    "settings": {
+                        "foreground": "#618dbf",
+                        "fontStyle": "bold"
+                    }
+                },
+                {
+                    "scope": "entity.name.function",
+                    "settings": {
+                        "foreground": "#a59223",
+                        "fontStyle": "bold underline"
+                    }
+                },
+                {
+                    "scope": "support.function",
+                    "settings": {
+                        "foreground": "#7C8FC2",
+                        "fontStyle": "bold"
+                    }
+                },
+                {
+                    "scope": "variable.function",
+                    "settings": {
+                        "foreground": "#5F70B8",
+                        "fontStyle": "bold underline"
+                    }
+                },
+                {
+                    "scope": "constant.numeric",
+                    "settings": {
+                        "foreground": "#c4570e",
+                        "fontStyle": "bold"
+                    }
+                }
+            ]
+        },
+        "[Atom One Dark]": {
+            "textMateRules": [
+                {
+                    "scope": "keyword",
+                    "settings": {
+                        "foreground": "#d73a49",
+                        "fontStyle": "italic"
+                    }
+                },
+                {
+                    "scope": "comment",
+                    "settings": {
+                        "foreground": "#374959",
+                        "fontStyle": "italic"
+                    }
+                },
+                {
+                    "scope": "string",
+                    "settings": {
+                        "foreground": "#59708a"
+                    }
+                },
+                {
+                    "scope": "entity.name.type",
+                    "settings": {
+                        "foreground": "#618dbf",
+                        "fontStyle": "bold"
+                    }
+                },
+                {
+                    "scope": "entity.name.function",
+                    "settings": {
+                        "foreground": "#a59223",
+                        "fontStyle": "bold underline"
+                    }
+                },
+                {
+                    "scope": "support.function",
+                    "settings": {
+                        "foreground": "#7C8FC2",
+                        "fontStyle": "bold"
+                    }
+                },
+                {
+                    "scope": "variable.function",
+                    "settings": {
+                        "foreground": "#5F70B8",
+                        "fontStyle": "bold underline"
+                    }
+                },
+                {
+                    "scope": "constant.numeric",
+                    "settings": {
+                        "foreground": "#c4570e",
+                        "fontStyle": "bold"
+                    }
+                }
+            ]
+        },
+        "comments": ""
+    }
 }

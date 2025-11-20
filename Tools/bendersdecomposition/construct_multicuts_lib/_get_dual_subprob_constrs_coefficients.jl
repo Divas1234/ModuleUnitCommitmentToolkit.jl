@@ -1,8 +1,6 @@
-using JuMP
-
 """
 	get_dual_constrs_coefficients(
-		current_model::SCUC_Model,
+		sub_scuc_dic::SCUC_Model,
 		constrs::Dict{Symbol, <:ConstraintRef},
 		opti_termination_status::Bool,
 		NT::Int, # Pass NT as argument
@@ -13,7 +11,7 @@ Calculates the coefficients for constructing dual feasibility or optimality cuts
 based on the constraints of a subproblem model.
 
 Args:
-	current_model: The SCUC_Model containing the solved JuMP model.
+	sub_scuc_dic: The SCUC_Model containing the solved JuMP model.
 	constrs: A dictionary mapping constraint names (Symbols) to their JuMP ConstraintRef objects.
 	opti_termination_status: Boolean indicating if the optimization terminated successfully (true)
 							 or if shadow prices should be used (false, e.g., infeasible/unbounded).
@@ -26,42 +24,50 @@ Returns:
 """
 
 function get_dual_constrs_coefficient(
-		current_model::SCUC_Model, constrs, opti_termination_status
+		sub_scuc_dic::SCUC_Model, constrs, _is_solved_status::MathOptInterface.TerminationStatusCode
 )
 	# Initialize dictionary to store dual coefficient results for each constraint
 	dual_results = Dict{Symbol, dual_subprob_expr_coefficient}()
 
+	# Extract NT and NG from model variables
+	x_var = sub_scuc_dic.model[:x]
+	NG, NT = size(x_var)
+
 	# Iterate through all constraints
-	for (key, value) in constrs
+	for (key, cons) in constrs
+
+		@show key
+
 		# Determine constraint type (EqualTo, LessThan, or GreaterThan) and extract RHS values
-		constr_type_str = string(typeof(value))
+		constr_type_str = string(typeof(cons))
 		if occursin("EqualTo", constr_type_str)
-			rhs_constr = get_equal_to_constr_rhs(current_model.model, value)
+			rhs_constr = get_equal_to_constr_rhs(sub_scuc_dic.model, cons)
 			operator_ass = ones(length(rhs_constr)) .* 1.0  # Equality: positive operator
 		elseif occursin("LessThan", constr_type_str)
-			rhs_constr = get_smaller_than_constr_rhs(current_model.model, value)
+			rhs_constr = get_smaller_than_constr_rhs(sub_scuc_dic.model, cons)
 			operator_ass = ones(length(rhs_constr)) .* -1.0  # LessThan: negative operator for dual formulation
 		elseif occursin("GreaterThan", constr_type_str)
-			rhs_constr = get_greater_than_constr_rhs(current_model.model, value)
+			rhs_constr = get_greater_than_constr_rhs(sub_scuc_dic.model, cons)
 			operator_ass = ones(length(rhs_constr)) .* 1.0  # GreaterThan: positive operator
 		end
 
 		# Extract coefficients for decision variables x, u, v from the constraint
 		# Returns coefficient matrices and metadata about variable ordering and alignment
-		x_coeff, x_sort_order, x_alignment_flag = get_x_coeff_vectors_from_constr(key, current_model.model, value, NT, NG)
-		u_coeff, u_sort_order, u_alignment_flag = get_u_coeff_vectors_from_constr(key, current_model.model, value, NT, NG)
-		v_coeff, v_sort_order, v_alignment_flag = get_v_coeff_vectors_from_constr(key, current_model.model, value, NT, NG)
+		x_coeff, x_sort_order, x_alignment_flag = get_x_coeff_vectors_from_constr(key, sub_scuc_dic.model, cons, NT, NG)
+		u_coeff, u_sort_order, u_alignment_flag = get_u_coeff_vectors_from_constr(key, sub_scuc_dic.model, cons, NT, NG)
+		v_coeff, v_sort_order, v_alignment_flag = get_v_coeff_vectors_from_constr(key, sub_scuc_dic.model, cons, NT, NG)
 
 		# Validate that variable orderings are consistent (at most 2 unique ordering schemes)
 		# @show x_sort_order, u_sort_order, v_sort_order
 		@assert length(Set([x_sort_order, u_sort_order, v_sort_order])) <= 2
 
 		# Retrieve dual coefficients based on optimization termination status
-		if opti_termination_status == true
-			dual_coeff = dual.(value)  # Strong duality for optimality cuts (optimal solution)
-		else
-			dual_coeff = shadow_price.(value)  # Farkas lemma for feasibility cuts (infeasible/unbounded)
-		end
+		# if opti_termination_status == true
+		# 	dual_coeff = dual.(value)  # Strong duality for optimality cuts (optimal solution)
+		# else
+		# 	dual_coeff = shadow_price.(value)  # Farkas lemma for feasibility cuts (infeasible/unbounded)
+		# end
+		dual_coeff = get_subproblem_dual_coefficients(sub_scuc_dic.model, cons, _is_solved_status)
 
 		# Build the dual cut expression coefficient structure
 		dual_results[key] = build_dual_cuts_expr_coefficient(;
@@ -83,7 +89,39 @@ function get_dual_constrs_coefficient(
 			operator_associativity = operator_ass
 		)
 	end
-
 	# Return dictionary containing dual coefficient structures for all constraints
 	return dual_results
+end
+
+# function get_subproblem_dual_coefficients(model, value, status)
+# 	if status ∈ (MOI.OPTIMAL, MOI.LOCALLY_SOLVED)
+# 		return dual.(value)
+# 	elseif status == MOI.INFEASIBLE
+# 		# For infeasible problems, shadow_price returns the Farkas duals (ray)
+# 		return shadow_price.(value)
+# 	else
+# 		return zeros(length(value))
+# 	end
+# end
+
+function get_subproblem_dual_coefficients(model::JuMP.Model, constraints, status)
+	# status = termination_status(model)
+
+	if status ∈ (MOI.OPTIMAL, MOI.LOCALLY_SOLVED)
+		# 正常可行情况，直接取普通 dual（影子价格）
+		return dual.(constraints)
+
+	elseif status == MOI.INFEASIBLE
+		# 检查是否真的计算了 Farkas 证明
+		if MOI.get(model, MOI.DualStatus()) != MOI.INFEASIBILITY_CERTIFICATE
+			error("不可行时无法获取 Farkas dual！\n" *
+				  "请在 optimize!() 之前为求解器打开不可行性证书选项。")
+		end
+
+		# 正确取 Farkas dual 的方法（不能用 shadow_price！）
+		return MOI.get.(backend(model), MOI.ConstraintDual(), index.(constraints))
+
+	else
+		error("不支持的状态: $status")
+	end
 end

@@ -1,6 +1,5 @@
 function get_batch_scuc_subproblems_for_scenario(
-		scuc_subproblem::Model, sub_model_struct::SCUC_Model, winds::wind, config_param::config, NS::Int64, NT::Int64, NW::Int64
-)
+		scuc_subproblem::Model, sub_model_struct::SCUC_Model, winds::wind, config_param::config, NS::Int64, NT::Int64, NW::Int64)
 
 	# batch_scuc_subproblem_dic = OrderedDict{Int64, Any}()
 	batch_scuc_model_strcuture_dic = OrderedDict{Int64, SCUC_Model}()
@@ -15,9 +14,7 @@ function get_batch_scuc_subproblems_for_scenario(
 		scenarios_curve = winds.scenarios_curve[s, :]
 		# ref_subproblem, modified_constr = modify_winds_constr_rhs!(ref_subproblem, winds, scenarios_curve)
 		# reload scuc_model
-		modified_model, modified_constr = modify_winds_constr_rhs!(
-			ref_subproblem_struct.model, winds, scenarios_curve, NT, NW
-		)
+		modified_model, modified_constr = modify_winds_constr_rhs!(ref_subproblem_struct.model, winds, scenarios_curve, NT, NW)
 		# batch_primary_constraints, modify the rhs of the wind curtailment constraints
 		ref_subproblem_struct.constraints.winds_curt_constr = modified_constr
 		# alignment of the modified constraints

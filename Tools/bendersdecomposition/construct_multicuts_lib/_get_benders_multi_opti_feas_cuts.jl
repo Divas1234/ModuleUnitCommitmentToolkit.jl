@@ -37,6 +37,11 @@ function add_feasibilitycut_constraints!(
 	return scuc_masterproblem, add_feasibility_cut
 end
 
+"""
+	This function adds Benders multi-cut constraints to the master problem.
+	It constructs the cumulative expression for the Benders cuts based on the dual coefficients
+	and adds it as a constraint to the master problem.
+"""
 function add_benders_multicuts_constraints!(
 		scuc_masterproblem::JuMP.Model, sub_model_struct::SCUC_Model, is_feasible, dual_coeffs, NG, NT, NW, ND, NL
 )

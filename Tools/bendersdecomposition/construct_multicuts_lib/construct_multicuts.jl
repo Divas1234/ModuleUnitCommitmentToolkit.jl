@@ -1,5 +1,3 @@
-using MathOptInterface
-
 include("_get_benders_multi_opti_feas_cuts.jl")
 include("_get_RhsCoeffi_in_DIFFconstraints.jl")
 include("_get_dual_subprob_constrs_coefficients.jl")

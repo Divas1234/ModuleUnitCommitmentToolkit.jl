@@ -1,24 +1,27 @@
+using MathOptInterface
+using Printf
+using JLD2
 # Bender Decomposition Framework
 # This module provides a framework for solving stochastic optimization problems using Bender's decomposition.
+
 include("define_master_sub_problems/construct_rmp_sub_models.jl")
 include("construct_multicuts_lib/construct_multicuts.jl")
 # include("construct_multicuts_lib/_get_dual_subprob_constrs_coefficients.jl")
 
-using Printf
-
 """
-`bd_framework(scuc_masterproblem::Model, batch_scuc_subproblem_dic::OrderedDict, master_re_constr_sets::Any, sub_re_constr_sets::Any, winds::wind, config_param::config)`
+	`bd_framework(scuc_masterproblem::Model, batch_scuc_subproblem_dic::OrderedDict, master_re_constr_sets::Any, sub_re_constr_sets::Any, winds::wind, config_param::config)`
 
-Implements Bender's decomposition algorithm to solve a two-stage stochastic SCUC problem.
+	Implements Bender's decomposition algorithm to solve a two-stage stochastic SCUC problem.
 
-# Arguments
+	# Arguments
 
-  - `scuc_masterproblem::Model`: The JuMP model for the master problem.
-  - `scuc_subproblem::Model`: The JuMP model for the subproblem.
-  - `master_re_constr_sets`: The reconstruction sets for the master problem.
-  - `sub_re_constr_sets`: The reconstruction sets for the subproblem.
-  - `batch_scuc_subproblem_dic::OrderedDict`: The dictionary of batch subproblems for the scenario.
+	- `scuc_masterproblem::Model`: The JuMP model for the master problem.
+	- `scuc_subproblem::Model`: The JuMP model for the subproblem.
+	- `master_re_constr_sets`: The reconstruction sets for the master problem.
+	- `sub_re_constr_sets`: The reconstruction sets for the subproblem.
+	- `batch_scuc_subproblem_dic::OrderedDict`: The dictionary of batch subproblems for the scenario.
 """
+
 function bd_framework(
 		scuc_masterproblem::Model,
 		scuc_subproblem::Model,
@@ -30,7 +33,7 @@ function bd_framework(
 
 	# Constants and parameters
 	MAXIMUM_ITERATIONS = 10000 # Maximum number of iterations for Bender's decomposition
-	ABSOLUTE_OPTIMIZATION_GAP = 5e-2 # Absolute gap for optimality
+	ABSOLUTE_OPTIMIZATION_GAP = 1e-3 # Absolute gap for optimality
 	NUMERICAL_TOLERANCE = 1e-6 # Numerical tolerance for stability
 
 	# Initialize bounds
@@ -48,6 +51,8 @@ function bd_framework(
 
 	# Iteration loop
 	for iteration ∈ 1:MAXIMUM_ITERATIONS
+		@show iteration
+
 		# Solve the master problem
 		optimize!(scuc_masterproblem)
 
@@ -63,14 +68,18 @@ function bd_framework(
 		v⁽⁰⁾ = value.(scuc_masterproblem[:v])
 		iter_value = (x⁽⁰⁾, u⁽⁰⁾, v⁽⁰⁾)
 
+		# Save iter_value to JLD file
+		tem_path = "D:\\GithubClonefiles\\module_unitcommitment\\tools\\bendersdecomposition\\"
+		save(joinpath(tem_path, "iter_value_iteration_$iteration.jld2"),
+			"iteration", iteration,
+			"x", x⁽⁰⁾,
+			"u", u⁽⁰⁾,
+			"v", v⁽⁰⁾)
+
 		# Solve subproblem with feasibility cut
 		ret_dic = (config_param.is_ConsiderMultiCUTs == 1) ?
-				  batch_solve_subproblem_with_feasibility_cut(
-			batch_scuc_subproblem_dic, x⁽⁰⁾, u⁽⁰⁾, v⁽⁰⁾, NS
-		) :
-				  batch_solve_subproblem_with_feasibility_cut(
-			batch_scuc_subproblem_dic, x⁽⁰⁾, u⁽⁰⁾, v⁽⁰⁾
-		)
+				  batch_solve_subproblem_with_feasibility_cut(batch_scuc_subproblem_dic, x⁽⁰⁾, u⁽⁰⁾, v⁽⁰⁾, NS) :
+				  batch_solve_subproblem_with_feasibility_cut(batch_scuc_subproblem_dic, x⁽⁰⁾, u⁽⁰⁾, v⁽⁰⁾)
 
 		# Update bounds
 		batch_subproblem_nummber = length(ret_dic)
@@ -113,11 +122,6 @@ function bd_framework(
 					iter_value
 				)
 			end
-			is_feasible = ret.is_feasible
-			dual_coeffs = ret.dual_coeffs
-			scuc_masterproblem, _ = add_benders_multicuts_constraints!(
-				scuc_masterproblem, sub_model_struct, is_feasible, dual_coeffs, NG, NT, NW, ND, NL
-			)
 		end
 	end
 end
@@ -198,65 +202,64 @@ function batch_solve_subproblem_with_feasibility_cut(
 )
 	ret_dic = OrderedDict{Int64, Any}()
 	for s ∈ 1:NS
-		ret = solve_subproblem_with_feasibility_cut(
-			batch_scuc_subproblem_dic[s]::SCUC_Model, x, u, v
-		)
+		ret = solve_subproblem_with_feasibility_cut(batch_scuc_subproblem_dic[s]::SCUC_Model, x, u, v)
 		ret_dic[s] = ret
 	end
 	return ret_dic
 end
 
 function solve_subproblem_with_feasibility_cut(scuc_subproblem_dic::SCUC_Model, x, u, v)
-	scuc_subproblem = scuc_subproblem_dic.model
+	"""
+		model::Union{Missing, JuMP.Model}
+		decision_variables::SCUCModel_decision_variables
+		objective_function::SCUCModel_objective_function
+		constraints::SCUCModel_constraints
+		reformated_constraints::SCUCModel_reformat_constraints
+	"""
+	new_scuc_subproblem = copy_scuc_subproblem(scuc_subproblem_dic)
 
 	# Fix variables in subproblem
-	fix.(scuc_subproblem[:x], x; force = true)
-	fix.(scuc_subproblem[:u], u; force = true)
-	fix.(scuc_subproblem[:v], v; force = true)
-	# fix.(scuc_subproblem[:relaxed_su₀], su₀) # commented out
-	# fix.(scuc_subproblem[:relaxed_sd₀], sd₀) # commented out
+	fix.(new_scuc_subproblem.model[:x], x; force = true)
+	fix.(new_scuc_subproblem.model[:u], u; force = true)
+	fix.(new_scuc_subproblem.model[:v], v; force = true)
 
-	set_optimizer_attribute(scuc_subproblem, "InfUnbdInfo", 1)
-	set_optimizer_attribute(scuc_subproblem, "DualReductions", 0)
 	# Optimize subproblem
-	optimize!(scuc_subproblem)
+	set_silent(new_scuc_subproblem.model)
+	try
+		optimize!(new_scuc_subproblem.model)
+	catch e
+		@warn "Subproblem optimization failed with error: $e"
+		rethrow(e)
+	end
 
 	# Check if subproblem is solved and feasible
-	opti_termination_status = is_solved_and_feasible(scuc_subproblem; dual = true)
+	# opti_termination_status = is_solved_and_feasible(scuc_subproblem; dual = true)
 
-	constraints = scuc_subproblem_dic.reformated_constraints
-	res_smaller_than = get_dual_constrs_coefficient(scuc_subproblem_dic, constraints._smaller_than, opti_termination_status)
-	res_equal_to = get_dual_constrs_coefficient(scuc_subproblem_dic, constraints._equal_to, opti_termination_status)
-	res_greater_than = get_dual_constrs_coefficient(scuc_subproblem_dic, constraints._greater_than, opti_termination_status)
+	_is_solved_status = termination_status(new_scuc_subproblem.model)
 
+	constraints = new_scuc_subproblem.reformated_constraints
+	res_smaller_than = get_dual_constrs_coefficient(new_scuc_subproblem, constraints._smaller_than, _is_solved_status)
+	res_equal_to = get_dual_constrs_coefficient(new_scuc_subproblem, constraints._equal_to, _is_solved_status)
+	res_greater_than = get_dual_constrs_coefficient(new_scuc_subproblem, constraints._greater_than, _is_solved_status)
 	final_dual_subproblem_coefficient_results = merge(res_equal_to, res_smaller_than, res_greater_than)
 
-	if opti_termination_status == true
+	if _is_solved_status ∈ (MOI.OPTIMAL, MOI.LOCALLY_SOLVED)
 		# Return solution information with scaled duals for numerical stability
 
 		return (
 			is_feasible = true,
-			θ = objective_value(scuc_subproblem),
-			ray_x = reduced_cost.(scuc_subproblem[:x]),
-			ray_u = reduced_cost.(scuc_subproblem[:u]),
-			ray_v = reduced_cost.(scuc_subproblem[:v]),
+			θ = objective_value(new_scuc_subproblem.model),
+			ray_x = reduced_cost.(new_scuc_subproblem.model[:x]),
+			ray_u = reduced_cost.(new_scuc_subproblem.model[:u]),
+			ray_v = reduced_cost.(new_scuc_subproblem.model[:v]),
 
 			# NOTE - strong convex duality
 			dual_coeffs = final_dual_subproblem_coefficient_results,
 
 			# NOTE - additional dual info
-			dual_smaller_than_constr_dic = Dict(
-				k => dual.(v) for
-			(k, v) in scuc_subproblem_dic.reformated_constraints._smaller_than
-			),
-			dual_greater_than_constr_dic = Dict(
-				k => dual.(v) for
-			(k, v) in scuc_subproblem_dic.reformated_constraints._greater_than
-			),
-			dual_equal_to_constr_dic = Dict(
-				k => dual.(v) for
-			(k, v) in scuc_subproblem_dic.reformated_constraints._equal_to
-			)
+			dual_smaller_than_constr_dic = Dict(k => dual.(v) for (k, v) in new_scuc_subproblem.reformated_constraints._smaller_than),
+			dual_greater_than_constr_dic = Dict(k => dual.(v) for (k, v) in new_scuc_subproblem.reformated_constraints._greater_than),
+			dual_equal_to_constr_dic = Dict(k => dual.(v) for (k, v) in new_scuc_subproblem.reformated_constraints._equal_to)
 		)
 	else
 		# Get Farkas certificate (dual rays) for infeasibility
@@ -265,27 +268,18 @@ function solve_subproblem_with_feasibility_cut(scuc_subproblem_dic::SCUC_Model, 
 		# Scale and process the Farkas certificate
 		return (
 			is_feasible = false,
-			dual_θ = dual_objective_value(scuc_subproblem),
-			ray_x = reduced_cost.(scuc_subproblem[:x]),
-			ray_u = reduced_cost.(scuc_subproblem[:u]),
-			ray_v = reduced_cost.(scuc_subproblem[:v]),
+			dual_θ = dual_objective_value(new_scuc_subproblem.model),
+			ray_x = reduced_cost.(new_scuc_subproblem.model[:x]),
+			ray_u = reduced_cost.(new_scuc_subproblem.model[:u]),
+			ray_v = reduced_cost.(new_scuc_subproblem.model[:v]),
 
 			# NOTE - farkas_dual process
 			dual_coeffs = final_dual_subproblem_coefficient_results,
 
 			# NOTE - additional dual info
-			dual_smaller_than_constr_dic = Dict(
-				k => shadow_price.(v) for
-			(k, v) in scuc_subproblem_dic.reformated_constraints._smaller_than
-			),
-			dual_greater_than_constr_dic = Dict(
-				k => shadow_price.(v) for
-			(k, v) in scuc_subproblem_dic.reformated_constraints._greater_than
-			),
-			dual_equal_to_constr_dic = Dict(
-				k => shadow_price.(v) for
-			(k, v) in scuc_subproblem_dic.reformated_constraints._equal_to
-			)
+			dual_smaller_than_constr_dic = Dict(k => shadow_price.(v) for (k, v) in new_scuc_subproblem.reformated_constraints._smaller_than),
+			dual_greater_than_constr_dic = Dict(k => shadow_price.(v) for (k, v) in new_scuc_subproblem.reformated_constraints._greater_than),
+			dual_equal_to_constr_dic = Dict(k => shadow_price.(v) for (k, v) in new_scuc_subproblem.reformated_constraints._equal_to)
 		)
 	end
 end
@@ -335,3 +329,80 @@ function scale_duals(duals; scale_factor = 1e3, min_magnitude = 1e-10)
 	end
 	return scaled_duals
 end
+
+function copy_scuc_subproblem(scuc::SCUC_Model)::SCUC_Model
+	new_model, ref_map = JuMP.copy_model(scuc.model)
+
+	new_scuc = deepcopy(scuc)
+	new_scuc.model = new_model
+
+	set_optimizer(new_model, Gurobi.Optimizer)
+
+	set_optimizer_attribute(new_model, "OutputFlag", 0)
+	set_optimizer_attribute(new_model, "LogToConsole", 0)
+	set_optimizer_attribute(new_model, "DualReductions", 0)
+	set_optimizer_attribute(new_model, "InfUnbdInfo", 1)
+	set_optimizer_attribute(new_model, "Presolve", 0)   # 子问题关预求解最快
+	set_optimizer_attribute(new_model, "Method", 2)   # 双重单纯形
+	set_optimizer_attribute(new_model, "NumericFocus", 3)   # 防数值病态
+	set_optimizer_attribute(new_model, "FeasibilityTol", 1e-9)
+
+	# 额外数值稳定参数（防 10003）
+	set_optimizer_attribute(new_model, "NumericFocus", 3)
+	set_optimizer_attribute(new_model, "FeasibilityTol", 1e-9)
+
+	function remap_refs(container)
+		if container isa JuMP.ConstraintRef
+			return ref_map[container]
+		elseif container isa AbstractDict
+			return Dict(k => remap_refs(v) for (k, v) in container)
+		elseif container isa AbstractArray
+			return map(remap_refs, container)
+		elseif container isa Tuple
+			return Tuple(remap_refs(x) for x in container)
+		elseif container isa NamedTuple
+			return NamedTuple{keys(container)}(Tuple(remap_refs(v) for v in values(container)))
+		else
+			return container
+		end
+	end
+
+	new_scuc.constraints = remap_refs(new_scuc.constraints)
+	new_scuc.reformated_constraints = SCUCModel_reformat_constraints(
+		remap_refs(new_scuc.reformated_constraints._equal_to),
+		remap_refs(new_scuc.reformated_constraints._greater_than),
+		remap_refs(new_scuc.reformated_constraints._smaller_than)
+	)
+
+	return new_scuc
+end
+
+# function copy_scuc_subproblem(scuc::SCUC_Model)::SCUC_Model
+# 	new_model, ref_map = JuMP.copy_model(scuc.model)
+# 	new_scuc = deepcopy(scuc)
+# 	new_scuc.model = new_model
+
+# 	set_optimizer(new_model, Gurobi.Optimizer)
+# 	set_optimizer_attribute(new_model, "OutputFlag", 0)
+# 	set_optimizer_attribute(new_model, "Presolve", 0)
+# 	set_optimizer_attribute(new_model, "Method", 2)
+# 	set_optimizer_attribute(new_model, "NumericFocus", 3)
+# 	set_optimizer_attribute(new_model, "FeasibilityTol", 1e-9)
+# 	set_optimizer_attribute(new_model, "DualReductions", 0)
+# 	set_optimizer_attribute(new_model, "InfUnbdInfo", 1)
+
+# 	remap(x) = x isa JuMP.ConstraintRef ? get(ref_map, x, x) : x
+# 	deep_remap(x) = x isa JuMP.ConstraintRef ? remap(x) :
+# 					x isa Union{AbstractDict, AbstractArray, Tuple, NamedTuple} ?
+# 					map(deep_remap, x) : x
+
+# 	new_scuc.constraints = deep_remap(new_scuc.constraints)
+# 	rc = new_scuc.reformated_constraints
+# 	new_scuc.reformated_constraints = SCUCModel_reformat_constraints(
+# 		deep_remap(rc._equal_to),
+# 		deep_remap(rc._greater_than),
+# 		deep_remap(rc._smaller_than)
+# 	)
+
+# 	return new_scuc
+# end
