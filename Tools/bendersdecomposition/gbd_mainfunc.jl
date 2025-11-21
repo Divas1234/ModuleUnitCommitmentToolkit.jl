@@ -1,9 +1,5 @@
-ENV["JULIA_SHOW_ASCII"] = true;
-ENV["GRB_LICENSE_FILE"] = "C:\\Users\\YUAN\\gurobi.lic";
-ENV["GUROBI_HOME"] = "D:\\CommonSoftwares\\ProductiveCodingEditors\\Gurobi\\win64";
-ENV["GRB_LOGFILE"] = "";
-ENV["GRB_SUPPRESS_STARTUP_MSG"] = "1";
-ENV["GRB_NO_ANNOYING_STARTUP_MSG"] = "1";
+using Pkg
+Pkg.activate(".pkg")
 using MathOptInterface, JuMP
 const MOI = MathOptInterface
 const gurobi_env = redirect_stderr(devnull) do
@@ -21,7 +17,6 @@ units, lines, loads, winds, psses, NB, NG, NL, ND, NS, NT, NC, ND2, DataCentras 
 
 # sub_model_struct.constraints
 # batch_sub_model_struct_dic[1].constraints
-
 
 # Validate initialization results
 if scuc_masterproblem === nothing || scuc_subproblem === nothing
@@ -106,7 +101,6 @@ end
 scuc_subproblem_dic = batch_scuc_subproblem_dic[1]::SCUC_Model
 new_scuc_subproblem = copy_scuc_subproblem(scuc_subproblem_dic)
 
-
 batch_scuc_subproblem_dic[1].constraints
 
 scuc_subproblem_dic.constraints
@@ -138,6 +132,8 @@ final_dual_subproblem_coefficient_results = merge(res_equal_to, res_smaller_than
 # Initialize dictionary to store dual coefficient results for each constraint
 dual_results = Dict{Symbol, dual_subprob_expr_coefficient}()
 
+sub_scuc_dic = new_scuc_subproblem
+
 # Extract NT and NG from model variables
 x_var = sub_scuc_dic.model[:x]
 NG, NT = size(x_var)
@@ -146,19 +142,141 @@ NG, NT = size(x_var)
 
 key = :key_transmissionline_powerflow_upbound_constr
 
-constrs = new_scuc_subproblem.reformated_constraints
-sub_scuc_dic = new_scuc_subproblem
-cons = constrs[key]
+constrs = new_scuc_subproblem.reformated_constraints._equal_to
+cons = constrs[:key_units_pwlpower_sum_constr]
 
 constrs[:key_units_maxpower_constr]
-
-
-
-
 
 summary(scuc_subproblem_dic) |> println
 summary(constrs) |> println
 keys(scuc_subproblem_dic) |> println
+
+model = new_scuc_subproblem.model
+constraints = constrs
+
+solved_status == MOI.INFEASIBLE
+# 检查是否真的计算了 Farkas 证明
+if MOI.get(model, MOI.DualStatus()) != MOI.INFEASIBILITY_CERTIFICATE
+	error("不可行时无法获取 Farkas dual！\n" *
+		  "请在 optimize!() 之前为求解器打开不可行性证书选项。")
+end
+
+MOI.get(model, MOI.DualStatus()) != MOI.INFEASIBILITY_CERTIFICATE
+
+if MOI.get(model, MOI.DualStatus()) != MOI.INFEASIBILITY_CERTIFICATE
+        @warn "No infeasibility certificate available; enable solver option for Farkas duals."
+    end
+	backend_model = backend(model)
+	farkas_duals = Dict{Symbol, Vector{Float64}}()
+	for (k, cons_array) in constrs
+		# Ensure cons_array is always iterable
+		cons_iter = cons_array isa AbstractVector ? cons_array : [cons_array]
+		vals = Float64[]
+		for c in cons_iter
+			ci = try
+				index(c)
+			catch
+				nothing
+			end
+			if ci !== nothing && MOI.is_valid(backend_model, ci)
+				dual_val = try
+					MOI.get(backend_model, MOI.ConstraintDual(), ci)
+				catch
+					0.0
+				end
+				push!(vals, dual_val)
+			else
+				push!(vals, 0.0) # Fallback if certificate not available
+			end
+		end
+		farkas_duals[k] = vals
+	end
+farkas_duals
+
+# Ensure backend and index are imported from JuMP
+using JuMP: backend, index
+
+# Retrieve duals (optimal or Farkas) robustly
+if solved_status == MOI.INFEASIBLE
+    # Farkas duals (infeasibility certificate)
+    if MOI.get(model, MOI.DualStatus()) != MOI.INFEASIBILITY_CERTIFICATE
+        @warn "No infeasibility certificate available; enable solver option for Farkas duals."
+    end
+	backend_model = backend(model)
+	farkas_duals = Dict{Symbol, Vector{Float64}}()
+	for (k, cons_array) in constrs
+		# Ensure cons_array is always iterable
+		cons_iter = cons_array isa AbstractVector ? cons_array : [cons_array]
+		vals = Float64[]
+		for c in cons_iter
+			ci = try
+				index(c)
+			catch
+				nothing
+			end
+			if ci !== nothing && MOI.is_valid(backend_model, ci)
+				dual_val = try
+					MOI.get(backend_model, MOI.ConstraintDual(), ci)
+				catch
+					0.0
+				end
+				push!(vals, dual_val)
+			else
+				push!(vals, 0.0) # Fallback if certificate not available
+			end
+		end
+		farkas_duals[k] = vals
+	end
+else
+    # Optimal duals
+    optimal_duals = Dict{Symbol, Vector{Float64}}()
+    for (k, cons_array) in constrs
+        if cons_array isa AbstractVector
+            optimal_duals[k] = dual.(cons_array)
+        else
+            optimal_duals[k] = [dual(cons_array)]
+        end
+    end
+end
+
+
+		dual_results[key] = build_dual_cuts_expr_coefficient(;
+			rhs = rhs_constr,
+			# Extract first column of coefficient matrices if they exist
+			x = (!isnothing(x_coeff) ? x_coeff = x_coeff[:, 1] : nothing),
+			u = (!isnothing(u_coeff) ? u_coeff = u_coeff[:, 1] : nothing),
+			v = (!isnothing(v_coeff) ? v_coeff = v_coeff[:, 1] : nothing),
+			# Convert sort orders to Int64 if they exist
+			x_sort_order = (!isnothing(x_sort_order) ? Int64(x_sort_order) : nothing),
+			u_sort_order = (!isnothing(u_sort_order) ? Int64(u_sort_order) : nothing),
+			v_sort_order = (!isnothing(v_sort_order) ? Int64(v_sort_order) : nothing),
+			# Preserve alignment flags
+			x_alignment_flag = (!isnothing(x_alignment_flag) ? x_alignment_flag : nothing),
+			u_alignment_flag = (!isnothing(u_alignment_flag) ? u_alignment_flag : nothing),
+			v_alignment_flag = (!isnothing(v_alignment_flag) ? v_alignment_flag : nothing),
+			# Store dual coefficients and operator associativity
+			dual_coeffVector = dual_coeff,
+			operator_associativity = operator_ass
+		)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 @show key
 

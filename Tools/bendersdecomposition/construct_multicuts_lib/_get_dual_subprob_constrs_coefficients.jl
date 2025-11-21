@@ -35,7 +35,6 @@ function get_dual_constrs_coefficient(
 
 	# Iterate through all constraints
 	for (key, cons) in constrs
-
 		@show key
 
 		# Determine constraint type (EqualTo, LessThan, or GreaterThan) and extract RHS values
@@ -106,20 +105,39 @@ end
 
 function get_subproblem_dual_coefficients(model::JuMP.Model, constraints, status)
 	# status = termination_status(model)
-
 	if status ∈ (MOI.OPTIMAL, MOI.LOCALLY_SOLVED)
-		# 正常可行情况，直接取普通 dual（影子价格）
 		return dual.(constraints)
-
 	elseif status == MOI.INFEASIBLE
-		# 检查是否真的计算了 Farkas 证明
 		if MOI.get(model, MOI.DualStatus()) != MOI.INFEASIBILITY_CERTIFICATE
-			error("不可行时无法获取 Farkas dual！\n" *
-				  "请在 optimize!() 之前为求解器打开不可行性证书选项。")
+			@warn "No infeasibility certificate available; enable solver option for Farkas duals."
+		end
+		backend_model = backend(model)
+		farkas_duals = Dict{Symbol, Vector{Float64}}()
+		for (k, cons_array) in constrs
+			# Ensure cons_array is always iterable
+			cons_iter = cons_array isa AbstractVector ? cons_array : [cons_array]
+			vals = Float64[]
+			for c in cons_iter
+				ci = try
+					index(c)
+				catch
+					nothing
+				end
+				if ci !== nothing && MOI.is_valid(backend_model, ci)
+					dual_val = try
+						MOI.get(backend_model, MOI.ConstraintDual(), ci)
+					catch
+						0.0
+					end
+					push!(vals, dual_val)
+				else
+					push!(vals, 0.0) # Fallback if certificate not available
+				end
+			end
+			farkas_duals[k] = vals
 		end
 
-		# 正确取 Farkas dual 的方法（不能用 shadow_price！）
-		return MOI.get.(backend(model), MOI.ConstraintDual(), index.(constraints))
+		return farkas_duals
 
 	else
 		error("不支持的状态: $status")

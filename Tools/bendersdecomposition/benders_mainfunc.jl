@@ -1,5 +1,15 @@
+using MathOptInterface
+using Printf
+using JLD2
+
 # Enable ASCII output for Julia REPL
 ENV["JULIA_SHOW_ASCII"] = true
+ENV["JULIA_SHOW_ASCII"] = true;
+ENV["GRB_LICENSE_FILE"] = "C:\\Users\\YUAN\\gurobi.lic";
+ENV["GUROBI_HOME"] = "D:\\CommonSoftwares\\ProductiveCodingEditors\\Gurobi\\win64";
+ENV["GRB_LOGFILE"] = "";
+ENV["GRB_SUPPRESS_STARTUP_MSG"] = "1";
+ENV["GRB_NO_ANNOYING_STARTUP_MSG"] = "1";
 
 
 # Include necessary modules and scripts for environment configuration, stochastic simulation, and data reading

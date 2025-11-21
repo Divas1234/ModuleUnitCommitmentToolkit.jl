@@ -26,14 +26,14 @@
     "guides.stack.style": "dotted",
     "guides.normal.width": 0.25,
     "guides.stack.width": 0.5,
-    "editor.fontSize": 16,
+    "editor.fontSize": 14,
     "todo-tree.highlights.useColourScheme": true,
     "vim.highlightedyank.enable": true,
     "editor.formatOnPaste": false,
     "editor.formatOnSave": false,
     "editor.formatOnType": false,
     "terminal.integrated.fontLigatures.enabled": true,
-    "terminal.integrated.fontFamily": "Fira Code, MesloLGS NF, Geist Mono, Maple Mono, Hack Nerd Font, Hack Nerd Font",
+    "terminal.integrated.fontFamily": "Fira Code, Cascadia Code, MesloLGS NF, Geist Mono, Maple Mono, Hack Nerd Font, Hack Nerd Font",
     "terminal.integrated.fontSize": 14,
     "git.terminalGitEditor": true,
     "terminal.integrated.suggest.enabled": true,
@@ -110,7 +110,7 @@
     // "editor.fontFamily": "Fira Code, JuliaMono, Maple Mono NF, JetBrains Mono, Input Mono, Droid Sans Mono, Hack, Monaspace Neon, Google Sans Code, Maple Mono, Fira Code, Hack, Agave Nerd Font, Jetbrains Mono, MonoLisa, Droid Sans Mono, Fira Code, Geist Mono, Fragment Mono, Monaspace Neon, Oxygen Mono, Monaspace Argon, Input Mono, Julia Mono, DejaVu Code, mononoki, Inconsolata, Geist Mono, Menlo, Monaco, 'Courier New', monospace",
     "editor.allowVariableFontsInAccessibilityMode": true,
     "editor.codeLensFontFamily": "JuliaMono, Maple Mono NF, JetBrains Mono, Input Mono",
-    "editor.fontFamily": "JuliaMono, FiraCode Nerd Font, Cascadia Code, Geist Mono, JetBrainsMono Nerd Font, Fira Code, JuliaMono",
+    "editor.fontFamily": "JuliaMono, Cascadia Code, FiraCode Nerd Font, Geist Mono, JetBrainsMono Nerd Font, Fira Code",
     "editor.smoothScrolling": true,
     "workbench.list.smoothScrolling": true,
     "editor.lineHeight": 0,
@@ -593,6 +593,5 @@
                 }
             ]
         },
-        "comments": ""
     }
 }
