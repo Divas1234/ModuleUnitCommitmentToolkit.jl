@@ -65,7 +65,8 @@ println("Initializing Benders decomposition models...")
 println("="^80)
 
 # Initialize all models and data structures
-scuc_masterproblem, scuc_subproblem, master_model_struct, sub_model_struct, batch_sub_model_struct_dic, config_param, units, lines, loads, winds, psses, NB, NG, NL, ND, NS, NT, NC, ND2, DataCentras = benders_mainfunc_modules()
+scuc_masterproblem, scuc_subproblem, master_model_struct, sub_model_struct, batch_sub_model_struct_dic,
+config_param, units, lines, loads, winds, psses, NB, NG, NL, ND, NS, NT, NC, ND2, DataCentras = benders_mainfunc_modules()
 
 # Validate initialization results
 if scuc_masterproblem === nothing || scuc_subproblem === nothing
@@ -129,7 +130,7 @@ try
 		master_model_struct,
 		batch_sub_model_struct_dic,
 		winds,
-		config_param,
+		config_param
 	)
 
 	println("\n" * "="^80)

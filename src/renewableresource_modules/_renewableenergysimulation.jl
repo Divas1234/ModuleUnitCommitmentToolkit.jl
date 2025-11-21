@@ -147,7 +147,7 @@ function genscenario(WindsFreqParam, flag, NT = 24)
         scenarios_curvebase = reshape(scenarios_curvebase, 1, NT)
 
         Random.seed!(123)  # Set seed for reproducibility
-        scenarios_nums = 1
+        scenarios_nums = 5
 
         # Generate random samples from Weibull distribution
         sample_sets = rand(Weibull(), scenarios_nums * NT) * 0.01

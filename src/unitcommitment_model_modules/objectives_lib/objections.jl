@@ -32,7 +32,7 @@ function set_objective!(
 		config_param,
 		scenarios_prob,
 		refcost,
-		eachslope,
+		eachslope
 )
 	# Check if the input model is a JuMP Model
 	@assert typeof(scuc) == Model "scuc must be a JuMP Model"
@@ -48,7 +48,7 @@ function set_objective!(
 		config_param,
 		scenarios_prob,
 		refcost,
-		eachslope,
+		eachslope
 	)
 end
 
