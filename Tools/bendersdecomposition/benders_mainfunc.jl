@@ -11,7 +11,6 @@ ENV["GRB_LOGFILE"] = "";
 ENV["GRB_SUPPRESS_STARTUP_MSG"] = "1";
 ENV["GRB_NO_ANNOYING_STARTUP_MSG"] = "1";
 
-
 # Include necessary modules and scripts for environment configuration, stochastic simulation, and data reading
 project_root = joinpath(@__DIR__, "..", "..")
 include(joinpath(project_root, "src", "environment_config.jl"));

@@ -103,41 +103,53 @@ end
 # 	end
 # end
 
+import MathOptInterface
+
 function get_subproblem_dual_coefficients(model::JuMP.Model, constraints, status)
 	# status = termination_status(model)
 	if status ∈ (MOI.OPTIMAL, MOI.LOCALLY_SOLVED)
+		@info "this is the optimal status."
+		@show typeof(dual.(constraints))
 		return dual.(constraints)
 	elseif status == MOI.INFEASIBLE
-		if MOI.get(model, MOI.DualStatus()) != MOI.INFEASIBILITY_CERTIFICATE
-			@warn "No infeasibility certificate available; enable solver option for Farkas duals."
-		end
-		backend_model = backend(model)
-		farkas_duals = Dict{Symbol, Vector{Float64}}()
-		for (k, cons_array) in constrs
-			# Ensure cons_array is always iterable
-			cons_iter = cons_array isa AbstractVector ? cons_array : [cons_array]
-			vals = Float64[]
-			for c in cons_iter
-				ci = try
-					index(c)
-				catch
-					nothing
-				end
-				if ci !== nothing && MOI.is_valid(backend_model, ci)
-					dual_val = try
-						MOI.get(backend_model, MOI.ConstraintDual(), ci)
-					catch
-						0.0
-					end
-					push!(vals, dual_val)
-				else
-					push!(vals, 0.0) # Fallback if certificate not available
-				end
-			end
-			farkas_duals[k] = vals
-		end
 
-		return farkas_duals
+		# if MOI.get(model, MOI.DualStatus()) != MOI.INFEASIBILITY_CERTIFICATE
+		# 	@warn "No infeasibility certificate available; enable solver option for Farkas duals."
+		# end
+
+		# backend_model = JuMP.backend(model)
+		# farkas_duals = Dict{Symbol, Vector{Float64}}()
+		# for (k, cons_array) in constraints
+		# 	# Ensure cons_array is always iterable
+		# 	cons_iter = cons_array isa AbstractVector ? cons_array : [cons_array]
+		# 	vals = Float64[]
+		# 	for c in cons_iter
+		# 		ci = try
+		# 			index(c)
+		# 		catch
+		# 			nothing
+		# 		end
+		# 		if ci !== nothing && MOI.is_valid(backend_model, ci)
+		# 			dual_val = try
+		# 				MOI.get(backend_model, MOI.ConstraintDual(), ci)
+		# 			catch
+		# 				0.0
+		# 			end
+		# 			push!(vals, dual_val)
+		# 		else
+		# 			push!(vals, 0.0) # Fallback if certificate not available
+		# 		end
+		# 	end
+		# 	farkas_duals[k] = vals
+		# end
+		@info "this is the infeasible status."
+		# @show typeof(farkas_duals)
+		# return farkas_duals
+		# return JuMP.shadow_price.(constraints)
+		println("--------------------------------------------------------------")
+		@show typeof(constraints)
+		println("--------------------------------------------------------------")
+		return [MOI.get(model, MOI.ConstraintDual(), c) for c in constraints]
 
 	else
 		error("不支持的状态: $status")

@@ -1,6 +1,6 @@
 using Pkg
 Pkg.activate(".pkg")
-using MathOptInterface, JuMP
+using MathOptInterface, JuMP, JLD2, Gurobi
 const MOI = MathOptInterface
 const gurobi_env = redirect_stderr(devnull) do
 	Gurobi.Env()
@@ -74,8 +74,19 @@ assert_is_solved_and_feasible(scuc_masterproblem)
 # Get lower bound from master problem
 lower_bound = objective_value(scuc_masterproblem) # NOTE - lower bound from master problem
 
-# To load/read the saved data, use:
-# using JLD2
+# Check solution status
+assert_is_solved_and_feasible(scuc_masterproblem)
+
+# Get lower bound from master problem
+lower_bound = objective_value(scuc_masterproblem) # NOTE - lower bound from master problem
+
+# Extract solution from master problem
+x⁽⁰⁾ = value.(scuc_masterproblem[:x])
+u⁽⁰⁾ = value.(scuc_masterproblem[:u])
+v⁽⁰⁾ = value.(scuc_masterproblem[:v])
+iter_value = (x⁽⁰⁾, u⁽⁰⁾, v⁽⁰⁾)
+
+#TODO - Error
 tem_path = "D:\\GithubClonefiles\\module_unitcommitment\\tools\\bendersdecomposition\\"
 data = JLD2.load(joinpath(tem_path, "iter_value_iteration_3.jld2"))
 iteration_loaded = data["iteration"]
@@ -164,33 +175,33 @@ end
 MOI.get(model, MOI.DualStatus()) != MOI.INFEASIBILITY_CERTIFICATE
 
 if MOI.get(model, MOI.DualStatus()) != MOI.INFEASIBILITY_CERTIFICATE
-        @warn "No infeasibility certificate available; enable solver option for Farkas duals."
-    end
-	backend_model = backend(model)
-	farkas_duals = Dict{Symbol, Vector{Float64}}()
-	for (k, cons_array) in constrs
-		# Ensure cons_array is always iterable
-		cons_iter = cons_array isa AbstractVector ? cons_array : [cons_array]
-		vals = Float64[]
-		for c in cons_iter
-			ci = try
-				index(c)
-			catch
-				nothing
-			end
-			if ci !== nothing && MOI.is_valid(backend_model, ci)
-				dual_val = try
-					MOI.get(backend_model, MOI.ConstraintDual(), ci)
-				catch
-					0.0
-				end
-				push!(vals, dual_val)
-			else
-				push!(vals, 0.0) # Fallback if certificate not available
-			end
+	@warn "No infeasibility certificate available; enable solver option for Farkas duals."
+end
+backend_model = backend(model)
+farkas_duals = Dict{Symbol, Vector{Float64}}()
+for (k, cons_array) in constrs
+	# Ensure cons_array is always iterable
+	cons_iter = cons_array isa AbstractVector ? cons_array : [cons_array]
+	vals = Float64[]
+	for c in cons_iter
+		ci = try
+			index(c)
+		catch
+			nothing
 		end
-		farkas_duals[k] = vals
+		if ci !== nothing && MOI.is_valid(backend_model, ci)
+			dual_val = try
+				MOI.get(backend_model, MOI.ConstraintDual(), ci)
+			catch
+				0.0
+			end
+			push!(vals, dual_val)
+		else
+			push!(vals, 0.0) # Fallback if certificate not available
+		end
 	end
+	farkas_duals[k] = vals
+end
 farkas_duals
 
 # Ensure backend and index are imported from JuMP
@@ -198,10 +209,10 @@ using JuMP: backend, index
 
 # Retrieve duals (optimal or Farkas) robustly
 if solved_status == MOI.INFEASIBLE
-    # Farkas duals (infeasibility certificate)
-    if MOI.get(model, MOI.DualStatus()) != MOI.INFEASIBILITY_CERTIFICATE
-        @warn "No infeasibility certificate available; enable solver option for Farkas duals."
-    end
+	# Farkas duals (infeasibility certificate)
+	if MOI.get(model, MOI.DualStatus()) != MOI.INFEASIBILITY_CERTIFICATE
+		@warn "No infeasibility certificate available; enable solver option for Farkas duals."
+	end
 	backend_model = backend(model)
 	farkas_duals = Dict{Symbol, Vector{Float64}}()
 	for (k, cons_array) in constrs
@@ -228,55 +239,35 @@ if solved_status == MOI.INFEASIBLE
 		farkas_duals[k] = vals
 	end
 else
-    # Optimal duals
-    optimal_duals = Dict{Symbol, Vector{Float64}}()
-    for (k, cons_array) in constrs
-        if cons_array isa AbstractVector
-            optimal_duals[k] = dual.(cons_array)
-        else
-            optimal_duals[k] = [dual(cons_array)]
-        end
-    end
+	# Optimal duals
+	optimal_duals = Dict{Symbol, Vector{Float64}}()
+	for (k, cons_array) in constrs
+		if cons_array isa AbstractVector
+			optimal_duals[k] = dual.(cons_array)
+		else
+			optimal_duals[k] = [dual(cons_array)]
+		end
+	end
 end
 
-
-		dual_results[key] = build_dual_cuts_expr_coefficient(;
-			rhs = rhs_constr,
-			# Extract first column of coefficient matrices if they exist
-			x = (!isnothing(x_coeff) ? x_coeff = x_coeff[:, 1] : nothing),
-			u = (!isnothing(u_coeff) ? u_coeff = u_coeff[:, 1] : nothing),
-			v = (!isnothing(v_coeff) ? v_coeff = v_coeff[:, 1] : nothing),
-			# Convert sort orders to Int64 if they exist
-			x_sort_order = (!isnothing(x_sort_order) ? Int64(x_sort_order) : nothing),
-			u_sort_order = (!isnothing(u_sort_order) ? Int64(u_sort_order) : nothing),
-			v_sort_order = (!isnothing(v_sort_order) ? Int64(v_sort_order) : nothing),
-			# Preserve alignment flags
-			x_alignment_flag = (!isnothing(x_alignment_flag) ? x_alignment_flag : nothing),
-			u_alignment_flag = (!isnothing(u_alignment_flag) ? u_alignment_flag : nothing),
-			v_alignment_flag = (!isnothing(v_alignment_flag) ? v_alignment_flag : nothing),
-			# Store dual coefficients and operator associativity
-			dual_coeffVector = dual_coeff,
-			operator_associativity = operator_ass
-		)
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+dual_results[key] = build_dual_cuts_expr_coefficient(;
+	rhs = rhs_constr,
+	# Extract first column of coefficient matrices if they exist
+	x = (!isnothing(x_coeff) ? x_coeff = x_coeff[:, 1] : nothing),
+	u = (!isnothing(u_coeff) ? u_coeff = u_coeff[:, 1] : nothing),
+	v = (!isnothing(v_coeff) ? v_coeff = v_coeff[:, 1] : nothing),
+	# Convert sort orders to Int64 if they exist
+	x_sort_order = (!isnothing(x_sort_order) ? Int64(x_sort_order) : nothing),
+	u_sort_order = (!isnothing(u_sort_order) ? Int64(u_sort_order) : nothing),
+	v_sort_order = (!isnothing(v_sort_order) ? Int64(v_sort_order) : nothing),
+	# Preserve alignment flags
+	x_alignment_flag = (!isnothing(x_alignment_flag) ? x_alignment_flag : nothing),
+	u_alignment_flag = (!isnothing(u_alignment_flag) ? u_alignment_flag : nothing),
+	v_alignment_flag = (!isnothing(v_alignment_flag) ? v_alignment_flag : nothing),
+	# Store dual coefficients and operator associativity
+	dual_coeffVector = dual_coeff,
+	operator_associativity = operator_ass
+)
 
 @show key
 

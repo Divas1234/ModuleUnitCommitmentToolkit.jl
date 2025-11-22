@@ -9,7 +9,6 @@ include("construct_multicuts_lib/construct_multicuts.jl")
 	`bd_framework(scuc_masterproblem::Model, batch_scuc_subproblem_dic::OrderedDict, master_re_constr_sets::Any, sub_re_constr_sets::Any, winds::wind, config_param::config)`
 
 	Implements Bender's decomposition algorithm to solve a two-stage stochastic SCUC problem.
-
 	# Arguments
 
 	- `scuc_masterproblem::Model`: The JuMP model for the master problem.
@@ -48,7 +47,9 @@ function bd_framework(
 
 	# Iteration loop
 	for iteration ∈ 1:MAXIMUM_ITERATIONS
-		@show iteration
+
+		# Standout iteration banner for easier scanning in logs
+		println("\e[1;33m===== ITERATION: $(iteration) =====\e[0m")
 
 		# Solve the master problem
 		optimize!(scuc_masterproblem)
@@ -214,6 +215,30 @@ function solve_subproblem_with_feasibility_cut(scuc_subproblem_dic::SCUC_Model, 
 		reformated_constraints::SCUCModel_reformat_constraints
 	"""
 	new_scuc_subproblem = copy_scuc_subproblem(scuc_subproblem_dic)
+	# new_scuc_subproblem = deepcopy(scuc_subproblem_dic)
+	# new_scuc_subproblem.model = JuMP.direct_model(JuMP.backend(new_scuc_subproblem.model))
+
+	# Standout printing of key optimizer attributes for easier inspection
+	# Header in bold yellow (ANSI escape) followed by labeled values
+	try
+		println("\e[1;33m===== SUBPROBLEM OPTIMIZER ATTRIBUTES =====\e[0m")
+		println(rpad("DualReductions :", 20), get_optimizer_attribute(new_scuc_subproblem.model, "DualReductions"))
+		println(rpad("InfUnbdInfo    :", 20), get_optimizer_attribute(new_scuc_subproblem.model, "InfUnbdInfo"))
+		println(rpad("Presolve       :", 20), get_optimizer_attribute(new_scuc_subproblem.model, "Presolve"))
+		println("===========================================\n")
+	catch e
+		# Fallback to simple prints if attributes cannot be retrieved
+		println("\e[1;33m===== SUBPROBLEM OPTIMIZER ATTRIBUTES =====\e[0m")
+		println("DualReductions:", get_optimizer_attribute(new_scuc_subproblem.model, "DualReductions"))
+		println("InfUnbdInfo:", get_optimizer_attribute(new_scuc_subproblem.model, "InfUnbdInfo"))
+		println("Presolve:", get_optimizer_attribute(new_scuc_subproblem.model, "Presolve"))
+		println("===========================================\n")
+	end
+
+	println("\e[1;33m===== SUBPROBLEM OPTIMIZATION TYPIES =====\e[0m")
+	@assert !(any(is_binary.(all_variables(new_scuc_subproblem.model))) || any(is_integer.(all_variables(new_scuc_subproblem.model)))) \
+			"Error: Subproblem contains integer or binary variables, which is not allowed."
+	println("===========================================\n")
 
 	# Fix variables in subproblem
 	fix.(new_scuc_subproblem.model[:x], x; force = true)
@@ -228,6 +253,28 @@ function solve_subproblem_with_feasibility_cut(scuc_subproblem_dic::SCUC_Model, 
 		@warn "Subproblem optimization failed with error: $e"
 		rethrow(e)
 	end
+
+	println("\e[1;33m===== CALCULATIONS OPTIMIZER ATTRIBUTES =====\e[0m")
+	println("termination_status: ", termination_status(new_scuc_subproblem.model))
+	println("primal_status:      ", primal_status(new_scuc_subproblem.model))
+	println("dual_status:        ", dual_status(new_scuc_subproblem.model))
+	println("===========================================\n")
+
+	# gu = JuMP.backend(new_scuc_subproblem.model).optimizer.model
+
+	# println("\n===== Gurobi Internal Status =====")
+	# println("Gurobi Status     : ", Gurobi.get_int_attr(gu, "Status"))
+	# println("HasInfRay         : ", Gurobi.get_int_attr(gu, "HasInfRay"))
+	# println("HasUnbdRay        : ", Gurobi.get_int_attr(gu, "HasUnbdRay"))
+	# println("HasDualRay        : ", Gurobi.get_int_attr(gu, "HasDualRay"))
+	# println("HasPrimalRay      : ", Gurobi.get_int_attr(gu, "HasPrimalRay"))
+
+	println("\e[1;33m===== SUBPROBLEM OPTIMIZER ATTRIBUTES =====\e[0m")
+	println("termination_status: ", termination_status(new_scuc_subproblem.model))
+	println("primal_status:      ", primal_status(new_scuc_subproblem.model))
+	println("dual_status:        ", dual_status(new_scuc_subproblem.model))
+	# println("raw_status:         ", MOI.get(new_scuc_subproblem.model, MOI.RawOptimizerAttribute))
+	println("===========================================\n")
 
 	# Check if subproblem is solved and feasible
 	# opti_termination_status = is_solved_and_feasible(scuc_subproblem; dual = true)
@@ -333,23 +380,32 @@ function copy_scuc_subproblem(scuc::SCUC_Model)::SCUC_Model
 	new_scuc = deepcopy(scuc)
 	new_scuc.model = new_model
 
-	set_optimizer(new_model, Gurobi.Optimizer)
+	# MUST reset backend after copy_model, or attributes may not apply
+	MOI.empty!(JuMP.backend(new_model))
 
-	set_optimizer_attribute(new_model, "OutputFlag", 0)
-	set_optimizer_attribute(new_model, "LogToConsole", 0)
-	set_optimizer_attribute(new_model, "DualReductions", 0)
-	set_optimizer_attribute(new_model, "InfUnbdInfo", 1)
-	set_optimizer_attribute(new_model, "Presolve", 0)   # 子问题关预求解最快
-	set_optimizer_attribute(new_model, "Method", 2)   # 双重单纯形
-	set_optimizer_attribute(new_model, "NumericFocus", 3)   # 防数值病态
-	set_optimizer_attribute(new_model, "FeasibilityTol", 1e-9)
-
-	# 额外数值稳定参数（防 10003）
-	set_optimizer_attribute(new_model, "NumericFocus", 3)
-	set_optimizer_attribute(new_model, "FeasibilityTol", 1e-9)
+	# Configure Gurobi optimizer and apply parameters robustly. Any failures
+	# while setting attributes will emit a warning but won't abort execution.
+	JuMP.set_optimizer(new_model, Gurobi.Optimizer)
+	params = Dict(
+		"OutputFlag" => 0,
+		"LogToConsole" => 0,
+		"DualReductions" => 0,
+		"InfUnbdInfo" => 1,
+		"Presolve" => 0,   # Disable presolve for subproblem
+		"Method" => 2,     # Dual simplex
+		"NumericFocus" => 3, # Numerical stability
+		"FeasibilityTol" => 1e-9
+	)
+	for (k, v) in params
+		try
+			set_optimizer_attribute(new_model, k, v)
+		catch e
+			@warn "Could not set optimizer attribute $k: $e"
+		end
+	end
 
 	function remap_refs(container)
-		if container isa JuMP.ConstraintRef
+		if (container isa JuMP.ConstraintRef) || (container isa JuMP.VariableRef)
 			return ref_map[container]
 		elseif container isa AbstractDict
 			return Dict(k => remap_refs(v) for (k, v) in container)
@@ -365,6 +421,7 @@ function copy_scuc_subproblem(scuc::SCUC_Model)::SCUC_Model
 	end
 
 	new_scuc.constraints = remap_refs(new_scuc.constraints)
+
 	new_scuc.reformated_constraints = SCUCModel_reformat_constraints(
 		remap_refs(new_scuc.reformated_constraints._equal_to),
 		remap_refs(new_scuc.reformated_constraints._greater_than),
