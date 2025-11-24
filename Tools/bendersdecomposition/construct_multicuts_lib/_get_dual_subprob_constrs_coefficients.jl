@@ -103,7 +103,7 @@ end
 # 	end
 # end
 
-import MathOptInterface
+using MathOptInterface: MathOptInterface
 
 function get_subproblem_dual_coefficients(model::JuMP.Model, constraints, status)
 	# status = termination_status(model)
@@ -149,6 +149,8 @@ function get_subproblem_dual_coefficients(model::JuMP.Model, constraints, status
 		println("--------------------------------------------------------------")
 		@show typeof(constraints)
 		println("--------------------------------------------------------------")
+		# TODO
+
 		return [MOI.get(model, MOI.ConstraintDual(), c) for c in constraints]
 
 	else
