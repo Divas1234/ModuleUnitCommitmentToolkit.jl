@@ -31,14 +31,13 @@ try
 	bd_framework(scuc_masterproblem, scuc_subproblem, master_model_struct, batch_sub_model_struct_dic, winds, config_param)
 	println("\n" * "="^80)
 	println("✓ Benders decomposition completed successfully!")
-	println("="^80)
-
+	@show "="^80
 catch e
 	println("\n" * "="^80)
 	println("✗ Benders decomposition failed!")
-	println("="^80)
-	println("Error details:")
-	println("  $e")
+	@show "="^80
+	@show "Error details:"
+	@show e
 	rethrow(e)
 end
 

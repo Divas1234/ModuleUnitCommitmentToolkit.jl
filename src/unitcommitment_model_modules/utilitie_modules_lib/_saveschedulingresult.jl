@@ -101,19 +101,25 @@ function savebalance_result(
     # Plots.plot(thermalunits_output)
     # @show DataFrame(bench_pᵩ[1:3,:],:auto)
 
-    tem_NW = size(bench_pᵩ, 1)
+    tem_NW_original = length(winds.p_max)  # Actual number of wind farms (NW)
+    NS = size(bench_pᵩ, 1) ÷ tem_NW_original  # Number of scenarios (NS)
+    
+    # Aggregate wind curtailment across scenarios (sum over scenarios)
+    bench_pᵩ_aggregated = reshape(sum(reshape(bench_pᵩ, tem_NW_original, NS, tem_NT), dims=2), tem_NW_original, tem_NT)
+    
+    # Calculate total wind units output (sum across all wind farms and scenarios)
     windunits_output = zeros(tem_NT, 1)
     for i = 1:tem_NT
         windunits_output[i, 1] =
-            sum(winds.p_max) * winds.scenarios_curve[1, i] - sum(bench_pᵩ[1:tem_NW, i])
+            sum(winds.p_max) * winds.scenarios_curve[1, i] * NS - sum(bench_pᵩ_aggregated[:, i])
     end
 
     details_windunits_output, details_windunits_wasted_output =
-        zeros(tem_NW, tem_NT), zeros(tem_NW, tem_NT)
-    for i = 1:tem_NW
-        details_windunits_wasted_output[i, :] = bench_pᵩ[i, :]
+        zeros(tem_NW_original, tem_NT), zeros(tem_NW_original, tem_NT)
+    for i = 1:tem_NW_original
+        details_windunits_wasted_output[i, :] = bench_pᵩ_aggregated[i, :]
         details_windunits_output[i, :] =
-            (winds.p_max[i]) .* winds.scenarios_curve[1, :] - bench_pᵩ[i, :]
+            (winds.p_max[i]) .* winds.scenarios_curve[1, :] * NS - bench_pᵩ_aggregated[i, :]
     end
 
     # Plots.plot(windunits_output)

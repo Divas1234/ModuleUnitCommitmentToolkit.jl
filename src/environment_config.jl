@@ -19,12 +19,12 @@ using Pkg
 # Activate the current project environment (if pkg directory exists and is valid)
 # Otherwise, use the default project environment
 if isdir("pkg") && isfile(joinpath("pkg", "Project.toml"))
-	try
-		Pkg.activate("pkg")
-	catch
-		# If activation fails, continue with current environment
-		nothing
-	end
+    try
+        Pkg.activate("pkg")
+    catch
+        # If activation fails, continue with current environment
+        nothing
+    end
 end
 
 # ============================================================================
@@ -32,38 +32,38 @@ end
 # ============================================================================
 # List of required packages (removed duplicates)
 neededPackages = [
-	# Optimization
-	:JuMP,
-	:Gurobi,
-	# Data handling
-	:DataFrames,
-	:CSV,
-	:XLSX,
-	:DelimitedFiles,
-	:JLD,
-	# Statistics and analysis
-	:Distributions,
-	:MultivariateStats,
-	:Clustering,
-	:StatsPlots,
-	# Visualization
-	:Plots,
-	:UnicodePlots,
-	:LaTeXStrings,
-	# Utilities
-	:Revise,
-	:Test,
-	:Random,
-	:DataStructures
+    # Optimization
+    :JuMP,
+    :Gurobi,
+    # Data handling
+    :DataFrames,
+    :CSV,
+    :XLSX,
+    :DelimitedFiles,
+    :JLD,
+    # Statistics and analysis
+    :Distributions,
+    :MultivariateStats,
+    :Clustering,
+    :StatsPlots,
+    # Visualization
+    :Plots,
+    :UnicodePlots,
+    :LaTeXStrings,
+    # Utilities
+    :Revise,
+    :Test,
+    :Random,
+    :DataStructures,
 ]
 
 # Automatically install missing packages
 for neededpackage in neededPackages
-	package_name = String(neededpackage)
-	if !(package_name in keys(Pkg.project().dependencies))
-		println("Installing missing package: $package_name")
-		Pkg.add(package_name)
-	end
+    package_name = String(neededpackage)
+    if !(package_name in keys(Pkg.project().dependencies))
+        println("Installing missing package: $package_name")
+        Pkg.add(package_name)
+    end
 end
 
 # ============================================================================

@@ -136,7 +136,7 @@ function get_subproblem_dual_coefficients(model::JuMP.Model, constraints, status
 		# 				0.0
 		# 			end
 		# 			push!(vals, dual_val)
-		# 		else
+		# 		elseˆ
 		# 			push!(vals, 0.0) # Fallback if certificate not available
 		# 		end
 		# 	end
@@ -145,12 +145,12 @@ function get_subproblem_dual_coefficients(model::JuMP.Model, constraints, status
 		@info "this is the infeasible status."
 		# @show typeof(farkas_duals)
 		# return farkas_duals
-		# return JuMP.shadow_price.(constraints)
+		# return JuMP.shadow_price.(constsraints)
 		println("--------------------------------------------------------------")
 		@show typeof(constraints)
 		println("--------------------------------------------------------------")
 		# TODO
-
+		# this is a unsolved problem, need to extract Farkas duals for copy-problems.
 		return [MOI.get(model, MOI.ConstraintDual(), c) for c in constraints]
 
 	else

@@ -41,9 +41,9 @@ function bd_framework(
 	@assert !is_mixed_integer_problem(scuc_subproblem)
 	println("Starting (Strengthen) Benders decomposition algorithm")
 	println("iteration start ...\n")
-	println("====================================================")
-	println("ITER \t LOWER_bound \t    UPPER_bound   \t GAP")
-	println("----------------------------------------------------")
+	@show "===================================================="
+	@show "ITER \t LOWER_bound \t    UPPER_bound   \t GAP"
+	@show "----------------------------------------------------"
 
 	# Iteration loop
 	for iteration ∈ 1:MAXIMUM_ITERATIONS
@@ -218,27 +218,58 @@ function solve_subproblem_with_feasibility_cut(scuc_subproblem_dic::SCUC_Model, 
 	# new_scuc_subproblem = deepcopy(scuc_subproblem_dic)
 	# new_scuc_subproblem.model = JuMP.direct_model(JuMP.backend(new_scuc_subproblem.model))
 
+	# NOTE - TEST 1: Print optimizer attributes for debugging
 	# Standout printing of key optimizer attributes for easier inspection
 	# Header in bold yellow (ANSI escape) followed by labeled values
 	try
-		println("\e[1;33m===== SUBPROBLEM OPTIMIZER ATTRIBUTES =====\e[0m")
-		println(rpad("DualReductions :", 20), get_optimizer_attribute(new_scuc_subproblem.model, "DualReductions"))
-		println(rpad("InfUnbdInfo    :", 20), get_optimizer_attribute(new_scuc_subproblem.model, "InfUnbdInfo"))
-		println(rpad("Presolve       :", 20), get_optimizer_attribute(new_scuc_subproblem.model, "Presolve"))
-		println("===========================================\n")
+		@show "===== SUBPROBLEM OPTIMIZER ATTRIBUTES ====="
+		@show rpad("DualReductions :", 20), get_optimizer_attribute(new_scuc_subproblem.model, "DualReductions")
+		@show rpad("InfUnbdInfo    :", 20), get_optimizer_attribute(new_scuc_subproblem.model, "InfUnbdInfo")
+		@show rpad("Presolve       :", 20), get_optimizer_attribute(new_scuc_subproblem.model, "Presolve")
+		@show "==========================================="
 	catch e
 		# Fallback to simple prints if attributes cannot be retrieved
-		println("\e[1;33m===== SUBPROBLEM OPTIMIZER ATTRIBUTES =====\e[0m")
-		println("DualReductions:", get_optimizer_attribute(new_scuc_subproblem.model, "DualReductions"))
-		println("InfUnbdInfo:", get_optimizer_attribute(new_scuc_subproblem.model, "InfUnbdInfo"))
-		println("Presolve:", get_optimizer_attribute(new_scuc_subproblem.model, "Presolve"))
-		println("===========================================\n")
+		@show "===== SUBPROBLEM OPTIMIZER ATTRIBUTES ====="
+		@show "DualReductions:", get_optimizer_attribute(new_scuc_subproblem.model, "DualReductions")
+		@show "InfUnbdInfo:", get_optimizer_attribute(new_scuc_subproblem.model, "InfUnbdInfo")
+		@show "Presolve:", get_optimizer_attribute(new_scuc_subproblem.model, "Presolve")
+		@show "==========================================="
 	end
 
-	println("\e[1;33m===== SUBPROBLEM OPTIMIZATION TYPIES =====\e[0m")
-	@assert !(any(is_binary.(all_variables(new_scuc_subproblem.model))) || any(is_integer.(all_variables(new_scuc_subproblem.model)))) \
-			"Error: Subproblem contains integer or binary variables, which is not allowed."
+	println("\e[1;33m===== SUBPROBLEM OPTIMIZATION TYPES =====\e[0m")
+	# Ensure subproblem is continuous (no integer/binary vars)
+	if any(v -> is_binary(v) || is_integer(v), all_variables(new_scuc_subproblem.model))
+		error("Subproblem contains integer or binary variables, which is not allowed.")
+	else
+		@info "Subproblem verified as [ continuous ]."
+	end
 	println("===========================================\n")
+
+	# Print a concise model summary for the subproblem
+	println("\e[1;34m======= SUBPROBLEM MODEL SUMMARY =======\e[0m")
+	vars = all_variables(new_scuc_subproblem.model)
+	nvars = length(vars)
+	nbin = count(v -> is_binary(v), vars)
+	nint = count(v -> is_integer(v), vars)
+	ncont = nvars - nbin - nint
+	println("Variables: total=$(nvars), continuous=$(ncont), integer=$(nint), binary=$(nbin)")
+
+	rc = new_scuc_subproblem.reformated_constraints
+	neq = length(rc._equal_to)
+	nge = length(rc._greater_than)
+	nle = length(rc._smaller_than)
+	println("Constraints: equal_cons=$(neq), greater_cons=$(nge), smaller_cons=$(nle), total=$(neq + nge + nle)")
+
+	try
+		sense = JuMP.objective_sense(new_scuc_subproblem.model)
+		println("Objective sense: ", sense)
+		println("Objective expression: ", JuMP.objective_function(new_scuc_subproblem.model))
+	catch
+		println("Objective information not available.")
+	end
+
+	@show new_scuc_subproblem.model
+	println("==========================================\n")
 
 	# Fix variables in subproblem
 	fix.(new_scuc_subproblem.model[:x], x; force = true)
@@ -259,15 +290,6 @@ function solve_subproblem_with_feasibility_cut(scuc_subproblem_dic::SCUC_Model, 
 	println("primal_status:      ", primal_status(new_scuc_subproblem.model))
 	println("dual_status:        ", dual_status(new_scuc_subproblem.model))
 	println("===========================================\n")
-
-	# gu = JuMP.backend(new_scuc_subproblem.model).optimizer.model
-
-	# println("\n===== Gurobi Internal Status =====")
-	# println("Gurobi Status     : ", Gurobi.get_int_attr(gu, "Status"))
-	# println("HasInfRay         : ", Gurobi.get_int_attr(gu, "HasInfRay"))
-	# println("HasUnbdRay        : ", Gurobi.get_int_attr(gu, "HasUnbdRay"))
-	# println("HasDualRay        : ", Gurobi.get_int_attr(gu, "HasDualRay"))
-	# println("HasPrimalRay      : ", Gurobi.get_int_attr(gu, "HasPrimalRay"))
 
 	println("\e[1;33m===== SUBPROBLEM OPTIMIZER ATTRIBUTES =====\e[0m")
 	println("termination_status: ", termination_status(new_scuc_subproblem.model))
@@ -381,7 +403,7 @@ function copy_scuc_subproblem(scuc::SCUC_Model)::SCUC_Model
 	new_scuc.model = new_model
 
 	# MUST reset backend after copy_model, or attributes may not apply
-	MOI.empty!(JuMP.backend(new_model))
+	# MOI.empty!(JuMP.backend(new_model))
 
 	# Configure Gurobi optimizer and apply parameters robustly. Any failures
 	# while setting attributes will emit a warning but won't abort execution.
