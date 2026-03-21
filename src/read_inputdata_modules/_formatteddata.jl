@@ -67,11 +67,11 @@ mutable struct config
 	is_MaxIterationsNum::Int64
 	is_CalculPrecision::Float64
 
-	# Optional features
-	is_ConsiderDataCentra::Int64
-	is_ConsiderFrequencyControl::Int64
-	is_ConsiderBESS::Int64
-	is_ConsiderMultiCUTs::Int64
+    # Optional features
+    is_ConsiderDataCentra::Int64
+    is_ConsiderFrequencyControl::Int64
+    is_ConsiderBESS::Int64
+    is_ConsiderMultiCUTs::Int64
 
   # Scheduling Objective function settings
   is_SchedulingObjFuncType::Int64  # 1: Minimize Cost, 2: Minimize Emissions, etc.

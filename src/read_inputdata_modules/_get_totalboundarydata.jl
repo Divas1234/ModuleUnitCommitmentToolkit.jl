@@ -172,7 +172,11 @@ function forminputdata(
         0,        # reserved
         0,        # reserved
         1,        # scaling factor for cost normalization
-        2,         # scaling factor for emission normalization
+        2,        # scaling factor for emission normalization
+        0,        # is_ConsiderDataCentra (0 = no, 1 = yes)
+        0,        # is_ConsiderFrequencyControl (0 = no, 1 = yes)
+        0,        # is_ConsiderBESS (0 = no, 1 = yes)
+        1,        # is_ConsiderMultiCUTs (0 = single cut, 1 = multi-cut)
     )
 
     # Wrap primitive arrays into domain-specific composite types.

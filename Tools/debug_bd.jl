@@ -3,9 +3,9 @@ ENV["JULIA_SHOW_ASCII"] = true
 include("mainfunc.jl");
 
 scuc_masterproblem, scuc_subproblem, master_model_struct, sub_model_struct, batch_sub_model_struct_dic, config_param, units,
-lines, loads, winds, psses, NB, NG, NL, ND, NS, NT, NC, ND2, DataCentras = main();
+lines, loads, winds, psses, NB, NG, NL, ND, NS, NT, NC, ND2, NH, DataCentras, hydros = main();
 
 bd_framework(scuc_masterproblem, scuc_subproblem, master_model_struct,
-	batch_sub_model_struct_dic, winds, config_param)
+	batch_sub_model_struct_dic, winds, config_param, NG, NT, NW, ND, NL)
 
 # DEBUG - benderdecomposition_module

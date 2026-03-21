@@ -16,18 +16,20 @@ function add_curtailment_constraints!(scuc::Model, NT, ND, NW, NS, loads, winds)
     wind_pmax = winds.p_max
     load_curve = loads.load_curve
 
+    # Fixed: scenarios_curve is (NS, NT), wind_pmax is (NW,)
     winds_curt_constr = @constraint(
         scuc,
-        winds_curt_constr_for_eachscenario[s=1:NS, t=1:NT],
-        Δpw[(1+(s-1)*NW):(s*NW), t] .<= winds.scenarios_curve[s, t] * wind_pmax[:, 1]
+        [s=1:NS, t=1:NT],
+        sum(Δpw[(1+(s-1)*NW + w-1), t] for w in 1:NW) <= winds.scenarios_curve[s, t] * sum(wind_pmax[w] for w in 1:NW)
     )
+    # Fixed: load_curve is (ND, NT), index as load_curve[d, t]
     loads_curt_const = @constraint(
         scuc,
         [s = 1:NS, t = 1:NT],
-        Δpd[(1+(s-1)*ND):(s*ND), t] .<= load_curve[:, t]
+        sum(Δpd[(1+(s-1)*ND + d-1), t] for d in 1:ND) <= sum(load_curve[d, t] for d in 1:ND)
     )
     println("\t constraints: 4) loadcurtailments and spoliedwinds\t\t\t done")
-    return scuc, winds_curt_constr, loads_curt_const
+    return scuc, [winds_curt_constr], [loads_curt_const]
 end
 
 # Helper function for system reserve limits

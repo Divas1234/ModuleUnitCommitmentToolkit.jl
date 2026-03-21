@@ -1,5 +1,4 @@
 using JuMP
-using MathOptInterface
 
 function get_greater_than_constr_rhs(current_model::Model, constr)
 	rhs = Float64[]
@@ -91,7 +90,7 @@ function get_v_coeff_vectors_from_constr(nam, current_model, constr, NT, NG)
 			target_var = ((alignment_cons == 0) ? current_model[:v][g, t] : current_model[:v][g, t - 1])
 			res, _, _ = get_index_in_constraint(target_var, current_model, constr, NG, NT, g, t, sort_order)
 			idx = ((sort_order == 0) ? NG * (t - 1) + g : NT * (g - 1) + t)
-			coeffs[idx, 1] = res
+			coeffs[idx, 1] = isnothing(res) ? 0.0 : res
 		end
 
 		t = 1
@@ -100,7 +99,7 @@ function get_v_coeff_vectors_from_constr(nam, current_model, constr, NT, NG)
 				target_var = current_model[:v][g, t]
 				res, _, _ = get_index_in_constraint(target_var, current_model, constr, NG, NT, g, t, sort_order)
 				idx = ((sort_order == 0) ? NG * (t - 1) + g : NT * (g - 1) + t)
-				coeffs[idx, 1] = res
+				coeffs[idx, 1] = isnothing(res) ? 0.0 : res
 			end
 		else
 			res = 0
@@ -162,7 +161,7 @@ function get_u_coeff_vectors_from_constr(nam, current_model, constr, NT, NG)
 			target_var = ((alignment_cons == 0) ? current_model[:u][g, t] : current_model[:u][g, t - 1])
 			res, _, _ = get_index_in_constraint(target_var, current_model, constr, NG, NT, g, t, sort_order)
 			idx = ((sort_order == 0) ? NG * (t - 1) + g : NT * (g - 1) + t)
-			coeffs[idx, 1] = res
+			coeffs[idx, 1] = isnothing(res) ? 0.0 : res
 		end
 
 		t = 1
@@ -171,7 +170,7 @@ function get_u_coeff_vectors_from_constr(nam, current_model, constr, NT, NG)
 				target_var = current_model[:u][g, t]
 				res, _, _ = get_index_in_constraint(target_var, current_model, constr, NG, NT, g, t, sort_order)
 				idx = ((sort_order == 0) ? NG * (t - 1) + g : NT * (g - 1) + t)
-				coeffs[idx, 1] = res
+				coeffs[idx, 1] = isnothing(res) ? 0.0 : res
 			end
 		else
 			res = 0
@@ -239,7 +238,7 @@ function get_x_coeff_vectors_from_constr(nam, current_model, constr, NT, NG)
 			target_var = ((alignment_cons == 0) ? current_model[:x][g, t] : current_model[:x][g, t - 1])
 			res, _, _ = get_index_in_constraint(target_var, current_model, constr, NG, NT, g, t, sort_order)
 			idx = ((sort_order == 0) ? NG * (t - 1) + g : NT * (g - 1) + t)
-			coeffs[idx, 1] = res
+			coeffs[idx, 1] = isnothing(res) ? 0.0 : res
 		end
 
 		t = 1
@@ -248,7 +247,7 @@ function get_x_coeff_vectors_from_constr(nam, current_model, constr, NT, NG)
 				target_var = current_model[:x][g, t]
 				res, _, _ = get_index_in_constraint(target_var, current_model, constr, NG, NT, g, t, sort_order)
 				idx = ((sort_order == 0) ? NG * (t - 1) + g : NT * (g - 1) + t)
-				coeffs[idx, 1] = res
+				coeffs[idx, 1] = isnothing(res) ? 0.0 : res
 			end
 		else
 			res = 0

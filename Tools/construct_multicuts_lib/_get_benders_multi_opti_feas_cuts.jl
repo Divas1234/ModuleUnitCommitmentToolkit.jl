@@ -1,10 +1,10 @@
-function add_optimitycut_constraints!(scuc_masterproblem::JuMP.Model, sub_model_struct::SCUC_Model, ret, iter_value)
+function add_optimitycut_constraints!(scuc_masterproblem::JuMP.Model, sub_model_struct::SCUC_Model, ret, iter_value, scenario_idx::Int)
 	# @assert termination_status(sub_model_struct[1].model)
 	x⁽⁰⁾ = iter_value[1]
 	u⁽⁰⁾ = iter_value[2]
 	v⁽⁰⁾ = iter_value[3]
 	add_optimity_cut = @constraint(scuc_masterproblem,
-		scuc_masterproblem[:θ] >=
+		scuc_masterproblem[:θ][scenario_idx] >=
 		ret.θ + sum(
 		ret.ray_x .* (scuc_masterproblem[:x] - x⁽⁰⁾) + ret.ray_u .* (scuc_masterproblem[:u] - u⁽⁰⁾) +
 		ret.ray_v .* (scuc_masterproblem[:v] - v⁽⁰⁾)
@@ -12,9 +12,8 @@ function add_optimitycut_constraints!(scuc_masterproblem::JuMP.Model, sub_model_
 	return scuc_masterproblem, add_optimity_cut
 end
 
-function add_feasibilitycut_constraints!(scuc_masterproblem::JuMP.Model, sub_model_struct::SCUC_Model, ret, iter_value)
-	@assert!(ret.is_feasible)
-	# @assert !termination_status(sub_model_struct[1].model)
+function add_feasibilitycut_constraints!(scuc_masterproblem::JuMP.Model, sub_model_struct::SCUC_Model, ret, iter_value, scenario_idx::Int)
+	# Note: This function is called when the subproblem is INFEASIBLE, so @assert(ret.is_feasible) should NOT be here
 	x⁽⁰⁾ = iter_value[1]
 	u⁽⁰⁾ = iter_value[2]
 	v⁽⁰⁾ = iter_value[3]
@@ -28,7 +27,7 @@ function add_feasibilitycut_constraints!(scuc_masterproblem::JuMP.Model, sub_mod
 end
 
 function add_benders_multicuts_constraints!(
-		scuc_masterproblem::JuMP.Model, sub_model_struct::SCUC_Model, is_feasible, dual_coeffs, NG, NT, NW, ND, NL)
+		scuc_masterproblem::JuMP.Model, sub_model_struct::SCUC_Model, is_feasible, dual_coeffs, NG, NT, NW, ND, NL, scenario_idx::Int=0)
 	scuc_masterproblem, benders_cut = get_benders_cumulative_multicuts_expression(scuc_masterproblem, dual_coeffs, NG, NT, NW, ND, NL)
 
 	"""
@@ -46,10 +45,19 @@ function add_benders_multicuts_constraints!(
 	"""
 
 	if is_feasible == true
-		add_optimity_multiCUTs = @constraint(scuc_masterproblem, scuc_masterproblem[:θ] >= benders_cut)
+		# θ is now a vector [1:NS], so we need to reference θ[scenario_idx] for each scenario
+		if scenario_idx > 0
+			add_optimity_multiCUTs = @constraint(scuc_masterproblem, scuc_masterproblem[:θ][scenario_idx] >= benders_cut)
+		else
+			add_optimity_multiCUTs = @constraint(scuc_masterproblem, scuc_masterproblem[:θ] >= benders_cut)
+		end
 		return scuc_masterproblem, add_optimity_multiCUTs
 	else
-		add_feasibility_multiCUTs = @constraint(scuc_masterproblem, benders_cut <= 0)
+		if scenario_idx > 0
+			add_feasibility_multiCUTs = @constraint(scuc_masterproblem, benders_cut <= 0)
+		else
+			add_feasibility_multiCUTs = @constraint(scuc_masterproblem, benders_cut <= 0)
+		end
 		return scuc_masterproblem, add_feasibility_multiCUTs
 	end
 end

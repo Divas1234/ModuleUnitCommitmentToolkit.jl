@@ -1,5 +1,6 @@
-# include(joinpath(pwd(), "src", "environment_config.jl"))
-include(joinpath(pwd(), "src", "unitcommitment_model_modules", "SUCuccommitmentmodel.jl"))
+# Get project root directory (from tools/define_master_sub_problems/ up to project root)
+project_root = joinpath(@__DIR__, "..", "..")
+include(joinpath(project_root, "src", "unitcommitment_model_modules", "SUCuccommitmentmodel.jl"))
 
 function bd_masterfunction(
 		NT::Int64, NB::Int64, NG::Int64, ND::Int64, NC::Int64, ND2::Int64, NS::Int64, units::unit, config_param::config, scenarios_prob::Float64)
@@ -114,7 +115,7 @@ function define_masterproblem_decision_variables!(scuc_masterproblem::Model, NT,
 	@variable(scuc_masterproblem, su₀[1:NG, 1:NT] >= 0)
 	@variable(scuc_masterproblem, sd₀[1:NG, 1:NT] >= 0)
 
-	@variable(scuc_masterproblem, θ >= 1e2)
+	@variable(scuc_masterproblem, θ[1:NS] >= 1e2)
 
 	# @variable(scuc_masterproblem, pg[1:(NG * NS), 1:NT]>=0)
 	# @variable(scuc_masterproblem, sr⁺[1:(NG * NS), 1:NT]>=0)
@@ -181,10 +182,12 @@ function set_masterproblem_objective_economic!(scuc_masterproblem::Model, NT, NG
 	# @objective(scuc_masterproblem,
 	# 	Min,
 	# 	sum(sum(su₀[i, t] + sd₀[i, t] for i in 1:NG) for t in 1:NT) + pₛ * c₀ * sum(sum(sum(θ[((s - 1) * NG + 1):(s * NG), t] for t in 1:NT) for s in 1:NS)))
+	# Note: θ is now a vector [1:NS] where θ[s] is the lower bound estimate for scenario s
+	# The objective is to minimize first-stage costs + sum of scenario-specific second-stage cost estimates
 	obj = @objective(scuc_masterproblem,
 		Min,
 		sum(sum(su₀[i, t] + sd₀[i, t] for i in 1:NG)
-		for t in 1:NT) + c₀ * θ)
+		for t in 1:NT) + c₀ * sum(θ[s] for s in 1:NS))
 
 	println("\t MILP_type objective_function \t\t\t\t\t\t done")
 	return scuc_masterproblem, obj

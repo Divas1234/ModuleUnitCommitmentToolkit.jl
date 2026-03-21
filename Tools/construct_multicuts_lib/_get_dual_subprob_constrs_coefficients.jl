@@ -25,7 +25,7 @@ Returns:
 	`dual_subprob_expr_coefficient` structs containing coefficients for the dual cut expression.
 """
 
-function get_dual_constrs_coefficient(current_model::SCUC_Model, constrs, opti_termination_status)
+function get_dual_constrs_coefficient(current_model::SCUC_Model, constrs, opti_termination_status, NT::Int, NG::Int)
 	dual_results = Dict{Symbol, dual_subprob_expr_coefficient}()
 
 	for (key, value) in constrs
