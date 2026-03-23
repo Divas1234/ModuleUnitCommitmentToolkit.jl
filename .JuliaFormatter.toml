@@ -1,0 +1,11 @@
+# default：函数调用换行时用块缩进，不会像 YAS 那样与开括号对齐造成“极右缩进”
+style = "default"
+margin = 150
+always_for_in = true
+remove_extra_newlines = true
+short_to_long_function_def = false
+always_use_return = true
+whitespace_ops_in_indices = true
+whitespace_typedefs = true
+# 超长 a ? b : c 改为 if/else，避免三元里嵌套多行调用时一参一行、难以阅读
+conditional_to_if = true

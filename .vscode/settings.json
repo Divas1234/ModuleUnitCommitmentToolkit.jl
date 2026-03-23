@@ -261,7 +261,7 @@
     "guides.stack.style": "dotted",
     "guides.normal.width": 0.25,
     "guides.stack.width": 0.5,
-    "editor.fontSize": 14,
+    "editor.fontSize": 15,
     "todo-tree.highlights.useColourScheme": true,
     "vim.highlightedyank.enable": true,
     "editor.formatOnPaste": false,
@@ -333,5 +333,7 @@
     "search.showLineNumbers": true,
     "editor.wordWrap": "on",
     "editor.fontLigatures": true,
-    "files.autoSave": "onFocusChange"
+    "files.autoSave": "onFocusChange",
+    "julia-format.flag": "style=BlueStyle(), indent=4, margin=256, always_for_in=true, for_in_replacement=\"∈\", whitespace_typedefs=true, import_to_using=true, whitespace_in_kwargs=true, align_struct_field=true, align_assignment=true, align_conditional=true, align_pair_arrow=true, normalize_line_endings=\"unix\", align_matrix=true, join_lines_based_on_source=true, indent_submodule=true, surround_whereop_typeparameters=false, yas_style_nesting=true",
+    "editor.allowVariableFontsInAccessibilityMode": true
 }

@@ -1,30 +1,28 @@
 function get_parmeters(flag_converter)
+    f_base = 50.0
 
-	f_base = 50.0
+    if flag_converter == 0 # better performance for traditiaonal power grids
+        initial_inertia = 8.0
+        # OCGT parameter 0.35; CCGT parameter 0.15
+        factorial_coefficient = 0.350
+        time_content = 0.25
+        droop = 1 / 0.030
+        ROCOF_threshold = 0.5
+        NADIR_threshold = 0.5
+        delta_p = 3.50 # no more than 3.5(MW)  nuclear power plant
+    else # better performance for modern power grids
+        initial_inertia = 8.0
+        factorial_coefficient = 0.350
+        time_content = 0.25
+        droop = 1 / 0.030
+        ROCOF_threshold = 0.5
+        NADIR_threshold = 0.5
+        delta_p = 3.50 # no more than 3.5(MW)  nuclear power plant
+    end
+    @assert droop > factorial_coefficient
+    # @assert inertia * 2 < (damping * factorial_coefficient) * time_content
 
-	if flag_converter == 0 # better performance for traditiaonal power grids
-		initial_inertia = 8.0
-		# OCGT parameter 0.35; CCGT parameter 0.15
-		factorial_coefficient = 0.350
-		time_content = 0.25
-		droop = 1 / 0.030
-		ROCOF_threshold = 0.5
-		NADIR_threshold = 0.5
-		delta_p = 3.50 # no more than 3.5(MW)  nuclear power plant
-	else # better performance for modern power grids
-		initial_inertia = 8.0
-		factorial_coefficient = 0.350
-		time_content = 0.25
-		droop = 1 / 0.030
-		ROCOF_threshold = 0.5
-		NADIR_threshold = 0.5
-		delta_p = 3.50 # no more than 3.5(MW)  nuclear power plant
-	end
-	@assert droop > factorial_coefficient
-	# @assert inertia * 2 < (damping * factorial_coefficient) * time_content
-
-	return initial_inertia,
-	factorial_coefficient, time_content, droop, ROCOF_threshold, NADIR_threshold, delta_p
+    return initial_inertia, factorial_coefficient, time_content, droop, ROCOF_threshold, NADIR_threshold, delta_p
 end
 
 # test

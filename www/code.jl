@@ -51,19 +51,18 @@ elseif term_status == MOI.INFEASIBLE
     if dual_status == MOI.INFEASIBILITY_CERTIFICATE
         println("Farkas dual for con1: ", shadow_price(con1)) # Or dual(con1)
         println("Farkas dual for con2: ", shadow_price(con2)) # Or dual(con2)
-        # These values form a linear combination of the constraints
-        # that proves infeasibility according to Farkas' Lemma.
-        # For Ax <= b, find y >= 0 such that y'A = 0 and y'b < 0.
-        # For Ax >= b, find y >= 0 such that y'A = 0 and y'b > 0.
-        # Here: y1* (x+y) + y2*(-(x+y)) = 0 => y1 - y2 = 0 => y1 = y2
-        # And: y1 * 1 + y2 * (-2) < 0 => y1 - 2*y2 < 0 => y1 - 2*y1 < 0 => -y1 < 0 => y1 > 0
-        # So expect Farkas duals like (1.0, 1.0) or some positive multiple.
+    # These values form a linear combination of the constraints
+    # that proves infeasibility according to Farkas' Lemma.
+    # For Ax <= b, find y >= 0 such that y'A = 0 and y'b < 0.
+    # For Ax >= b, find y >= 0 such that y'A = 0 and y'b > 0.
+    # Here: y1* (x+y) + y2*(-(x+y)) = 0 => y1 - y2 = 0 => y1 = y2
+    # And: y1 * 1 + y2 * (-2) < 0 => y1 - 2*y2 < 0 => y1 - 2*y1 < 0 => -y1 < 0 => y1 > 0
+    # So expect Farkas duals like (1.0, 1.0) or some positive multiple.
     else
         println("Could not retrieve Farkas certificate (Dual Status: $dual_status).")
         println("Try setting Gurobi parameter Presolve=0 or InfUnbdInfo=1.")
         # Example: set_optimizer_attribute(model, "Presolve", 0) before optimizing
     end
-
 
 elseif term_status == MOI.DUAL_INFEASIBLE # (Which implies Primal Unbounded)
     println("\nModel is Unbounded (Dual Infeasible).")

@@ -1,8 +1,7 @@
 include("mainfunc.jl")
 
 # Get the initial problem setup
-scuc_masterproblem, scuc_subproblem, scenarios_prob, refcost, eachslope, units, lines, loads,
-winds, config_param = main();
+scuc_masterproblem, scuc_subproblem, scenarios_prob, refcost, eachslope, units, lines, loads, winds, config_param = main();
 
 # Enable solver parameters for infeasibility detection
 set_optimizer_attribute(scuc_subproblem, "InfUnbdInfo", 1)
@@ -29,9 +28,9 @@ u⁽⁰⁾ = value.(scuc_masterproblem[:u]) # Dispatch decisions
 v⁽⁰⁾ = value.(scuc_masterproblem[:v]) # Voltage angle decisions
 
 # Fix variables in subproblem
-fix.(scuc_subproblem[:x], x⁽⁰⁾; force=true)
-fix.(scuc_subproblem[:u], u⁽⁰⁾; force=true)
-fix.(scuc_subproblem[:v], v⁽⁰⁾; force=true)
+fix.(scuc_subproblem[:x], x⁽⁰⁾; force = true)
+fix.(scuc_subproblem[:u], u⁽⁰⁾; force = true)
+fix.(scuc_subproblem[:v], v⁽⁰⁾; force = true)
 
 # Optimize subproblem
 optimize!(scuc_subproblem)

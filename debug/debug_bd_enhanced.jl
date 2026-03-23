@@ -1,8 +1,7 @@
 include("mainfunc.jl")
 
 # Get the initial problem setup
-scuc_masterproblem, scuc_subproblem, scenarios_prob, refcost, eachslope, units, lines, loads,
-winds, config_param = main();
+scuc_masterproblem, scuc_subproblem, scenarios_prob, refcost, eachslope, units, lines, loads, winds, config_param = main();
 
 # Enable solver parameters for infeasibility detection
 set_optimizer_attribute(scuc_subproblem, "InfUnbdInfo", 1)
@@ -36,9 +35,9 @@ try
         v⁽⁰⁾ = value.(scuc_masterproblem[:v])
 
         # Fix variables in subproblem
-        fix.(scuc_subproblem[:x], x⁽⁰⁾; force=true)
-        fix.(scuc_subproblem[:u], u⁽⁰⁾; force=true)
-        fix.(scuc_subproblem[:v], v⁽⁰⁾; force=true)
+        fix.(scuc_subproblem[:x], x⁽⁰⁾; force = true)
+        fix.(scuc_subproblem[:u], u⁽⁰⁾; force = true)
+        fix.(scuc_subproblem[:v], v⁽⁰⁾; force = true)
 
         # Solve subproblem
         optimize!(scuc_subproblem)
@@ -49,8 +48,7 @@ try
 
             # Update upper bound
             current_obj = objective_value(scuc_subproblem)
-            upper_bound = min(upper_bound,
-                sum(objective_value(scuc_masterproblem) .- JuMP.value.(scuc_masterproblem[:θ])) + current_obj)
+            upper_bound = min(upper_bound, sum(objective_value(scuc_masterproblem) .- JuMP.value.(scuc_masterproblem[:θ])) + current_obj)
 
             println("Upper bound: ", upper_bound)
 
@@ -60,11 +58,12 @@ try
             ray_v = reduced_cost.(scuc_subproblem[:v])
 
             # Add optimality cut
-            @constraint(scuc_masterproblem,
-                scuc_masterproblem[:θ] >= current_obj +
-                                          sum(ray_x .* (scuc_masterproblem[:x] - x⁽⁰⁾) +
-                                              ray_u .* (scuc_masterproblem[:u] - u⁽⁰⁾) +
-                                              ray_v .* (scuc_masterproblem[:v] - v⁽⁰⁾)))
+            @constraint(
+                scuc_masterproblem,
+                scuc_masterproblem[:θ] >=
+                current_obj +
+                sum(ray_x .* (scuc_masterproblem[:x] - x⁽⁰⁾) + ray_u .* (scuc_masterproblem[:u] - u⁽⁰⁾) + ray_v .* (scuc_masterproblem[:v] - v⁽⁰⁾))
+            )
 
             # Check convergence
             gap = abs(upper_bound - lower_bound) / abs(upper_bound)
@@ -89,10 +88,11 @@ try
             println("v variables: ", sum(abs.(ray_v)))
 
             # Add feasibility cut using Farkas certificate
-            @constraint(scuc_masterproblem,
-                sum(ray_x .* (scuc_masterproblem[:x] - x⁽⁰⁾) +
-                    ray_u .* (scuc_masterproblem[:u] - u⁽⁰⁾) +
-                    ray_v .* (scuc_masterproblem[:v] - v⁽⁰⁾)) <= 0)
+            @constraint(
+                scuc_masterproblem,
+                sum(ray_x .* (scuc_masterproblem[:x] - x⁽⁰⁾) + ray_u .* (scuc_masterproblem[:u] - u⁽⁰⁾) + ray_v .* (scuc_masterproblem[:v] - v⁽⁰⁾)) <=
+                0
+            )
         end
 
         global iteration += 1

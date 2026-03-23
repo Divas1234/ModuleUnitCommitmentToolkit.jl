@@ -23,14 +23,10 @@ function add_curtailment_constraints!(scuc::Model, NT, ND, NW, NS, loads, winds)
 
     winds_curt_constr = @constraint(
         scuc,
-        winds_curt_constr_for_eachscenario[s=1:NS, t=1:NT],
-        Δpw[(1+(s-1)*NW):(s*NW), t] .<= winds.scenarios_curve[s, t] * wind_pmax[:, 1]
+        winds_curt_constr_for_eachscenario[s = 1:NS, t = 1:NT],
+        Δpw[(1 + (s - 1) * NW):(s * NW), t] .<= winds.scenarios_curve[s, t] * wind_pmax[:, 1]
     )
-    loads_curt_const = @constraint(
-        scuc,
-        [s = 1:NS, t = 1:NT],
-        Δpd[(1+(s-1)*ND):(s*ND), t] .<= load_curve[:, t]
-    )
+    loads_curt_const = @constraint(scuc, [s = 1:NS, t = 1:NT], Δpd[(1 + (s - 1) * ND):(s * ND), t] .<= load_curve[:, t])
     println("\t constraints: 4) loadcurtailments and spoliedwinds\t\t\t done")
     return scuc, winds_curt_constr, loads_curt_const
 end
@@ -45,17 +41,7 @@ to handle contingencies and renewable forecasting errors.
 - Upward Reserve: Sum(Generator Reserves) + Sum(Storage Discharge) >= Peak Unit Capacity * 0.5
 - Downward Reserve: Sum(Generator Reserves) + Sum(Storage Charge) >= Forecast Error + Load Variability
 """
-function add_reserve_constraints!(
-    scuc::Model,
-    NT,
-    NG,
-    NC,
-    NS,
-    units,
-    loads,
-    winds,
-    config_param,
-)
+function add_reserve_constraints!(scuc::Model, NT, NG, NC, NS, units, loads, winds, config_param)
     # Check if variables exist
     if isempty(scuc[:sr⁺])
         return println("\t constraints: 6) Reserves skipped (sr⁺ not defined)")
@@ -81,8 +67,7 @@ function add_reserve_constraints!(
     sys_upreserve_constr = @constraint(
         scuc,
         [s = 1:NS, t = 1:NT, i = 1:NG],
-        sum(sr⁺[(1+(s-1)*NG):(s*NG), t]) +
-        (NC > 0 && pc⁻ !== nothing ? sum(pc⁻[(NC*(s-1)+1):(s*NC), t]) : 0.0) >=
+        sum(sr⁺[(1 + (s - 1) * NG):(s * NG), t]) + (NC > 0 && pc⁻ !== nothing ? sum(pc⁻[(NC * (s - 1) + 1):(s * NC), t]) : 0.0) >=
         0.5 * unit_pmax[i, 1] * x[i, t]
     ) # max constraints reformulation
     #  Original formulation used 0.5, keeping it
@@ -93,8 +78,7 @@ function add_reserve_constraints!(
     sys_down_reserve_constr = @constraint(
         scuc,
         [s = 1:NS, t = 1:NT],
-        sum(sr⁻[(1+(s-1)*NG):(s*NG), t]) +
-        (NC > 0 && pc⁺ !== nothing ? sum(pc⁺[(NC*(s-1)+1):(s*NC), t]) : 0.0) >=
+        sum(sr⁻[(1 + (s - 1) * NG):(s * NG), t]) + (NC > 0 && pc⁺ !== nothing ? sum(pc⁺[(NC * (s - 1) + 1):(s * NC), t]) : 0.0) >=
         1.0 * (alpha_res * forcast_reserve[s, t] + beta_res * sum(load_curve[:, t]))
     )
     println("\t constraints: 6) system reserves limits\t\t\t\t\t done")
@@ -110,19 +94,7 @@ Total Demand at every time step and scenario.
 # Balance Equation
 P_thermal + P_wind_net + P_storage_net = P_load_net + P_datacenter_load
 """
-function add_power_balance_constraints!(
-    scuc::Model,
-    NT,
-    NG,
-    ND,
-    NC,
-    NW,
-    NS,
-    loads,
-    winds,
-    config_param,
-    ND2 = nothing,
-)
+function add_power_balance_constraints!(scuc::Model, NT, NG, ND, NC, NW, NS, loads, winds, config_param, ND2 = nothing)
     # Check if variables exist
     if isempty(scuc[:pg₀])
         return println("\t constraints: 7) Power balance skipped (pg₀ not defined)")
@@ -144,21 +116,17 @@ function add_power_balance_constraints!(
         common_balance = @expression(
             scuc,
             [s = 1:NS, t = 1:NT],
-            sum(pg₀[(1+(s-1)*NG):(s*NG), t]) + sum(
-                winds.scenarios_curve[s, t] * wind_pmax[w, 1] - Δpw[(s-1)*NW+w, t] for
-                w = 1:NW
-            ) - sum(load_curve[d, t] - Δpd[(s-1)*ND+d, t] for d = 1:ND)
+            sum(pg₀[(1 + (s - 1) * NG):(s * NG), t]) + sum(winds.scenarios_curve[s, t] * wind_pmax[w, 1] - Δpw[(s - 1) * NW + w, t] for w in 1:NW) -
+            sum(load_curve[d, t] - Δpd[(s - 1) * ND + d, t] for d in 1:ND)
         ) # Net Load
     else
         common_balance = @expression(
             scuc,
             [s = 1:NS, t = 1:NT],
-            sum(pg₀[(1+(s-1)*NG):(s*NG), t]) + sum(
-                winds.scenarios_curve[s, t] * wind_pmax[w, 1] - Δpw[(s-1)*NW+w, t] for
-                w = 1:NW
-            ) - sum(load_curve[d, t] - Δpd[(s-1)*ND+d, t] for d = 1:ND) +
-            (NC > 0 && pc⁻ !== nothing ? sum(pc⁻[((s-1)*NC+1):(s*NC), t]) : 0.0) -
-            (NC > 0 && pc⁺ !== nothing ? sum(pc⁺[((s-1)*NC+1):(s*NC), t]) : 0.0)
+            sum(pg₀[(1 + (s - 1) * NG):(s * NG), t]) + sum(winds.scenarios_curve[s, t] * wind_pmax[w, 1] - Δpw[(s - 1) * NW + w, t] for w in 1:NW) -
+            sum(load_curve[d, t] - Δpd[(s - 1) * ND + d, t] for d in 1:ND) +
+            (NC > 0 && pc⁻ !== nothing ? sum(pc⁻[((s - 1) * NC + 1):(s * NC), t]) : 0.0) -
+            (NC > 0 && pc⁺ !== nothing ? sum(pc⁺[((s - 1) * NC + 1):(s * NC), t]) : 0.0)
         )
     end
 
@@ -166,24 +134,12 @@ function add_power_balance_constraints!(
     if config_param.is_ConsiderDataCentra == 1 && ND2 > 0 && !isempty(scuc[:dc_p])
         dc_p = scuc[:dc_p]
         # Add data center load if considered
-        push!(
-            sys_balance_constr,
-            @constraint(
-                scuc,
-                [s = 1:NS, t = 1:NT],
-                common_balance[s, t] - sum(dc_p[((s-1)*ND2+1):(s*ND2), t]) == 0
-            )
-        )
+        push!(sys_balance_constr, @constraint(scuc, [s = 1:NS, t = 1:NT], common_balance[s, t] - sum(dc_p[((s - 1) * ND2 + 1):(s * ND2), t]) == 0))
     else
         # Constraint without data center load
-        push!(
-            sys_balance_constr,
-            @constraint(scuc, [s = 1:NS, t = 1:NT], common_balance[s, t] == 0)
-        )
+        push!(sys_balance_constr, @constraint(scuc, [s = 1:NS, t = 1:NT], common_balance[s, t] == 0))
         if config_param.is_ConsiderDataCentra == 1 && (ND2 == 0 || dc_p === nothing)
-            println(
-                "Warning: is_ConsiderDataCentra is true, but ND2 is 0 or dc_p missing. Data center load ignored.",
-            )
+            println("Warning: is_ConsiderDataCentra is true, but ND2 is 0 or dc_p missing. Data center load ignored.")
         end
     end
     println("\t constraints: 7) power balance constraints\t\t\t\t done")
