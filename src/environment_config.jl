@@ -1,17 +1,50 @@
 using Pkg
 
-neededPackages = [:Revise, :JuMP, :Gurobi, :Test, :DelimitedFiles,
-	:LaTeXStrings, :Plots, "JLD", :DataFrames, :Clustering, :XLSX,
-	:StatsPlots, :Distributions, :CSV, :Random, :DataFrames, :MultivariateStats, :UnicodePlots, :DataStructures]
+neededPackages = [
+    :Revise,
+    :JuMP,
+    :Gurobi,
+    :Test,
+    :DelimitedFiles,
+    :LaTeXStrings,
+    :Plots,
+    "JLD",
+    :DataFrames,
+    :Clustering,
+    :XLSX,
+    :StatsPlots,
+    :Distributions,
+    :CSV,
+    :Random,
+    :DataFrames,
+    :MultivariateStats,
+    :UnicodePlots,
+    :DataStructures,
+]
 
 # Make sure all needed Pkg's are ready to go
 for neededpackage in neededPackages
-	(String(neededpackage) in keys(Pkg.project().dependencies)) || Pkg.add(String(neededpackage))
-	# @eval using $neededpackage
+    (String(neededpackage) in keys(Pkg.project().dependencies)) || Pkg.add(String(neededpackage))
+    # @eval using $neededpackage
 end
 
-using Revise, JuMP, Gurobi, Test, DelimitedFiles, LaTeXStrings, Plots, JLD, DataFrames, Clustering, StatsPlots, Distributions, CSV, Random,
-	DataFrames, MultivariateStats, DataStructures
+using Revise,
+    JuMP,
+    Gurobi,
+    Test,
+    DelimitedFiles,
+    LaTeXStrings,
+    Plots,
+    JLD,
+    DataFrames,
+    Clustering,
+    StatsPlots,
+    Distributions,
+    CSV,
+    Random,
+    DataFrames,
+    MultivariateStats,
+    DataStructures
 
 gr()
 Random.seed!(1234)

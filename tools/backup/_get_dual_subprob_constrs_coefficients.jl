@@ -63,10 +63,10 @@ function get_v_coeff_vectors_from_constr(nam, current_model, constr, NT, NG)
 
             for g in 1:NG
                 target_var = current_model[:v][g, t]
-                idx = JuMP.index(constr[NG*(t-1)+g])
+                idx = JuMP.index(constr[NG * (t - 1) + g])
                 func = MOI.get(JuMP.backend(current_model), MOI.ConstraintFunction(), idx)
 
-                im_idx = JuMP.index(constr[NT*(g-1)+t])
+                im_idx = JuMP.index(constr[NT * (g - 1) + t])
                 im_func = MOI.get(JuMP.backend(current_model), MOI.ConstraintFunction(), im_idx)
 
                 f = get_coeff_from_constr(func, target_var)
@@ -83,9 +83,9 @@ function get_v_coeff_vectors_from_constr(nam, current_model, constr, NT, NG)
 
                 # println("this is:", res)
                 if sort_order == 0
-                    coeffs[NG*(t-1)+g, 1] = res
+                    coeffs[NG * (t - 1) + g, 1] = res
                 else
-                    coeffs[NT*(g-1)+t, 1] = res
+                    coeffs[NT * (g - 1) + t, 1] = res
                 end
             end
         end
@@ -94,10 +94,10 @@ function get_v_coeff_vectors_from_constr(nam, current_model, constr, NT, NG)
             t = 1
             for g in 1:NG
                 target_var = current_model[:v][g, t]
-                idx = JuMP.index(constr[NG*(t-1)+g])
+                idx = JuMP.index(constr[NG * (t - 1) + g])
                 func = MOI.get(JuMP.backend(current_model), MOI.ConstraintFunction(), idx)
 
-                im_idx = JuMP.index(constr[NT*(g-1)+t])
+                im_idx = JuMP.index(constr[NT * (g - 1) + t])
                 im_func = MOI.get(JuMP.backend(current_model), MOI.ConstraintFunction(), im_idx)
 
                 f = get_coeff_from_constr(func, target_var)
@@ -106,9 +106,9 @@ function get_v_coeff_vectors_from_constr(nam, current_model, constr, NT, NG)
 
                 # println("this is:", res)
                 if sort_order == 0
-                    coeffs[NG*(t-1)+g, 1] = !isnothing(res) ? res : 0
+                    coeffs[NG * (t - 1) + g, 1] = !isnothing(res) ? res : 0
                 else
-                    coeffs[NT*(g-1)+t, 1] = !isnothing(res) ? res : 0
+                    coeffs[NT * (g - 1) + t, 1] = !isnothing(res) ? res : 0
                 end
             end
         end
@@ -134,10 +134,10 @@ function get_u_coeff_vectors_from_constr(nam, current_model, constr, NT, NG)
 
             for g in 1:NG
                 target_var = current_model[:u][g, t]
-                idx = JuMP.index(constr[NG*(t-1)+g])
+                idx = JuMP.index(constr[NG * (t - 1) + g])
                 func = MOI.get(JuMP.backend(current_model), MOI.ConstraintFunction(), idx)
 
-                im_idx = JuMP.index(constr[NT*(g-1)+t])
+                im_idx = JuMP.index(constr[NT * (g - 1) + t])
                 im_func = MOI.get(JuMP.backend(current_model), MOI.ConstraintFunction(), im_idx)
 
                 f = get_coeff_from_constr(func, target_var)
@@ -152,9 +152,9 @@ function get_u_coeff_vectors_from_constr(nam, current_model, constr, NT, NG)
 
                 # println("this is:", res)
                 if sort_order == 0
-                    coeffs[NG*(t-1)+g, 1] = res
+                    coeffs[NG * (t - 1) + g, 1] = res
                 else
-                    coeffs[NT*(g-1)+t, 1] = res
+                    coeffs[NT * (g - 1) + t, 1] = res
                 end
             end
         end
@@ -164,10 +164,10 @@ function get_u_coeff_vectors_from_constr(nam, current_model, constr, NT, NG)
             t = 1
             for g in 1:NG
                 target_var = current_model[:u][g, t]
-                idx = JuMP.index(constr[NG*(t-1)+g])
+                idx = JuMP.index(constr[NG * (t - 1) + g])
                 func = MOI.get(JuMP.backend(current_model), MOI.ConstraintFunction(), idx)
 
-                im_idx = JuMP.index(constr[NT*(g-1)+t])
+                im_idx = JuMP.index(constr[NT * (g - 1) + t])
                 im_func = MOI.get(JuMP.backend(current_model), MOI.ConstraintFunction(), im_idx)
 
                 f = get_coeff_from_constr(func, target_var)
@@ -176,9 +176,9 @@ function get_u_coeff_vectors_from_constr(nam, current_model, constr, NT, NG)
 
                 # println("this is:", res)
                 if sort_order == 0
-                    coeffs[NG*(t-1)+g, 1] = !isnothing(res) ? res : 0
+                    coeffs[NG * (t - 1) + g, 1] = !isnothing(res) ? res : 0
                 else
-                    coeffs[NT*(g-1)+t, 1] = !isnothing(res) ? res : 0
+                    coeffs[NT * (g - 1) + t, 1] = !isnothing(res) ? res : 0
                 end
             end
         end
@@ -204,10 +204,10 @@ function get_x_coeff_vectors_from_constr(nam, current_model, constr, NT, NG)
             for g in 1:NG
                 # println("t:", t, "g:", g)
                 target_var = current_model[:x][g, t]
-                idx = JuMP.index(constr[NG*(t-1)+g])
+                idx = JuMP.index(constr[NG * (t - 1) + g])
                 func = MOI.get(JuMP.backend(current_model), MOI.ConstraintFunction(), idx)
 
-                im_idx = JuMP.index(constr[NT*(g-1)+t])
+                im_idx = JuMP.index(constr[NT * (g - 1) + t])
                 im_func = MOI.get(JuMP.backend(current_model), MOI.ConstraintFunction(), im_idx)
 
                 f = get_coeff_from_constr(func, target_var)
@@ -223,9 +223,9 @@ function get_x_coeff_vectors_from_constr(nam, current_model, constr, NT, NG)
 
                 # println("this is:", res)
                 if sort_order == 0
-                    coeffs[NG*(t-1)+g, 1] = res
+                    coeffs[NG * (t - 1) + g, 1] = res
                 else
-                    coeffs[NT*(g-1)+t, 1] = res
+                    coeffs[NT * (g - 1) + t, 1] = res
                 end
             end
         end
@@ -235,10 +235,10 @@ function get_x_coeff_vectors_from_constr(nam, current_model, constr, NT, NG)
             t = 1
             for g in 1:NG
                 target_var = current_model[:x][g, t]
-                idx = JuMP.index(constr[NG*(t-1)+g])
+                idx = JuMP.index(constr[NG * (t - 1) + g])
                 func = MOI.get(JuMP.backend(current_model), MOI.ConstraintFunction(), idx)
 
-                im_idx = JuMP.index(constr[NT*(g-1)+t])
+                im_idx = JuMP.index(constr[NT * (g - 1) + t])
                 im_func = MOI.get(JuMP.backend(current_model), MOI.ConstraintFunction(), im_idx)
 
                 f = get_coeff_from_constr(func, target_var)
@@ -247,9 +247,9 @@ function get_x_coeff_vectors_from_constr(nam, current_model, constr, NT, NG)
 
                 # println("this is:", res)
                 if sort_order == 0
-                    coeffs[NG*(t-1)+g, 1] = !isnothing(res) ? res : 0
+                    coeffs[NG * (t - 1) + g, 1] = !isnothing(res) ? res : 0
                 else
-                    coeffs[NT*(g-1)+t, 1] = !isnothing(res) ? res : 0
+                    coeffs[NT * (g - 1) + t, 1] = !isnothing(res) ? res : 0
                 end
             end
         end

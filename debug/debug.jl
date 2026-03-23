@@ -15,9 +15,8 @@ include("src/draw_addditionalpower.jl")
 # Destructure directly from function call for clarity
 UnitsFreqParam, WindsFreqParam, StrogeData, DataGen, GenCost, DataBranch, LoadCurve, DataLoad, datacentra_Data = readxlssheet()
 
-config_param, units, lines, loads, stroges, NB, NG, NL, ND, NT, NC, ND2, DataCentras = forminputdata(
-	DataGen, DataBranch, DataLoad, LoadCurve, GenCost, UnitsFreqParam, StrogeData, datacentra_Data
-)
+config_param, units, lines, loads, stroges, NB, NG, NL, ND, NT, NC, ND2, DataCentras =
+    forminputdata(DataGen, DataBranch, DataLoad, LoadCurve, GenCost, UnitsFreqParam, StrogeData, datacentra_Data)
 
 winds, NW = genscenario(WindsFreqParam, 1)
 
@@ -33,11 +32,11 @@ ND2
 # DEBUG - uc
 
 if config_param.is_NetWorkCon == 1
-	Adjacmatrix_BtoG, Adjacmatrix_B2D, Gsdf = linearpowerflow(units, lines, loads, NG, NB, ND, NL)
-	Adjacmatrix_BtoW = zeros(NB, length(winds.index))
-	for i in 1:length(winds.index)
-		Adjacmatrix_BtoW[winds.index[i, 1], i] = 1
-	end
+    Adjacmatrix_BtoG, Adjacmatrix_B2D, Gsdf = linearpowerflow(units, lines, loads, NG, NB, ND, NL)
+    Adjacmatrix_BtoW = zeros(NB, length(winds.index))
+    for i in 1:length(winds.index)
+        Adjacmatrix_BtoW[winds.index[i, 1], i] = 1
+    end
 end
 
 NS = winds.scenarios_nums
@@ -88,13 +87,13 @@ load_curtailment_penalty = config_param.is_LoadsCuttingCoefficient * 1e10
 wind_curtailment_penalty = config_param.is_WindsCuttingCoefficient * 1e0
 
 if config_param.is_ConsiderDataCentra == 1
-	@variable(scuc, dc_p[1:(ND2 * NS), 1:NT]>=0)
-	@variable(scuc, dc_f[1:(ND2 * NS), 1:NT]>=0)
-	# @variable(scuc, dc_v[1:(ND2 * NS), 1:NT]>=0)
-	@variable(scuc, dc_v²[1:(ND2 * NS), 1:NT]>=0)
-	@variable(scuc, dc_λ[1:(ND2 * NS), 1:NT]>=0)
-	@variable(scuc, dc_Δu1[1:(ND2 * NS), 1:NT]>=0)
-	@variable(scuc, dc_Δu2[1:(ND2 * NS), 1:NT]>=0)
+    @variable(scuc, dc_p[1:(ND2 * NS), 1:NT]>=0)
+    @variable(scuc, dc_f[1:(ND2 * NS), 1:NT]>=0)
+    # @variable(scuc, dc_v[1:(ND2 * NS), 1:NT]>=0)
+    @variable(scuc, dc_v²[1:(ND2 * NS), 1:NT]>=0)
+    @variable(scuc, dc_λ[1:(ND2 * NS), 1:NT]>=0)
+    @variable(scuc, dc_Δu1[1:(ND2 * NS), 1:NT]>=0)
+    @variable(scuc, dc_Δu2[1:(ND2 * NS), 1:NT]>=0)
 end
 
 # if config_param.is_ConsiderDataCentra == 1
@@ -119,25 +118,41 @@ end
 #         sum(dc_λ[((s - 1) * ND + 1):(s * ND), ((iter - 1) * iter_block + 1):(ter * iter_block)]).==data_centra.λ[:, ((iter - 1) * iter_block + 1):(ter * iter_block)])
 # end
 
-@constraint(scuc, [s = 1:NS, t = 1:NT], dc_p[((s - 1) * ND2 + 1):(s * ND2), t].<=DataCentras.p_max)
+@constraint(scuc, [s = 1:NS, t = 1:NT], dc_p[((s - 1) * ND2 + 1):(s * ND2), t] .<= DataCentras.p_max)
 DataCentras.p_max
 # ND = 8
-@constraint(scuc, [s = 1:NS, t = 1:NT], dc_p[((s - 1) * ND2 + 1):(s * ND2), t].>=DataCentras.p_min)
-@constraint(scuc, [s = 1:NS, t = 1:NT], dc_p[((s - 1) * ND2 + 1):(s * ND2), t].==DataCentras.idale .+ DataCentras.sv_constant .* dc_Δu2[((s - 1) * ND2 + 1):(s * ND2), t] ./ DataCentras.μ)
+@constraint(scuc, [s = 1:NS, t = 1:NT], dc_p[((s - 1) * ND2 + 1):(s * ND2), t] .>= DataCentras.p_min)
+@constraint(
+    scuc,
+    [s = 1:NS, t = 1:NT],
+    dc_p[((s - 1) * ND2 + 1):(s * ND2), t] .==
+    DataCentras.idale .+ DataCentras.sv_constant .* dc_Δu2[((s - 1) * ND2 + 1):(s * ND2), t] ./ DataCentras.μ
+)
 
-@constraint(scuc, [s = 1:NS, t = 1:NT], dc_Δu2[((s - 1) * ND2 + 1):(s * ND2), t].<=dc_Δu1[((s - 1) * ND2 + 1):(s * ND2), t])
-@constraint(scuc, [s = 1:NS, t = 1:NT], dc_Δu2[((s - 1) * ND2 + 1):(s * ND2), t].<=dc_λ[((s - 1) * ND2 + 1):(s * ND2), t])
-@constraint(scuc, [s = 1:NS, t = 1:NT], dc_Δu2[((s - 1) * ND2 + 1):(s * ND2), t].>=dc_λ[((s - 1) * ND2 + 1):(s * ND2), t] .+ dc_Δu1[((s - 1) * ND2 + 1):(s * ND2), t] - ones(ND2, 1))
+@constraint(scuc, [s = 1:NS, t = 1:NT], dc_Δu2[((s - 1) * ND2 + 1):(s * ND2), t] .<= dc_Δu1[((s - 1) * ND2 + 1):(s * ND2), t])
+@constraint(scuc, [s = 1:NS, t = 1:NT], dc_Δu2[((s - 1) * ND2 + 1):(s * ND2), t] .<= dc_λ[((s - 1) * ND2 + 1):(s * ND2), t])
+@constraint(
+    scuc,
+    [s = 1:NS, t = 1:NT],
+    dc_Δu2[((s - 1) * ND2 + 1):(s * ND2), t] .>= dc_λ[((s - 1) * ND2 + 1):(s * ND2), t] .+ dc_Δu1[((s - 1) * ND2 + 1):(s * ND2), t] - ones(ND2, 1)
+)
 
-@constraint(scuc, [s = 1:NS, t = 1:NT], dc_Δu1[((s - 1) * ND2 + 1):(s * ND2), t].<=dc_v²[((s - 1) * ND2 + 1):(s * ND2), t])
-@constraint(scuc, [s = 1:NS, t = 1:NT], dc_Δu1[((s - 1) * ND2 + 1):(s * ND2), t].<=dc_f[((s - 1) * ND2 + 1):(s * ND2), t])
-@constraint(scuc, [s = 1:NS, t = 1:NT], dc_Δu1[((s - 1) * ND2 + 1):(s * ND2), t].>=dc_v²[((s - 1) * ND2 + 1):(s * ND2), t] .+ dc_f[((s - 1) * ND2 + 1):(s * ND2), t] - ones(ND2, 1))
+@constraint(scuc, [s = 1:NS, t = 1:NT], dc_Δu1[((s - 1) * ND2 + 1):(s * ND2), t] .<= dc_v²[((s - 1) * ND2 + 1):(s * ND2), t])
+@constraint(scuc, [s = 1:NS, t = 1:NT], dc_Δu1[((s - 1) * ND2 + 1):(s * ND2), t] .<= dc_f[((s - 1) * ND2 + 1):(s * ND2), t])
+@constraint(
+    scuc,
+    [s = 1:NS, t = 1:NT],
+    dc_Δu1[((s - 1) * ND2 + 1):(s * ND2), t] .>= dc_v²[((s - 1) * ND2 + 1):(s * ND2), t] .+ dc_f[((s - 1) * ND2 + 1):(s * ND2), t] - ones(ND2, 1)
+)
 
 iter_num = 6
 iter_block = Int64(round(NT / iter_num))
-@constraint(scuc, [s = 1:NS, t = 1:NT], dc_λ[((s - 1) * ND2 + 1):(s * ND2), t].<=ones(ND2, 1))
-@constraint(scuc, [s = 1:NS, t = 1:NT], dc_f[((s - 1) * ND2 + 1):(s * ND2), t].<=ones(ND2, 1))
-@constraint(scuc, [s = 1:NS, t = 1:NT], dc_v²[((s - 1) * ND2 + 1):(s * ND2), t].<=ones(ND2, 1))
-@constraint(scuc, [s = 1:NS, t = 1:NT, iter = 1:iter_num],
-	sum(dc_λ[((s - 1) * ND2 + 1):(s * ND2),
-		((iter - 1) * iter_block + 1):(iter * iter_block)]).==sum(DataCentras.λ) .* DataCentras.computational_power_tasks[((iter - 1) * iter_block + 1):(iter * iter_block)])
+@constraint(scuc, [s = 1:NS, t = 1:NT], dc_λ[((s - 1) * ND2 + 1):(s * ND2), t] .<= ones(ND2, 1))
+@constraint(scuc, [s = 1:NS, t = 1:NT], dc_f[((s - 1) * ND2 + 1):(s * ND2), t] .<= ones(ND2, 1))
+@constraint(scuc, [s = 1:NS, t = 1:NT], dc_v²[((s - 1) * ND2 + 1):(s * ND2), t] .<= ones(ND2, 1))
+@constraint(
+    scuc,
+    [s = 1:NS, t = 1:NT, iter = 1:iter_num],
+    sum(dc_λ[((s - 1) * ND2 + 1):(s * ND2), ((iter - 1) * iter_block + 1):(iter * iter_block)]) .==
+    sum(DataCentras.λ) .* DataCentras.computational_power_tasks[((iter - 1) * iter_block + 1):(iter * iter_block)]
+)

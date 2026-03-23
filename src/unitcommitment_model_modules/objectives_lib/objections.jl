@@ -20,13 +20,11 @@ This function serves as a wrapper for the economic objective function.
 - `refcost`: Reference cost.
 - `eachslope`: Each slope.
 """
-function set_objective!(
-		scuc::Model, NT, NG, ND, NW, NS, units, config_param, scenarios_prob, refcost, eachslope)
-	# Check if the input model is a JuMP Model
-	@assert typeof(scuc) == Model "scuc must be a JuMP Model"
+function set_objective!(scuc::Model, NT, NG, ND, NW, NS, units, config_param, scenarios_prob, refcost, eachslope)
+    # Check if the input model is a JuMP Model
+    @assert typeof(scuc) == Model "scuc must be a JuMP Model"
 
-	return set_objective_economic!(
-		scuc::Model, NT, NG, ND, NW, NS, units, config_param, scenarios_prob, refcost, eachslope)
+    return set_objective_economic!(scuc::Model, NT, NG, ND, NW, NS, units, config_param, scenarios_prob, refcost, eachslope)
 end
 
 println("\t\u2192 objective functions exported.")

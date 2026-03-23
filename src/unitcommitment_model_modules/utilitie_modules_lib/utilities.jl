@@ -20,8 +20,14 @@ include("_reorginze_constr.jl")
 # - Saving scheduling results
 # """
 export define_variables!,
-	solve_and_extract_results, linearizationfuelcurve, linearpowerflow, save_UCresults, read_UCresults,
-	savebalance_result,
-	convert_constraints_type_to_vector, check_constrainsref_type, reorginze_constraints_sets
+    solve_and_extract_results,
+    linearizationfuelcurve,
+    linearpowerflow,
+    save_UCresults,
+    read_UCresults,
+    savebalance_result,
+    convert_constraints_type_to_vector,
+    check_constrainsref_type,
+    reorginze_constraints_sets
 
 println("\t\u2192 utility functions exported.")

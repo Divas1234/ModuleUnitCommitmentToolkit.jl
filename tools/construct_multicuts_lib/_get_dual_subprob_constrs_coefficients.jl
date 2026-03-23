@@ -56,7 +56,7 @@ function get_dual_constrs_coefficient(current_model::SCUC_Model, constrs, opti_t
 			dual_coeff = shadow_price.(value) #farkas convex
 		end
 
-		dual_results[key] = build_dual_cuts_expr_coefficient(
+		dual_results[key] = build_dual_cuts_expr_coefficient(;
 			rhs = rhs_constr,
 			x = (!isnothing(x_coeff) ? x_coeff = x_coeff[:, 1] : nothing),
 			u = (!isnothing(u_coeff) ? u_coeff = u_coeff[:, 1] : nothing),
@@ -68,7 +68,7 @@ function get_dual_constrs_coefficient(current_model::SCUC_Model, constrs, opti_t
 			u_alignment_flag = (!isnothing(u_alignment_flag) ? u_alignment_flag : nothing),
 			v_alignment_flag = (!isnothing(v_alignment_flag) ? v_alignment_flag : nothing),
 			dual_coeffVector = dual_coeff,
-			operator_associativity = operator_ass
+			operator_associativity = operator_ass,
 		)
 	end
 

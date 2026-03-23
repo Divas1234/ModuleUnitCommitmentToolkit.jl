@@ -23,11 +23,11 @@ function subproblem_callback(cb_data)
     set_optimizer_attribute(sub, "OutputFlag", 0)
     @variable(sub, p[1:num_units, 1:num_periods] >= 0)
     @objective(sub, Min, sum(c_var[i] * p[i, t] for i in 1:num_units, t in 1:num_periods))
-    @constraint(sub, demand_con[t=1:num_periods], sum(p[i, t] for i in 1:num_units) == demand[t])
-    @constraint(sub, gen_min[i=1:num_units, t=1:num_periods], p[i, t] >= p_min[i] * u_val[i, t])
-    @constraint(sub, gen_max[i=1:num_units, t=1:num_periods], p[i, t] <= p_max[i] * u_val[i, t])
-    @constraint(sub, ramp_up[i=1:num_units, t=2:num_periods], p[i, t] - p[i, t-1] <= ramp_rate[i])
-    @constraint(sub, ramp_down[i=1:num_units, t=2:num_periods], p[i, t-1] - p[i, t] <= ramp_rate[i])
+    @constraint(sub, demand_con[t = 1:num_periods], sum(p[i, t] for i in 1:num_units) == demand[t])
+    @constraint(sub, gen_min[i = 1:num_units, t = 1:num_periods], p[i, t] >= p_min[i] * u_val[i, t])
+    @constraint(sub, gen_max[i = 1:num_units, t = 1:num_periods], p[i, t] <= p_max[i] * u_val[i, t])
+    @constraint(sub, ramp_up[i = 1:num_units, t = 2:num_periods], p[i, t] - p[i, t - 1] <= ramp_rate[i])
+    @constraint(sub, ramp_down[i = 1:num_units, t = 2:num_periods], p[i, t - 1] - p[i, t] <= ramp_rate[i])
 
     optimize!(sub)
     status = termination_status(sub)
@@ -43,11 +43,14 @@ function subproblem_callback(cb_data)
         sub_obj = objective_value(sub)
 
         # Construct optimality cut
-        cut = @expression(sub, sum(π[t] * demand[t] for t in 1:num_periods) +
+        cut = @expression(
+            sub,
+            sum(π[t] * demand[t] for t in 1:num_periods) +
             sum(μ_min[i, t] * p_min[i] * u[i, t] for i in 1:num_units, t in 1:num_periods) +
             sum(μ_max[i, t] * (-p_max[i] * u[i, t]) for i in 1:num_units, t in 1:num_periods) +
-            sum(ρ_up[i, t] * (p[i, t] - p[i, t-1]) for i in 1:num_units, t in 2:num_periods) +
-            sum(ρ_down[i, t] * (p[i, t-1] - p[i, t]) for i in 1:num_units, t in 2:num_periods))
+            sum(ρ_up[i, t] * (p[i, t] - p[i, t - 1]) for i in 1:num_units, t in 2:num_periods) +
+            sum(ρ_down[i, t] * (p[i, t - 1] - p[i, t]) for i in 1:num_units, t in 2:num_periods)
+        )
         add_lazy_constraint(cb_data, η >= cut)
 
     else
@@ -59,11 +62,11 @@ function subproblem_callback(cb_data)
         @variable(feas_sub, s_pos[1:num_periods] >= 0)
         @variable(feas_sub, s_neg[1:num_periods] >= 0)
         @objective(feas_sub, Min, sum(s_pos[t] + s_neg[t] for t in 1:num_periods))
-        @constraint(feas_sub, demand_con[t=1:num_periods], sum(p[i, t] for i in 1:num_units) + s_pos[t] - s_neg[t] == demand[t])
-        @constraint(feas_sub, gen_min[i=1:num_units, t=1:num_periods], p[i, t] >= p_min[i] * u_val[i, t])
-        @constraint(feas_sub, gen_max[i=1:num_units, t=1:num_periods], p[i, t] <= p_max[i] * u_val[i, t])
-        @constraint(feas_sub, ramp_up[i=1:num_units, t=2:num_periods], p[i, t] - p[i, t-1] <= ramp_rate[i])
-        @constraint(feas_sub, ramp_down[i=1:num_units, t=2:num_periods], p[i, t-1] - p[i, t] <= ramp_rate[i])
+        @constraint(feas_sub, demand_con[t = 1:num_periods], sum(p[i, t] for i in 1:num_units) + s_pos[t] - s_neg[t] == demand[t])
+        @constraint(feas_sub, gen_min[i = 1:num_units, t = 1:num_periods], p[i, t] >= p_min[i] * u_val[i, t])
+        @constraint(feas_sub, gen_max[i = 1:num_units, t = 1:num_periods], p[i, t] <= p_max[i] * u_val[i, t])
+        @constraint(feas_sub, ramp_up[i = 1:num_units, t = 2:num_periods], p[i, t] - p[i, t - 1] <= ramp_rate[i])
+        @constraint(feas_sub, ramp_down[i = 1:num_units, t = 2:num_periods], p[i, t - 1] - p[i, t] <= ramp_rate[i])
 
         optimize!(feas_sub)
         if termination_status(feas_sub) == MOI.OPTIMAL
@@ -74,18 +77,19 @@ function subproblem_callback(cb_data)
             ρ_down = dual.(feas_sub[:ramp_down])
 
             # Construct feasibility cut
-            cut = @expression(feas_sub, sum(π[t] * demand[t] for t in 1:num_periods) +
+            cut = @expression(
+                feas_sub,
+                sum(π[t] * demand[t] for t in 1:num_periods) +
                 sum(μ_min[i, t] * p_min[i] * u[i, t] for i in 1:num_units, t in 1:num_periods) +
                 sum(μ_max[i, t] * (-p_max[i] * u[i, t]) for i in 1:num_units, t in 1:num_periods) +
-                sum(ρ_up[i, t] * (p[i, t] - p[i, t-1]) for i in 1:num_units, t in 2:num_periods) +
-                sum(ρ_down[i, t] * (p[i, t-1] - p[i, t]) for i in 1:num_units, t in 2:num_periods))
+                sum(ρ_up[i, t] * (p[i, t] - p[i, t - 1]) for i in 1:num_units, t in 2:num_periods) +
+                sum(ρ_down[i, t] * (p[i, t - 1] - p[i, t]) for i in 1:num_units, t in 2:num_periods)
+            )
             add_lazy_constraint(cb_data, cut <= 0)
         else
             error("Feasibility subproblem failed")
         end
-
     end
-    
 end
 
 # Master problem
@@ -96,8 +100,8 @@ set_optimizer_attribute(master, "OutputFlag", 0)
 @variable(master, w[1:num_units, 1:num_periods], Bin)  # Shutdown
 @variable(master, η >= 0)  # Subproblem cost estimate
 @objective(master, Min, sum(c_fixed[i] * u[i, t] + c_startup[i] * v[i, t] for i in 1:num_units, t in 1:num_periods) + η)
-@constraint(master, logic[i=1:num_units, t=2:num_periods], v[i, t] - w[i, t] == u[i, t] - u[i, t-1])
-@constraint(master, initial_logic[i=1:num_units], v[i, 1] - w[i, 1] == u[i, 1])  # Assume initial state off
+@constraint(master, logic[i = 1:num_units, t = 2:num_periods], v[i, t] - w[i, t] == u[i, t] - u[i, t - 1])
+@constraint(master, initial_logic[i = 1:num_units], v[i, 1] - w[i, 1] == u[i, 1])  # Assume initial state off
 
 # Set lazy constraint callback
 MOI.set(master, MOI.UserCutCallback(), subproblem_callback)

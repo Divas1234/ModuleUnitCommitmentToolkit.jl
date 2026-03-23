@@ -22,7 +22,6 @@ dual_status_infeasible = dual_status(model_infeasible) # Check for certificate t
 println("Infeasible Model Termination Status: ", term_status_infeasible)
 println("Infeasible Model Dual Status: ", dual_status_infeasible)
 
-
 if term_status_infeasible == MOI.INFEASIBLE && dual_status_infeasible == MOI.INFEASIBILITY_CERTIFICATE
     println("Infeasible Model is Infeasible, and Farkas certificate is available.")
 
@@ -42,7 +41,6 @@ if term_status_infeasible == MOI.INFEASIBLE && dual_status_infeasible == MOI.INF
     #  y1(1) + y2(-2) < 0 => y1 - 2y2 < 0 => y1 < 2y2, but since y1 == y2, then y1 - 2y1 < 0 => -y1 < 0 => y1 > 0
     #So any  y1 == y2 > 0  will be a valid certificate.
     # The shadow prices should thus be equal.
-
 
 else
     println("Infeasible Model did not solve to infeasibility or Farkas certificate is not available.")

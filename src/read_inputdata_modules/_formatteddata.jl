@@ -261,29 +261,7 @@ struct data_centra
     λ::Vector{Float64}                    # IT computational task continuous arrival rate
     μ::Vector{Float64}                    # IT computational task service processing capability
     computational_power_tasks::Matrix{Float64} # Time-series IT task allocation matrix (ND2 x NT)
-    function data_centra(
-        index,
-        locatebus,
-        p_max,
-        p_min,
-        voltage_regulation,
-        idale,
-        sv_constant,
-        λ,
-        μ,
-        computational_power_tasks,
-    )
-        return new(
-            index,
-            locatebus,
-            p_max,
-            p_min,
-            voltage_regulation,
-            idale,
-            sv_constant,
-            λ,
-            μ,
-            computational_power_tasks,
-        )
+    function data_centra(index, locatebus, p_max, p_min, voltage_regulation, idale, sv_constant, λ, μ, computational_power_tasks)
+        return new(index, locatebus, p_max, p_min, voltage_regulation, idale, sv_constant, λ, μ, computational_power_tasks)
     end
 end
