@@ -65,17 +65,27 @@ function exported_scheduling_cost(
         pₛ *
         c₀ *
         (
-            sum(sum(sum(sum(pgₖ[i + (s - 1) * NG, t, :] .* eachslope[:, i] for t in 1:NT)) for s in 1:NS) for i in 1:NG) +
-            sum(sum(sum(x₀[:, t] .* refcost[:, 1] for t in 1:NT)) for s in 1:NS)
+            sum(
+                sum(
+                    sum(sum(pgₖ[i+(s-1)*NG, t, :] .* eachslope[:, i] for t = 1:NT)) for
+                    s = 1:NS
+                ) for i = 1:NG
+            ) + sum(sum(sum(x₀[:, t] .* refcost[:, 1] for t = 1:NT)) for s = 1:NS)
         )
 
     # Reserve Costs: Upward and Downward spinning reserve costs
-    cr⁺ = pₛ * c₀ * sum(sum(sum(ρ⁺ * seq_sr⁺[i + (s - 1) * NG, t] for i in 1:NG) for t in 1:NT) for s in 1:NS)
-    cr⁻ = pₛ * c₀ * sum(sum(sum(ρ⁺ * seq_sr⁻[i + (s - 1) * NG, t] for i in 1:NG) for t in 1:NT) for s in 1:NS)
+    cr⁺ =
+        pₛ *
+        c₀ *
+        sum(sum(sum(ρ⁺ * seq_sr⁺[i+(s-1)*NG, t] for i = 1:NG) for t = 1:NT) for s = 1:NS)
+    cr⁻ =
+        pₛ *
+        c₀ *
+        sum(sum(sum(ρ⁺ * seq_sr⁻[i+(s-1)*NG, t] for i = 1:NG) for t = 1:NT) for s = 1:NS)
 
     # Curtailment Penalties: Load and Wind
-    𝜟pd = pₛ * sum(sum(sum(pᵨ[(1 + (s - 1) * ND):(s * ND), t]) for t in 1:NT) for s in 1:NS)
-    𝜟pw = pₛ * sum(sum(sum(pᵩ[(1 + (s - 1) * NW):(s * NW), t]) for t in 1:NT) for s in 1:NS)
+    𝜟pd = pₛ * sum(sum(sum(pᵨ[(1+(s-1)*ND):(s*ND), t]) for t = 1:NT) for s = 1:NS)
+    𝜟pw = pₛ * sum(sum(sum(pᵩ[(1+(s-1)*NW):(s*NW), t]) for t = 1:NT) for s = 1:NS)
     str = zeros(1, 7)
     str[1, 1] = sum(su_cost) * 1.0
     str[1, 2] = sum(sd_cost) * 1.0
@@ -87,7 +97,7 @@ function exported_scheduling_cost(
 
     # --- Directory and File Management ---
     if Sys.iswindows()
-        output_dir = "D:/GithubClonefiles/module_unitcommitment/output/"
+        output_dir = "D:/GithubClonefiles/module_unitcommitment_gbd/output/"
     elseif Sys.isapple()
         output_dir = "/Users/yuanyiping/Documents/GitHub/module_unitcommitment/output/"
     end
@@ -145,7 +155,9 @@ function exported_scheduling_cost(
             # writedlm(io, β[1:NC, 1:NT], '\t')
         end
 
-        println("PART1: [unit-commitment] calculation result has been saved to: $output_file")
+        println(
+            "PART1: [unit-commitment] calculation result has been saved to: $output_file",
+        )
 
         if config_param.is_ConsiderBESS == 1 && NC > 0
             # Open output file for writing results
@@ -204,8 +216,12 @@ function exported_scheduling_cost(
                 writedlm(io, ["list 6: dc_Δu2"])
                 return writedlm(io, dc_Δu2_res[1:(ND2), 1:NT], '\t')
             end
-            println("PART2: [data-centra] calculation result has been saved to: $output_file")
-            println("+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++")
+            println(
+                "PART2: [data-centra] calculation result has been saved to: $output_file",
+            )
+            println(
+                "+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++",
+            )
 
             # Open output file for csv writing results
             # output_dir = "D:/GithubClonefiles/datacentra_unitcommitment/output/data_centra/"
@@ -222,12 +238,48 @@ function exported_scheduling_cost(
                 ("dc_λ.csv", (dc_λ_res[1:(ND2), 1:NT])),
                 ("dc_f.csv", (dc_f_res[1:(ND2), 1:NT])),
                 ("dc_p.csv", (dc_p_res[1:(ND2), 1:NT])),
-                ("dc_debug_tasks_1.csv", ((dc_λ_res[((s - 1) * ND2 + 1):(s * ND2), ((1 - 1) * iter_block + 1):(1 * iter_block)]))),
-                ("dc_debug_tasks_2.csv", ((dc_λ_res[((s - 1) * ND2 + 1):(s * ND2), ((2 - 1) * iter_block + 1):(2 * iter_block)]))),
-                ("dc_debug_tasks_3.csv", ((dc_λ_res[((s - 1) * ND2 + 1):(s * ND2), ((3 - 1) * iter_block + 1):(3 * iter_block)]))),
-                ("dc_debug_tasks_4.csv", ((dc_λ_res[((s - 1) * ND2 + 1):(s * ND2), ((4 - 1) * iter_block + 1):(4 * iter_block)]))),
-                ("dc_debug_tasks_5.csv", ((dc_λ_res[((s - 1) * ND2 + 1):(s * ND2), ((5 - 1) * iter_block + 1):(5 * iter_block)]))),
-                ("dc_debug_tasks_6.csv", ((dc_λ_res[((s - 1) * ND2 + 1):(s * ND2), ((6 - 1) * iter_block + 1):(6 * iter_block)]))),
+                (
+                    "dc_debug_tasks_1.csv",
+                    ((dc_λ_res[
+                        ((s-1)*ND2+1):(s*ND2),
+                        ((1-1)*iter_block+1):(1*iter_block),
+                    ])),
+                ),
+                (
+                    "dc_debug_tasks_2.csv",
+                    ((dc_λ_res[
+                        ((s-1)*ND2+1):(s*ND2),
+                        ((2-1)*iter_block+1):(2*iter_block),
+                    ])),
+                ),
+                (
+                    "dc_debug_tasks_3.csv",
+                    ((dc_λ_res[
+                        ((s-1)*ND2+1):(s*ND2),
+                        ((3-1)*iter_block+1):(3*iter_block),
+                    ])),
+                ),
+                (
+                    "dc_debug_tasks_4.csv",
+                    ((dc_λ_res[
+                        ((s-1)*ND2+1):(s*ND2),
+                        ((4-1)*iter_block+1):(4*iter_block),
+                    ])),
+                ),
+                (
+                    "dc_debug_tasks_5.csv",
+                    ((dc_λ_res[
+                        ((s-1)*ND2+1):(s*ND2),
+                        ((5-1)*iter_block+1):(5*iter_block),
+                    ])),
+                ),
+                (
+                    "dc_debug_tasks_6.csv",
+                    ((dc_λ_res[
+                        ((s-1)*ND2+1):(s*ND2),
+                        ((6-1)*iter_block+1):(6*iter_block),
+                    ])),
+                ),
             ]
 
             # iter = 1

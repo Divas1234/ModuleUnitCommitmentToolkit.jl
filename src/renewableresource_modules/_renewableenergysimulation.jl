@@ -45,31 +45,83 @@ struct wind
         end
     end
 
-    function wind(index, locatebus, p_max, scenarios_prob, scenarios_nums, scenarios_curve, Fcmode, Kw, Rw, Mw, Dw, Tw)
-        return new(index, locatebus, p_max, scenarios_prob, scenarios_nums, scenarios_curve, Fcmode, Kw, Rw, Mw, Dw, Tw)
+    function wind(
+        index,
+        locatebus,
+        p_max,
+        scenarios_prob,
+        scenarios_nums,
+        scenarios_curve,
+        Fcmode,
+        Kw,
+        Rw,
+        Mw,
+        Dw,
+        Tw,
+    )
+        return new(
+            index,
+            locatebus,
+            p_max,
+            scenarios_prob,
+            scenarios_nums,
+            scenarios_curve,
+            Fcmode,
+            Kw,
+            Rw,
+            Mw,
+            Dw,
+            Tw,
+        )
     end
 end
 
 # --- Default Initialization and Base Curves ---
-index = [1; 2]
-locatebus = [1; 1]
-NW = length(index)
-NT = 24 # Optimization horizon (24 hours)
+"""
+    add_windfarms_config()
 
-# Assume identical capacity for test cases (e.g., 0.5 p.u.)
-cap = [0.5] * 5
-p_max = cap .* ones(NW, 1)
-p_max = p_max[:, 1]
+Configures default parameters for wind farms, including identifiers, bus locations, capacity limits, and typical power output curves.
 
-# Base wind power output profile (24-hour typical day)
-scenarios_curvebase =
-    [
-        0.440724927203680 0.420965256587272 0.449034794022911 0.454128108336623 0.436483077739172 0.477450522402300
-        0.443871634609799 0.374756446192485 0.448192193924943 0.431190577826877 0.428867647037057 0.445673091565042
-        0.433764408789611 0.421900481861469 0.429104412188035 0.463277796146724 0.426579282372516 0.448189506134410
-        0.429353980231385 0.434861266141317 0.437494540514197 0.456877055120346 0.425139803090161 0.425629623577982
-    ] * 1.0
-scenarios_curvebase = reshape(scenarios_curvebase, 1, NT)
+# Returns
+- `index`: Wind farm index vector
+- `locatebus`: Bus location vector for wind farm interconnection
+- `NW`: Number of wind farms
+- `p_max`: Rated capacity for each wind farm (per-unit value)
+- `scenarios_curvebase`: Normalized typical daily wind power output curve (1×24 matrix)
+"""
+function add_windfarms_config()
+    # Wind farm indices: assuming 2 wind farms in the system
+    index = [1; 2]
+    # Bus location: both wind farms connected to bus 1 (simplified test system configuration)
+    locatebus = [1; 1]
+    # Get total number of wind farms
+    NW = length(index)
+    # Optimization horizon: 24 hours for typical daily dispatch
+    NT = 24 # Optimization horizon (24 hours)
+
+    # Rated capacity: 0.5 p.u. per wind farm (relative to system base capacity)
+    # Note: cap array length is 5 to satisfy dimension requirements for subsequent ones() operation
+    cap = [0.5] * 5
+    # Expand to NW×1 matrix, each row corresponds to one wind farm's capacity
+    p_max = cap .* ones(NW, 1)
+    # Extract first column and convert to vector form
+    p_max = p_max[:, 1]
+
+    # Base wind power normalized output curve (typical daily 24-hour data)
+    # Value range 0.3~0.5, corresponding to daily periodicity of wind speed variations
+    # 4×6 matrix with 24 data points, representing typical power values at different time periods
+    scenarios_curvebase =
+        [
+            0.440724927203680 0.420965256587272 0.449034794022911 0.454128108336623 0.436483077739172 0.477450522402300
+            0.443871634609799 0.374756446192485 0.448192193924943 0.431190577826877 0.428867647037057 0.445673091565042
+            0.433764408789611 0.421900481861469 0.429104412188035 0.463277796146724 0.426579282372516 0.448189506134410
+            0.429353980231385 0.434861266141317 0.437494540514197 0.456877055120346 0.425139803090161 0.425629623577982
+        ] * 1.0
+    # Reshape to 1×NT matrix for subsequent scenario operations and probability weighting
+    scenarios_curvebase = reshape(scenarios_curvebase, 1, NT)
+
+    return index, locatebus, NW, p_max, scenarios_curvebase
+end
 
 """
 `genscenario(WindsFreqParam, flag)`
@@ -83,22 +135,27 @@ Generates stochastic wind power scenarios by adding probabilistic noise to a bas
 # Returns
 A tuple containing the `wind` struct and the number of wind units `NW`.
 """
-function genscenario(WindsFreqParam, flag)
+function genscenario(WindsFreqParam, flag, NT = 24)
+    index, locatebus, NW, p_max, scenarios_curvebase = add_windfarms_config()
+
     if flag == 1
         # Generate a single scenario with Weibull distribution noise scaled by 0.01 (1%)
         rand(123) # Fixed seed for reproducibility
-        scenarios_nums = 1
+        scenarios_nums = 50
         sample_sets = rand(Weibull(), scenarios_nums * NT) * 0.01
-        scenarios_curve, scenarios_error = reshape(sample_sets, scenarios_nums, NT), reshape(sample_sets, scenarios_nums, NT)
+        scenarios_curve, scenarios_error = reshape(sample_sets, scenarios_nums, NT),
+        reshape(sample_sets, scenarios_nums, NT)
 
-        for i in 1:scenarios_nums
-            for j in 1:NT
+        for i = 1:scenarios_nums
+            for j = 1:NT
                 sample_temp = rand()
                 # Randomly add or subtract noise from the base curve
                 if sample_temp > 0.5
-                    scenarios_curve[i, j] = scenarios_curvebase[1, j] + scenarios_error[i, j]
+                    scenarios_curve[i, j] =
+                        scenarios_curvebase[1, j] + scenarios_error[i, j]
                 else
-                    scenarios_curve[i, j] = scenarios_curvebase[1, j] - scenarios_error[i, j]
+                    scenarios_curve[i, j] =
+                        scenarios_curvebase[1, j] - scenarios_error[i, j]
                 end
             end
         end
@@ -126,7 +183,20 @@ function genscenario(WindsFreqParam, flag)
     scenarios_nums = size(scenarios_curve, 1)
 
     # Instantiate the wind data structure
-    winds = wind(index, locatebus, p_max, scenarios_prob, scenarios_nums, scenarios_curve, FCmode, KW, RW, MW, DW, TW)
+    winds = wind(
+        index,
+        locatebus,
+        p_max,
+        scenarios_prob,
+        scenarios_nums,
+        scenarios_curve,
+        FCmode,
+        KW,
+        RW,
+        MW,
+        DW,
+        TW,
+    )
 
     return winds, NW
 end
