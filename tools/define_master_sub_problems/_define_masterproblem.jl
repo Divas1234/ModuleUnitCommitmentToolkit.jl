@@ -22,6 +22,8 @@ function bd_masterfunction(
     NS::Int64,
     NW::Int64,
     units::unit,
+    loads::load,
+    winds::wind,
     config_param::config,
     scenarios_prob::Float64,
 )
@@ -66,6 +68,7 @@ function bd_masterfunction(
     _units_init_shutdown_cost_constr,
     _units_shutup_cost_constr,
     _units_shutdown_cost_constr = add_unit_operation_constraints!(scuc_masterproblem, NT, NG, units, onoffinit)
+    _master_supply_adequacy_constr = add_master_supply_adequacy_constraints!(scuc_masterproblem, NT, NG, ND, NW, units, loads, winds)
     # add_curtailment_constraints!(scuc_masterproblem, NT, ND, NW, NS, loads, winds)
     # add_generator_power_constraints!(scuc_masterproblem, NT, NG, NS, units)
     # add_reserve_constraints!(scuc_masterproblem, NT, NG, NC, NS, units, loads, winds, config_param)
@@ -120,6 +123,21 @@ function bd_masterfunction(
     )
 
     return scuc_masterproblem, master_scuc_struct
+end
+
+function add_master_supply_adequacy_constraints!(scuc_masterproblem::Model, NT::Int64, NG::Int64, ND::Int64, NW::Int64, units::unit, loads::load, winds::wind)
+    x = scuc_masterproblem[:x]
+    wind_capacity = sum(winds.p_max[:, 1])
+    conservative_wind = [minimum(winds.scenarios_curve[:, t]) * wind_capacity for t in 1:NT]
+    demand = [sum(loads.load_curve[d, t] for d in 1:ND) for t in 1:NT]
+
+    supply_adequacy = @constraint(
+        scuc_masterproblem,
+        [t = 1:NT],
+        sum(units.p_max[g, 1] * x[g, t] for g in 1:NG) + conservative_wind[t] >= demand[t]
+    )
+    println("\t constraints: master supply adequacy cuts\t\t\t\t done")
+    return supply_adequacy
 end
 
 # Helper function to define first-stage decision variables
