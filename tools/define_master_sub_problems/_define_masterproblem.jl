@@ -20,6 +20,7 @@ function bd_masterfunction(
     NC::Int64,
     ND2::Int64,
     NS::Int64,
+    NW::Int64,
     units::unit,
     config_param::config,
     scenarios_prob::Float64,
@@ -142,8 +143,11 @@ function define_masterproblem_decision_variables!(scuc_masterproblem::Model, NT,
     @variable(scuc_masterproblem, su₀[1:NG, 1:NT] >= 0)
     @variable(scuc_masterproblem, sd₀[1:NG, 1:NT] >= 0)
 
-    # θ: Recourse function approximation representing the expected second-stage cost
-    @variable(scuc_masterproblem, θ >= 1e2)
+    if config_param.is_ConsiderMultiCUTs == 1
+        @variable(scuc_masterproblem, θ[1:NS] >= 0)
+    else
+        @variable(scuc_masterproblem, θ >= 0)
+    end
 
     # @variable(scuc_masterproblem, pg[1:(NG * NS), 1:NT]>=0)
     # @variable(scuc_masterproblem, sr⁺[1:(NG * NS), 1:NT]>=0)
@@ -215,7 +219,8 @@ function set_masterproblem_objective_economic!(scuc_masterproblem::Model, NT, NG
     # @objective(scuc_masterproblem,
     # 	Min,
     # 	sum(sum(su₀[i, t] + sd₀[i, t] for i in 1:NG) for t in 1:NT) + pₛ * c₀ * sum(sum(sum(θ[((s - 1) * NG + 1):(s * NG), t] for t in 1:NT) for s in 1:NS)))
-    obj = @objective(scuc_masterproblem, Min, sum(sum(su₀[i, t] + sd₀[i, t] for i in 1:NG) for t in 1:NT) + c₀ * θ)
+    recourse_approx = config_param.is_ConsiderMultiCUTs == 1 ? sum(θ[s] for s in 1:NS) : θ
+    obj = @objective(scuc_masterproblem, Min, sum(sum(su₀[i, t] + sd₀[i, t] for i in 1:NG) for t in 1:NT) + recourse_approx)
 
     println("\t MILP_type objective_function \t\t\t\t\t\t done")
     return scuc_masterproblem, obj

@@ -16,6 +16,11 @@ Executes the multiple-cut Benders Decomposition algorithm to solve the two-stage
 - `batch_scuc_subproblem_dic::OrderedDict`: Dictionary of scenario-specific subproblems.
 - `winds::wind`: Stochastic wind scenario data.
 - `config_param::config`: Configuration parameters for the algorithm.
+- `NG::Int64`: Number of generators.
+- `NT::Int64`: Number of time periods.
+- `NW::Int64`: Number of wind units.
+- `ND::Int64`: Number of loads/demand nodes.
+- `NL::Int64`: Number of transmission lines.
 """
 
 function multiple_bender_decomposition_scuc(
@@ -25,10 +30,15 @@ function multiple_bender_decomposition_scuc(
 	batch_scuc_subproblem_dic::OrderedDict{Int64, SCUC_Model},
 	winds::wind,
 	config_param::config,
+	NG::Int64,
+	NT::Int64,
+	NW::Int64,
+	ND::Int64,
+	NL::Int64,
 )
 
 	# Constants and parameters
-	MAXIMUM_ITERATIONS = 10000 # Maximum number of iterations for Bender's decomposition
+	MAXIMUM_ITERATIONS = parse(Int64, get(ENV, "BENDERS_MAX_ITERATIONS", "10000")) # Maximum number of iterations for Bender's decomposition
 	ABSOLUTE_OPTIMIZATION_GAP = 1e-3 # Absolute gap for optimality
 	NUMERICAL_TOLERANCE = 1e-6 # Numerical tolerance for stability
 
@@ -64,9 +74,9 @@ function multiple_bender_decomposition_scuc(
 
 		# Solve subproblem with feasibility cut
 		ret_dic = if (config_param.is_ConsiderMultiCUTs == 1)
-			batch_solve_subproblem_with_feasibility_cut(batch_scuc_subproblem_dic, x⁽⁰⁾, u⁽⁰⁾, v⁽⁰⁾, NS)
+			batch_solve_subproblem_with_feasibility_cut(batch_scuc_subproblem_dic, x⁽⁰⁾, u⁽⁰⁾, v⁽⁰⁾, NG, NT, NS)
 		else
-			batch_solve_subproblem_with_feasibility_cut(batch_scuc_subproblem_dic, x⁽⁰⁾, u⁽⁰⁾, v⁽⁰⁾)
+			batch_solve_subproblem_with_feasibility_cut(batch_scuc_subproblem_dic, x⁽⁰⁾, u⁽⁰⁾, v⁽⁰⁾, NG, NT)
 		end
 
 		# Update bounds
@@ -76,7 +86,11 @@ function multiple_bender_decomposition_scuc(
 			return nothing
 		end
 
-		best_upper_bound, best_lower_bound, current_upper_bound, all_subproblems_feasibility_flag = get_upper_lower_bounds(scuc_masterproblem, ret_dic, best_upper_bound, best_lower_bound, lower_bound, scenarios_prob) # NOTE - upper bound from subproblem
+		best_upper_bound, best_lower_bound, current_upper_bound, all_subproblems_feasibility_flag = get_upper_lower_bounds(scuc_masterproblem, ret_dic, best_upper_bound, best_lower_bound, lower_bound) # NOTE - upper bound from subproblem
+		if !all_subproblems_feasibility_flag
+			feasible_count = count(ret -> ret.is_feasible, values(ret_dic))
+			println("ITER ", iteration, ": lower_bound=", lower_bound, ", feasible_subproblems=", feasible_count, "/", length(ret_dic), "; adding feasibility cuts")
+		end
 
 		# Check for convergence
 		if all_subproblems_feasibility_flag &&
@@ -91,17 +105,61 @@ function multiple_bender_decomposition_scuc(
 			break
 		end
 
-		# Add appropriate Bender's cut based on subproblem feasibility
-		for (s, ret) in ret_dic
-			if ret.is_feasible == true
-				scuc_masterproblem, _ = add_optimitycut_constraints!(scuc_masterproblem, batch_scuc_subproblem_dic[s], ret, iter_value)
-			else
-				scuc_masterproblem, _ = add_feasibilitycut_constraints!(scuc_masterproblem, batch_scuc_subproblem_dic[s], ret, iter_value)
+		if config_param.is_ConsiderMultiCUTs == 1
+			for (s, ret) in ret_dic
+				if ret.is_feasible == true
+					scenario_recourse_cut = get_reduced_cost_optimality_cut_expression(scuc_masterproblem, ret, iter_value)
+					@constraint(scuc_masterproblem, scuc_masterproblem[:θ][s] >= scenario_recourse_cut)
+				end
 			end
-			is_feasible = ret.is_feasible
-			dual_coeffs = ret.dual_coeffs
-			scuc_masterproblem, _ = add_benders_multicuts_constraints!(scuc_masterproblem, sub_model_struct, is_feasible, dual_coeffs, NG, NT, NW, ND, NL)
+			if !all_subproblems_feasibility_flag
+				add_no_good_cut!(scuc_masterproblem, x⁽⁰⁾, u⁽⁰⁾, v⁽⁰⁾)
+			end
+		else
+			# Add appropriate Bender's cut based on subproblem feasibility
+			for (s, ret) in ret_dic
+				# Single-cut mode: use reduced-cost-based standard optimality/feasibility cuts
+				if ret.is_feasible == true
+					scuc_masterproblem, _ = add_optimitycut_constraints!(scuc_masterproblem, batch_scuc_subproblem_dic[s], ret, iter_value)
+				else
+					add_no_good_cut!(scuc_masterproblem, x⁽⁰⁾, u⁽⁰⁾, v⁽⁰⁾)
+				end
+			end
 		end
+	end
+end
+
+function get_reduced_cost_optimality_cut_expression(model::Model, ret, iter_value)
+	x⁽⁰⁾, u⁽⁰⁾, v⁽⁰⁾ = iter_value
+	return @expression(
+		model,
+		ret.θ +
+		sum(ret.ray_x .* (model[:x] - x⁽⁰⁾)) +
+		sum(ret.ray_u .* (model[:u] - u⁽⁰⁾)) +
+		sum(ret.ray_v .* (model[:v] - v⁽⁰⁾))
+	)
+end
+
+function add_no_good_cut!(model::Model, x_value, u_value, v_value; tolerance::Float64 = 0.5)
+	x = model[:x]
+	u = model[:u]
+	v = model[:v]
+	return @constraint(
+		model,
+		sum((x_value[i] >= tolerance) ? (1 - x[i]) : x[i] for i in eachindex(x)) +
+		sum((u_value[i] >= tolerance) ? (1 - u[i]) : u[i] for i in eachindex(u)) +
+		sum((v_value[i] >= tolerance) ? (1 - v[i]) : v[i] for i in eachindex(v)) >= 1
+	)
+end
+
+function add_violated_feasibility_cut!(model::Model, cut_expr, cut_value; tolerance::Float64 = 1e-7)
+	if cut_value < -tolerance
+		return @constraint(model, cut_expr >= 0)
+	elseif cut_value > tolerance
+		return @constraint(model, cut_expr <= 0)
+	else
+		@debug "Skipping nearly inactive feasibility cut" cut_value
+		return nothing
 	end
 end
 
@@ -122,16 +180,17 @@ function get_upper_lower_bounds(
 	best_upper_bound,
 	best_lower_bound,
 	lower_bound,
-	scenarios_prob::Float64,
 )
 	# flag = all(s -> s.is_feasible, ret_dic)
 	flag = all(ret.is_feasible for ret in values(ret_dic))
 
 	if flag == true
-		average_θ = sum(ret.θ for ret in values(ret_dic)) * scenarios_prob
-		current_upper_bound = sum(objective_value(scuc_masterproblem) .- value.(scuc_masterproblem[:θ])) + average_θ
-		best_upper_bound = min(best_upper_bound, current_upper_bound)[1]
-		best_lower_bound = max(best_lower_bound, lower_bound)[1]
+		expected_θ = sum(ret.θ for ret in values(ret_dic))
+		theta_value = scuc_masterproblem[:θ]
+		recourse_estimate = theta_value isa AbstractArray ? sum(value.(theta_value)) : value(theta_value)
+		current_upper_bound = objective_value(scuc_masterproblem) - recourse_estimate + expected_θ
+		best_upper_bound = min(best_upper_bound, current_upper_bound)
+		best_lower_bound = max(best_lower_bound, lower_bound)
 	else
 		current_upper_bound = missing
 	end
@@ -152,9 +211,6 @@ function check_Bender_convergence(best_upper_bound, best_lower_bound, current_up
 	gap = abs(best_upper_bound - best_lower_bound) / (abs(best_upper_bound) + NUMERICAL_TOLERANCE)
 
 	# Print iteration results
-	if iteration == 1
-		println("ITER:", [best_lower_bound best_upper_bound gap])
-	end
 	print_iteration([iteration, best_lower_bound, best_upper_bound, gap])
 
 	# Check convergence
@@ -177,10 +233,10 @@ end
 Solves a batch of scenario subproblems iteratively with fixed first-stage variables.
 Returns a dictionary containing feasibility status, objective values, and duals for each scenario.
 """
-function batch_solve_subproblem_with_feasibility_cut(batch_scuc_subproblem_dic::OrderedDict, x, u, v, NS = 1)
+function batch_solve_subproblem_with_feasibility_cut(batch_scuc_subproblem_dic::OrderedDict, x, u, v, NG::Int64, NT::Int64, NS::Int64 = 1)
 	ret_dic = OrderedDict{Int64, Any}()
 	for s in 1:NS
-		ret = solve_subproblem_with_feasibility_cut(batch_scuc_subproblem_dic[s]::SCUC_Model, x, u, v)
+		ret = solve_subproblem_with_feasibility_cut(batch_scuc_subproblem_dic[s]::SCUC_Model, x, u, v, NG, NT)
 		ret_dic[s] = ret
 	end
 	return ret_dic
@@ -192,7 +248,7 @@ end
 Fixes the first-stage variables for a single scenario subproblem, evaluates it, and extracts the corresponding dual variables (or Farkas duals if infeasible) to form Benders cuts.
 """
 
-function solve_subproblem_with_feasibility_cut(scuc_subproblem_dic::SCUC_Model, x, u, v)
+function solve_subproblem_with_feasibility_cut(scuc_subproblem_dic::SCUC_Model, x, u, v, NG::Int64, NT::Int64)
 	scuc_subproblem = scuc_subproblem_dic.model
 
 	# Fix variables in subproblem
@@ -202,8 +258,8 @@ function solve_subproblem_with_feasibility_cut(scuc_subproblem_dic::SCUC_Model, 
 	# fix.(scuc_subproblem[:relaxed_su₀], su₀) # commented out
 	# fix.(scuc_subproblem[:relaxed_sd₀], sd₀) # commented out
 
-	set_optimizer_attribute(scuc_subproblem, "InfUnbdInfo", 1)
-	set_optimizer_attribute(scuc_subproblem, "DualReductions", 0)
+	set_optimizer_attribute_if_supported(scuc_subproblem, "InfUnbdInfo", 1)
+	set_optimizer_attribute_if_supported(scuc_subproblem, "DualReductions", 0)
 	# Optimize subproblem
 	optimize!(scuc_subproblem)
 
@@ -222,9 +278,9 @@ function solve_subproblem_with_feasibility_cut(scuc_subproblem_dic::SCUC_Model, 
 	# 	scuc_subproblem_dic, constrs_greater_than, opti_termination_status)
 
 	constraints = scuc_subproblem_dic.reformated_constraints
-	res_smaller_than = get_dual_constrs_coefficient(scuc_subproblem_dic, constraints._smaller_than, opti_termination_status)
-	res_equal_to = get_dual_constrs_coefficient(scuc_subproblem_dic, constraints._equal_to, opti_termination_status)
-	res_greater_than = get_dual_constrs_coefficient(scuc_subproblem_dic, constraints._greater_than, opti_termination_status)
+	res_smaller_than = get_dual_constrs_coefficient(scuc_subproblem_dic, constraints._smaller_than, opti_termination_status, NT, NG)
+	res_equal_to = get_dual_constrs_coefficient(scuc_subproblem_dic, constraints._equal_to, opti_termination_status, NT, NG)
+	res_greater_than = get_dual_constrs_coefficient(scuc_subproblem_dic, constraints._greater_than, opti_termination_status, NT, NG)
 
 	final_dual_subproblem_coefficient_results = merge(res_equal_to, res_smaller_than, res_greater_than)
 
@@ -267,6 +323,15 @@ function solve_subproblem_with_feasibility_cut(scuc_subproblem_dic::SCUC_Model, 
 			dual_equal_to_constr_dic = Dict(k => shadow_price.(v) for (k, v) in scuc_subproblem_dic.reformated_constraints._equal_to),
 		)
 	end
+end
+
+function set_optimizer_attribute_if_supported(model::Model, attribute_name::String, value)
+	try
+		set_optimizer_attribute(model, attribute_name, value)
+	catch err
+		@debug "Skipping unsupported optimizer attribute" attribute_name value err
+	end
+	return nothing
 end
 
 """

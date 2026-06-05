@@ -3,6 +3,7 @@ using Pkg
 neededPackages = [
     :Revise,
     :JuMP,
+    :MathOptInterface,
     :Gurobi,
     :Test,
     :DelimitedFiles,
@@ -30,6 +31,7 @@ end
 
 using Revise,
     JuMP,
+    MathOptInterface,
     Gurobi,
     Test,
     DelimitedFiles,

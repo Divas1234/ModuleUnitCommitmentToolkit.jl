@@ -135,13 +135,13 @@ Generates stochastic wind power scenarios by adding probabilistic noise to a bas
 # Returns
 A tuple containing the `wind` struct and the number of wind units `NW`.
 """
-function genscenario(WindsFreqParam, flag, NT = 24)
+function genscenario(WindsFreqParam, flag, NT = 24; scenario_limit::Int64 = 50)
     index, locatebus, NW, p_max, scenarios_curvebase = add_windfarms_config()
 
     if flag == 1
         # Generate a single scenario with Weibull distribution noise scaled by 0.01 (1%)
         rand(123) # Fixed seed for reproducibility
-        scenarios_nums = 50
+        scenarios_nums = scenario_limit
         sample_sets = rand(Weibull(), scenarios_nums * NT) * 0.01
         scenarios_curve, scenarios_error = reshape(sample_sets, scenarios_nums, NT),
         reshape(sample_sets, scenarios_nums, NT)

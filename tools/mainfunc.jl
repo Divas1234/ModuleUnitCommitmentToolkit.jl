@@ -24,7 +24,7 @@ include("benderdecomposition_module.jl")
 	A tuple containing all formulated JuMP models, internal data structures, and topological scenario dimensions.
 """
 
-function main()
+function main(; scenario_limit::Int64 = 50)
 	# Read raw system data from Excel sheets
 	UnitsFreqParam, WindsFreqParam, StrogeData, DataGen, GenCost, DataBranch, LoadCurve, DataLoad, datacentra_Data = readxlssheet()
 
@@ -32,7 +32,7 @@ function main()
 	config_param, units, lines, loads, psses, NB, NG, NL, ND, NT, NC, ND2, DataCentras = forminputdata(DataGen, DataBranch, DataLoad, LoadCurve, GenCost, UnitsFreqParam, StrogeData, datacentra_Data)
 
 	# Generate stochastic wind scenarios
-	winds, NW = genscenario(WindsFreqParam, 1)
+	winds, NW = genscenario(WindsFreqParam, 1; scenario_limit = scenario_limit)
 
 	# Apply unit and node boundary limit conditions (Reserved function)
 	# boundrycondition(NB, NL, NG, NT, ND, units, loads, lines, winds, psses, config_param)
@@ -45,7 +45,7 @@ function main()
 	refcost, eachslope = linearizationfuelcurve(units, NG)
 
 	# Construct the Benders Master Problem algebraically
-	scuc_masterproblem, master_model_struct = bd_masterfunction(NT, NB, NG, ND, NC, ND2, NS, units, config_param, scenarios_prob)
+	scuc_masterproblem, master_model_struct = bd_masterfunction(NT, NB, NG, ND, NC, ND2, NS, NW, units, config_param, scenarios_prob)
 
 	# Construct the Benders Base Subproblem algebraically
 	scuc_subproblem, sub_model_struct = bd_subfunction(NT, NB, NL, NG, ND, NC, ND2, NS, NW, units, winds, loads, lines, DataCentras, psses, scenarios_prob, config_param)
@@ -61,7 +61,7 @@ function main()
 		# Create discrete subproblem instances explicitly for multi-cut logic evaluation
 		batch_scuc_subproblem_struct_dic = OrderedDict{Int64, SCUC_Model}()
 		batch_scuc_subproblem_struct_dic = if (config_param.is_ConsiderMultiCUTs == 1)
-			get_batch_scuc_subproblems_for_scenario(scuc_subproblem, sub_model_struct, winds, config_param, NS)
+			get_batch_scuc_subproblems_for_scenario(scuc_subproblem, sub_model_struct, winds, config_param, NS, NT, NW)
 		else
 			OrderedDict(1 => sub_model_struct)
 		end

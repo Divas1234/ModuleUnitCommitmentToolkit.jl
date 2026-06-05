@@ -1,5 +1,5 @@
 using JuMP
-using MathOptInterface
+import MathOptInterface as MOI
 
 function get_greater_than_constr_rhs(current_model::Model, constr)
 	rhs = Float64[]
