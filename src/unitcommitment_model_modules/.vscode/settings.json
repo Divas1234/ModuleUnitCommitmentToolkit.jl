@@ -1,0 +1,5 @@
+{
+    "terminal.integrated.fontLigatures.enabled": true,
+    "terminal.integrated.fontFamily": "Hack, FiraCode Nerd Font Mono,  MesloLGM Nerd Font, JuliaMono",
+    "terminal.integrated.fontWeight": 400,
+}
