@@ -63,3 +63,61 @@ function modify_winds_constr_rhs!(scuc_subproblem, winds, scenarios_curve, NT::I
     modified_constr = vec(collect(Iterators.flatten(modified_constr)))
     return scuc_subproblem, modified_constr
 end
+
+function build_mean_scenario_wind(winds::wind, scenarios_prob::Float64 = 1.0)
+    mean_curve = vec(sum(winds.scenarios_curve; dims = 1)) ./ size(winds.scenarios_curve, 1)
+    return wind(
+        winds.index,
+        winds.locatebus,
+        winds.p_max,
+        scenarios_prob,
+        Int64(1),
+        reshape(mean_curve, 1, length(mean_curve)),
+        winds.Fcmode,
+        winds.Kw,
+        winds.Rw,
+        winds.Mw,
+        winds.Dw,
+        winds.Tw,
+    )
+end
+
+function build_jensen_subproblem_for_mean_scenario(
+    NT::Int64,
+    NB::Int64,
+    NL::Int64,
+    NG::Int64,
+    ND::Int64,
+    NC::Int64,
+    ND2::Int64,
+    NW::Int64,
+    units::unit,
+    winds::wind,
+    loads::load,
+    lines::transmissionline,
+    DataCentras::data_centra,
+    psses::pss,
+    config_param::config,
+)
+    mean_winds = build_mean_scenario_wind(winds, 1.0)
+    _, jensen_subproblem_struct = bd_subfunction(
+        NT,
+        NB,
+        NL,
+        NG,
+        ND,
+        NC,
+        ND2,
+        Int64(1),
+        NW,
+        units,
+        mean_winds,
+        loads,
+        lines,
+        DataCentras,
+        psses,
+        1.0,
+        config_param,
+    )
+    return jensen_subproblem_struct
+end

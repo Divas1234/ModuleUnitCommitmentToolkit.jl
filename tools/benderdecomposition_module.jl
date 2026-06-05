@@ -35,6 +35,8 @@ function multiple_bender_decomposition_scuc(
 	NW::Int64,
 	ND::Int64,
 	NL::Int64,
+	;
+	jensen_subproblem_struct = nothing,
 )
 
 	# Constants and parameters
@@ -106,12 +108,17 @@ function multiple_bender_decomposition_scuc(
 		end
 
 		if config_param.is_ConsiderMultiCUTs == 1
+			candidate_cuts = []
 			for (s, ret) in ret_dic
 				if ret.is_feasible == true
 					scenario_recourse_cut = get_reduced_cost_optimality_cut_expression(scuc_masterproblem, ret, iter_value)
-					@constraint(scuc_masterproblem, scuc_masterproblem[:θ][s] >= scenario_recourse_cut)
+					cut_value = value(scenario_recourse_cut)
+					theta_value = value(scuc_masterproblem[:θ][s])
+					push!(candidate_cuts, (cut_value - theta_value, s, scenario_recourse_cut))
 				end
 			end
+			add_jensen_cut_if_violated!(scuc_masterproblem, jensen_subproblem_struct, iter_value, NG, NT)
+			add_violated_scenario_optimality_cuts!(scuc_masterproblem, candidate_cuts)
 			if !all_subproblems_feasibility_flag
 				add_no_good_cut!(scuc_masterproblem, x⁽⁰⁾, u⁽⁰⁾, v⁽⁰⁾)
 			end
@@ -127,6 +134,41 @@ function multiple_bender_decomposition_scuc(
 			end
 		end
 	end
+end
+
+function add_violated_scenario_optimality_cuts!(model::Model, candidate_cuts; tolerance::Float64 = parse(Float64, get(ENV, "BENDERS_CUT_VIOLATION_TOL", "1e-5")))
+	if isempty(candidate_cuts)
+		return 0
+	end
+	sort!(candidate_cuts; by = cut -> cut[1], rev = true)
+	max_cuts = parse(Int64, get(ENV, "BENDERS_MAX_SCENARIO_CUTS_PER_ITERATION", string(length(candidate_cuts))))
+	added = 0
+	for (violation, s, cut_expr) in candidate_cuts
+		if violation <= tolerance || added >= max_cuts
+			break
+		end
+		@constraint(model, model[:θ][s] >= cut_expr)
+		added += 1
+	end
+	return added
+end
+
+function add_jensen_cut_if_violated!(model::Model, jensen_subproblem_struct, iter_value, NG::Int64, NT::Int64; tolerance::Float64 = parse(Float64, get(ENV, "BENDERS_JENSEN_CUT_TOL", "1e-5")))
+	if jensen_subproblem_struct === nothing
+		return nothing
+	end
+	x⁽⁰⁾, u⁽⁰⁾, v⁽⁰⁾ = iter_value
+	ret = solve_subproblem_with_feasibility_cut(jensen_subproblem_struct, x⁽⁰⁾, u⁽⁰⁾, v⁽⁰⁾, NG, NT)
+	if ret.is_feasible != true
+		return nothing
+	end
+	jensen_cut = get_reduced_cost_optimality_cut_expression(model, ret, iter_value)
+	theta_sum = sum(value.(model[:θ]))
+	cut_value = value(jensen_cut)
+	if cut_value - theta_sum > tolerance
+		return @constraint(model, sum(model[:θ]) >= jensen_cut)
+	end
+	return nothing
 end
 
 function get_reduced_cost_optimality_cut_expression(model::Model, ret, iter_value)
@@ -235,11 +277,25 @@ Returns a dictionary containing feasibility status, objective values, and duals 
 """
 function batch_solve_subproblem_with_feasibility_cut(batch_scuc_subproblem_dic::OrderedDict, x, u, v, NG::Int64, NT::Int64, NS::Int64 = 1)
 	ret_dic = OrderedDict{Int64, Any}()
-	for s in 1:NS
-		ret = solve_subproblem_with_feasibility_cut(batch_scuc_subproblem_dic[s]::SCUC_Model, x, u, v, NG, NT)
-		ret_dic[s] = ret
+	if should_solve_subproblems_in_parallel(NS)
+		ret_vec = Vector{Any}(undef, NS)
+		Threads.@threads for s in 1:NS
+			ret_vec[s] = solve_subproblem_with_feasibility_cut(batch_scuc_subproblem_dic[s]::SCUC_Model, x, u, v, NG, NT)
+		end
+		for s in 1:NS
+			ret_dic[s] = ret_vec[s]
+		end
+	else
+		for s in 1:NS
+			ret = solve_subproblem_with_feasibility_cut(batch_scuc_subproblem_dic[s]::SCUC_Model, x, u, v, NG, NT)
+			ret_dic[s] = ret
+		end
 	end
 	return ret_dic
+end
+
+function should_solve_subproblems_in_parallel(NS::Int64)
+	return NS > 1 && Threads.nthreads() > 1 && get(ENV, "BENDERS_PARALLEL_SUBPROBLEMS", "1") != "0"
 end
 
 """
@@ -260,6 +316,12 @@ function solve_subproblem_with_feasibility_cut(scuc_subproblem_dic::SCUC_Model, 
 
 	set_optimizer_attribute_if_supported(scuc_subproblem, "InfUnbdInfo", 1)
 	set_optimizer_attribute_if_supported(scuc_subproblem, "DualReductions", 0)
+	if Threads.nthreads() > 1
+		subproblem_threads = parse(Int64, get(ENV, "BENDERS_SUBPROBLEM_SOLVER_THREADS", "1"))
+		if subproblem_threads > 0
+			set_optimizer_attribute_if_supported(scuc_subproblem, "Threads", subproblem_threads)
+		end
+	end
 	# Optimize subproblem
 	optimize!(scuc_subproblem)
 
