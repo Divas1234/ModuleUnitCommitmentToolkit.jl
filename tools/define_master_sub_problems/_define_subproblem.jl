@@ -86,7 +86,7 @@ function bd_subfunction(
 	# Define contingency size
 	contingency_size = define_contingency_size(units, NG)
 
-	NS_copy = (config_param.is_ConsiderMultiCUTs == 1) ? NS : Int64(1)
+	NS_copy = (config_param.is_ConsiderMultiCUTs == 1) ? Int64(1) : NS
 
 	# scuc_subproblem, _units_minuptime_constr, _units_mindowntime_constr, _units_init_stateslogic_consist_constr, _units_states_consist_constr,
 	# _units_init_shutup_cost_constr, _units_init_shutdown_cost_constr,
@@ -189,8 +189,9 @@ end
 """
 
 function define_subproblem_decision_variables!(scuc_subproblem::Model, NT::Int64, NG::Int64, ND::Int64, NC::Int64, ND2::Int64, NS::Int64, NW::Int64, config_param::config)
-	# Determine if multiple scenarios or an aggregated subproblem is used
-	NS_copy = (config_param.is_ConsiderMultiCUTs == 1) ? NS : Int64(1)
+	# Multi-cut mode solves one scenario per cloned subproblem; single-cut mode
+	# keeps the aggregated stochastic recourse model.
+	NS_copy = (config_param.is_ConsiderMultiCUTs == 1) ? Int64(1) : NS
 
 	# --- Unit Status Variables (Fixed during subproblem solving) ---
 	@variable(scuc_subproblem, x[1:NG, 1:NT]) # Commitment
@@ -205,6 +206,10 @@ function define_subproblem_decision_variables!(scuc_subproblem::Model, NT::Int64
 	# Upward (sr+) and Downward (sr-) spinning reserves
 	@variable(scuc_subproblem, sr⁺[1:(NG * NS_copy), 1:NT]>=0)
 	@variable(scuc_subproblem, sr⁻[1:(NG * NS_copy), 1:NT]>=0)
+	@variable(scuc_subproblem, reserve_shortage⁺[1:NS_copy, 1:NT] >= 0)
+	@variable(scuc_subproblem, reserve_shortage⁻[1:NS_copy, 1:NT] >= 0)
+	@variable(scuc_subproblem, ramp_violation⁺[1:(NG * NS_copy), 1:NT] >= 0)
+	@variable(scuc_subproblem, ramp_violation⁻[1:(NG * NS_copy), 1:NT] >= 0)
 
 	# Load shedding (Δpd) and Wind curtailment (Δpw) penalties
 	@variable(scuc_subproblem, Δpd[1:(ND * NS_copy), 1:NT]>=0)
@@ -287,9 +292,10 @@ function set_subproblem_objective_economic!(scuc_subproblem::Model, NT::Int64, N
 	# Penalty coefficients for load and wind curtailment
 	load_curtailment_penalty = config_param.is_LoadsCuttingCoefficient * 1e10
 	wind_curtailment_penalty = config_param.is_WindsCuttingCoefficient * 1e0
+	reserve_shortage_penalty = max(load_curtailment_penalty / 100, c₀ * 1e6)
 
-	NS_copy = (config_param.is_ConsiderMultiCUTs == 1) ? NS : Int64(1)
-	pₛ = (config_param.is_ConsiderMultiCUTs == 1) ? scenarios_prob : 1.0
+	NS_copy = (config_param.is_ConsiderMultiCUTs == 1) ? Int64(1) : NS
+	pₛ = scenarios_prob
 
 	# Constants for reserve cost (can be adjusted based on market conditions)
 	RESERVE_COST_POSITIVE = 2 * c₀
@@ -304,6 +310,10 @@ function set_subproblem_objective_economic!(scuc_subproblem::Model, NT::Int64, N
 	pgₖ = scuc_subproblem[:pgₖ]
 	sr⁺ = scuc_subproblem[:sr⁺]
 	sr⁻ = scuc_subproblem[:sr⁻]
+	reserve_shortage⁺ = scuc_subproblem[:reserve_shortage⁺]
+	reserve_shortage⁻ = scuc_subproblem[:reserve_shortage⁻]
+	ramp_violation⁺ = scuc_subproblem[:ramp_violation⁺]
+	ramp_violation⁻ = scuc_subproblem[:ramp_violation⁻]
 	Δpd = scuc_subproblem[:Δpd]
 	Δpw = scuc_subproblem[:Δpw]
 
@@ -320,7 +330,7 @@ function set_subproblem_objective_economic!(scuc_subproblem::Model, NT::Int64, N
 			sum(sum(sum(sum(pgₖ[i + (s - 1) * NG, t, :] .* eachslope[:, i] for t in 1:NT)) for s in 1:NS_copy) for i in 1:NG) +
 			sum(sum(sum(x[:, t] .* refcost[:, 1] for t in 1:NT)) for s in 1:NS_copy) +
 			sum(sum(sum(ρ⁺ * sr⁺[i + (s - 1) * NG, t] + ρ⁻ * sr⁻[i + (s - 1) * NG, t] for i in 1:NG) for t in 1:NT) for s in 1:NS_copy)
-		)+pₛ*load_curtailment_penalty*sum(sum(sum(Δpd[(1 + (s - 1) * ND):(s * ND), t]) for t in 1:NT) for s in 1:NS_copy)+pₛ*wind_curtailment_penalty*sum(sum(sum(Δpw[
+		)+pₛ*reserve_shortage_penalty*sum(sum(reserve_shortage⁺[s, t] + reserve_shortage⁻[s, t] for t in 1:NT) for s in 1:NS_copy)+pₛ*reserve_shortage_penalty*sum(sum(sum(ramp_violation⁺[(1 + (s - 1) * NG):(s * NG), t] + ramp_violation⁻[(1 + (s - 1) * NG):(s * NG), t]) for t in 1:NT) for s in 1:NS_copy)+pₛ*load_curtailment_penalty*sum(sum(sum(Δpd[(1 + (s - 1) * ND):(s * ND), t]) for t in 1:NT) for s in 1:NS_copy)+pₛ*wind_curtailment_penalty*sum(sum(sum(Δpw[
 			(1 + (s - 1) * NW):(s * NW), t
 		]) for t in 1:NT) for s in 1:NS_copy)
 	)

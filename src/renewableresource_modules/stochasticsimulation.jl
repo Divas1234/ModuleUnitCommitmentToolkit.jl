@@ -15,11 +15,11 @@ included file `_renewableenergysimulation.jl`.
 # Returns
 - Scenarios of renewable energy production.
 """
-function genscenario(args...)
+function genscenario(args...; kwargs...)
     # The actual implementation is in _renewableenergysimulation.jl
     # This is just a placeholder.
     println("Generating renewable energy scenarios...")
-    return _renewableenergysimulation.generate_scenarios(args...) # Example call, adjust as needed
+    return _renewableenergysimulation.generate_scenarios(args...; kwargs...) # Example call, adjust as needed
 end
 
 export genscenario

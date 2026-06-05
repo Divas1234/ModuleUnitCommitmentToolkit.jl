@@ -1,91 +1,191 @@
 include("_automatic_workflow.jl")
 
-# Define droop parameters. Consider moving this to a separate configuration file or a dedicated section.
-const DROOP_PARAMETERS = collect(range(33, 40; length = 20))
+# =============================
+# 频率动态模块主入口（增强版）
+# =============================
+# 说明：
+# 1) 该文件作为“单一主流程实现”；
+# 2) mainfunction.jl 仅做兼容入口，避免双份逻辑漂移；
+# 3) 通过关键字参数控制保存路径、是否展示图像等行为。
+
+const FLAG_CONVERTER = Int64(0)
+const DEFAULT_FIG_DIR = "fig"
+const DEFAULT_FIG_BASENAME = "output_plot"
 
 """
-	plot_inertia_damping(droop_parameters::AbstractVector)
+	validate_control_configuration(controller_config)
 
-Generates and plots the inertia-damping functions for a given set of droop parameters.
-
-# Arguments
-- `droop_parameters::AbstractVector`: A vector of droop parameters.
-
-# Returns
-- `Tuple{Plots.Plot, Vector{Vector{Tuple{Float64, Float64, Float64}}}}`: A tuple containing the plot and a vector of vertices.
-  Returns `(nothing, nothing)` if `droop_parameters` is empty or if no valid plots are generated.
+Validate converter controller configuration and return `(vsm_params, droop_params)`.
 """
-function plot_inertia_damping(droop_parameters::AbstractVector)
-    if isempty(droop_parameters)
-        @warn "droop_parameters is empty. No plot will be generated."
-        return nothing, nothing  # Return nothing for both plot and vertices
-    end
-    return _plot_inertia_damping(droop_parameters) # Internal plotting function
+function validate_control_configuration(controller_config::Dict)
+	if !haskey(controller_config, "VSM") || !haskey(controller_config, "Droop")
+		error("Error: 'VSM' or 'Droop' keys are missing in the controller configuration.")
+	end
+
+	if !haskey(controller_config["VSM"], "control_parameters") || !haskey(controller_config["Droop"], "control_parameters")
+		error("Error: 'control_parameters' key is missing in 'VSM' or 'Droop' configuration.")
+	end
+
+	vsm_params = controller_config["VSM"]["control_parameters"]
+	droop_params = controller_config["Droop"]["control_parameters"]
+
+	return vsm_params, droop_params
 end
 
 """
-	_plot_inertia_damping(droop_parameters::AbstractVector)
+	validate_parameters(params, param_names)
 
-Internal function to generate and plot the inertia-damping functions.
+Validate that required parameters exist, are numeric, and are positive (except `droop`).
 """
-function _plot_inertia_damping(droop_parameters::AbstractVector)
-    plots = []
-    labels = []
-    all_vertices = []
-
-    for param in droop_parameters
-        try
-            p, sub_vertices = get_inertiatodamping_functions(param)
-            if isnothing(p) || isnothing(sub_vertices) || isempty(sub_vertices)
-                @warn "get_inertiatodamping_functions returned invalid data for parameter $param. Skipping this parameter."
-                continue
-            end
-            push!(plots, p)
-            push!(labels, "Droop 1/$(round(1 / param, digits=3))") # More descriptive label
-            push!(all_vertices, sub_vertices)
-
-        catch e
-            @warn "Error processing parameter $param: $e"
-            # Handle the error as needed, e.g., log it, skip the parameter, or rethrow it.
-            continue # Skip to the next droop parameter
-        end
-    end
-
-    if isempty(plots)
-        @warn "No valid plots were generated."
-        return nothing, nothing # Return nothing if no plots were created
-    end
-
-    p1 = Plots.plot(plots...; legend = false, size = (1000, 1000), xlabel = "Damping", ylabel = "Inertia", label = permutedims(labels)) # Correct label orientation
-
-    vertices_matrix = vertices_to_matrix(all_vertices::AbstractVector)
-
-    return p1, vertices_matrix
+function validate_parameters(params::Dict, param_names::Vector{String})
+	for name in param_names
+		if !haskey(params, name)
+			error("Error: Missing parameter '$name' in configuration.")
+		elseif !isa(params[name], Number)
+			error("Error: Parameter '$name' must be a number.")
+		elseif params[name] <= 0 && name != "droop"
+			error("Error: Parameter '$name' must be positive.")
+		end
+	end
 end
 
-# Call plotting function.
-plot_result, all_vertices = plot_inertia_damping(DROOP_PARAMETERS)
+"""
+	validate_boundary_parameters(params)
 
-if !isnothing(plot_result)
-    display(plot_result) # Or save to file: Plots.savefig(p1, "inertia_damping_plot.png")
+Validate outputs from `get_parmeters`.
+"""
+function validate_boundary_parameters(params::Tuple)
+	param_names = ["initial_inertia", "factorial_coefficient", "time_constant", "droop", "ROCOF_threshold", "NADIR_threshold", "power_deviation"]
+	for (i, param) in enumerate(params)
+		if !isa(param, Number)
+			error("Error: Parameter '$(param_names[i])' from get_parmeters must be a number.")
+		end
+		if param <= 0 && param_names[i] != "droop"
+			error("Error: Parameter '$(param_names[i])' from get_parmeters must be positive.")
+		end
+	end
 end
 
-# Display the result.
+"""
+	validate_inertia_limits(min_inertia, max_inertia)
 
-# if !isnothing(all_vertices)
-# 	@show all_vertices
-# 	write_vertices_to_file(all_vertices, pwd(), OUTPUT_REL_PATH)
-# end
+Validate outputs from `estimate_inertia_limits`.
+"""
+function validate_inertia_limits(min_inertia, max_inertia)
+	if !isa(min_inertia, Number) || !isa(max_inertia, AbstractArray)
+		error("Error: min_inertia must be a number and max_inertia must be an array.")
+	end
 
-# Display the result.
-if !isnothing(all_vertices)
-    @show all_vertices
-    if !isdir("res")
-        mkdir("res")
-    end
-    current_file_path = joinpath(pwd(), "res")
-    input_file_address, output_file_address = current_file_path, current_file_path
-    write_vertices_to_file(all_vertices, pwd(), OUTPUT_REL_PATH)
-    plot_polygon_figures(input_file_address, output_file_address) # Draw the mesh
-    # draw_geometry(OUTPUT_REL_PATH) # Draw the mesh
+	if isempty(max_inertia)
+		error("Error: max_inertia cannot be empty.")
+	end
+
+	if min_inertia >= maximum(max_inertia)
+		error("Error: min_inertia must be less than max_inertia")
+	end
+end
+
+"""
+    ensure_output_directory(output_dir::AbstractString)
+
+确保输出目录存在，若不存在则自动创建。
+"""
+function ensure_output_directory(output_dir::AbstractString)
+	if !isdir(output_dir)
+		mkpath(output_dir)
+	end
+	return output_dir
+end
+
+"""
+    run_frequency_dynamics_workflow(; kwargs...)
+
+统一主流程入口（推荐外部调用该函数）。
+
+# 关键字参数
+- `flag_converter::Int = FLAG_CONVERTER`
+- `show_plot::Bool = true`              是否显示主图
+- `save_plot::Bool = true`              是否保存图像
+- `output_dir::AbstractString = joinpath(pwd(), DEFAULT_FIG_DIR)`
+- `output_basename::AbstractString = DEFAULT_FIG_BASENAME`
+
+# 返回
+返回一个 `NamedTuple`，便于上层脚本按需复用中间结果。
+"""
+function run_frequency_dynamics_workflow(; flag_converter::Int = FLAG_CONVERTER, show_plot::Bool = true, save_plot::Bool = true, output_dir::AbstractString = joinpath(pwd(), DEFAULT_FIG_DIR), output_basename::AbstractString = DEFAULT_FIG_BASENAME)
+	# 1) 读取并校验控制器配置
+	controller_config = converter_formming_configuations()
+	converter_vsm_parameters, converter_droop_parameters = validate_control_configuration(controller_config)
+	println("Controller configuration loaded and validated successfully.")
+
+	# 2) 校验 converter 参数
+	validate_parameters(converter_vsm_parameters, ["inertia", "damping", "time_constant"])
+	validate_parameters(converter_droop_parameters, ["droop", "time_constant"])
+	println("Converter parameters validated successfully.")
+
+	# 3) 获取并校验边界参数
+	initial_inertia, factorial_coefficient, time_constant, droop, rocof_threshold, nadir_threshold, power_deviation = get_parmeters(flag_converter)
+	validate_boundary_parameters((initial_inertia, factorial_coefficient, time_constant, droop, rocof_threshold, nadir_threshold, power_deviation))
+	println("Boundary parameters validated successfully.")
+
+	# 4) 计算惯量边界曲线
+	inertia_updown_bindings, extreme_inertia, nadir_vector, inertia_vector, selected_ids = calculate_inertia_parameters(
+		initial_inertia,
+		factorial_coefficient,
+		time_constant,
+		droop,
+		power_deviation,
+		DAMPING_RANGE,
+		converter_vsm_parameters,
+		converter_droop_parameters,
+		flag_converter,
+	)
+	println("Output from calculate_inertia_parameters validated successfully.")
+
+	# 5) 估计惯量极值并校验
+	min_inertia, max_inertia = estimate_inertia_limits(rocof_threshold, power_deviation, DAMPING_RANGE, factorial_coefficient, time_constant, droop)
+	validate_inertia_limits(min_inertia, max_inertia)
+	println("Output from estimate_inertia_limits validated successfully.")
+
+	# 6) 可视化
+	p1, sy1 = data_visualization(DAMPING_RANGE, inertia_updown_bindings, extreme_inertia, nadir_vector, inertia_vector, selected_ids, max_inertia, min_inertia)
+
+	if show_plot
+		show(p1)
+		Plots.plot(sy1; size = (400, 400))
+	end
+
+	if save_plot
+		ensure_output_directory(output_dir)
+		Plots.savefig(joinpath(output_dir, "$(output_basename).png"))
+		Plots.savefig(joinpath(output_dir, "$(output_basename).pdf"))
+	end
+
+	println("Calculations complete. Plot generated.")
+
+	return (
+		plot = p1,
+		sub_plot = sy1,
+		inertia_updown_bindings = inertia_updown_bindings,
+		extreme_inertia = extreme_inertia,
+		nadir_vector = nadir_vector,
+		inertia_vector = inertia_vector,
+		selected_ids = selected_ids,
+		min_inertia = min_inertia,
+		max_inertia = max_inertia,
+	)
+end
+
+"""
+    run_main_entrypoint()
+
+对外统一入口（语义更清晰，便于其他脚本调用）。
+"""
+function run_main_entrypoint()
+	return run_frequency_dynamics_workflow()
+end
+
+# Execute only when run as the main script, not when included by other files.
+if abspath(PROGRAM_FILE) == @__FILE__
+	run_main_entrypoint()
 end

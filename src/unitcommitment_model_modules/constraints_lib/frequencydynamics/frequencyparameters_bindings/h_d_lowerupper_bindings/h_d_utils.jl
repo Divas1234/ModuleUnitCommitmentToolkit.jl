@@ -1,12 +1,12 @@
 using Pkg
 Pkg.activate(".Pkg/")
 
-neededPackages = [:FileIO, :LinearAlgebra, :LinearAlgebra, :Random, :GLM, :Plots, :DelimitedFiles, :GeometryBasics, :QHull, :Printf]
+neededPackages = [:FileIO, :LinearAlgebra, :Random, :GLM, :Plots, :DelimitedFiles, :GeometryBasics, :QHull, :Printf]
 
-# Make sure all needed Pkg's are ready to go
+# Ensure all required packages are available in the active environment.
 for neededpackage in neededPackages
-    (String(neededpackage) in keys(Pkg.project().dependencies)) || Pkg.add(String(neededpackage))
-    # @eval using $neededpackage
+	(String(neededpackage) in keys(Pkg.project().dependencies)) || Pkg.add(String(neededpackage))
+	# @eval using $neededpackage
 end
 
 using Plots, PlotThemes
@@ -25,12 +25,12 @@ include("_converter_config.jl")
 include("_generate_geometries.jl")
 # include("_tem_plot_polygonfigures.jl")
 
-# Constants (could also be in environment_config.jl)
+# Shared constants
 const DAMPING_RANGE = 2:0.25:15
 const MIN_DAMPING = minimum(DAMPING_RANGE)
 const MAX_DAMPING = maximum(DAMPING_RANGE)
 
-# Constants for the formulas
+# Constants for formula scaling
 const PERCENTAGE_BASE = 100
 const FREQUENCY_BASE = 50
 current_filepath = pwd()

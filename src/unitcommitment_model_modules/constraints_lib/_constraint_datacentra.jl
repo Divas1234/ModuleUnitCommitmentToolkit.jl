@@ -7,9 +7,10 @@ McCormick envelope relaxations for bilinear terms, and aggregate task balance
 constraints over time intervals.
 
 # Arguments
-- `scuc`: The JuMP optimization model.
-- `NT`, `NS`: Time periods and scenarios.
-- `DataCentras`: Data structure with DC technical and workload parameters.
+
+  - `scuc`: The JuMP optimization model.
+  - `NT`, `NS`: Time periods and scenarios.
+  - `DataCentras`: Data structure with DC technical and workload parameters.
 """
 function add_datacentra_constraints!(scuc::Model, NT, NS, config_param, ND2 = nothing, DataCentras = nothing)
 	# Check if data centers exist and variables are defined
@@ -40,11 +41,7 @@ function add_datacentra_constraints!(scuc::Model, NT, NS, config_param, ND2 = no
 
 		# --- Power-Workload Relationship ---
 		# P_dc = Idle_Power + (Constant/Efficiency) * Effective_Workload
-		@constraint(
-			scuc,
-			[s = 1:NS, t = 1:NT],
-			dc_p[((s - 1) * ND2 + 1):(s * ND2), t] .== idale_dc .+ sv_const_dc .* dc_Δu2[((s - 1) * ND2 + 1):(s * ND2), t] ./ mu_dc
-		)
+		@constraint(scuc, [s = 1:NS, t = 1:NT], dc_p[((s - 1) * ND2 + 1):(s * ND2), t] .== idale_dc .+ sv_const_dc .* dc_Δu2[((s - 1) * ND2 + 1):(s * ND2), t] ./ mu_dc)
 
 		# --- McCormick Envelopes for Bilinear Relaxations ---
 		# These constraints linearize products of variables (e.g., status * workload)
@@ -52,22 +49,12 @@ function add_datacentra_constraints!(scuc::Model, NT, NS, config_param, ND2 = no
 		# Term 1: Δu1 = v² * f
 		@constraint(scuc, [s = 1:NS, t = 1:NT], dc_Δu1[((s - 1) * ND2 + 1):(s * ND2), t] .<= dc_v²[((s - 1) * ND2 + 1):(s * ND2), t])
 		@constraint(scuc, [s = 1:NS, t = 1:NT], dc_Δu1[((s - 1) * ND2 + 1):(s * ND2), t] .<= dc_f[((s - 1) * ND2 + 1):(s * ND2), t])
-		@constraint(
-			scuc,
-			[s = 1:NS, t = 1:NT],
-			dc_Δu1[((s - 1) * ND2 + 1):(s * ND2), t] .>=
-				dc_v²[((s - 1) * ND2 + 1):(s * ND2), t] .+ dc_f[((s - 1) * ND2 + 1):(s * ND2), t] .- ones(ND2, 1)
-		)
+		@constraint(scuc, [s = 1:NS, t = 1:NT], dc_Δu1[((s - 1) * ND2 + 1):(s * ND2), t] .>= dc_v²[((s - 1) * ND2 + 1):(s * ND2), t] .+ dc_f[((s - 1) * ND2 + 1):(s * ND2), t] .- ones(ND2, 1))
 
 		# Term 2: Δu2 = Δu1 * λ
 		@constraint(scuc, [s = 1:NS, t = 1:NT], dc_Δu2[((s - 1) * ND2 + 1):(s * ND2), t] .<= dc_Δu1[((s - 1) * ND2 + 1):(s * ND2), t])
 		@constraint(scuc, [s = 1:NS, t = 1:NT], dc_Δu2[((s - 1) * ND2 + 1):(s * ND2), t] .<= dc_λ[((s - 1) * ND2 + 1):(s * ND2), t])
-		@constraint(
-			scuc,
-			[s = 1:NS, t = 1:NT],
-			dc_Δu2[((s - 1) * ND2 + 1):(s * ND2), t] .>=
-				dc_λ[((s - 1) * ND2 + 1):(s * ND2), t] .+ dc_Δu1[((s - 1) * ND2 + 1):(s * ND2), t] .- ones(ND2, 1)
-		)
+		@constraint(scuc, [s = 1:NS, t = 1:NT], dc_Δu2[((s - 1) * ND2 + 1):(s * ND2), t] .>= dc_λ[((s - 1) * ND2 + 1):(s * ND2), t] .+ dc_Δu1[((s - 1) * ND2 + 1):(s * ND2), t] .- ones(ND2, 1))
 
 		# Assuming computational task constraints
 		iter_num = 6
@@ -94,18 +81,14 @@ function add_datacentra_constraints!(scuc::Model, NT, NS, config_param, ND2 = no
 			@constraint(
 				scuc,
 				[s = 1:NS, iter = 1:iter_num],
-				sum(dc_λ[((s - 1) * ND2 + 1):(s * ND2), ((iter - 1) * iter_block + 1):(iter * iter_block)]) .<=
-					(1 + coeff) * sum(DataCentras.λ) * iter_block .*
-				sum(DataCentras.computational_power_tasks[((iter - 1) * iter_block + 1):(iter * iter_block)])
+				sum(dc_λ[((s - 1) * ND2 + 1):(s * ND2), ((iter - 1) * iter_block + 1):(iter * iter_block)]) .<= (1 + coeff) * sum(DataCentras.λ) * iter_block .* sum(DataCentras.computational_power_tasks[((iter - 1) * iter_block + 1):(iter * iter_block)])
 			)
 
 			# Lower bound on tasks processed
 			@constraint(
 				scuc,
 				[s = 1:NS, iter = 1:iter_num],
-				sum(dc_λ[((s - 1) * ND2 + 1):(s * ND2), ((iter - 1) * iter_block + 1):(iter * iter_block)]) .>=
-					(1 - coeff) * sum(DataCentras.λ) * iter_block .*
-				sum(DataCentras.computational_power_tasks[((iter - 1) * iter_block + 1):(iter * iter_block)])
+				sum(dc_λ[((s - 1) * ND2 + 1):(s * ND2), ((iter - 1) * iter_block + 1):(iter * iter_block)]) .>= (1 - coeff) * sum(DataCentras.λ) * iter_block .* sum(DataCentras.computational_power_tasks[((iter - 1) * iter_block + 1):(iter * iter_block)])
 			)
 		else
 			println("Warning: DataCentras.computational_power_tasks or DataCentras.λ not suitable for constraints. Skipping related constraints.")
