@@ -47,6 +47,10 @@ function multiple_bender_decomposition_scuc(
 	# Initialize bounds
 	best_upper_bound = Inf
 	best_lower_bound = -Inf
+	best_incumbent = nothing
+	last_added_cut_refs = ConstraintRef[]
+	last_ret_dic = nothing
+	last_iter_value = nothing
 	NS = Int64(winds.scenarios_nums)
 	scenarios_prob = 1.0 / winds.scenarios_nums
 
@@ -88,10 +92,37 @@ function multiple_bender_decomposition_scuc(
 			return nothing
 		end
 
+		previous_best_upper_bound = best_upper_bound
+		previous_best_lower_bound = best_lower_bound
 		best_upper_bound, best_lower_bound, current_upper_bound, all_subproblems_feasibility_flag = get_upper_lower_bounds(scuc_masterproblem, ret_dic, best_upper_bound, best_lower_bound, lower_bound) # NOTE - upper bound from subproblem
+		if all_subproblems_feasibility_flag && current_upper_bound !== missing && current_upper_bound < previous_best_upper_bound - NUMERICAL_TOLERANCE
+			best_incumbent = (
+				x = copy(x⁽⁰⁾),
+				u = copy(u⁽⁰⁾),
+				v = copy(v⁽⁰⁾),
+				θ = Dict(s => ret.θ for (s, ret) in ret_dic),
+			)
+		end
 		if !all_subproblems_feasibility_flag
 			feasible_count = count(ret -> ret.is_feasible, values(ret_dic))
 			println("ITER ", iteration, ": lower_bound=", lower_bound, ", feasible_subproblems=", feasible_count, "/", length(ret_dic), "; adding feasibility cuts")
+		end
+		if all_subproblems_feasibility_flag && best_lower_bound > best_upper_bound + NUMERICAL_TOLERANCE
+			println("WARNING: Benders lower bound exceeded upper bound at iteration ", iteration)
+			println("  LOWER_bound = ", best_lower_bound)
+			println("  UPPER_bound = ", best_upper_bound)
+			if isempty(last_added_cut_refs) || last_ret_dic === nothing || last_iter_value === nothing
+				println("  No previous cut batch is available for rollback; stopping diagnostic run.")
+				break
+			end
+			rollback_cut_batch!(scuc_masterproblem, last_added_cut_refs)
+			add_conservative_integer_optimality_cuts!(scuc_masterproblem, last_ret_dic, last_iter_value)
+			empty!(last_added_cut_refs)
+			last_ret_dic = nothing
+			last_iter_value = nothing
+			best_lower_bound = previous_best_lower_bound
+			println("  Rolled back the last dual cut batch and added conservative integer cuts.")
+			continue
 		end
 
 		# Check for convergence
@@ -108,11 +139,17 @@ function multiple_bender_decomposition_scuc(
 		end
 
 		if config_param.is_ConsiderMultiCUTs == 1
-			candidate_cuts = collect_scenario_cut_candidates(ret_dic, value.(scuc_masterproblem[:θ]))
+			candidate_cuts = collect_scenario_cut_candidates(scuc_masterproblem, ret_dic, value.(scuc_masterproblem[:θ]), NG, NT, NW, ND, NL; incumbent = best_incumbent)
 			add_jensen_cut_if_violated!(scuc_masterproblem, jensen_subproblem_struct, iter_value, NG, NT)
-			add_selected_scenario_optimality_cuts!(scuc_masterproblem, candidate_cuts, ret_dic, iter_value)
+			added_cuts, added_cut_refs = add_selected_scenario_optimality_cuts!(scuc_masterproblem, candidate_cuts)
+			last_added_cut_refs = added_cut_refs
+			last_ret_dic = added_cuts > 0 ? ret_dic : nothing
+			last_iter_value = added_cuts > 0 ? iter_value : nothing
 			if !all_subproblems_feasibility_flag
 				add_no_good_cut!(scuc_masterproblem, x⁽⁰⁾, u⁽⁰⁾, v⁽⁰⁾)
+			elseif added_cuts == 0
+				println("No violated Benders cuts found at iteration ", iteration, "; stopping to avoid cycling.")
+				break
 			end
 		else
 			# Add appropriate Bender's cut based on subproblem feasibility
@@ -129,41 +166,50 @@ function multiple_bender_decomposition_scuc(
 end
 
 function collect_scenario_cut_candidates(
+	model::Model,
 	ret_dic::OrderedDict{Int64, Any},
-	theta_values;
+	theta_values,
+	NG::Int64,
+	NT::Int64,
+	NW::Int64,
+	ND::Int64,
+	NL::Int64;
 	tolerance::Float64 = parse(Float64, get(ENV, "BENDERS_CUT_VIOLATION_TOL", "1e-5")),
+	incumbent = nothing,
 )
-	scenario_ids = collect(keys(ret_dic))
-	candidate_slots = Vector{Union{Nothing, Tuple{Float64, Int64}}}(nothing, length(scenario_ids))
-	if should_build_cut_candidates_in_parallel(length(scenario_ids))
-		Threads.@threads for idx in eachindex(scenario_ids)
-			s = scenario_ids[idx]
-			ret = ret_dic[s]
-			if ret.is_feasible == true
-				violation = Float64(ret.θ - theta_values[s])
-				if violation > tolerance
-					candidate_slots[idx] = (violation, s)
+	candidate_cuts = Tuple{Float64, Int64, AffExpr}[]
+	cut_mode = get(ENV, "BENDERS_OPTIMALITY_CUT_MODE", "dual_safe")
+	for s in keys(ret_dic)
+		ret = ret_dic[s]
+		if ret.is_feasible == true
+			cut_expr = if cut_mode == "dual"
+				get_reduced_cost_optimality_cut_expression(model, ret, nothing)
+			elseif cut_mode == "integer"
+				get_binary_integer_optimality_cut_expression(model, ret, nothing)
+			elseif cut_mode == "coefficient"
+				if isempty(ret.dual_coeffs)
+					get_binary_integer_optimality_cut_expression(model, ret, nothing)
+				else
+					_, expr = get_benders_cumulative_multicuts_expression(model, ret.dual_coeffs, NG, NT, NW, ND, NL)
+					expr
 				end
+			elseif cut_mode == "dual_safe"
+				dual_cut_at_incumbent = incumbent === nothing ? -Inf : evaluate_reduced_cost_optimality_cut(ret, incumbent)
+				if incumbent !== nothing && dual_cut_at_incumbent > incumbent.θ[s] + tolerance
+					get_binary_integer_optimality_cut_expression(model, ret, nothing)
+				else
+					get_reduced_cost_optimality_cut_expression(model, ret, nothing)
+				end
+			else
+				error("Unsupported BENDERS_OPTIMALITY_CUT_MODE=$(cut_mode). Use 'integer', 'dual', 'dual_safe', or 'coefficient'.")
 			end
-		end
-	else
-		for idx in eachindex(scenario_ids)
-			s = scenario_ids[idx]
-			ret = ret_dic[s]
-			if ret.is_feasible == true
-				violation = Float64(ret.θ - theta_values[s])
-				if violation > tolerance
-					candidate_slots[idx] = (violation, s)
-				end
+			violation = Float64(value(cut_expr) - theta_values[s])
+			if violation > tolerance
+				push!(candidate_cuts, (violation, s, cut_expr))
 			end
 		end
 	end
 
-	candidate_cuts = Tuple{Float64, Int64}[]
-	for candidate in candidate_slots
-		candidate === nothing && continue
-		push!(candidate_cuts, candidate)
-	end
 	sort!(candidate_cuts; by = cut -> cut[1], rev = true)
 	max_cuts = max(0, parse(Int64, get(ENV, "BENDERS_MAX_SCENARIO_CUTS_PER_ITERATION", string(length(candidate_cuts)))))
 	if max_cuts < length(candidate_cuts)
@@ -176,15 +222,37 @@ function should_build_cut_candidates_in_parallel(candidate_count::Int64)
 	return candidate_count > 1 && Threads.nthreads() > 1 && get(ENV, "BENDERS_PARALLEL_CUT_CANDIDATES", "1") != "0"
 end
 
-function add_selected_scenario_optimality_cuts!(model::Model, selected_candidates, ret_dic, iter_value)
+function add_selected_scenario_optimality_cuts!(model::Model, selected_candidates)
 	added = 0
-	for (_, s) in selected_candidates
-		cut_expr = get_reduced_cost_optimality_cut_expression(model, ret_dic[s], iter_value)
-		@constraint(model, model[:θ][s] >= cut_expr)
+	added_cut_refs = ConstraintRef[]
+	for (_, s, cut_expr) in selected_candidates
+		cut_ref = @constraint(model, model[:θ][s] >= cut_expr)
+		push!(added_cut_refs, cut_ref)
 		added += 1
 	end
 	if get(ENV, "BENDERS_VERBOSE_CUTS", "0") == "1"
 		println("Added scenario optimality cuts: ", added)
+	end
+	return added, added_cut_refs
+end
+
+function rollback_cut_batch!(model::Model, cut_refs::Vector{ConstraintRef})
+	for cut_ref in cut_refs
+		if is_valid(model, cut_ref)
+			delete(model, cut_ref)
+		end
+	end
+	return nothing
+end
+
+function add_conservative_integer_optimality_cuts!(model::Model, ret_dic::OrderedDict{Int64, Any}, iter_value)
+	added = 0
+	for (s, ret) in ret_dic
+		if ret.is_feasible == true
+			cut_expr = get_binary_integer_optimality_cut_expression(model, ret, iter_value)
+			@constraint(model, model[:θ][s] >= cut_expr)
+			added += 1
+		end
 	end
 	return added
 end
@@ -225,7 +293,13 @@ function add_jensen_cut_if_violated!(model::Model, jensen_subproblem_struct, ite
 end
 
 function get_reduced_cost_optimality_cut_expression(model::Model, ret, iter_value)
-	x⁽⁰⁾, u⁽⁰⁾, v⁽⁰⁾ = iter_value
+	if iter_value === nothing
+		x⁽⁰⁾ = value.(model[:x])
+		u⁽⁰⁾ = value.(model[:u])
+		v⁽⁰⁾ = value.(model[:v])
+	else
+		x⁽⁰⁾, u⁽⁰⁾, v⁽⁰⁾ = iter_value
+	end
 	return @expression(
 		model,
 		ret.θ +
@@ -233,6 +307,33 @@ function get_reduced_cost_optimality_cut_expression(model::Model, ret, iter_valu
 		sum(ret.ray_u .* (model[:u] - u⁽⁰⁾)) +
 		sum(ret.ray_v .* (model[:v] - v⁽⁰⁾))
 	)
+end
+
+function get_binary_integer_optimality_cut_expression(model::Model, ret, iter_value; tolerance::Float64 = 0.5)
+	if iter_value === nothing
+		x⁽⁰⁾ = value.(model[:x])
+		u⁽⁰⁾ = value.(model[:u])
+		v⁽⁰⁾ = value.(model[:v])
+	else
+		x⁽⁰⁾, u⁽⁰⁾, v⁽⁰⁾ = iter_value
+	end
+
+	x = model[:x]
+	u = model[:u]
+	v = model[:v]
+	matches_current_solution =
+		sum((x⁽⁰⁾[i] >= tolerance) ? x[i] : (1 - x[i]) for i in eachindex(x)) +
+		sum((u⁽⁰⁾[i] >= tolerance) ? u[i] : (1 - u[i]) for i in eachindex(u)) +
+		sum((v⁽⁰⁾[i] >= tolerance) ? v[i] : (1 - v[i]) for i in eachindex(v))
+	binary_count = length(x) + length(u) + length(v)
+	return @expression(model, ret.θ * (matches_current_solution - binary_count + 1))
+end
+
+function evaluate_reduced_cost_optimality_cut(ret, incumbent)
+	return ret.θ +
+		   sum(ret.ray_x .* (incumbent.x .- ret.x⁽⁰⁾)) +
+		   sum(ret.ray_u .* (incumbent.u .- ret.u⁽⁰⁾)) +
+		   sum(ret.ray_v .* (incumbent.v .- ret.v⁽⁰⁾))
 end
 
 function add_no_good_cut!(model::Model, x_value, u_value, v_value; tolerance::Float64 = 0.5)
@@ -395,10 +496,13 @@ Fixes the first-stage variables for a single scenario subproblem, evaluates it, 
 function solve_subproblem_with_feasibility_cut(scuc_subproblem_dic::SCUC_Model, x, u, v, NG::Int64, NT::Int64)
 	scuc_subproblem = scuc_subproblem_dic.model
 
-	# Fix variables in subproblem
-	fix.(scuc_subproblem[:x], x; force = true)
-	fix.(scuc_subproblem[:u], u; force = true)
-	fix.(scuc_subproblem[:v], v; force = true)
+	# Link first-stage variables explicitly so the duals of these equalities form
+	# stable Benders subgradients. Reduced costs of fixed variable bounds are
+	# solver-dependent when both bounds are active.
+	link_x, link_u, link_v = ensure_benders_linking_constraints!(scuc_subproblem)
+	set_normalized_rhs.(link_x, x)
+	set_normalized_rhs.(link_u, u)
+	set_normalized_rhs.(link_v, v)
 	# fix.(scuc_subproblem[:relaxed_su₀], su₀) # commented out
 	# fix.(scuc_subproblem[:relaxed_sd₀], sd₀) # commented out
 
@@ -436,9 +540,12 @@ function solve_subproblem_with_feasibility_cut(scuc_subproblem_dic::SCUC_Model, 
 		return (
 			is_feasible = true,
 			θ = objective_value(scuc_subproblem),
-			ray_x = reduced_cost.(scuc_subproblem[:x]),
-			ray_u = reduced_cost.(scuc_subproblem[:u]),
-			ray_v = reduced_cost.(scuc_subproblem[:v]),
+			x⁽⁰⁾ = copy(x),
+			u⁽⁰⁾ = copy(u),
+			v⁽⁰⁾ = copy(v),
+			ray_x = dual.(link_x),
+			ray_u = dual.(link_u),
+			ray_v = dual.(link_v),
 
 			# NOTE - strong convex duality
 			dual_coeffs = final_dual_subproblem_coefficient_results,
@@ -456,9 +563,12 @@ function solve_subproblem_with_feasibility_cut(scuc_subproblem_dic::SCUC_Model, 
 		return (
 			is_feasible = false,
 			dual_θ = dual_objective_value(scuc_subproblem),
-			ray_x = reduced_cost.(scuc_subproblem[:x]),
-			ray_u = reduced_cost.(scuc_subproblem[:u]),
-			ray_v = reduced_cost.(scuc_subproblem[:v]),
+			x⁽⁰⁾ = copy(x),
+			u⁽⁰⁾ = copy(u),
+			v⁽⁰⁾ = copy(v),
+			ray_x = shadow_price.(link_x),
+			ray_u = shadow_price.(link_u),
+			ray_v = shadow_price.(link_v),
 
 			# NOTE - farkas_dual process
 			dual_coeffs = final_dual_subproblem_coefficient_results,
@@ -469,6 +579,19 @@ function solve_subproblem_with_feasibility_cut(scuc_subproblem_dic::SCUC_Model, 
 			dual_equal_to_constr_dic = dual_details.equal,
 		)
 	end
+end
+
+function ensure_benders_linking_constraints!(model::Model)
+	object_dict = JuMP.object_dictionary(model)
+	if !haskey(object_dict, :benders_link_x)
+		x = model[:x]
+		u = model[:u]
+		v = model[:v]
+		@constraint(model, benders_link_x[g = axes(x, 1), t = axes(x, 2)], x[g, t] == 0.0)
+		@constraint(model, benders_link_u[g = axes(u, 1), t = axes(u, 2)], u[g, t] == 0.0)
+		@constraint(model, benders_link_v[g = axes(v, 1), t = axes(v, 2)], v[g, t] == 0.0)
+	end
+	return model[:benders_link_x], model[:benders_link_u], model[:benders_link_v]
 end
 
 function set_optimizer_attribute_if_supported(model::Model, attribute_name::String, value)

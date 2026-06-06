@@ -136,8 +136,13 @@ function add_master_supply_adequacy_constraints!(scuc_masterproblem::Model, NT::
         [t = 1:NT],
         sum(units.p_max[g, 1] * x[g, t] for g in 1:NG) + conservative_wind[t] >= demand[t]
     )
+    reserve_adequacy = @constraint(
+        scuc_masterproblem,
+        [i = 1:NG, t = 1:NT],
+        sum(units.p_max[g, 1] * x[g, t] for g in 1:NG) + conservative_wind[t] >= demand[t] + 0.5 * units.p_max[i, 1] * x[i, t]
+    )
     println("\t constraints: master supply adequacy cuts\t\t\t\t done")
-    return supply_adequacy
+    return (supply = supply_adequacy, reserve = reserve_adequacy)
 end
 
 # Helper function to define first-stage decision variables
