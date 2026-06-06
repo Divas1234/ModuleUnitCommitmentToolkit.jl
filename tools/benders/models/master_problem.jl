@@ -35,13 +35,13 @@ function bd_masterfunction(
     # set_silent(scuc_masterproblem)
     # --- Define Variables ---
     # Define decision variables for the optimization model
-    scuc_masterproblem, x, u, v, su₀, sd₀, θ =
+    scuc_masterproblem, x, u, v, su₀, sd₀, κ⁺, κ⁻, α, β, θ =
         define_masterproblem_decision_variables!(scuc_masterproblem::Model, NT, NG, ND, NC, ND2, NS, NW, config_param)
-    pg₀ = sr⁺ = sr⁻ = Δpd = Δpw = κ⁺ = κ⁻ = pc⁺ = pc⁻ = qc = pss_sumchargeenergy = α = β = Matrix{VariableRef}(undef, 0, 0)
+    pg₀ = sr⁺ = sr⁻ = Δpd = Δpw = pc⁺ = pc⁻ = qc = pss_sumchargeenergy = Matrix{VariableRef}(undef, 0, 0)
     pgₖ = Array{VariableRef, 3}(undef, 0, 0, 0)
     # NOTE - save the decision variables in a dictionary for easy access
     # master_vars = SCUCModel_decision_variables(u, x, v, su₀, sd₀, pg₀, pgₖ, sr⁺, sr⁻, Δpd, Δpw, κ⁺, κ⁻, pc⁺, pc⁻, qc, pss_sumchargeenergy, α, β, θ)
-    master_vars = build_decision_variables(; u, x, v, su₀, sd₀)
+    master_vars = build_decision_variables(; u, x, v, su₀, sd₀, κ⁺, κ⁻, α, β, θ)
 
     # --- Set Objective ---
     # Set the objective function to be minimized
@@ -69,6 +69,7 @@ function bd_masterfunction(
     _units_shutup_cost_constr,
     _units_shutdown_cost_constr = add_unit_operation_constraints!(scuc_masterproblem, NT, NG, units, onoffinit)
     _master_supply_adequacy_constr = add_master_supply_adequacy_constraints!(scuc_masterproblem, NT, NG, ND, NW, units, loads, winds)
+    _master_storage_binary_constr = add_master_storage_binary_constraints!(scuc_masterproblem, NT, NC, NS, config_param)
     # add_curtailment_constraints!(scuc_masterproblem, NT, ND, NW, NS, loads, winds)
     # add_generator_power_constraints!(scuc_masterproblem, NT, NG, NS, units)
     # add_reserve_constraints!(scuc_masterproblem, NT, NG, NC, NS, units, loads, winds, config_param)
@@ -95,7 +96,6 @@ function bd_masterfunction(
     all_constraints_dict[:key_units_init_shutdown_cost_constr] = vec(_units_init_shutdown_cost_constr)
     all_constraints_dict[:key_units_shutup_cost_constr] = vec(collect(Iterators.flatten(_units_shutup_cost_constr.data)))
     all_constraints_dict[:key_units_shutdown_cost_constr] = vec(collect(Iterators.flatten(_units_shutdown_cost_constr.data)))
-
     fields = [Symbol(string(k)[5:end]) for k in keys(all_constraints_dict) if startswith(string(k), "key_")]
     master_cons = build_constraints(; (f => all_constraints_dict[Symbol("key_", f)] for f in fields)...)
 
@@ -125,6 +125,39 @@ function bd_masterfunction(
     )
 
     return scuc_masterproblem, master_scuc_struct
+end
+
+function add_master_storage_binary_constraints!(scuc_masterproblem::Model, NT::Int64, NC::Int64, NS::Int64, config_param::config)
+    if config_param.is_ConsiderBESS == 0 || NC == 0
+        return nothing
+    end
+    κ⁺ = scuc_masterproblem[:κ⁺]
+    κ⁻ = scuc_masterproblem[:κ⁻]
+    α = scuc_masterproblem[:α]
+    β = scuc_masterproblem[:β]
+
+    exclusion = @constraint(scuc_masterproblem, [s = 1:NS, c = 1:NC, t = 1:NT], κ⁺[(s - 1) * NC + c, t] + κ⁻[(s - 1) * NC + c, t] <= 1)
+    start_logic = @constraint(scuc_masterproblem, [s = 1:NS, c = 1:NC, t = 1:NT], α[(s - 1) * NC + c, t] >= κ⁺[(s - 1) * NC + c, t] - ((t == 1) ? 0 : κ⁺[(s - 1) * NC + c, t - 1]))
+    stop_logic = @constraint(scuc_masterproblem, [s = 1:NS, c = 1:NC, t = 1:NT], β[(s - 1) * NC + c, t] >= ((t == 1) ? 0 : κ⁺[(s - 1) * NC + c, t - 1]) - κ⁺[(s - 1) * NC + c, t])
+    start_state_upper = @constraint(scuc_masterproblem, [s = 1:NS, c = 1:NC, t = 1:NT], α[(s - 1) * NC + c, t] <= κ⁺[(s - 1) * NC + c, t])
+    start_prev_upper = @constraint(scuc_masterproblem, [s = 1:NS, c = 1:NC, t = 1:NT], α[(s - 1) * NC + c, t] <= (t == 1 ? 1 : 1 - κ⁺[(s - 1) * NC + c, t - 1]))
+    stop_prev_upper = @constraint(scuc_masterproblem, [s = 1:NS, c = 1:NC, t = 1:NT], β[(s - 1) * NC + c, t] <= (t == 1 ? 0 : κ⁺[(s - 1) * NC + c, t - 1]))
+    stop_state_upper = @constraint(scuc_masterproblem, [s = 1:NS, c = 1:NC, t = 1:NT], β[(s - 1) * NC + c, t] <= 1 - κ⁺[(s - 1) * NC + c, t])
+    start_cycle_limit = @constraint(scuc_masterproblem, [s = 1:NS, c = 1:NC], sum(α[(s - 1) * NC + c, t] for t in 1:NT) <= 5)
+    stop_cycle_limit = @constraint(scuc_masterproblem, [s = 1:NS, c = 1:NC], sum(β[(s - 1) * NC + c, t] for t in 1:NT) <= 5)
+
+    println("\t constraints: master storage binary logic\t\t\t\t done")
+    return (
+        exclusion = exclusion,
+        start_logic = start_logic,
+        stop_logic = stop_logic,
+        start_state_upper = start_state_upper,
+        start_prev_upper = start_prev_upper,
+        stop_prev_upper = stop_prev_upper,
+        stop_state_upper = stop_state_upper,
+        start_cycle_limit = start_cycle_limit,
+        stop_cycle_limit = stop_cycle_limit,
+    )
 end
 
 function add_master_supply_adequacy_constraints!(scuc_masterproblem::Model, NT::Int64, NG::Int64, ND::Int64, NW::Int64, units::unit, loads::load, winds::wind)
@@ -180,17 +213,17 @@ function define_masterproblem_decision_variables!(scuc_masterproblem::Model, NT,
     # @variable(scuc_masterproblem, Δpd[1:(ND * NS), 1:NT]>=0)
     # @variable(scuc_masterproblem, Δpw[1:(NW * NS), 1:NT]>=0)
 
-    # pss variables
-    # @variable(scuc_masterproblem, κ⁺[1:(NC * NS), 1:NT], Bin) # charge status
-    # @variable(scuc_masterproblem, κ⁻[1:(NC * NS), 1:NT], Bin) # discharge status
-    # @variable(scuc_masterproblem, pc⁺[1:(NC * NS), 1:NT]>=0)# charge power
-    # @variable(scuc_masterproblem, pc⁻[1:(NC * NS), 1:NT]>=0)# discharge power
-    # @variable(scuc_masterproblem, qc[1:(NC * NS), 1:NT]>=0) # cumsum power
-    # # @variable(scuc_masterproblem, pss_sumchargeenergy[1:NC * NS, 1] >= 0) # Currently commented out
-
-    # # defination charging and discharging of BESS
-    # @variable(scuc_masterproblem, α[1:(NS * NC), 1:NT], Bin)
-    # @variable(scuc_masterproblem, β[1:(NS * NC), 1:NT], Bin)
+    if config_param.is_ConsiderBESS == 1 && NC > 0
+        @variable(scuc_masterproblem, κ⁺[1:(NC * NS), 1:NT], Bin)
+        @variable(scuc_masterproblem, κ⁻[1:(NC * NS), 1:NT], Bin)
+        @variable(scuc_masterproblem, α[1:(NC * NS), 1:NT], Bin)
+        @variable(scuc_masterproblem, β[1:(NC * NS), 1:NT], Bin)
+    else
+        κ⁺ = Matrix{VariableRef}(undef, 0, 0)
+        κ⁻ = Matrix{VariableRef}(undef, 0, 0)
+        α = Matrix{VariableRef}(undef, 0, 0)
+        β = Matrix{VariableRef}(undef, 0, 0)
+    end
 
     # if config_param.is_ConsiderDataCentra == 1
     # 	@variable(scuc_masterproblem, dc_p[1:(ND2 * NS), 1:NT]>=0)
@@ -211,7 +244,7 @@ function define_masterproblem_decision_variables!(scuc_masterproblem::Model, NT,
     # end
 
     # println("\t Variables defined.")
-    return scuc_masterproblem, x, u, v, su₀, sd₀, θ
+    return scuc_masterproblem, x, u, v, su₀, sd₀, κ⁺, κ⁻, α, β, θ
 end
 
 """
