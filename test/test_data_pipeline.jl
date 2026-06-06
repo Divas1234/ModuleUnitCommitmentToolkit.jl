@@ -10,6 +10,7 @@
 
 	config_param, units, lines, loads, psses, NB, NG, NL, ND, NT, NC, ND2, DataCentras =
 		forminputdata(DataGen, DataBranch, DataLoad, LoadCurve, GenCost, UnitsFreqParam, StrogeData, datacentra_Data)
+	winds, _ = genscenario(WindsFreqParam, 1; scenario_limit = 3)
 
 	@test config_param isa config
 	@test NG == length(units.index)
@@ -21,4 +22,9 @@
 	@test size(loads.load_curve) == (ND, NT)
 	@test all(units.p_max .>= units.p_min)
 	@test all(lines.p_max .>= 0)
+
+	redirect_stdout(devnull) do
+		boundarycondition(NB, NL, NG, NT, ND, units, loads, lines, winds, psses, config_param; show_plots = false)
+	end
+	@test true
 end

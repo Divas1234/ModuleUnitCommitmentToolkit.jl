@@ -1,6 +1,8 @@
-# Enforce ASCII console output for cross-platform compatibility
-
-ENV["JULIA_SHOW_ASCII"] = true
+# Runtime configuration must be loaded before any downstream include reads ENV.
+# Shell-provided ENV values still have priority, which keeps scheduler scripts
+# and one-off terminal overrides reproducible.
+include(joinpath(pwd(), "src", "runtime_config.jl"))
+load_runtime_config!()
 
 # Load environment configurations, simulation modules, and data readers
 include(joinpath(pwd(), "src", "environment_config.jl"))
@@ -8,17 +10,21 @@ include(joinpath(pwd(), "src", "renewables", "stochastic_simulation.jl"))
 include(joinpath(pwd(), "src", "input_data", "readers.jl"))
 # include(joinpath(pwd(), "src", "unit_commitment", "unit_commitment_model.jl"))
 
-# Load Benders Decomposition formulation and multi-cut libraries
-
+# Load Benders decomposition formulation and cut-generation libraries.
 include("models/construct_models.jl")
 include("cuts/construct_cuts.jl")
 include("decomposition.jl")
 
+##
 """
 	`main()`
 
 	Main execution pipeline mapping raw data to the stochastic SCUC formulation.
-	Reads system data, defines wind scenarios, and initializes the master and subproblem elements for Benders Decomposition.
+
+	This function is the single data-construction entry point used by the Benders
+	driver and by the CCG loader. Runtime options arrive through TOML-backed ENV
+	values before `forminputdata` builds the `config` struct, which keeps model
+	flags consistent across both algorithms.
 
 	# Returns
 	A tuple containing all formulated JuMP models, internal data structures, and topological scenario dimensions.
@@ -31,11 +37,12 @@ function main(; scenario_limit::Int64 = 50)
 	# Structure matrices and topological parameters for the SCUC model formulation
 	config_param, units, lines, loads, psses, NB, NG, NL, ND, NT, NC, ND2, DataCentras = forminputdata(DataGen, DataBranch, DataLoad, LoadCurve, GenCost, UnitsFreqParam, StrogeData, datacentra_Data)
 
-	# Generate stochastic wind scenarios
+	# Generate stochastic wind scenarios after base topology is known so the
+	# boundary report can validate dimensions across load, wind, and network data.
 	winds, NW = genscenario(WindsFreqParam, 1; scenario_limit = scenario_limit)
 
-	# Apply unit and node boundary limit conditions (Reserved function)
-	# boundrycondition(NB, NL, NG, NT, ND, units, loads, lines, winds, psses, config_param)
+	# Print imported system statistics and validate core boundaries when enabled.
+	maybe_print_boundarycondition(NB, NL, NG, NT, ND, units, loads, lines, winds, psses, config_param)
 
 	# Define assumed scenario probability (assuming equal distribution)
 	scenarios_prob = 1.0 / winds.scenarios_nums
@@ -56,7 +63,9 @@ function main(; scenario_limit::Int64 = 50)
 		scenarios_prob = 1.0 / NS
 	end
 
-	# Initialize dictionaries for decoupled scenario subsets based on iteration cuts
+	# Initialize decoupled scenario subproblems. Multi-cut mode requires one
+	# independently fixable subproblem per scenario; single-cut mode reuses the
+	# aggregate/base model.
 	if config_param.is_ConsiderMultiCUTs == 1
 		# Create discrete subproblem instances explicitly for multi-cut logic evaluation
 		batch_scuc_subproblem_struct_dic = OrderedDict{Int64, SCUC_Model}()

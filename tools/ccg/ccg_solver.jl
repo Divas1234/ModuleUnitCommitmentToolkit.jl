@@ -9,6 +9,18 @@ include(joinpath(@__DIR__, "..", "benders", "setup.jl"))
 include("dro_uncertainty.jl")
 include("ccg_helpers.jl")
 
+#%%%
+"""
+	solve_ccg_unit_commitment(; scenario_limit = 20)
+
+Solve stochastic SCUC with column-and-constraint generation.
+
+The master starts with a small active scenario set. Each iteration fixes the
+first-stage commitment, evaluates every candidate scenario through recourse,
+and appends the worst uncovered scenarios. When DRO is enabled, the upper bound
+uses the Wasserstein worst-case probability vector instead of the nominal
+empirical distribution.
+"""
 function solve_ccg_unit_commitment(; scenario_limit::Int64 = 20)
 	data = load_ccg_data(scenario_limit)
 	initial_count = clamp(parse(Int64, get(ENV, "CCG_INITIAL_SCENARIOS", string(min(3, data.NS)))), 1, data.NS)
@@ -98,7 +110,10 @@ function solve_ccg_unit_commitment(; scenario_limit::Int64 = 20)
 	)
 end
 
+#%%%
 function ccg_env_bool(name::String, default::Bool)
+	# Accept common boolean spellings because these values often come from shell,
+	# CI variables, or TOML booleans converted by the runtime loader.
 	value = lowercase(strip(get(ENV, name, default ? "1" : "0")))
 	return value in ("1", "true", "yes", "y", "on")
 end
@@ -112,11 +127,15 @@ function ccg_optimizer_threads(env_name::String, default_value::Int64)
 end
 
 function load_ccg_data(scenario_limit::Int64)
+	# CCG reuses the same data ingestion pipeline as Benders so that topology,
+	# model flags, wind scenarios, and boundary diagnostics stay identical across
+	# algorithm comparisons.
 	UnitsFreqParam, WindsFreqParam, StrogeData, DataGen, GenCost, DataBranch, LoadCurve, DataLoad, datacentra_Data = readxlssheet()
 	config_param, units, lines, loads, psses, NB, NG, NL, ND, NT, NC, ND2, DataCentras =
 		forminputdata(DataGen, DataBranch, DataLoad, LoadCurve, GenCost, UnitsFreqParam, StrogeData, datacentra_Data)
 	winds, NW = genscenario(WindsFreqParam, 1; scenario_limit = scenario_limit)
 	NS = Int64(winds.scenarios_nums)
+	maybe_print_boundarycondition(NB, NL, NG, NT, ND, units, loads, lines, winds, psses, config_param)
 	return (
 		config_param = config_param,
 		units = units,
@@ -140,6 +159,9 @@ function load_ccg_data(scenario_limit::Int64)
 end
 
 function solve_ccg_master(data, selected_scenarios::Vector{Int64})
+	# Build the extensive-form master over only the active scenario subset. The
+	# DRO distance/probability objects are sliced to the same active set so the
+	# objective remains dimensionally consistent.
 	active_winds = build_ccg_subset_wind(data.winds, selected_scenarios, data.full_scenario_probability)
 	active_probability = active_nominal_probability(data.dro, selected_scenarios)
 	active_distance = active_wasserstein_distance(data.dro, selected_scenarios)
@@ -168,6 +190,9 @@ function build_ccg_extensive_model(
 	dro_distance_matrix::Matrix{Float64} = zeros(Float64, NS_active, NS_active),
 	use_dro_objective::Bool = false,
 )
+	# This model is intentionally assembled from the same constraint builders used
+	# by Benders. Keeping the algebra shared makes Benders-vs-CCG comparisons about
+	# algorithm strategy rather than hidden formulation differences.
 	gsdf = calculate_gsdf(data.config_param, data.NL, data.units, data.lines, data.loads, data.NG, data.NB, data.ND)
 	refcost, eachslope = linearizationfuelcurve(data.units, data.NG)
 	onoffinit = calculate_initial_unit_status(data.units, data.NG)
@@ -200,6 +225,9 @@ function build_ccg_extensive_model(
 end
 
 function evaluate_ccg_recourse_pool(data, first_stage)
+	# Recourse evaluations are scenario-independent after first-stage commitment is
+	# fixed, so they can be parallelized safely. Solver thread counts should be
+	# kept small when Julia-level parallelism is enabled.
 	if !ccg_parallel_recourse_enabled() || data.NS == 1
 		results = OrderedDict{Int64, Any}()
 		for scenario_id in 1:data.NS
@@ -216,6 +244,9 @@ function evaluate_ccg_recourse_pool(data, first_stage)
 end
 
 function solve_ccg_single_scenario_recourse(data, first_stage, scenario_id::Int64)
+	# Each recourse model receives a one-scenario wind object and fixed first-stage
+	# binaries. Its objective is used by separation to identify scenarios that the
+	# current active master has not yet internalized.
 	scenario_winds = build_single_scenario_wind(data.winds, scenario_id, data.full_scenario_probability)
 	model = build_ccg_recourse_model(data, scenario_winds, 1.0)
 	fix_first_stage_commitment!(model, first_stage)

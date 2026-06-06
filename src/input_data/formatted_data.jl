@@ -5,7 +5,6 @@
 Configuration parameters controlling algorithmic behavior and model inclusion logic for the SCUC optimization.
 """
 struct config
-    	# config_param = config(1, 1, 1, 1, 1, 3, 0.005, 0.005, 1, 1, 1, 1e5, 1e5, 50, 0.01, 0, 0, 0, 1)
     # Algorithmic and model inclusion flags
     is_NetWorkCon::Int64                  # 1: Consider transmission network constraints; 0: Ignore
     is_ThermalUnitCon::Int64              # 1: Consider thermal unit generation limits; 0: Ignore
@@ -36,43 +35,42 @@ struct config
     is_ConsiderFrequencyControl::Int64    # 1: Enforce frequency safety (nadir/RoCoF) constraints; 0: Ignore
     is_ConsiderBESS::Int64                # 1: Enable Battery Energy Storage Systems / PSS; 0: Ignore
     is_ConsiderMultiCUTs::Int64           # 1: Generate multiple Benders cuts per scenario; 0: Standard aggregated cut
-    # function config(is_NetWorkCon::Int64,
-    # 		is_ThermalUnitCon::Int64,
-    # 		is_WindUnitCon::Int64,
-    # 		is_SysticalCon::Int64,
-    # 		is_PieceLinear::Int64,
-    # 		is_NumSeg::Int64,
-    # 		is_Alpha::Float64,
-    # 		is_Belta::Float64,
-    # 		is_CoalPrice::Int64,
-    # 		is_ActiveLoad::Int64,
-    # 		is_WindIntegration::Int64,
-    # 		is_LoadsCuttingCoefficient::Float64,
-    # 		is_WindsCuttingCoefficient::Float64,
-    # 		is_MaxIterationsNum::Int64,
-    # 		is_CalculPrecision::Float64,
-    # 		is_ConsiderDataCentra::Int64,
-    # 		is_ConsiderFrequencyControl::Int64)
-    # 	return new(
-    # 		is_NetWorkCon,
-    # 		is_ThermalUnitCon,
-    # 		is_WindUnitCon,
-    # 		is_SysticalCon,
-    # 		is_PieceLinear,
-    # 		is_NumSeg,
-    # 		is_Alpha,
-    # 		is_Belta,
-    # 		is_CoalPrice,
-    # 		is_ActiveLoad,
-    # 		is_WindIntegration,
-    # 		is_LoadsCuttingCoefficient,
-    # 		is_WindsCuttingCoefficient,
-    # 		is_MaxIterationsNum,
-    # 		is_CalculPrecision,
-    # 		is_ConsiderDataCentra,
-    # 		is_ConsiderFrequencyControl
-    # 	)
-    # end
+end
+
+function model_env_int(name::String, default::Int64)
+	return parse(Int64, get(ENV, name, string(default)))
+end
+
+function model_env_float(name::String, default::Float64)
+	return parse(Float64, get(ENV, name, string(default)))
+end
+
+function config_from_env()
+	consider_bess = model_env_int(
+		"MODEL_CONSIDER_BESS",
+		parse(Int64, get(ENV, "BENDERS_CONSIDER_BESS", get(ENV, "CONSIDER_BESS", "0"))),
+	)
+	return config(
+		model_env_int("MODEL_IS_NETWORK_CON", 1),
+		model_env_int("MODEL_IS_THERMAL_UNIT_CON", 1),
+		model_env_int("MODEL_IS_WIND_UNIT_CON", 1),
+		model_env_int("MODEL_IS_SYSTEM_CON", 1),
+		model_env_int("MODEL_IS_PIECE_LINEAR", 1),
+		model_env_int("MODEL_NUM_SEGMENTS", 3),
+		model_env_float("MODEL_ALPHA", 0.005),
+		model_env_float("MODEL_BETA", 0.005),
+		model_env_int("MODEL_COAL_PRICE", 1),
+		model_env_int("MODEL_IS_ACTIVE_LOAD", 1),
+		model_env_int("MODEL_IS_WIND_INTEGRATION", 1),
+		model_env_float("MODEL_LOAD_CUTTING_COEFFICIENT", 1e5),
+		model_env_float("MODEL_WIND_CUTTING_COEFFICIENT", 1e5),
+		model_env_int("MODEL_MAX_ITERATIONS_NUM", 50),
+		model_env_float("MODEL_CALCULATION_PRECISION", 0.01),
+		model_env_int("MODEL_CONSIDER_DATA_CENTER", 0),
+		model_env_int("MODEL_CONSIDER_FREQUENCY_CONTROL", 0),
+		consider_bess,
+		model_env_int("MODEL_CONSIDER_MULTI_CUTS", 1),
+	)
 end
 
 """
