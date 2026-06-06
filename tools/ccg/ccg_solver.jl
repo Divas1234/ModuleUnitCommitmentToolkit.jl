@@ -7,6 +7,7 @@
 
 include(joinpath(@__DIR__, "..", "benders", "setup.jl"))
 include("dro_uncertainty.jl")
+include("ccg_helpers.jl")
 
 function solve_ccg_unit_commitment(; scenario_limit::Int64 = 20)
 	data = load_ccg_data(scenario_limit)
@@ -25,7 +26,7 @@ function solve_ccg_unit_commitment(; scenario_limit::Int64 = 20)
 	println("Starting C&CG unit commitment solver")
 	println("candidate scenarios: ", data.NS)
 	println("initial scenarios:   ", selected)
-	println("DRO enabled:         ", data.dro.enabled, " (TV radius: ", data.dro.radius, ")")
+	println("DRO enabled:         ", data.dro.enabled, " (", data.dro.metric, " radius: ", data.dro.radius, ")")
 	println("parallel recourse:   ", ccg_parallel_recourse_enabled(), " (Julia threads: ", Threads.nthreads(), ")")
 	println("====================================================")
 	println("ITER \t ACTIVE \t LOWER_bound \t UPPER_bound \t GAP \t ADDED")
@@ -39,7 +40,12 @@ function solve_ccg_unit_commitment(; scenario_limit::Int64 = 20)
 		current_lower_bound = objective_bound(master_model)
 		recourse_costs = [evaluation[s].recourse_cost for s in 1:data.NS]
 		worst_recourse_cost, worst_probability =
-			worst_case_expected_value(recourse_costs, data.dro.nominal_probability, data.dro.enabled ? data.dro.radius : 0.0)
+			worst_case_expected_value(
+				recourse_costs,
+				data.dro.nominal_probability,
+				data.dro.enabled ? data.dro.radius : 0.0,
+				data.dro.distance_matrix,
+			)
 		current_upper_bound = first_stage.cost + worst_recourse_cost
 		best_lower_bound = max(best_lower_bound, current_lower_bound)
 		if current_upper_bound < best_upper_bound
@@ -105,25 +111,6 @@ function ccg_optimizer_threads(env_name::String, default_value::Int64)
 	return parse(Int64, get(ENV, env_name, string(default_value)))
 end
 
-function choose_initial_ccg_scenarios(data, initial_count::Int64)
-	policy = lowercase(strip(get(ENV, "CCG_INITIAL_POLICY", "netload")))
-	if policy == "first"
-		return collect(1:initial_count)
-	end
-
-	wind_capacity = sum(data.winds.p_max)
-	load_by_time = vec(sum(data.loads.load_curve; dims = 1))
-	scores = [
-		(maximum(load_by_time .- data.winds.scenarios_curve[s, :] .* wind_capacity) +
-			0.05 * sum(load_by_time .- data.winds.scenarios_curve[s, :] .* wind_capacity), s)
-		for s in 1:data.NS
-	]
-	sort!(scores; by = item -> item[1], rev = true)
-	selected = [s for (_, s) in first(scores, initial_count)]
-	sort!(selected)
-	return selected
-end
-
 function load_ccg_data(scenario_limit::Int64)
 	UnitsFreqParam, WindsFreqParam, StrogeData, DataGen, GenCost, DataBranch, LoadCurve, DataLoad, datacentra_Data = readxlssheet()
 	config_param, units, lines, loads, psses, NB, NG, NL, ND, NT, NC, ND2, DataCentras =
@@ -155,6 +142,7 @@ end
 function solve_ccg_master(data, selected_scenarios::Vector{Int64})
 	active_winds = build_ccg_subset_wind(data.winds, selected_scenarios, data.full_scenario_probability)
 	active_probability = active_nominal_probability(data.dro, selected_scenarios)
+	active_distance = active_wasserstein_distance(data.dro, selected_scenarios)
 	model = build_ccg_extensive_model(
 		data,
 		active_winds,
@@ -162,6 +150,7 @@ function solve_ccg_master(data, selected_scenarios::Vector{Int64})
 		data.full_scenario_probability;
 		nominal_probability = active_probability,
 		dro_radius = data.dro.enabled ? data.dro.radius : 0.0,
+		dro_distance_matrix = active_distance,
 		use_dro_objective = data.dro.enabled,
 	)
 	optimize!(model)
@@ -176,6 +165,7 @@ function build_ccg_extensive_model(
 	scenarios_prob::Float64;
 	nominal_probability::Vector{Float64} = fill(1.0 / NS_active, NS_active),
 	dro_radius::Float64 = 0.0,
+	dro_distance_matrix::Matrix{Float64} = zeros(Float64, NS_active, NS_active),
 	use_dro_objective::Bool = false,
 )
 	gsdf = calculate_gsdf(data.config_param, data.NL, data.units, data.lines, data.loads, data.NG, data.NB, data.ND)
@@ -191,7 +181,7 @@ function build_ccg_extensive_model(
 
 	define_decision_variables!(model, data.NT, data.NG, data.ND, data.NC, data.ND2, NS_active, data.NW, data.config_param)
 	if use_dro_objective
-		set_dro_ccg_master_objective!(model, data, NS_active, nominal_probability, dro_radius)
+		set_dro_ccg_master_objective!(model, data, NS_active, nominal_probability, dro_radius, dro_distance_matrix)
 	else
 		set_objective!(model, data.NT, data.NG, data.ND, data.NW, NS_active, data.units, data.config_param, scenarios_prob, refcost, eachslope)
 	end
@@ -313,30 +303,6 @@ function fix_first_stage_commitment!(model::Model, first_stage)
 	fix.(model[:u], first_stage.u; force = true)
 	fix.(model[:v], first_stage.v; force = true)
 	return model
-end
-
-function choose_ccg_scenarios_to_add(evaluation, inactive_scenarios::Vector{Int64}, scenarios_per_iteration::Int64, worst_probability::Vector{Float64})
-	isempty(inactive_scenarios) && return Int64[]
-	candidates = [(worst_probability[s], evaluation[s].recourse_cost, s) for s in inactive_scenarios]
-	sort!(candidates; by = item -> (item[1], item[2]), rev = true)
-	return [s for (_, _, s) in first(candidates, min(scenarios_per_iteration, length(candidates)))]
-end
-
-function build_ccg_subset_wind(winds::wind, selected_scenarios::Vector{Int64}, scenarios_prob::Float64)
-	return wind(
-		winds.index,
-		winds.locatebus,
-		winds.p_max,
-		scenarios_prob,
-		length(selected_scenarios),
-		winds.scenarios_curve[selected_scenarios, :],
-		winds.Fcmode,
-		winds.Kw,
-		winds.Rw,
-		winds.Mw,
-		winds.Dw,
-		winds.Tw,
-	)
 end
 
 function print_ccg_iteration(iteration, active_count, lower_bound, upper_bound, gap, scenarios_to_add)
