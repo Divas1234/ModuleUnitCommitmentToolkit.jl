@@ -2,10 +2,10 @@
 # Includes logic for Scenario-based stochastic programming and Dual subproblem analysis.
 
 # Include component definitions for the SCUC model structure and optimization stages
-include("_define_SCUCmodel_structure.jl")
-include("_define_masterproblem.jl")
-include("_define_subproblem.jl")
-include("_define_batch_subproblems.jl")
+include("scuc_model.jl")
+include("master_problem.jl")
+include("subproblem.jl")
+include("batch_subproblems.jl")
 
 # Export public interfaces for Benders initialization and scenario adaptation
 export get_batch_scuc_subproblems_for_scenario, modify_winds_constr_rhs!, build_jensen_subproblem_for_mean_scenario
