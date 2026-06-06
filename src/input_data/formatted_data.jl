@@ -5,6 +5,7 @@
 Configuration parameters controlling algorithmic behavior and model inclusion logic for the SCUC optimization.
 """
 struct config
+    	# config_param = config(1, 1, 1, 1, 1, 3, 0.005, 0.005, 1, 1, 1, 1e5, 1e5, 50, 0.01, 0, 0, 0, 1)
     # Algorithmic and model inclusion flags
     is_NetWorkCon::Int64                  # 1: Consider transmission network constraints; 0: Ignore
     is_ThermalUnitCon::Int64              # 1: Consider thermal unit generation limits; 0: Ignore

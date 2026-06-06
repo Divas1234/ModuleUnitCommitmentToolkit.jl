@@ -122,16 +122,15 @@ function add_ramp_constraints!(scuc::Model, NT, NG, NS, units, onoffinit)
 	p_max = units.p_max
 	p_min = units.p_min
 
-	units_upramp_constr = @constraint(
-		scuc,
+	units_upramp_constr = @constraint(scuc,
 		[s = 1:NS, t = 1:NT],
 		pg₀[(1 + (s - 1) * NG):(s * NG), t] - ((t == 1) ? units.p_0[:, 1] : pg₀[(1 + (s - 1) * NG):(s * NG), t - 1]) .<=
-			ramp_up[:, 1] .* ((t == 1) ? onoffinit[:, 1] : x[:, t - 1]) + shut_up[:, 1] .* ((t == 1) ? ones(NG, 1) : u[:, t - 1]) + p_max[:, 1] .* (ones(NG, 1) - ((t == 1) ? onoffinit[:, 1] : x[:, t - 1])) + (ramp_violation⁺ === nothing ? zeros(NG) : ramp_violation⁺[(1 + (s - 1) * NG):(s * NG), t])
-	)
+		ramp_up[:, 1] .* ((t == 1) ? onoffinit[:, 1] : x[:, t - 1]) + shut_up[:, 1] .* ((t == 1) ? ones(NG, 1) : u[:, t - 1]) + p_max[:, 1] .* (ones(NG, 1) - ((t == 1) ? onoffinit[:, 1] : x[:, t - 1])) +
+		(ramp_violation⁺ === nothing ? zeros(NG) : ramp_violation⁺[(1 + (s - 1) * NG):(s * NG), t]))
 
-	units_downramp_constr = @constraint(
-		scuc, [s = 1:NS, t = 1:NT], ((t == 1) ? units.p_0[:, 1] : pg₀[(1 + (s - 1) * NG):(s * NG), t - 1]) - pg₀[(1 + (s - 1) * NG):(s * NG), t] .<= ramp_down[:, 1] .* x[:, t] + shut_down[:, 1] .* v[:, t] + p_max[:, 1] .* (x[:, t]) + (ramp_violation⁻ === nothing ? zeros(NG) : ramp_violation⁻[(1 + (s - 1) * NG):(s * NG), t])
-	)
+	units_downramp_constr = @constraint(scuc, [s = 1:NS, t = 1:NT],
+		((t == 1) ? units.p_0[:, 1] : pg₀[(1 + (s - 1) * NG):(s * NG), t - 1]) - pg₀[(1 + (s - 1) * NG):(s * NG), t] .<=
+		ramp_down[:, 1] .* x[:, t] + shut_down[:, 1] .* v[:, t] + p_max[:, 1] .* (x[:, t]) + (ramp_violation⁻ === nothing ? zeros(NG) : ramp_violation⁻[(1 + (s - 1) * NG):(s * NG), t]))
 	println("\t constraints: 8) ramp-up/ramp-down constraints\t\t\t\t done")
 	return scuc, units_upramp_constr, units_downramp_constr
 end
@@ -166,11 +165,9 @@ function add_pwl_constraints!(scuc::Model, NT, NG, NS, units)
 
 	units_pwlpower_sum_constr = @constraint(scuc, [s = 1:NS, t = 1:NT, i = 1:NG], pg₀[i + (s - 1) * NG, t] .== p_min[i, 1] * x[i, t] + sum(pgₖ[i + (s - 1) * NG, t, k] for k in 1:num_segments))
 	units_pwlblock_upbound_constr = @constraint(scuc, [s = 1:NS, t = 1:NT, i = 1:NG, k = 1:num_segments], pgₖ[i + (s - 1) * NG, t, k] <= eachsegment[i, 1] * x[i, t])
-	units_pwlblock_dwbound_constr = @constraint(
-		scuc, # Ensure segments are non-negative
+	units_pwlblock_dwbound_constr = @constraint(scuc, # Ensure segments are non-negative
 		[s = 1:NS, t = 1:NT, i = 1:NG, k = 1:num_segments],
-		pgₖ[i + (s - 1) * NG, t, k] >= 0
-	)
+		pgₖ[i + (s - 1) * NG, t, k] >= 0)
 	println("\t constraints: 9) piece linearization constraints\t\t\t done")
 	return scuc, units_pwlpower_sum_constr, units_pwlblock_upbound_constr, units_pwlblock_dwbound_constr
 end
