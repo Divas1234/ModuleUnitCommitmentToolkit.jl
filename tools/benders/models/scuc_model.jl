@@ -43,8 +43,8 @@ mutable struct SCUCModel_decision_variables{T <: VariableRef}
 	θ::Any                      # Recourse cost approximation variable (theta)
 
 	function SCUCModel_decision_variables(
-			u::Matrix{T},
 			x::Matrix{T},
+			u::Matrix{T},
 			v::Matrix{T},
 			su₀::Matrix{T},
 			sd₀::Matrix{T},
@@ -64,7 +64,7 @@ mutable struct SCUCModel_decision_variables{T <: VariableRef}
 			β::Matrix{T},
 			θ::Any,
 	) where {T <: VariableRef}
-		return new{T}(u, x, v, su₀, sd₀, pg₀, pgₖ, sr⁺, sr⁻, Δpd, Δpw, κ⁺, κ⁻, pc⁺, pc⁻, qc, pss_sumchargeenergy, α, β, θ)
+		return new{T}(x, u, v, su₀, sd₀, pg₀, pgₖ, sr⁺, sr⁻, Δpd, Δpw, κ⁺, κ⁻, pc⁺, pc⁻, qc, pss_sumchargeenergy, α, β, θ)
 	end
 end
 
@@ -100,8 +100,8 @@ function build_decision_variables(; kwargs...)
 
 	# Construct and return the struct
 	return SCUCModel_decision_variables(
-		defaults[:u],
 		defaults[:x],
+		defaults[:u],
 		defaults[:v],
 		defaults[:su₀],
 		defaults[:sd₀],

@@ -8,6 +8,8 @@
   - [Usage](#usage)
   - [File Structure](#file-structure)
   - [Benders Decomposition Implementation](#benders-decomposition-implementation)
+  - [CCG and Wasserstein DRO](#ccg-and-wasserstein-dro)
+  - [Testing](#testing)
   - [Dependencies](#dependencies)
   - [License](#license)
 
@@ -39,6 +41,10 @@ This project implements a unit commitment model for power systems integrated wit
 *   `src/unit_commitment/utilities`: Decision variables, linearization, solver helpers, power flow, exports, and result saving.
 *   `src/unit_commitment/validation`: Input and model validation helpers.
 *   `src/visualization`: Plotting and visualization helpers.
+*   `tools/ccg`: Column-and-Constraint Generation solver with Wasserstein DRO renewable uncertainty.
+*   `test`: Lightweight Julia unit and smoke tests.
+*   `docs/algorithms`: Algorithm notes and modeling documentation.
+*   `docs/testing.md`: Testing guide.
 
 ## Benders Decomposition Implementation
 
@@ -54,6 +60,44 @@ The Benders decomposition algorithm is implemented in the `tools` directory to s
 *   `examples/benders`: Small standalone Benders, LP dual, and Farkas examples.
 *   `docs/benchmarks/benders`: Benders performance report and raw benchmark logs.
 *   `scripts/run_benders_benchmarks.sh`: Reproducible Benders benchmark runner.
+
+## CCG and Wasserstein DRO
+
+The CCG workflow for renewable uncertainty is implemented in `tools/ccg`. It uses generated wind scenarios as the finite support and can solve a Wasserstein distributionally robust model.
+
+Run a quick DRO CCG example:
+
+```bash
+julia examples/ccg/run_wasserstein_dro_ccg.jl
+```
+
+Key controls:
+
+```bash
+CCG_SCENARIO_LIMIT=20
+CCG_INITIAL_SCENARIOS=3
+CCG_MAX_ITERATIONS=20
+CCG_DRO_ENABLED=1
+CCG_DRO_RADIUS=0.05
+```
+
+See `docs/algorithms/wasserstein_dro_ccg.md` for the modeling and algorithm details.
+
+## Testing
+
+Run the lightweight test suite:
+
+```bash
+julia test/runtests.jl
+```
+
+Or from examples:
+
+```bash
+julia examples/testing/run_light_tests.jl
+```
+
+See `docs/testing.md` for test coverage and conventions.
 
 ## Dependencies
 
