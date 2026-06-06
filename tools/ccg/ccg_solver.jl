@@ -6,6 +6,7 @@
 # worst uncovered scenarios to the master.
 
 include(joinpath(@__DIR__, "..", "benders", "setup.jl"))
+include("dro_uncertainty.jl")
 
 function solve_ccg_unit_commitment(; scenario_limit::Int64 = 20)
 	data = load_ccg_data(scenario_limit)
@@ -24,6 +25,7 @@ function solve_ccg_unit_commitment(; scenario_limit::Int64 = 20)
 	println("Starting C&CG unit commitment solver")
 	println("candidate scenarios: ", data.NS)
 	println("initial scenarios:   ", selected)
+	println("DRO enabled:         ", data.dro.enabled, " (TV radius: ", data.dro.radius, ")")
 	println("parallel recourse:   ", ccg_parallel_recourse_enabled(), " (Julia threads: ", Threads.nthreads(), ")")
 	println("====================================================")
 	println("ITER \t ACTIVE \t LOWER_bound \t UPPER_bound \t GAP \t ADDED")
@@ -35,7 +37,10 @@ function solve_ccg_unit_commitment(; scenario_limit::Int64 = 20)
 		evaluation = evaluate_ccg_recourse_pool(data, first_stage)
 
 		current_lower_bound = objective_bound(master_model)
-		current_upper_bound = first_stage.cost + sum(result.recourse_cost for result in values(evaluation))
+		recourse_costs = [evaluation[s].recourse_cost for s in 1:data.NS]
+		worst_recourse_cost, worst_probability =
+			worst_case_expected_value(recourse_costs, data.dro.nominal_probability, data.dro.enabled ? data.dro.radius : 0.0)
+		current_upper_bound = first_stage.cost + worst_recourse_cost
 		best_lower_bound = max(best_lower_bound, current_lower_bound)
 		if current_upper_bound < best_upper_bound
 			best_upper_bound = current_upper_bound
@@ -45,7 +50,7 @@ function solve_ccg_unit_commitment(; scenario_limit::Int64 = 20)
 
 		gap = abs(best_upper_bound - best_lower_bound) / (abs(best_upper_bound) + numerical_tolerance)
 		inactive_scenarios = setdiff(collect(1:data.NS), selected)
-		scenarios_to_add = choose_ccg_scenarios_to_add(evaluation, inactive_scenarios, scenarios_per_iteration)
+		scenarios_to_add = choose_ccg_scenarios_to_add(evaluation, inactive_scenarios, scenarios_per_iteration, worst_probability)
 		print_ccg_iteration(iteration, length(selected), best_lower_bound, best_upper_bound, gap, scenarios_to_add)
 
 		if gap <= gap_tolerance || isempty(scenarios_to_add)
@@ -143,18 +148,36 @@ function load_ccg_data(scenario_limit::Int64)
 		NW = NW,
 		NS = NS,
 		full_scenario_probability = 1.0 / NS,
+		dro = build_renewable_dro_model(winds),
 	)
 end
 
 function solve_ccg_master(data, selected_scenarios::Vector{Int64})
 	active_winds = build_ccg_subset_wind(data.winds, selected_scenarios, data.full_scenario_probability)
-	model = build_ccg_extensive_model(data, active_winds, length(selected_scenarios), data.full_scenario_probability)
+	active_probability = active_nominal_probability(data.dro, selected_scenarios)
+	model = build_ccg_extensive_model(
+		data,
+		active_winds,
+		length(selected_scenarios),
+		data.full_scenario_probability;
+		nominal_probability = active_probability,
+		dro_radius = data.dro.enabled ? data.dro.radius : 0.0,
+		use_dro_objective = data.dro.enabled,
+	)
 	optimize!(model)
 	assert_is_solved_and_feasible(model)
 	return model
 end
 
-function build_ccg_extensive_model(data, winds_subset::wind, NS_active::Int64, scenarios_prob::Float64)
+function build_ccg_extensive_model(
+	data,
+	winds_subset::wind,
+	NS_active::Int64,
+	scenarios_prob::Float64;
+	nominal_probability::Vector{Float64} = fill(1.0 / NS_active, NS_active),
+	dro_radius::Float64 = 0.0,
+	use_dro_objective::Bool = false,
+)
 	gsdf = calculate_gsdf(data.config_param, data.NL, data.units, data.lines, data.loads, data.NG, data.NB, data.ND)
 	refcost, eachslope = linearizationfuelcurve(data.units, data.NG)
 	onoffinit = calculate_initial_unit_status(data.units, data.NG)
@@ -167,7 +190,11 @@ function build_ccg_extensive_model(data, winds_subset::wind, NS_active::Int64, s
 	set_optimizer_attribute(model, "Threads", ccg_optimizer_threads("CCG_MASTER_THREADS", 0))
 
 	define_decision_variables!(model, data.NT, data.NG, data.ND, data.NC, data.ND2, NS_active, data.NW, data.config_param)
-	set_objective!(model, data.NT, data.NG, data.ND, data.NW, NS_active, data.units, data.config_param, scenarios_prob, refcost, eachslope)
+	if use_dro_objective
+		set_dro_ccg_master_objective!(model, data, NS_active, nominal_probability, dro_radius)
+	else
+		set_objective!(model, data.NT, data.NG, data.ND, data.NW, NS_active, data.units, data.config_param, scenarios_prob, refcost, eachslope)
+	end
 	add_unit_operation_constraints!(model, data.NT, data.NG, data.units, onoffinit)
 	add_curtailment_constraints!(model, data.NT, data.ND, data.NW, NS_active, data.loads, winds_subset)
 	add_generator_power_constraints!(model, data.NT, data.NG, NS_active, data.units)
@@ -200,7 +227,7 @@ end
 
 function solve_ccg_single_scenario_recourse(data, first_stage, scenario_id::Int64)
 	scenario_winds = build_single_scenario_wind(data.winds, scenario_id, data.full_scenario_probability)
-	model = build_ccg_recourse_model(data, scenario_winds, data.full_scenario_probability)
+	model = build_ccg_recourse_model(data, scenario_winds, 1.0)
 	fix_first_stage_commitment!(model, first_stage)
 	optimize!(model)
 	assert_is_solved_and_feasible(model)
@@ -288,11 +315,11 @@ function fix_first_stage_commitment!(model::Model, first_stage)
 	return model
 end
 
-function choose_ccg_scenarios_to_add(evaluation, inactive_scenarios::Vector{Int64}, scenarios_per_iteration::Int64)
+function choose_ccg_scenarios_to_add(evaluation, inactive_scenarios::Vector{Int64}, scenarios_per_iteration::Int64, worst_probability::Vector{Float64})
 	isempty(inactive_scenarios) && return Int64[]
-	candidates = [(evaluation[s].recourse_cost, s) for s in inactive_scenarios]
-	sort!(candidates; by = item -> item[1], rev = true)
-	return [s for (_, s) in first(candidates, min(scenarios_per_iteration, length(candidates)))]
+	candidates = [(worst_probability[s], evaluation[s].recourse_cost, s) for s in inactive_scenarios]
+	sort!(candidates; by = item -> (item[1], item[2]), rev = true)
+	return [s for (_, _, s) in first(candidates, min(scenarios_per_iteration, length(candidates)))]
 end
 
 function build_ccg_subset_wind(winds::wind, selected_scenarios::Vector{Int64}, scenarios_prob::Float64)
