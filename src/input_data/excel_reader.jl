@@ -154,7 +154,8 @@ function forminputdata(DataGen, DataBranch, DataLoad, LoadCurve, GenCost, UnitsF
 	Pss_δₛ = StrogeData[:, 12]                               # Self-discharge coefficient
 
 	# Re-normalized data and algorithmic configurations
-	config_param = config(1, 1, 1, 1, 1, 3, 0.005, 0.005, 1, 1, 1, 1e5, 1e5, 50, 0.01, 0, 0, 0, 1)
+	consider_bess = parse(Int64, get(ENV, "BENDERS_CONSIDER_BESS", get(ENV, "CONSIDER_BESS", "0")))
+	config_param = config(1, 1, 1, 1, 1, 3, 0.005, 0.005, 1, 1, 1, 1e5, 1e5, 50, 0.01, 0, 0, consider_bess, 1)
 
 	# Initialize generator unit structure
 	# Index/LocateBus: Generator ID and connected bus ID

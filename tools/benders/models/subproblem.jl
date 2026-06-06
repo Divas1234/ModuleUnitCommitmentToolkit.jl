@@ -102,7 +102,7 @@ function bd_subfunction(
 	scuc_subproblem, _transmissionline_powerflow_upbound_constr, _transmissionline_powerflow_downbound_constr = add_transmission_constraints!(
 		scuc_subproblem, NT, NG, ND, NC, NW, NL, NS_copy, units, loads, winds, lines, psses, gsdf, config_param, ND2, DataCentras
 	)# Add transmission constraints
-	# add_storage_constraints!(scuc_subproblem, NT, NC, NS, config_param, psses)
+	_storage_constr = add_storage_constraints!(scuc_subproblem, NT, NC, NS_copy, config_param, psses; include_binary_logic = false)
 	# add_datacentra_constraints!(scuc_subproblem, NT, NS, config_param, ND2, DataCentras)
 	# add_frequency_constraints!(scuc_subproblem, NT, NG, NC, NS, units, psses, config_param, contingency_size)
 	# @show model_summary(scuc_subproblem)
@@ -139,7 +139,6 @@ function bd_subfunction(
 	all_constraints_dict[:key_units_pwlblock_dwbound_constr] = vec(_units_pwlblock_dwbound_constr)
 	all_constraints_dict[:key_units_pwlpower_sum_constr] = vec(_units_pwlpower_sum_constr)
 	all_constraints_dict[:key_units_upramp_constr] = vec(collect(Iterators.flatten(_units_upramp_constr)))
-
 	fields = [Symbol(string(k)[5:end]) for k in keys(all_constraints_dict) if startswith(string(k), "key_")]
 	sub_cons = build_constraints(; (f => all_constraints_dict[Symbol("key_", f)] for f in fields)...)
 
@@ -151,6 +150,13 @@ function bd_subfunction(
 	sub_scuc_struct = SCUC_Model(scuc_subproblem::Model, sub_vars::SCUCModel_decision_variables, sub_obj::SCUCModel_objective_function, sub_cons::SCUCModel_constraints, sub_reformat_cons::SCUCModel_reformat_constraints)
 
 	return scuc_subproblem, sub_scuc_struct
+end
+
+function flatten_constraint_refs(constr)
+	if constr === nothing
+		return ConstraintRef[]
+	end
+	return vec(collect(Iterators.flatten(constr)))
 end
 
 function get_reorganize_constraints_struct(all_constraints_dict) #depreated
@@ -219,16 +225,16 @@ function define_subproblem_decision_variables!(scuc_subproblem::Model, NT::Int64
 
 	# --- Energy Storage & Flexible Resource Variables ---
 	if config_param.is_ConsiderBESS == 1
-		@variable(scuc_subproblem, κ⁺[1:(NC * NS_copy), 1:NT], Bin) # Charge status
-		@variable(scuc_subproblem, κ⁻[1:(NC * NS_copy), 1:NT], Bin) # Discharge status
+		@variable(scuc_subproblem, 0 <= κ⁺[1:(NC * NS_copy), 1:NT] <= 1) # Charge status linked to master binary
+		@variable(scuc_subproblem, 0 <= κ⁻[1:(NC * NS_copy), 1:NT] <= 1) # Discharge status linked to master binary
 		@variable(scuc_subproblem, pc⁺[1:(NC * NS_copy), 1:NT]>=0)# Charge power
 		@variable(scuc_subproblem, pc⁻[1:(NC * NS_copy), 1:NT]>=0)# Discharge power
 		@variable(scuc_subproblem, qc[1:(NC * NS_copy), 1:NT]>=0) # Cumulative energy (SoC)
-		@variable(scuc_subproblem, pss_sumchargeenergy[1:(NC * NS), 1]>=0)
+		@variable(scuc_subproblem, pss_sumchargeenergy[1:(NC * NS_copy), 1:1]>=0)
 
-		# Alternative binary flags for charging/discharging logic
-		@variable(scuc_subproblem, α[1:(NS_copy * NC), 1:NT], Bin)
-		@variable(scuc_subproblem, β[1:(NS_copy * NC), 1:NT], Bin)
+		# Continuous copies of master binary flags. They are fixed by linking constraints.
+		@variable(scuc_subproblem, 0 <= α[1:(NS_copy * NC), 1:NT] <= 1)
+		@variable(scuc_subproblem, 0 <= β[1:(NS_copy * NC), 1:NT] <= 1)
 	else
 		κ⁺, κ⁻, pc⁺, pc⁻, qc = Matrix{VariableRef}(undef, 0, 0), Matrix{VariableRef}(undef, 0, 0), Matrix{VariableRef}(undef, 0, 0), Matrix{VariableRef}(undef, 0, 0), Matrix{VariableRef}(undef, 0, 0)
 		pss_sumchargeenergy = Matrix{VariableRef}(undef, 0, 0)
