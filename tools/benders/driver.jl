@@ -19,24 +19,7 @@ else
 end
 
 function solve_fast_extensive_uc(
-	NT,
-	NB,
-	NG,
-	ND,
-	NC,
-	ND2,
-	NS,
-	NW,
-	NL,
-	units,
-	loads,
-	winds,
-	lines,
-	DataCentras,
-	psses,
-	config_param,
-	scenarios_prob,
-)
+		NT, NB, NG, ND, NC, ND2, NS, NW, NL, units, loads, winds, lines, DataCentras, psses, config_param, scenarios_prob,)
 	println("Starting fast extensive-form UC solve for Benders benchmark/convergence...")
 	gsdf = calculate_gsdf(config_param, NL, units, lines, loads, NG, NB, ND)
 	refcost, eachslope = linearizationfuelcurve(units, NG)
@@ -75,23 +58,7 @@ end
 
 # Execute the multiple-cut Benders Decomposition algorithm to solve the problem
 if get(ENV, "BENDERS_FAST_DIRECT_SOLVE", "0") == "1"
-	solve_fast_extensive_uc(
-		NT,
-		NB,
-		NG,
-		ND,
-		NC,
-		ND2,
-		NS,
-		NW,
-		NL,
-		units,
-		loads,
-		winds,
-		lines,
-		DataCentras,
-		psses,
-		config_param,
+	solve_fast_extensive_uc(NT, NB, NG, ND, NC, ND2, NS, NW, NL, units, loads, winds, lines, DataCentras, psses, config_param,
 		1.0 / NS,
 	)
 else
