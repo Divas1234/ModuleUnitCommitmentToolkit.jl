@@ -44,6 +44,54 @@ function get_batch_scuc_subproblems_for_scenario(scuc_subproblem::Model, sub_mod
     return batch_scuc_model_strcuture_dic
 end
 
+function get_batch_scuc_subproblems_for_scenario(
+    NT::Int64,
+    NB::Int64,
+    NL::Int64,
+    NG::Int64,
+    ND::Int64,
+    NC::Int64,
+    ND2::Int64,
+    NW::Int64,
+    units::unit,
+    winds::wind,
+    loads::load,
+    lines::transmissionline,
+    DataCentras::data_centra,
+    psses::pss,
+    scenarios_prob::Float64,
+    config_param::config,
+)
+    @assert config_param.is_ConsiderMultiCUTs == 1
+
+    batch_scuc_model_structure_dic = OrderedDict{Int64, SCUC_Model}()
+    for s in 1:Int64(winds.scenarios_nums)
+        scenario_winds = build_single_scenario_wind(winds, s, scenarios_prob)
+        _, scenario_subproblem_struct = bd_subfunction(
+            NT,
+            NB,
+            NL,
+            NG,
+            ND,
+            NC,
+            ND2,
+            Int64(1),
+            NW,
+            units,
+            scenario_winds,
+            loads,
+            lines,
+            DataCentras,
+            psses,
+            scenarios_prob,
+            config_param,
+        )
+        batch_scuc_model_structure_dic[s] = scenario_subproblem_struct
+    end
+
+    return batch_scuc_model_structure_dic
+end
+
 """
 `modify_winds_constr_rhs!(...)`
 
@@ -73,6 +121,23 @@ function build_mean_scenario_wind(winds::wind, scenarios_prob::Float64 = 1.0)
         scenarios_prob,
         Int64(1),
         reshape(mean_curve, 1, length(mean_curve)),
+        winds.Fcmode,
+        winds.Kw,
+        winds.Rw,
+        winds.Mw,
+        winds.Dw,
+        winds.Tw,
+    )
+end
+
+function build_single_scenario_wind(winds::wind, scenario_index::Int64, scenarios_prob::Float64)
+    return wind(
+        winds.index,
+        winds.locatebus,
+        winds.p_max,
+        scenarios_prob,
+        Int64(1),
+        reshape(winds.scenarios_curve[scenario_index, :], 1, size(winds.scenarios_curve, 2)),
         winds.Fcmode,
         winds.Kw,
         winds.Rw,

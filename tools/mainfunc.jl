@@ -61,7 +61,24 @@ function main(; scenario_limit::Int64 = 50)
 		# Create discrete subproblem instances explicitly for multi-cut logic evaluation
 		batch_scuc_subproblem_struct_dic = OrderedDict{Int64, SCUC_Model}()
 		batch_scuc_subproblem_struct_dic = if (config_param.is_ConsiderMultiCUTs == 1)
-			get_batch_scuc_subproblems_for_scenario(scuc_subproblem, sub_model_struct, winds, config_param, NS, NT, NW)
+			get_batch_scuc_subproblems_for_scenario(
+				NT,
+				NB,
+				NL,
+				NG,
+				ND,
+				NC,
+				ND2,
+				NW,
+				units,
+				winds,
+				loads,
+				lines,
+				DataCentras,
+				psses,
+				scenarios_prob,
+				config_param,
+			)
 		else
 			OrderedDict(1 => sub_model_struct)
 		end
