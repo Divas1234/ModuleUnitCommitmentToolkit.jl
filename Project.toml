@@ -1,0 +1,47 @@
+name = "ModuleUnitCommitmentToolkit"
+uuid = "a1b2c3d4-e5f6-7890-abcd-ef1234567890"
+authors = ["YipingYUAN"]
+version = "0.1.0"
+
+deps = [
+    # Core optimization
+    "JuMP",
+    "Gurobi",
+    "MathOptInterface",
+
+    # Data processing
+    "XLSX",
+    "DelimitedFiles",
+    "DataFrames",
+    "Distributions",
+
+    # Visualization
+    "Plots",
+    "PlotlyJS",
+    "PlotThemes",
+    "LaTeXStrings",
+    "GLM",
+    "GeometryBasics",
+    "QHull",
+
+    # Statistics & Linear Algebra
+    "LinearAlgebra",
+    "Statistics",
+    "Random",
+    "MultivariateStats",
+
+    # Utilities
+    "TOML",
+    "Printf",
+    "UnicodePlots",
+    "FileIO",
+    "Revise",
+]
+
+[extras]
+Test = [
+    "Test",
+]
+
+[targets]
+test = ["Test"]
