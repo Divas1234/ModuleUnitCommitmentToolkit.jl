@@ -1,0 +1,197 @@
+Set parameter Username
+Set parameter LicenseID to value 2754784
+Academic license - for non-commercial use only - expires 2026-12-14
+Set parameter Username
+Set parameter LicenseID to value 2754784
+Academic license - for non-commercial use only - expires 2026-12-14
+Set parameter Username
+Set parameter LicenseID to value 2754784
+Academic license - for non-commercial use only - expires 2026-12-14
+Set parameter Username
+Set parameter LicenseID to value 2754784
+Academic license - for non-commercial use only - expires 2026-12-14
+Step-1: Pkgs and functions are loaded
+Step-2: imput data are loaded
+
+========================================================================================
+Test System Boundary Summary
+========================================================================================
+  Buses (NB):                          6
+  Transmission lines (NL):             7
+  Thermal generators (NG):             3
+  Loads (ND):                          3
+  Time periods (NT):                   24
+  Wind units (NW):                     2
+  Wind scenarios (NS):                 2
+  Storage units (NC):                  1
+  Total generator Pmax:                3.4000
+  Total generator Pmin:                1.1000
+  Peak system load:                    3.2861
+  Total wind capacity:                 5.0000
+  Wind availability min/max:           0.3617 / 0.4795
+
+========================================================================================
+Configuration Flags
+========================================================================================
+  is_NetWorkCon:                       1
+  is_ThermalUnitCon:                   1
+  is_WindUnitCon:                      1
+  is_SysticalCon:                      1
+  is_PieceLinear:                      1
+  is_NumSeg:                           3
+  is_Alpha:                            0.005
+  is_Belta:                            0.005
+  is_CoalPrice:                        1
+  is_ActiveLoad:                       1
+  is_WindIntegration:                  1
+  is_LoadsCuttingCoefficient:          100000.0
+  is_WindsCuttingCoefficient:          100000.0
+  is_MaxIterationsNum:                 50
+  is_CalculPrecision:                  0.01
+  is_ConsiderDataCentra:               0
+  is_ConsiderFrequencyControl:         0
+  is_ConsiderBESS:                     0
+  is_ConsiderMultiCUTs:                1
+
+========================================================================================
+Thermal Units
+========================================================================================
+  index:                               [1, 2, 3]
+  locatebus:                           [1, 2, 6]
+  p_max:                               [2.2, 1.0, 0.2]
+  p_min:                               [0.9, 0.1, 0.1]
+  ramp_up:                             [0.5, 0.4, 0.4]
+  ramp_down:                           [0.5, 0.4, 0.4]
+  startup ramp:                        [0.9, 0.1, 0.1]
+  shutdown ramp:                       [0.9, 0.1, 0.1]
+  min up time:                         [4.0, 2.0, 2.0]
+  min down time:                       [4.0, 3.0, 3.0]
+  initial status:                      [1.0, 0.0, 0.0]
+  initial time:                        [4.0, 3.0, 3.0]
+  initial power:                       [1.5, 0.0, 0.0]
+  cost a:                              [4.0, 10.0, 50.0]
+  cost b:                              [1350.0, 3260.0, 1760.0000000000002]
+  cost c:                              [176.9, 129.9, 137.4]
+
+========================================================================================
+Loads
+========================================================================================
+  index:                               [1, 2, 3]
+  locatebus:                           [3, 4, 5]
+  load total by bus:                   [13.034960000000002, 26.069920000000003, 26.069920000000003]
+  load total by time:                  [2.1919, 2.3535000000000004, 2.3467000000000002, 2.3673, 2.3906, 2.4448, 2.7338999999999993, 2.904, 2.8355999999999995, 2.8120000000000003, 3.2861000000000007, 3.2810000000000006, 3.2618, 3.2360000000000007, 3.2686, 2.8779000000000003, 2.6, 2.4674000000000005, 2.5596999999999994, 2.3735, 2.4331000000000005, 2.8314000000000004, 2.8305000000000002, 2.4875]
+  load_curve (3 x 24):
+    row 01:     0.4384     0.4707     0.4693     0.4735     0.4781     0.4890     0.5468     0.5808     0.5671     0.5624     0.6572     0.6562     0.6524     0.6472     0.6537     0.5756     0.5200     0.4935     0.5119     0.4747     0.4866     0.5663     0.5661     0.4975
+    row 02:     0.8768     0.9414     0.9387     0.9469     0.9562     0.9779     1.0936     1.1616     1.1342     1.1248     1.3144     1.3124     1.3047     1.2944     1.3074     1.1512     1.0400     0.9870     1.0239     0.9494     0.9732     1.1326     1.1322     0.9950
+    row 03:     0.8768     0.9414     0.9387     0.9469     0.9562     0.9779     1.0936     1.1616     1.1342     1.1248     1.3144     1.3124     1.3047     1.2944     1.3074     1.1512     1.0400     0.9870     1.0239     0.9494     0.9732     1.1326     1.1322     0.9950
+
+========================================================================================
+Transmission Lines
+========================================================================================
+  index:                               [1, 2, 3, 4, 5, 6, 7]
+  from:                                [1, 1, 2, 5, 3, 2, 4]
+  to:                                  [2, 4, 4, 6, 6, 3, 5]
+  reactance x:                         [0.17, 0.258, 0.197, 0.14, 0.018, 0.037, 0.037]
+  forward p_max:                       [2.0, 1.2, 1.2, 1.2, 1.2, 2.0, 1.2]
+  reverse p_min:                       [-2.0, -1.2, -1.2, -1.2, -1.2, -2.0, -1.2]
+
+========================================================================================
+Wind Units and Scenarios
+========================================================================================
+  index:                               [1, 2]
+  locatebus:                           [1, 1]
+  installed capacity:                  [2.5, 2.5]
+  scenario probability:                0.5
+  scenario count:                      2
+  scenario mean availability:          [0.45835937927015524, 0.44971106342727873, 0.42222052184748127, 0.42939140845967094, 0.4221373668983888, 0.36606166356732794, 0.42075194600267024, 0.4198584102712738, 0.4634660540877451, 0.46514366748746344, 0.4285223322592376, 0.43769728586735474, 0.4381900151801226, 0.44577177088853936, 0.4774420193145055, 0.4557265062000839, 0.4345807116644646, 0.42540338850594317, 0.4283298812571351, 0.42161584381338035, 0.4681376471653912, 0.4486053951504005, 0.44442743210394425, 0.4185479377988317]
+  wind scenario curves (2 x 24):
+    row 01:     0.4776     0.4490     0.4345     0.4300     0.4139     0.3617     0.4205     0.4007     0.4631     0.4795     0.4367     0.4260     0.4359     0.4389     0.4757     0.4526     0.4408     0.4213     0.4332     0.4268     0.4773     0.4301     0.4541     0.4176
+    row 02:     0.4392     0.4504     0.4099     0.4288     0.4304     0.3704     0.4210     0.4390     0.4638     0.4508     0.4203     0.4494     0.4405     0.4526     0.4792     0.4588     0.4284     0.4296     0.4235     0.4165     0.4589     0.4671     0.4347     0.4195
+
+========================================================================================
+Storage Units
+========================================================================================
+  index:                               [1]
+  locatebus:                           [1]
+  Q_max:                               [1.0]
+  Q_min:                               [0.1]
+  charge power limit:                  [1.0]
+  discharge power limit:               [0.1]
+  initial energy:                      [0.2]
+  charge ramp/cost parameter:          [0.6]
+  discharge ramp/cost parameter:       [0.6]
+  charge efficiency:                   [0.85]
+  discharge efficiency:                [1.0]
+  self-discharge:                      [0.05]
+
+========================================================================================
+Consistency Checks
+========================================================================================
+  [OK] NG matches length(units.index)
+  [OK] NL matches length(lines.index)
+  [OK] ND matches length(loads.index)
+  [OK] NW matches length(winds.index)
+  [OK] NT matches load_curve columns
+  [OK] ND matches load_curve rows
+  [OK] NS matches wind scenario rows
+  [OK] NT matches wind scenario columns
+  [OK] generator p_max >= p_min
+  [OK] line p_max >= 0
+  [OK] load curve is finite and nonnegative
+  [OK] wind scenarios are finite and nonnegative
+
+Boundary condition report completed successfully.
+
+Starting C&CG unit commitment solver
+candidate scenarios: 2
+initial scenarios:   [1, 2]
+DRO enabled:         true (wasserstein radius: 0.05)
+parallel recourse:   true (Julia threads: 1)
+====================================================
+ITER 	 ACTIVE 	 LOWER_bound 	 UPPER_bound 	 GAP 	 ADDED
+----------------------------------------------------
+	 Variables defined.
+	 constraints: 1) minimum shutup/shutdown time limits			 done
+	 constraints: 2) binary variable logic					 done
+	 constraints: 3) shutup/shutdown cost					 done
+	 constraints: 4) loadcurtailments and spoliedwinds			 done
+	 constraints: 5) generatos power limits					 done
+	 constraints: 6) system reserves limits					 done
+	 constraints: 7) power balance constraints				 done
+	 constraints: 8) ramp-up/ramp-down constraints				 done
+	 constraints: 9) piece linearization constraints			 done
+	 constraints: 10) transmissionline limits for basline			 done
+	 constraints: 11) stroges system constraints skipped (is_ConsiderBESS=0)
+	 constraints: 12) data centra constraints skipped (is_ConsiderDataCentra != 1)
+	 constraints: 13) frequency control constraints skipped (is_ConsiderFrequencyControl != 1)
+	 Variables defined.
+	 constraints: 4) loadcurtailments and spoliedwinds			 done
+	 constraints: 5) generatos power limits					 done
+	 constraints: 6) system reserves limits					 done
+	 constraints: 7) power balance constraints				 done
+	 constraints: 8) ramp-up/ramp-down constraints				 done
+	 constraints: 9) piece linearization constraints			 done
+	 constraints: 10) transmissionline limits for basline			 done
+	 constraints: 11) stroges system constraints skipped (is_ConsiderBESS=0)
+	 constraints: 12) data centra constraints skipped (is_ConsiderDataCentra != 1)
+	 constraints: 13) frequency control constraints skipped (is_ConsiderFrequencyControl != 1)
+	 Variables defined.
+	 constraints: 4) loadcurtailments and spoliedwinds			 done
+	 constraints: 5) generatos power limits					 done
+	 constraints: 6) system reserves limits					 done
+	 constraints: 7) power balance constraints				 done
+	 constraints: 8) ramp-up/ramp-down constraints				 done
+	 constraints: 9) piece linearization constraints			 done
+	 constraints: 10) transmissionline limits for basline			 done
+	 constraints: 11) stroges system constraints skipped (is_ConsiderBESS=0)
+	 constraints: 12) data centra constraints skipped (is_ConsiderDataCentra != 1)
+	 constraints: 13) frequency control constraints skipped (is_ConsiderFrequencyControl != 1)
+1       2        108814          184827         0.411266  Int64[]
+
+====================================================
+C&CG convergence achieved
+FINAL ACTIVE SCENARIOS: [1, 2]
+FINAL UPPER BOUND:      184827.04618505063
+FINAL LOWER BOUND:      108813.97463349011
+FINAL GAP:              0.41126595441580677
+====================================================

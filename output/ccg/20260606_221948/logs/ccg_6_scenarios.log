@@ -1,0 +1,467 @@
+Set parameter Username
+Set parameter LicenseID to value 2754784
+Academic license - for non-commercial use only - expires 2026-12-14
+Set parameter Username
+Set parameter LicenseID to value 2754784
+Academic license - for non-commercial use only - expires 2026-12-14
+Set parameter Username
+Set parameter LicenseID to value 2754784
+Academic license - for non-commercial use only - expires 2026-12-14
+Set parameter Username
+Set parameter LicenseID to value 2754784
+Academic license - for non-commercial use only - expires 2026-12-14
+Set parameter Username
+Set parameter LicenseID to value 2754784
+Academic license - for non-commercial use only - expires 2026-12-14
+Set parameter Username
+Set parameter LicenseID to value 2754784
+Academic license - for non-commercial use only - expires 2026-12-14
+Set parameter Username
+Set parameter LicenseID to value 2754784
+Academic license - for non-commercial use only - expires 2026-12-14
+Set parameter Username
+Set parameter LicenseID to value 2754784
+Academic license - for non-commercial use only - expires 2026-12-14
+Set parameter Username
+Set parameter LicenseID to value 2754784
+Academic license - for non-commercial use only - expires 2026-12-14
+Set parameter Username
+Set parameter LicenseID to value 2754784
+Academic license - for non-commercial use only - expires 2026-12-14
+Set parameter Username
+Set parameter LicenseID to value 2754784
+Academic license - for non-commercial use only - expires 2026-12-14
+Set parameter Username
+Set parameter LicenseID to value 2754784
+Academic license - for non-commercial use only - expires 2026-12-14
+Set parameter Username
+Set parameter LicenseID to value 2754784
+Academic license - for non-commercial use only - expires 2026-12-14
+Set parameter Username
+Set parameter LicenseID to value 2754784
+Academic license - for non-commercial use only - expires 2026-12-14
+Set parameter Username
+Set parameter LicenseID to value 2754784
+Academic license - for non-commercial use only - expires 2026-12-14
+Set parameter Username
+Set parameter LicenseID to value 2754784
+Academic license - for non-commercial use only - expires 2026-12-14
+Set parameter Username
+Set parameter LicenseID to value 2754784
+Academic license - for non-commercial use only - expires 2026-12-14
+Set parameter Username
+Set parameter LicenseID to value 2754784
+Academic license - for non-commercial use only - expires 2026-12-14
+Set parameter Username
+Set parameter LicenseID to value 2754784
+Academic license - for non-commercial use only - expires 2026-12-14
+Set parameter Username
+Set parameter LicenseID to value 2754784
+Academic license - for non-commercial use only - expires 2026-12-14
+Set parameter Username
+Set parameter LicenseID to value 2754784
+Academic license - for non-commercial use only - expires 2026-12-14
+Set parameter Username
+Set parameter LicenseID to value 2754784
+Academic license - for non-commercial use only - expires 2026-12-14
+Set parameter Username
+Set parameter LicenseID to value 2754784
+Academic license - for non-commercial use only - expires 2026-12-14
+Set parameter Username
+Set parameter LicenseID to value 2754784
+Academic license - for non-commercial use only - expires 2026-12-14
+Step-1: Pkgs and functions are loaded
+Step-2: imput data are loaded
+
+========================================================================================
+Test System Boundary Summary
+========================================================================================
+  Buses (NB):                          6
+  Transmission lines (NL):             7
+  Thermal generators (NG):             3
+  Loads (ND):                          3
+  Time periods (NT):                   24
+  Wind units (NW):                     2
+  Wind scenarios (NS):                 6
+  Storage units (NC):                  1
+  Total generator Pmax:                3.4000
+  Total generator Pmin:                1.1000
+  Peak system load:                    3.2861
+  Total wind capacity:                 5.0000
+  Wind availability min/max:           0.3709 / 0.4806
+
+========================================================================================
+Configuration Flags
+========================================================================================
+  is_NetWorkCon:                       1
+  is_ThermalUnitCon:                   1
+  is_WindUnitCon:                      1
+  is_SysticalCon:                      1
+  is_PieceLinear:                      1
+  is_NumSeg:                           3
+  is_Alpha:                            0.005
+  is_Belta:                            0.005
+  is_CoalPrice:                        1
+  is_ActiveLoad:                       1
+  is_WindIntegration:                  1
+  is_LoadsCuttingCoefficient:          100000.0
+  is_WindsCuttingCoefficient:          100000.0
+  is_MaxIterationsNum:                 50
+  is_CalculPrecision:                  0.01
+  is_ConsiderDataCentra:               0
+  is_ConsiderFrequencyControl:         0
+  is_ConsiderBESS:                     0
+  is_ConsiderMultiCUTs:                1
+
+========================================================================================
+Thermal Units
+========================================================================================
+  index:                               [1, 2, 3]
+  locatebus:                           [1, 2, 6]
+  p_max:                               [2.2, 1.0, 0.2]
+  p_min:                               [0.9, 0.1, 0.1]
+  ramp_up:                             [0.5, 0.4, 0.4]
+  ramp_down:                           [0.5, 0.4, 0.4]
+  startup ramp:                        [0.9, 0.1, 0.1]
+  shutdown ramp:                       [0.9, 0.1, 0.1]
+  min up time:                         [4.0, 2.0, 2.0]
+  min down time:                       [4.0, 3.0, 3.0]
+  initial status:                      [1.0, 0.0, 0.0]
+  initial time:                        [4.0, 3.0, 3.0]
+  initial power:                       [1.5, 0.0, 0.0]
+  cost a:                              [4.0, 10.0, 50.0]
+  cost b:                              [1350.0, 3260.0, 1760.0000000000002]
+  cost c:                              [176.9, 129.9, 137.4]
+
+========================================================================================
+Loads
+========================================================================================
+  index:                               [1, 2, 3]
+  locatebus:                           [3, 4, 5]
+  load total by bus:                   [13.034960000000002, 26.069920000000003, 26.069920000000003]
+  load total by time:                  [2.1919, 2.3535000000000004, 2.3467000000000002, 2.3673, 2.3906, 2.4448, 2.7338999999999993, 2.904, 2.8355999999999995, 2.8120000000000003, 3.2861000000000007, 3.2810000000000006, 3.2618, 3.2360000000000007, 3.2686, 2.8779000000000003, 2.6, 2.4674000000000005, 2.5596999999999994, 2.3735, 2.4331000000000005, 2.8314000000000004, 2.8305000000000002, 2.4875]
+  load_curve (3 x 24):
+    row 01:     0.4384     0.4707     0.4693     0.4735     0.4781     0.4890     0.5468     0.5808     0.5671     0.5624     0.6572     0.6562     0.6524     0.6472     0.6537     0.5756     0.5200     0.4935     0.5119     0.4747     0.4866     0.5663     0.5661     0.4975
+    row 02:     0.8768     0.9414     0.9387     0.9469     0.9562     0.9779     1.0936     1.1616     1.1342     1.1248     1.3144     1.3124     1.3047     1.2944     1.3074     1.1512     1.0400     0.9870     1.0239     0.9494     0.9732     1.1326     1.1322     0.9950
+    row 03:     0.8768     0.9414     0.9387     0.9469     0.9562     0.9779     1.0936     1.1616     1.1342     1.1248     1.3144     1.3124     1.3047     1.2944     1.3074     1.1512     1.0400     0.9870     1.0239     0.9494     0.9732     1.1326     1.1322     0.9950
+
+========================================================================================
+Transmission Lines
+========================================================================================
+  index:                               [1, 2, 3, 4, 5, 6, 7]
+  from:                                [1, 1, 2, 5, 3, 2, 4]
+  to:                                  [2, 4, 4, 6, 6, 3, 5]
+  reactance x:                         [0.17, 0.258, 0.197, 0.14, 0.018, 0.037, 0.037]
+  forward p_max:                       [2.0, 1.2, 1.2, 1.2, 1.2, 2.0, 1.2]
+  reverse p_min:                       [-2.0, -1.2, -1.2, -1.2, -1.2, -2.0, -1.2]
+
+========================================================================================
+Wind Units and Scenarios
+========================================================================================
+  index:                               [1, 2]
+  locatebus:                           [1, 1]
+  installed capacity:                  [2.5, 2.5]
+  scenario probability:                0.16666666666666666
+  scenario count:                      6
+  scenario mean availability:          [0.4458599906839215, 0.44717636518787596, 0.4377236224275569, 0.4209172759021213, 0.42252923389222147, 0.3790325322424571, 0.4175559913321604, 0.43327199637396535, 0.44239641263742696, 0.4466206128223383, 0.42939728276619876, 0.4474148347663571, 0.45149537538542667, 0.4391446174563933, 0.4407512365363924, 0.4535412127349406, 0.4349447181273884, 0.43521815592471813, 0.43663364143815514, 0.42679120871251586, 0.47131969861022993, 0.4437680337704148, 0.44911267010936334, 0.4273873879563448]
+  wind scenario curves (6 x 24):
+    row 01:     0.4582     0.4166     0.4350     0.4280     0.4139     0.3709     0.3979     0.4494     0.4134     0.4648     0.4172     0.4568     0.4345     0.4209     0.4375     0.4616     0.4473     0.4462     0.4300     0.4261     0.4792     0.4490     0.4631     0.4081
+    row 02:     0.4310     0.4472     0.4424     0.3994     0.4277     0.3743     0.4199     0.4452     0.4452     0.4192     0.4327     0.4410     0.4495     0.4279     0.4519     0.4634     0.4108     0.4283     0.4806     0.4233     0.4793     0.4550     0.4394     0.4314
+    row 03:     0.4461     0.4445     0.4607     0.4260     0.4387     0.3839     0.4265     0.4053     0.4284     0.4600     0.4198     0.4476     0.4573     0.4300     0.4265     0.4475     0.4380     0.4300     0.4247     0.4279     0.4762     0.4426     0.4501     0.4230
+    row 04:     0.4393     0.4610     0.4215     0.4090     0.4244     0.3860     0.4060     0.4294     0.4448     0.4707     0.4436     0.4531     0.4477     0.4670     0.4285     0.4435     0.4484     0.4242     0.4228     0.4527     0.4757     0.4457     0.4541     0.4565
+    row 05:     0.4553     0.4356     0.4301     0.4138     0.4099     0.3862     0.4175     0.4362     0.4653     0.4108     0.4442     0.4436     0.4628     0.4368     0.4353     0.4453     0.4306     0.4474     0.4274     0.3979     0.4432     0.4096     0.4329     0.4241
+    row 06:     0.4453     0.4781     0.4366     0.4492     0.4207     0.3730     0.4375     0.4341     0.4573     0.4542     0.4188     0.4425     0.4571     0.4523     0.4648     0.4599     0.4347     0.4352     0.4342     0.4329     0.4743     0.4608     0.4551     0.4212
+
+========================================================================================
+Storage Units
+========================================================================================
+  index:                               [1]
+  locatebus:                           [1]
+  Q_max:                               [1.0]
+  Q_min:                               [0.1]
+  charge power limit:                  [1.0]
+  discharge power limit:               [0.1]
+  initial energy:                      [0.2]
+  charge ramp/cost parameter:          [0.6]
+  discharge ramp/cost parameter:       [0.6]
+  charge efficiency:                   [0.85]
+  discharge efficiency:                [1.0]
+  self-discharge:                      [0.05]
+
+========================================================================================
+Consistency Checks
+========================================================================================
+  [OK] NG matches length(units.index)
+  [OK] NL matches length(lines.index)
+  [OK] ND matches length(loads.index)
+  [OK] NW matches length(winds.index)
+  [OK] NT matches load_curve columns
+  [OK] ND matches load_curve rows
+  [OK] NS matches wind scenario rows
+  [OK] NT matches wind scenario columns
+  [OK] generator p_max >= p_min
+  [OK] line p_max >= 0
+  [OK] load curve is finite and nonnegative
+  [OK] wind scenarios are finite and nonnegative
+
+Boundary condition report completed successfully.
+
+Starting C&CG unit commitment solver
+candidate scenarios: 6
+initial scenarios:   [1, 3, 6]
+DRO enabled:         true (wasserstein radius: 0.05)
+parallel recourse:   true (Julia threads: 1)
+====================================================
+ITER 	 ACTIVE 	 LOWER_bound 	 UPPER_bound 	 GAP 	 ADDED
+----------------------------------------------------
+	 Variables defined.
+	 constraints: 1) minimum shutup/shutdown time limits			 done
+	 constraints: 2) binary variable logic					 done
+	 constraints: 3) shutup/shutdown cost					 done
+	 constraints: 4) loadcurtailments and spoliedwinds			 done
+	 constraints: 5) generatos power limits					 done
+	 constraints: 6) system reserves limits					 done
+	 constraints: 7) power balance constraints				 done
+	 constraints: 8) ramp-up/ramp-down constraints				 done
+	 constraints: 9) piece linearization constraints			 done
+	 constraints: 10) transmissionline limits for basline			 done
+	 constraints: 11) stroges system constraints skipped (is_ConsiderBESS=0)
+	 constraints: 12) data centra constraints skipped (is_ConsiderDataCentra != 1)
+	 constraints: 13) frequency control constraints skipped (is_ConsiderFrequencyControl != 1)
+	 Variables defined.
+	 constraints: 4) loadcurtailments and spoliedwinds			 done
+	 constraints: 5) generatos power limits					 done
+	 constraints: 6) system reserves limits					 done
+	 constraints: 7) power balance constraints				 done
+	 constraints: 8) ramp-up/ramp-down constraints				 done
+	 constraints: 9) piece linearization constraints			 done
+	 constraints: 10) transmissionline limits for basline			 done
+	 constraints: 11) stroges system constraints skipped (is_ConsiderBESS=0)
+	 constraints: 12) data centra constraints skipped (is_ConsiderDataCentra != 1)
+	 constraints: 13) frequency control constraints skipped (is_ConsiderFrequencyControl != 1)
+	 Variables defined.
+	 constraints: 4) loadcurtailments and spoliedwinds			 done
+	 constraints: 5) generatos power limits					 done
+	 constraints: 6) system reserves limits					 done
+	 constraints: 7) power balance constraints				 done
+	 constraints: 8) ramp-up/ramp-down constraints				 done
+	 constraints: 9) piece linearization constraints			 done
+	 constraints: 10) transmissionline limits for basline			 done
+	 constraints: 11) stroges system constraints skipped (is_ConsiderBESS=0)
+	 constraints: 12) data centra constraints skipped (is_ConsiderDataCentra != 1)
+	 constraints: 13) frequency control constraints skipped (is_ConsiderFrequencyControl != 1)
+	 Variables defined.
+	 constraints: 4) loadcurtailments and spoliedwinds			 done
+	 constraints: 5) generatos power limits					 done
+	 constraints: 6) system reserves limits					 done
+	 constraints: 7) power balance constraints				 done
+	 constraints: 8) ramp-up/ramp-down constraints				 done
+	 constraints: 9) piece linearization constraints			 done
+	 constraints: 10) transmissionline limits for basline			 done
+	 constraints: 11) stroges system constraints skipped (is_ConsiderBESS=0)
+	 constraints: 12) data centra constraints skipped (is_ConsiderDataCentra != 1)
+	 constraints: 13) frequency control constraints skipped (is_ConsiderFrequencyControl != 1)
+	 Variables defined.
+	 constraints: 4) loadcurtailments and spoliedwinds			 done
+	 constraints: 5) generatos power limits					 done
+	 constraints: 6) system reserves limits					 done
+	 constraints: 7) power balance constraints				 done
+	 constraints: 8) ramp-up/ramp-down constraints				 done
+	 constraints: 9) piece linearization constraints			 done
+	 constraints: 10) transmissionline limits for basline			 done
+	 constraints: 11) stroges system constraints skipped (is_ConsiderBESS=0)
+	 constraints: 12) data centra constraints skipped (is_ConsiderDataCentra != 1)
+	 constraints: 13) frequency control constraints skipped (is_ConsiderFrequencyControl != 1)
+	 Variables defined.
+	 constraints: 4) loadcurtailments and spoliedwinds			 done
+	 constraints: 5) generatos power limits					 done
+	 constraints: 6) system reserves limits					 done
+	 constraints: 7) power balance constraints				 done
+	 constraints: 8) ramp-up/ramp-down constraints				 done
+	 constraints: 9) piece linearization constraints			 done
+	 constraints: 10) transmissionline limits for basline			 done
+	 constraints: 11) stroges system constraints skipped (is_ConsiderBESS=0)
+	 constraints: 12) data centra constraints skipped (is_ConsiderDataCentra != 1)
+	 constraints: 13) frequency control constraints skipped (is_ConsiderFrequencyControl != 1)
+	 Variables defined.
+	 constraints: 4) loadcurtailments and spoliedwinds			 done
+	 constraints: 5) generatos power limits					 done
+	 constraints: 6) system reserves limits					 done
+	 constraints: 7) power balance constraints				 done
+	 constraints: 8) ramp-up/ramp-down constraints				 done
+	 constraints: 9) piece linearization constraints			 done
+	 constraints: 10) transmissionline limits for basline			 done
+	 constraints: 11) stroges system constraints skipped (is_ConsiderBESS=0)
+	 constraints: 12) data centra constraints skipped (is_ConsiderDataCentra != 1)
+	 constraints: 13) frequency control constraints skipped (is_ConsiderFrequencyControl != 1)
+1       3        111979          1.19541e+06    0.906326  [4, 2]
+	 Variables defined.
+	 constraints: 1) minimum shutup/shutdown time limits			 done
+	 constraints: 2) binary variable logic					 done
+	 constraints: 3) shutup/shutdown cost					 done
+	 constraints: 4) loadcurtailments and spoliedwinds			 done
+	 constraints: 5) generatos power limits					 done
+	 constraints: 6) system reserves limits					 done
+	 constraints: 7) power balance constraints				 done
+	 constraints: 8) ramp-up/ramp-down constraints				 done
+	 constraints: 9) piece linearization constraints			 done
+	 constraints: 10) transmissionline limits for basline			 done
+	 constraints: 11) stroges system constraints skipped (is_ConsiderBESS=0)
+	 constraints: 12) data centra constraints skipped (is_ConsiderDataCentra != 1)
+	 constraints: 13) frequency control constraints skipped (is_ConsiderFrequencyControl != 1)
+	 Variables defined.
+	 constraints: 4) loadcurtailments and spoliedwinds			 done
+	 constraints: 5) generatos power limits					 done
+	 constraints: 6) system reserves limits					 done
+	 constraints: 7) power balance constraints				 done
+	 constraints: 8) ramp-up/ramp-down constraints				 done
+	 constraints: 9) piece linearization constraints			 done
+	 constraints: 10) transmissionline limits for basline			 done
+	 constraints: 11) stroges system constraints skipped (is_ConsiderBESS=0)
+	 constraints: 12) data centra constraints skipped (is_ConsiderDataCentra != 1)
+	 constraints: 13) frequency control constraints skipped (is_ConsiderFrequencyControl != 1)
+	 Variables defined.
+	 constraints: 4) loadcurtailments and spoliedwinds			 done
+	 constraints: 5) generatos power limits					 done
+	 constraints: 6) system reserves limits					 done
+	 constraints: 7) power balance constraints				 done
+	 constraints: 8) ramp-up/ramp-down constraints				 done
+	 constraints: 9) piece linearization constraints			 done
+	 constraints: 10) transmissionline limits for basline			 done
+	 constraints: 11) stroges system constraints skipped (is_ConsiderBESS=0)
+	 constraints: 12) data centra constraints skipped (is_ConsiderDataCentra != 1)
+	 constraints: 13) frequency control constraints skipped (is_ConsiderFrequencyControl != 1)
+	 Variables defined.
+	 constraints: 4) loadcurtailments and spoliedwinds			 done
+	 constraints: 5) generatos power limits					 done
+	 constraints: 6) system reserves limits					 done
+	 constraints: 7) power balance constraints				 done
+	 constraints: 8) ramp-up/ramp-down constraints				 done
+	 constraints: 9) piece linearization constraints			 done
+	 constraints: 10) transmissionline limits for basline			 done
+	 constraints: 11) stroges system constraints skipped (is_ConsiderBESS=0)
+	 constraints: 12) data centra constraints skipped (is_ConsiderDataCentra != 1)
+	 constraints: 13) frequency control constraints skipped (is_ConsiderFrequencyControl != 1)
+	 Variables defined.
+	 constraints: 4) loadcurtailments and spoliedwinds			 done
+	 constraints: 5) generatos power limits					 done
+	 constraints: 6) system reserves limits					 done
+	 constraints: 7) power balance constraints				 done
+	 constraints: 8) ramp-up/ramp-down constraints				 done
+	 constraints: 9) piece linearization constraints			 done
+	 constraints: 10) transmissionline limits for basline			 done
+	 constraints: 11) stroges system constraints skipped (is_ConsiderBESS=0)
+	 constraints: 12) data centra constraints skipped (is_ConsiderDataCentra != 1)
+	 constraints: 13) frequency control constraints skipped (is_ConsiderFrequencyControl != 1)
+	 Variables defined.
+	 constraints: 4) loadcurtailments and spoliedwinds			 done
+	 constraints: 5) generatos power limits					 done
+	 constraints: 6) system reserves limits					 done
+	 constraints: 7) power balance constraints				 done
+	 constraints: 8) ramp-up/ramp-down constraints				 done
+	 constraints: 9) piece linearization constraints			 done
+	 constraints: 10) transmissionline limits for basline			 done
+	 constraints: 11) stroges system constraints skipped (is_ConsiderBESS=0)
+	 constraints: 12) data centra constraints skipped (is_ConsiderDataCentra != 1)
+	 constraints: 13) frequency control constraints skipped (is_ConsiderFrequencyControl != 1)
+	 Variables defined.
+	 constraints: 4) loadcurtailments and spoliedwinds			 done
+	 constraints: 5) generatos power limits					 done
+	 constraints: 6) system reserves limits					 done
+	 constraints: 7) power balance constraints				 done
+	 constraints: 8) ramp-up/ramp-down constraints				 done
+	 constraints: 9) piece linearization constraints			 done
+	 constraints: 10) transmissionline limits for basline			 done
+	 constraints: 11) stroges system constraints skipped (is_ConsiderBESS=0)
+	 constraints: 12) data centra constraints skipped (is_ConsiderDataCentra != 1)
+	 constraints: 13) frequency control constraints skipped (is_ConsiderFrequencyControl != 1)
+2       5        120006          154028         0.220883  [5]
+	 Variables defined.
+	 constraints: 1) minimum shutup/shutdown time limits			 done
+	 constraints: 2) binary variable logic					 done
+	 constraints: 3) shutup/shutdown cost					 done
+	 constraints: 4) loadcurtailments and spoliedwinds			 done
+	 constraints: 5) generatos power limits					 done
+	 constraints: 6) system reserves limits					 done
+	 constraints: 7) power balance constraints				 done
+	 constraints: 8) ramp-up/ramp-down constraints				 done
+	 constraints: 9) piece linearization constraints			 done
+	 constraints: 10) transmissionline limits for basline			 done
+	 constraints: 11) stroges system constraints skipped (is_ConsiderBESS=0)
+	 constraints: 12) data centra constraints skipped (is_ConsiderDataCentra != 1)
+	 constraints: 13) frequency control constraints skipped (is_ConsiderFrequencyControl != 1)
+	 Variables defined.
+	 constraints: 4) loadcurtailments and spoliedwinds			 done
+	 constraints: 5) generatos power limits					 done
+	 constraints: 6) system reserves limits					 done
+	 constraints: 7) power balance constraints				 done
+	 constraints: 8) ramp-up/ramp-down constraints				 done
+	 constraints: 9) piece linearization constraints			 done
+	 constraints: 10) transmissionline limits for basline			 done
+	 constraints: 11) stroges system constraints skipped (is_ConsiderBESS=0)
+	 constraints: 12) data centra constraints skipped (is_ConsiderDataCentra != 1)
+	 constraints: 13) frequency control constraints skipped (is_ConsiderFrequencyControl != 1)
+	 Variables defined.
+	 constraints: 4) loadcurtailments and spoliedwinds			 done
+	 constraints: 5) generatos power limits					 done
+	 constraints: 6) system reserves limits					 done
+	 constraints: 7) power balance constraints				 done
+	 constraints: 8) ramp-up/ramp-down constraints				 done
+	 constraints: 9) piece linearization constraints			 done
+	 constraints: 10) transmissionline limits for basline			 done
+	 constraints: 11) stroges system constraints skipped (is_ConsiderBESS=0)
+	 constraints: 12) data centra constraints skipped (is_ConsiderDataCentra != 1)
+	 constraints: 13) frequency control constraints skipped (is_ConsiderFrequencyControl != 1)
+	 Variables defined.
+	 constraints: 4) loadcurtailments and spoliedwinds			 done
+	 constraints: 5) generatos power limits					 done
+	 constraints: 6) system reserves limits					 done
+	 constraints: 7) power balance constraints				 done
+	 constraints: 8) ramp-up/ramp-down constraints				 done
+	 constraints: 9) piece linearization constraints			 done
+	 constraints: 10) transmissionline limits for basline			 done
+	 constraints: 11) stroges system constraints skipped (is_ConsiderBESS=0)
+	 constraints: 12) data centra constraints skipped (is_ConsiderDataCentra != 1)
+	 constraints: 13) frequency control constraints skipped (is_ConsiderFrequencyControl != 1)
+	 Variables defined.
+	 constraints: 4) loadcurtailments and spoliedwinds			 done
+	 constraints: 5) generatos power limits					 done
+	 constraints: 6) system reserves limits					 done
+	 constraints: 7) power balance constraints				 done
+	 constraints: 8) ramp-up/ramp-down constraints				 done
+	 constraints: 9) piece linearization constraints			 done
+	 constraints: 10) transmissionline limits for basline			 done
+	 constraints: 11) stroges system constraints skipped (is_ConsiderBESS=0)
+	 constraints: 12) data centra constraints skipped (is_ConsiderDataCentra != 1)
+	 constraints: 13) frequency control constraints skipped (is_ConsiderFrequencyControl != 1)
+	 Variables defined.
+	 constraints: 4) loadcurtailments and spoliedwinds			 done
+	 constraints: 5) generatos power limits					 done
+	 constraints: 6) system reserves limits					 done
+	 constraints: 7) power balance constraints				 done
+	 constraints: 8) ramp-up/ramp-down constraints				 done
+	 constraints: 9) piece linearization constraints			 done
+	 constraints: 10) transmissionline limits for basline			 done
+	 constraints: 11) stroges system constraints skipped (is_ConsiderBESS=0)
+	 constraints: 12) data centra constraints skipped (is_ConsiderDataCentra != 1)
+	 constraints: 13) frequency control constraints skipped (is_ConsiderFrequencyControl != 1)
+	 Variables defined.
+	 constraints: 4) loadcurtailments and spoliedwinds			 done
+	 constraints: 5) generatos power limits					 done
+	 constraints: 6) system reserves limits					 done
+	 constraints: 7) power balance constraints				 done
+	 constraints: 8) ramp-up/ramp-down constraints				 done
+	 constraints: 9) piece linearization constraints			 done
+	 constraints: 10) transmissionline limits for basline			 done
+	 constraints: 11) stroges system constraints skipped (is_ConsiderBESS=0)
+	 constraints: 12) data centra constraints skipped (is_ConsiderDataCentra != 1)
+	 constraints: 13) frequency control constraints skipped (is_ConsiderFrequencyControl != 1)
+3       6        120006          144403         0.168952  Int64[]
+
+====================================================
+C&CG convergence achieved
+FINAL ACTIVE SCENARIOS: [1, 2, 3, 4, 5, 6]
+FINAL UPPER BOUND:      144403.10936546465
+FINAL LOWER BOUND:      120005.85583163926
+FINAL GAP:              0.16895241134946967
+====================================================

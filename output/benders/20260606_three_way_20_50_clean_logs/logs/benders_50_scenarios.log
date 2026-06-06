@@ -1,0 +1,7 @@
+Starting (Strengthen) Benders decomposition algorithm
+ITER 	 LOWER_bound 	    UPPER_bound   	 GAP
+1              350            1.12393e+06    0.999689
+2              259165         1.12393e+06    0.769412
+3              268398         1.12393e+06    0.761197
+4              269621         1.12393e+06    0.760109
+5              278854         1.12393e+06    0.751894

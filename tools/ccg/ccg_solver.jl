@@ -34,6 +34,9 @@ function solve_ccg_unit_commitment(; scenario_limit::Int64 = 20)
 	best_lower_bound = -Inf
 	best_model = nothing
 	best_evaluation = nothing
+	best_data = data
+	best_active_scenarios = Int64[]
+	history = NamedTuple[]
 
 	println("Starting C&CG unit commitment solver")
 	println("candidate scenarios: ", data.NS)
@@ -64,11 +67,24 @@ function solve_ccg_unit_commitment(; scenario_limit::Int64 = 20)
 			best_upper_bound = current_upper_bound
 			best_model = master_model
 			best_evaluation = evaluation
+			best_active_scenarios = copy(selected)
 		end
 
 		gap = abs(best_upper_bound - best_lower_bound) / (abs(best_upper_bound) + numerical_tolerance)
 		inactive_scenarios = setdiff(collect(1:data.NS), selected)
 		scenarios_to_add = choose_ccg_scenarios_to_add(evaluation, inactive_scenarios, scenarios_per_iteration, worst_probability)
+		push!(
+			history,
+			(
+				iteration = iteration,
+				active_scenarios = length(selected),
+				lower_bound = best_lower_bound,
+				upper_bound = best_upper_bound,
+				gap = gap,
+				added_scenarios = copy(scenarios_to_add),
+				memory_mb = process_memory_mb(),
+			),
+		)
 		print_ccg_iteration(iteration, length(selected), best_lower_bound, best_upper_bound, gap, scenarios_to_add)
 
 		if gap <= gap_tolerance || isempty(scenarios_to_add)
@@ -80,9 +96,12 @@ function solve_ccg_unit_commitment(; scenario_limit::Int64 = 20)
 			println("FINAL GAP:              ", gap)
 			println("====================================================")
 			return (
+				status = "converged",
 				model = best_model,
 				evaluation = best_evaluation,
-				active_scenarios = selected,
+				data = best_data,
+				history = history,
+				active_scenarios = isempty(best_active_scenarios) ? selected : best_active_scenarios,
 				upper_bound = best_upper_bound,
 				lower_bound = best_lower_bound,
 				gap = gap,
@@ -101,9 +120,12 @@ function solve_ccg_unit_commitment(; scenario_limit::Int64 = 20)
 	println("FINAL GAP:              ", abs(best_upper_bound - best_lower_bound) / (abs(best_upper_bound) + numerical_tolerance))
 	println("====================================================")
 	return (
+		status = "maximum_iterations",
 		model = best_model,
 		evaluation = best_evaluation,
-		active_scenarios = selected,
+		data = best_data,
+		history = history,
+		active_scenarios = isempty(best_active_scenarios) ? selected : best_active_scenarios,
 		upper_bound = best_upper_bound,
 		lower_bound = best_lower_bound,
 		gap = abs(best_upper_bound - best_lower_bound) / (abs(best_upper_bound) + numerical_tolerance),
