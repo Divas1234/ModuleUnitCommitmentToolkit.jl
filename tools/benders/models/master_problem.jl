@@ -80,9 +80,11 @@ function bd_masterfunction(
     # add_datacentra_constraints!(scuc_masterproblem, NT, NS, config_param, ND2, DataCentras)
     # add_frequency_constraints!(scuc_masterproblem, NT, NG, NC, NS, units, stroges, config_param, Δp_contingency)
 
-    println("\n")
-    @show scuc_masterproblem
-    println("\n")
+    if get(ENV, "BENDERS_SHOW_MODEL_SUMMARY", "0") == "1"
+        println("\n")
+        @show scuc_masterproblem
+        println("\n")
+    end
 
     all_constraints_dict = Dict{Symbol, Any}()
     all_constraints_dict[:key_units_minuptime_constr] = vec(_units_minuptime_constr)

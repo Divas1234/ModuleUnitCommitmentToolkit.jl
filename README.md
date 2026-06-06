@@ -62,11 +62,16 @@ This project implements a unit commitment model for power systems integrated wit
 
 The Benders decomposition algorithm is implemented in the `tools` directory to solve the stochastic unit commitment problem. The main components are:
 
-*   `benderdecomposition_module.jl`: This file contains the core implementation of the Benders decomposition framework. It includes functions for solving the master problem and subproblems, adding Benders cuts (optimality and feasibility cuts), and checking for convergence. The `bd_framework` function implements the iterative Benders decomposition algorithm.
-*   `debug_bd.jl`: This file is a debugging script that sets up and runs the Benders decomposition algorithm using the functions defined in `benderdecomposition_module.jl`. It calls the `main` function from `mainfunc.jl` to load data and define the master and subproblems, and then calls the `bd_framework` function to execute the Benders decomposition algorithm.
-*   `mainfunc.jl`: This file defines the `main` function, which reads input data, generates wind scenarios, and defines the master and subproblems for the SUC-SCUC model. It also sets up the batch subproblems for the multi-cut Benders decomposition.
-*   `construct_multicuts_lib`: This directory contains files related to constructing multi-cuts for the Benders decomposition algorithm.
-*   `define_master_sub_problems`: This directory contains files related to defining the master and subproblems for the Benders decomposition algorithm.
+*   `tools/benders/driver.jl`: Benders executable entry point and optional extensive-form benchmark path.
+*   `tools/benders/setup.jl`: Data loading, scenario generation, master/subproblem construction, and batch subproblem setup.
+*   `tools/benders/decomposition.jl`: Core Benders decomposition loop, cut generation, cut rollback, and convergence checks.
+*   `tools/benders/models`: Master, subproblem, batch subproblem, and SCUC model structure definitions.
+*   `tools/benders/cuts`: Benders optimality, feasibility, coefficient, and multi-cut helpers.
+*   `tools/archive`: Historical Benders cut-construction drafts kept out of the active include path.
+*   `dev/debug`: Development-only debugging scripts.
+*   `examples/benders`: Small standalone Benders, LP dual, and Farkas examples.
+*   `docs/benchmarks/benders`: Benders performance report and raw benchmark logs.
+*   `scripts/run_benders_benchmarks.sh`: Reproducible Benders benchmark runner.
 
 ## Dependencies
 

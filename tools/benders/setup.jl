@@ -10,9 +10,9 @@ include(joinpath(pwd(), "src", "read_inputdata_modules", "readdatas.jl"))
 
 # Load Benders Decomposition formulation and multi-cut libraries
 
-include("define_master_sub_problems/construct_rmp_sub_models.jl")
-include("construct_multicuts_lib/construct_multicuts.jl")
-include("benderdecomposition_module.jl")
+include("models/construct_models.jl")
+include("cuts/construct_cuts.jl")
+include("decomposition.jl")
 
 """
 	`main()`

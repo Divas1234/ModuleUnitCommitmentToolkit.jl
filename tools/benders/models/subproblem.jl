@@ -107,9 +107,11 @@ function bd_subfunction(
 	# add_frequency_constraints!(scuc_subproblem, NT, NG, NC, NS, units, psses, config_param, contingency_size)
 	# @show model_summary(scuc_subproblem)
 
-	println("\n")
-	@show scuc_subproblem
-	println("\n")
+	if get(ENV, "BENDERS_SHOW_MODEL_SUMMARY", "0") == "1"
+		println("\n")
+		@show scuc_subproblem
+		println("\n")
+	end
 
 	all_constraints_dict = Dict{Symbol, Any}()
 

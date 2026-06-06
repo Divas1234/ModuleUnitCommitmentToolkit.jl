@@ -2,7 +2,7 @@
 ENV["JULIA_SHOW_ASCII"] = true
 
 # Load main functions and formulations
-include("mainfunc.jl")
+include("setup.jl")
 
 # Initialize the Security-Constrained Unit Commitment (SCUC) problem.
 # Unpack master/subproblem models, configuration parameters, and system data.
