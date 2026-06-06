@@ -1,4 +1,4 @@
-include("mainfunc.jl")
+include("tools/benders/setup.jl")
 
 # Get the initial problem setup
 scuc_masterproblem, scuc_subproblem, scenarios_prob, refcost, eachslope, units, lines, loads, winds, config_param = main();

@@ -1,7 +1,7 @@
 include("src/environment_config.jl");
-include("src/renewableresource_modules/stochasticsimulation.jl");
-include("src/read_inputdata_modules/readdatas.jl");
-include("src/unitcommitment_model_modules/SUCuccommitmentmodel.jl");
+include("src/renewables/stochastic_simulation.jl");
+include("src/input_data/readers.jl");
+include("src/unit_commitment/unit_commitment_model.jl");
 
 # Destructure directly from function call for clarity
 # Read data from Excel sheet

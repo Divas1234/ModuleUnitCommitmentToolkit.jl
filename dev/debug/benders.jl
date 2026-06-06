@@ -1,11 +1,11 @@
 include(joinpath(pwd(), "src", "environment_config.jl"));
-include(joinpath(pwd(), "src", "renewableresource_modules", "stochasticsimulation.jl"));
-include(joinpath(pwd(), "src", "read_inputdata_modules", "readdatas.jl"));
-include(joinpath(pwd(), "src", "unitcommitment_model_modules", "SUCuccommitmentmodel.jl"));
+include(joinpath(pwd(), "src", "renewables", "stochastic_simulation.jl"));
+include(joinpath(pwd(), "src", "input_data", "readers.jl"));
+include(joinpath(pwd(), "src", "unit_commitment", "unit_commitment_model.jl"));
 
-include("define_masterproblem.jl")
-include("define_subproblem.jl")
-include("benderdecomposition_module.jl")
+include("tools/benders/models/master_problem.jl")
+include("tools/benders/models/subproblem.jl")
+include("tools/benders/decomposition.jl")
 
 UnitsFreqParam, WindsFreqParam, StrogeData, DataGen, GenCost, DataBranch, LoadCurve, DataLoad, datacentra_Data = readxlssheet();
 
@@ -35,7 +35,7 @@ if !@isdefined(scenarios_prob)
     scenarios_prob = 1.0 / NS
 end
 
-# DEBUG - benderdecomposition_module
+# Debug Benders decomposition flow.
 
 # First optimize the master problem
 optimize!(scuc_masterproblem)
@@ -217,9 +217,7 @@ JuMP.dual_status(basic_uc_model)  # MOI.NO_SOLUTION
 optimize!(scuc_subproblem)
 duals = scuc_subproblem.getAttr("Pi", MOI.getConstrs())
 
-include("define_dual_subproblem.jl")
-bd_dual_subfunction(NT::Int64, NB::Int64, NG::Int64, ND::Int64, NC::Int64, ND2::Int64, NS::Int64, NW::Int64, units::unit, config_param::config)
-optimize!(dual_subproblem)
+# Legacy dual-subproblem scratch code was removed from the active debug path.
 
 # Optimize subproblem - we already did this above, no need to do it again
 # optimize!(scuc_subproblem)

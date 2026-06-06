@@ -4,9 +4,9 @@ ENV["JULIA_SHOW_ASCII"] = true
 
 # Load environment configurations, simulation modules, and data readers
 include(joinpath(pwd(), "src", "environment_config.jl"))
-include(joinpath(pwd(), "src", "renewableresource_modules", "stochasticsimulation.jl"))
-include(joinpath(pwd(), "src", "read_inputdata_modules", "readdatas.jl"))
-# include(joinpath(pwd(), "src", "unitcommitment_model_modules", "SUCuccommitmentmodel.jl"))
+include(joinpath(pwd(), "src", "renewables", "stochastic_simulation.jl"))
+include(joinpath(pwd(), "src", "input_data", "readers.jl"))
+# include(joinpath(pwd(), "src", "unit_commitment", "unit_commitment_model.jl"))
 
 # Load Benders Decomposition formulation and multi-cut libraries
 
