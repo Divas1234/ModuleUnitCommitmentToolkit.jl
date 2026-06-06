@@ -20,6 +20,8 @@ function ccg_wasserstein_power()
 end
 
 function build_renewable_dro_model(winds::wind)
+	# The ambiguity set is constructed from the generated renewable scenario pool.
+	# Costs are not needed here; they are supplied later by the separation step.
 	validate_wind_scenario_data(winds)
 	scenario_count = Int64(winds.scenarios_nums)
 	nominal_probability = fill(1.0 / scenario_count, scenario_count)
@@ -34,6 +36,7 @@ function build_renewable_dro_model(winds::wind)
 	)
 end
 
+## Initialize the DRO model for CCG, which will be used to compute worst-case distributions and costs during the iterative solution process.
 function validate_wind_scenario_data(winds::wind)
 	winds.scenarios_nums > 0 || throw(ArgumentError("wind.scenarios_nums must be positive; got $(winds.scenarios_nums)"))
 	size(winds.scenarios_curve, 1) == winds.scenarios_nums ||
@@ -84,6 +87,8 @@ function validate_selected_scenarios(selected_scenarios::Vector{Int64}, scenario
 end
 
 function renewable_wasserstein_distance_matrix(winds::wind; power::Float64 = 1.0)
+	# Distances are normalized to [0, 1] so `CCG_DRO_RADIUS` is portable across
+	# cases with different raw wind magnitudes or time-horizon lengths.
 	validate_wind_scenario_data(winds)
 	power > 0 || throw(ArgumentError("Wasserstein distance power must be positive; got $power"))
 	curves = winds.scenarios_curve
@@ -134,6 +139,9 @@ function worst_case_probabilities(
 	radius::Float64,
 	distance_matrix::Matrix{Float64},
 )
+	# Transport LP interpretation: move nominal probability mass across the finite
+	# scenario support subject to a Wasserstein budget, maximizing expected recourse
+	# cost. The resulting destination mass is the adversarial probability vector.
 	probability = validate_wasserstein_inputs(costs, nominal_probability, radius, distance_matrix)
 	length(costs) == 1 && return probability
 	radius <= eps(Float64) && return probability
@@ -185,6 +193,9 @@ function set_dro_ccg_master_objective!(
 	radius::Float64,
 	distance_matrix::Matrix{Float64},
 )
+	# The master objective embeds the finite-support Wasserstein dual/epigraph form
+	# over active scenarios, keeping UC constraints unchanged while making the
+	# recourse-cost aggregation distributionally robust.
 	NS_active > 0 || throw(ArgumentError("NS_active must be positive; got $NS_active"))
 	validate_wasserstein_inputs(zeros(Float64, NS_active), nominal_probability, radius, distance_matrix)
 	haskey(JuMP.object_dictionary(model), :x) ||

@@ -25,6 +25,8 @@ $env:CCG_DRO_RADIUS='0.2'
 julia -t auto tools\ccg\driver.jl
 ```
 
+The same values can be edited in `config/runtime_config.toml`, which is loaded automatically by the driver.
+
 Useful environment variables:
 
 - `CCG_SCENARIO_LIMIT`: candidate scenario pool size.

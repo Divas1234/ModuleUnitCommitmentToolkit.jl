@@ -1,23 +1,37 @@
-# Enforce ASCII console output for compatibility
-ENV["JULIA_SHOW_ASCII"] = true
-
-# Load main functions and formulations
+# Benders production entry point.
+#
+# Configure runs through `MODULE_UC_CONFIG_FILE=/path/to/runtime_config.toml`
+# or direct ENV overrides such as `BENDERS_SCENARIO_LIMIT=20`. The setup file
+# loads TOML defaults before data import, so model flags in `[model]` are already
+# reflected in the `config` struct returned by `main`.
 include("setup.jl")
 
-# Initialize the Security-Constrained Unit Commitment (SCUC) problem.
-# Unpack master/subproblem models, configuration parameters, and system data.
 scenario_limit = parse(Int64, get(ENV, "BENDERS_SCENARIO_LIMIT", "50"))
 scuc_masterproblem, scuc_subproblem, master_model_struct, sub_model_struct, batch_sub_model_struct_dic, config_param, units, lines, loads, winds, psses, NB, NG, NL, ND, NS, NT, NC, ND2, DataCentras = main(; scenario_limit = scenario_limit);
 
-# Derive NW from the wind scenario data (number of wind farms = length of wind index vector)
+# `NW` is derived from the final wind object to stay correct after scenario
+# filtering or stochastic generator changes.
 NW = Int64(length(winds.index))
 
+# Jensen cuts are an optional strengthening path. They are intentionally gated
+# behind both the ENV switch and multi-cut mode because the cut depends on a
+# mean-scenario subproblem aligned with per-scenario theta variables.
 jensen_subproblem_struct = if get(ENV, "BENDERS_ENABLE_JENSEN_CUT", "0") == "1" && config_param.is_ConsiderMultiCUTs == 1
 	build_jensen_subproblem_for_mean_scenario(NT, NB, NL, NG, ND, NC, ND2, NW, units, winds, loads, lines, DataCentras, psses, config_param)
 else
 	nothing
 end
 
+"""
+	solve_fast_extensive_uc(...)
+
+Build and solve the full extensive-form stochastic UC model.
+
+This path is used as a benchmark and diagnostic fallback for Benders runs. It
+uses the same data, objective, and constraints as decomposition, but solves all
+scenarios in one JuMP model. Keep it disabled for large production cases unless
+the goal is validation rather than decomposition performance.
+"""
 function solve_fast_extensive_uc(
 		NT, NB, NG, ND, NC, ND2, NS, NW, NL, units, loads, winds, lines, DataCentras, psses, config_param, scenarios_prob,)
 	println("Starting fast extensive-form UC solve for Benders benchmark/convergence...")

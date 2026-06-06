@@ -9,6 +9,7 @@
   - [File Structure](#file-structure)
   - [Benders Decomposition Implementation](#benders-decomposition-implementation)
   - [CCG and Wasserstein DRO](#ccg-and-wasserstein-dro)
+  - [Runtime Configuration](#runtime-configuration)
   - [Testing](#testing)
   - [Dependencies](#dependencies)
   - [License](#license)
@@ -82,6 +83,24 @@ CCG_DRO_RADIUS=0.05
 ```
 
 See `docs/algorithms/wasserstein_dro_ccg.md` for the modeling and algorithm details.
+
+## Runtime Configuration
+
+Runtime parameters are centralized in `config/runtime_config.toml`. Benders and CCG drivers load this file before reading their environment variables.
+
+```bash
+julia tools/benders/driver.jl
+julia tools/ccg/driver.jl
+```
+
+Shell variables still override the config file for one-off runs:
+
+```bash
+BENDERS_SCENARIO_LIMIT=5 julia tools/benders/driver.jl
+CCG_SCENARIO_LIMIT=5 julia tools/ccg/driver.jl
+```
+
+See `docs/runtime_configuration.md` for all sections and variables.
 
 ## Testing
 

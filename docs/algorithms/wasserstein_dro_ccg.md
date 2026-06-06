@@ -67,6 +67,8 @@ CCG_SCENARIO_LIMIT=4 CCG_INITIAL_SCENARIOS=2 CCG_MAX_ITERATIONS=1 julia tools/cc
 
 ## Useful Parameters
 
+These values can be edited in `config/runtime_config.toml`.
+
 | Variable | Default | Meaning |
 |---|---:|---|
 | `CCG_SCENARIO_LIMIT` | `20` | Candidate renewable scenario count. |

@@ -1,5 +1,9 @@
-# Bender Decomposition Framework
-# This module provides a framework for solving stochastic optimization problems using Bender's decomposition.
+# Benders decomposition framework for stochastic SCUC.
+#
+# The master decides first-stage unit commitment and startup/shutdown variables.
+# Scenario subproblems evaluate recourse dispatch, curtailment, network, storage,
+# and auxiliary constraints under fixed commitment. Violated recourse estimates
+# are returned as feasibility, optimality, Jensen, or logic-dominance cuts.
 include("models/construct_models.jl")
 include("cuts/construct_cuts.jl")
 
@@ -8,7 +12,12 @@ using Printf
 """
 `multiple_bender_decomposition_scuc(...)`
 
-Executes the multiple-cut Benders Decomposition algorithm to solve the two-stage stochastic SCUC problem.
+Execute the multi-cut Benders decomposition algorithm for two-stage stochastic SCUC.
+
+The implementation prioritizes numerical robustness over aggressive cut volume:
+it filters violated scenario cuts, supports conservative rollback when bounds
+become inconsistent, and adds no-good or storage-logic cuts only when they guard
+against cycling or dominated binary storage states.
 
 # Arguments
 - `scuc_masterproblem::Model`, `scuc_subproblem::Model`: JuMP models for the master and base subproblems.
@@ -39,10 +48,11 @@ function multiple_bender_decomposition_scuc(
 		jensen_subproblem_struct = nothing,
 )
 
-	# Constants and parameters
-	MAXIMUM_ITERATIONS = parse(Int64, get(ENV, "BENDERS_MAX_ITERATIONS", "10000")) # Maximum number of iterations for Bender's decomposition
-	ABSOLUTE_OPTIMIZATION_GAP = 1e-3 # Absolute gap for optimality
-	NUMERICAL_TOLERANCE = 1e-6 # Numerical tolerance for stability
+	# Algorithm tolerances. `ABSOLUTE_OPTIMIZATION_GAP` defines convergence;
+	# `NUMERICAL_TOLERANCE` only protects comparisons from solver noise.
+	MAXIMUM_ITERATIONS = parse(Int64, get(ENV, "BENDERS_MAX_ITERATIONS", "10000"))
+	ABSOLUTE_OPTIMIZATION_GAP = 1e-3
+	NUMERICAL_TOLERANCE = 1e-6
 
 	# Initialize bounds
 	best_upper_bound = Inf
@@ -61,16 +71,14 @@ function multiple_bender_decomposition_scuc(
 	println("ITER \t LOWER_bound \t    UPPER_bound   \t GAP")
 	println("----------------------------------------------------")
 
-	# Iteration loop
 	for iteration in 1:MAXIMUM_ITERATIONS
-		# Solve the master problem
 		optimize!(scuc_masterproblem)
 
-		# Check solution status
 		assert_is_solved_and_feasible(scuc_masterproblem)
 
-		# Get lower bound from master problem
-		lower_bound = objective_value(scuc_masterproblem) # NOTE - lower bound from master problem
+		# The master objective is a lower bound because recourse is represented
+		# by accumulated cuts rather than the complete scenario response.
+		lower_bound = objective_value(scuc_masterproblem)
 
 		# Extract solution from master problem
 		x⁽⁰⁾ = value.(scuc_masterproblem[:x])
@@ -79,14 +87,16 @@ function multiple_bender_decomposition_scuc(
 		storage_binary_values = get_master_storage_binary_values(scuc_masterproblem)
 		iter_value = (x⁽⁰⁾, u⁽⁰⁾, v⁽⁰⁾)
 
-		# Solve subproblem with feasibility cut
+		# Evaluate recourse under the incumbent commitment. Multi-cut mode solves
+		# every scenario separately so each scenario can generate its own theta cut.
 		ret_dic = if (config_param.is_ConsiderMultiCUTs == 1)
 			batch_solve_subproblem_with_feasibility_cut(batch_scuc_subproblem_dic, x⁽⁰⁾, u⁽⁰⁾, v⁽⁰⁾, NG, NT, NS; storage_binary_values = storage_binary_values)
 		else
 			batch_solve_subproblem_with_feasibility_cut(batch_scuc_subproblem_dic, x⁽⁰⁾, u⁽⁰⁾, v⁽⁰⁾, NG, NT; storage_binary_values = storage_binary_values)
 		end
 
-		# Update bounds
+		# A mismatch here usually means scenario generation or model construction
+		# changed without rebuilding the batch dictionary.
 		batch_subproblem_nummber = length(ret_dic)
 		if ((config_param.is_ConsiderMultiCUTs == 1) ? batch_subproblem_nummber == NS : batch_subproblem_nummber == Int64(1)) == false
 			println("Error: The number of batch_subproblems does not match the expected number.")
@@ -95,7 +105,7 @@ function multiple_bender_decomposition_scuc(
 
 		previous_best_upper_bound = best_upper_bound
 		previous_best_lower_bound = best_lower_bound
-		best_upper_bound, best_lower_bound, current_upper_bound, all_subproblems_feasibility_flag = get_upper_lower_bounds(scuc_masterproblem, ret_dic, best_upper_bound, best_lower_bound, lower_bound) # NOTE - upper bound from subproblem
+		best_upper_bound, best_lower_bound, current_upper_bound, all_subproblems_feasibility_flag = get_upper_lower_bounds(scuc_masterproblem, ret_dic, best_upper_bound, best_lower_bound, lower_bound)
 		if all_subproblems_feasibility_flag && current_upper_bound !== missing && current_upper_bound < previous_best_upper_bound - NUMERICAL_TOLERANCE
 			best_incumbent = (
 				x = copy(x⁽⁰⁾),
@@ -110,6 +120,10 @@ function multiple_bender_decomposition_scuc(
 			println("ITER ", iteration, ": lower_bound=", lower_bound, ", feasible_subproblems=", feasible_count, "/", length(ret_dic), "; adding feasibility cuts")
 		end
 		if all_subproblems_feasibility_flag && best_lower_bound > best_upper_bound + NUMERICAL_TOLERANCE
+			# Dual cuts can become numerically unsafe when a MIP incumbent changes
+			# sharply. Roll back only the most recent cut batch and replace it with
+			# conservative integer cuts to preserve progress without poisoning the
+			# master bound sequence.
 			println("WARNING: Benders lower bound exceeded upper bound at iteration ", iteration)
 			println("  LOWER_bound = ", best_lower_bound)
 			println("  UPPER_bound = ", best_upper_bound)
@@ -141,6 +155,9 @@ function multiple_bender_decomposition_scuc(
 		end
 
 		if config_param.is_ConsiderMultiCUTs == 1
+			# Candidate generation separates cut discovery from cut admission. This
+			# keeps cut caps, violation tolerances, and parallel evaluation localized
+			# in the cut library instead of spreading policy through the loop.
 			candidate_cuts = collect_scenario_cut_candidates(scuc_masterproblem, ret_dic, value.(scuc_masterproblem[:θ]), NG, NT, NW, ND, NL; incumbent = best_incumbent)
 			add_jensen_cut_if_violated!(scuc_masterproblem, jensen_subproblem_struct, iter_value, NG, NT)
 			added_cuts, added_cut_refs = add_selected_scenario_optimality_cuts!(scuc_masterproblem, candidate_cuts)
@@ -178,6 +195,9 @@ function add_storage_logic_based_dominance_cuts!(
 		binary_tolerance::Float64 = parse(Float64, get(ENV, "BENDERS_LOGIC_BINARY_TOL", "0.5")),
 		power_tolerance::Float64 = parse(Float64, get(ENV, "BENDERS_LOGIC_POWER_TOL", "1e-7")),
 )
+	# These cuts remove storage mode patterns that were active in binaries but did
+	# not materially dispatch energy. They are dominance cuts, not feasibility
+	# requirements, so they are bounded per iteration and can be disabled by ENV.
 	if get(ENV, "BENDERS_ENABLE_STORAGE_LOGIC_CUTS", "1") == "0" || !has_master_storage_binary_variables(model)
 		return ConstraintRef[]
 	end
