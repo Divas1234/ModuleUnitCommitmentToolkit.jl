@@ -61,6 +61,9 @@ function multiple_bender_decomposition_scuc(
 	last_added_cut_refs = ConstraintRef[]
 	last_ret_dic = nothing
 	last_iter_value = nothing
+	final_ret_dic = nothing
+	history = NamedTuple[]
+	termination_reason = "maximum_iterations"
 	NS = Int64(winds.scenarios_nums)
 	scenarios_prob = 1.0 / winds.scenarios_nums
 
@@ -94,13 +97,26 @@ function multiple_bender_decomposition_scuc(
 		else
 			batch_solve_subproblem_with_feasibility_cut(batch_scuc_subproblem_dic, x⁽⁰⁾, u⁽⁰⁾, v⁽⁰⁾, NG, NT; storage_binary_values = storage_binary_values)
 		end
+		final_ret_dic = ret_dic
 
 		# A mismatch here usually means scenario generation or model construction
 		# changed without rebuilding the batch dictionary.
 		batch_subproblem_nummber = length(ret_dic)
 		if ((config_param.is_ConsiderMultiCUTs == 1) ? batch_subproblem_nummber == NS : batch_subproblem_nummber == Int64(1)) == false
 			println("Error: The number of batch_subproblems does not match the expected number.")
-			return nothing
+			termination_reason = "subproblem_count_mismatch"
+			return (
+				status = termination_reason,
+				model = scuc_masterproblem,
+				history = history,
+				subproblem_results = final_ret_dic,
+				subproblem_models = batch_scuc_subproblem_dic,
+				upper_bound = best_upper_bound,
+				lower_bound = best_lower_bound,
+				gap = Inf,
+				iterations = iteration,
+				incumbent = best_incumbent,
+			)
 		end
 
 		previous_best_upper_bound = best_upper_bound
@@ -119,6 +135,22 @@ function multiple_bender_decomposition_scuc(
 			feasible_count = count(ret -> ret.is_feasible, values(ret_dic))
 			println("ITER ", iteration, ": lower_bound=", lower_bound, ", feasible_subproblems=", feasible_count, "/", length(ret_dic), "; adding feasibility cuts")
 		end
+		gap = isfinite(best_upper_bound) ? abs(best_upper_bound - best_lower_bound) / (abs(best_upper_bound) + NUMERICAL_TOLERANCE) : Inf
+		push!(
+			history,
+			(
+				iteration = iteration,
+				lower_bound = best_lower_bound,
+				upper_bound = best_upper_bound,
+				current_upper_bound = current_upper_bound,
+				gap = gap,
+				feasible_subproblems = count(ret -> ret.is_feasible, values(ret_dic)),
+				total_subproblems = length(ret_dic),
+				added_cuts = 0,
+				added_logic_cuts = 0,
+				memory_mb = process_memory_mb(),
+			),
+		)
 		if all_subproblems_feasibility_flag && best_lower_bound > best_upper_bound + NUMERICAL_TOLERANCE
 			# Dual cuts can become numerically unsafe when a MIP incumbent changes
 			# sharply. Roll back only the most recent cut batch and replace it with
@@ -128,7 +160,8 @@ function multiple_bender_decomposition_scuc(
 			println("  LOWER_bound = ", best_lower_bound)
 			println("  UPPER_bound = ", best_upper_bound)
 			if isempty(last_added_cut_refs) || last_ret_dic === nothing || last_iter_value === nothing
-				println("  No previous cut batch is available for rollback; stopping diagnostic run.")
+			println("  No previous cut batch is available for rollback; stopping diagnostic run.")
+				termination_reason = "bound_inconsistency"
 				break
 			end
 			rollback_cut_batch!(scuc_masterproblem, last_added_cut_refs)
@@ -151,6 +184,7 @@ function multiple_bender_decomposition_scuc(
 			ABSOLUTE_OPTIMIZATION_GAP,
 			NUMERICAL_TOLERANCE,
 		) == 1
+			termination_reason = "converged"
 			break
 		end
 
@@ -162,6 +196,7 @@ function multiple_bender_decomposition_scuc(
 			add_jensen_cut_if_violated!(scuc_masterproblem, jensen_subproblem_struct, iter_value, NG, NT)
 			added_cuts, added_cut_refs = add_selected_scenario_optimality_cuts!(scuc_masterproblem, candidate_cuts)
 			logic_cut_refs = add_storage_logic_based_dominance_cuts!(scuc_masterproblem, ret_dic, x⁽⁰⁾, u⁽⁰⁾, v⁽⁰⁾)
+			history[end] = merge(history[end], (added_cuts = added_cuts, added_logic_cuts = length(logic_cut_refs)))
 			append!(added_cut_refs, logic_cut_refs)
 			last_added_cut_refs = added_cut_refs
 			last_ret_dic = added_cuts > 0 ? ret_dic : nothing
@@ -170,6 +205,7 @@ function multiple_bender_decomposition_scuc(
 				add_no_good_cut!(scuc_masterproblem, x⁽⁰⁾, u⁽⁰⁾, v⁽⁰⁾)
 			elseif added_cuts == 0 && isempty(logic_cut_refs)
 				println("No violated Benders cuts found at iteration ", iteration, "; stopping to avoid cycling.")
+				termination_reason = "no_violated_cuts"
 				break
 			end
 		else
@@ -183,6 +219,28 @@ function multiple_bender_decomposition_scuc(
 				end
 			end
 		end
+	end
+	final_gap = isfinite(best_upper_bound) ? abs(best_upper_bound - best_lower_bound) / (abs(best_upper_bound) + NUMERICAL_TOLERANCE) : Inf
+	return (
+		status = termination_reason,
+		model = scuc_masterproblem,
+		history = history,
+		subproblem_results = final_ret_dic,
+		subproblem_models = batch_scuc_subproblem_dic,
+		upper_bound = best_upper_bound,
+		lower_bound = best_lower_bound,
+		gap = final_gap,
+		iterations = length(history),
+		incumbent = best_incumbent,
+	)
+end
+
+function process_memory_mb()
+	try
+		rss_kb = parse(Float64, strip(read(`ps -o rss= -p $(getpid())`, String)))
+		return rss_kb / 1024.0
+	catch
+		return Base.gc_live_bytes() / 1024.0^2
 	end
 end
 
