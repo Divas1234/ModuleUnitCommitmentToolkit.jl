@@ -1,5 +1,5 @@
 # include(joinpath(pwd(), "src", "environment_config.jl"))
-include(joinpath(pwd(), "src", "unitcommitment_model_modules", "SUCuccommitmentmodel.jl"))
+include(joinpath(pwd(), "src", "unit_commitment", "unit_commitment_model.jl"))
 
 """
 `bd_masterfunction(...)`

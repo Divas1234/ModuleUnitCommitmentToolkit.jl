@@ -31,32 +31,14 @@ This project implements a unit commitment model for power systems integrated wit
 
 *   `main_function.jl`: Main script to run the unit commitment model.
 *   `src/environment_config.jl`: Environment configurations.
-*   `src/read_inputdata_modules/_formatteddata.jl`: Formats input data.
-*   `src/read_inputdata_modules/_readdatafromexcel.jl`: Reads data from Excel sheets.
-*   `src/read_inputdata_modules/_showboundrycase.jl`: Shows boundary cases.
-*   `src/read_inputdata_modules/readdatas.jl`: Reads data.
-*   `src/renewableresource_modules/_renewableenergysimulation.jl`: Simulates renewable energy sources.
-*   `src/renewableresource_modules/stochasticsimulation.jl`: Performs stochastic simulations.
-*   `src/unitcommitment_model_modules/SUCuccommitmentmodel.jl`: Implements the SUC-SCUC model.
-*   `src/unitcommitment_model_modules/constraints_lib/_constraint_datacentra.jl`: Defines constraints for datacenters.
-*   `src/unitcommitment_model_modules/constraints_lib/_constraint_frequencydynamic.jl`: Defines frequency dynamic constraints.
-*   `src/unitcommitment_model_modules/constraints_lib/_constraint_generator.jl`: Defines generator constraints.
-*   `src/unitcommitment_model_modules/constraints_lib/_constraint_network.jl`: Defines network constraints.
-*   `src/unitcommitment_model_modules/constraints_lib/_constraint_storage.jl`: Defines storage constraints.
-*   `src/unitcommitment_model_modules/constraints_lib/_constraint_systemwide.jl`: Defines system-wide constraints.
-*   `src/unitcommitment_model_modules/constraints_lib/_constraints_generatefittingparameters.jl`: Generates fitting parameters constraints.
-*   `src/unitcommitment_model_modules/constraints_lib/constraints.jl`: Includes constraint definitions.
-*   `src/unitcommitment_model_modules/objectives_lib/_objective_econimic.jl`: Defines the economic objective.
-*   `src/unitcommitment_model_modules/objectives_lib/objections.jl`: Includes objective definitions.
-*   `src/unitcommitment_model_modules/tests_lib/_validata_input.jl`: Validates input data.
-*   `src/unitcommitment_model_modules/tests_lib/tests.jl`: Includes test functions.
-*   `src/unitcommitment_model_modules/utilitie_modules_lib/_define_decision_variables.jl`: Defines decision variables.
-*   `src/unitcommitment_model_modules/utilitie_modules_lib/_export_res_to_txtfiles.jl`: Exports results to text files.
-*   `src/unitcommitment_model_modules/utilitie_modules_lib/_linearization.jl`: Implements linearization techniques.
-*   `src/unitcommitment_model_modules/utilitie_modules_lib/utilities.jl`: Includes utility functions.
-*   `src/visualization_modules/casesploting.jl`: Plots the cases.
-*   `src/visualization_modules/draw_addditionalpower.jl`: Draws additional power.
-*   `src/visualization_modules/draw_onlineactivepowerbalance.jl`: Draws online active power balance.
+*   `src/input_data`: Excel readers, data formatting, and boundary checks.
+*   `src/renewables`: Renewable scenario generation and stochastic simulation.
+*   `src/unit_commitment`: Core SUC-SCUC formulation.
+*   `src/unit_commitment/constraints`: Generator, network, storage, system, data center, and frequency constraints.
+*   `src/unit_commitment/objectives`: Economic objective definitions.
+*   `src/unit_commitment/utilities`: Decision variables, linearization, solver helpers, power flow, exports, and result saving.
+*   `src/unit_commitment/validation`: Input and model validation helpers.
+*   `src/visualization`: Plotting and visualization helpers.
 
 ## Benders Decomposition Implementation
 

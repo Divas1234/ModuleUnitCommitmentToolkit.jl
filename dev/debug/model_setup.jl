@@ -1,16 +1,14 @@
 using Pkg
 Pkg.activate("./.pkg")
 include("src/environment_config.jl")
-include("src/formatteddata.jl")
-include("src/renewableenergysimulation.jl")
-include("src/showboundrycase.jl")
-include("src/readdatafromexcel.jl")
-include("src/SUCuccommitmentmodel.jl")
-include("src/casesploting.jl")
-include("src/saveresult.jl")
-include("src/generatefittingparameters.jl")
-include("src/draw_onlineactivepowerbalance.jl")
-include("src/draw_addditionalpower.jl")
+include("src/input_data/formatted_data.jl")
+include("src/renewables/renewable_simulation.jl")
+include("src/input_data/boundary_checks.jl")
+include("src/input_data/excel_reader.jl")
+include("src/unit_commitment/unit_commitment_model.jl")
+include("src/visualization/case_plotting.jl")
+include("src/visualization/draw_online_active_power_balance.jl")
+include("src/visualization/draw_additional_power.jl")
 
 # Destructure directly from function call for clarity
 UnitsFreqParam, WindsFreqParam, StrogeData, DataGen, GenCost, DataBranch, LoadCurve, DataLoad, datacentra_Data = readxlssheet()
@@ -29,7 +27,7 @@ boundrycondition(NB, NL, NG, NT, ND, units, loads, lines, winds, stroges)
 
 ND2
 
-# DEBUG - uc
+# Debug unit-commitment model assembly.
 
 if config_param.is_NetWorkCon == 1
     Adjacmatrix_BtoG, Adjacmatrix_B2D, Gsdf = linearpowerflow(units, lines, loads, NG, NB, ND, NL)

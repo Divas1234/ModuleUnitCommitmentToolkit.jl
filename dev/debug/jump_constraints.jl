@@ -1,11 +1,11 @@
 include(joinpath(pwd(), "src", "environment_config.jl"));
-include(joinpath(pwd(), "src", "renewableresource_modules", "stochasticsimulation.jl"));
-include(joinpath(pwd(), "src", "read_inputdata_modules", "readdatas.jl"));
-include(joinpath(pwd(), "src", "unitcommitment_model_modules", "SUCuccommitmentmodel.jl"));
+include(joinpath(pwd(), "src", "renewables", "stochastic_simulation.jl"));
+include(joinpath(pwd(), "src", "input_data", "readers.jl"));
+include(joinpath(pwd(), "src", "unit_commitment", "unit_commitment_model.jl"));
 
-include("define_masterproblem.jl")
-include("define_subproblem.jl")
-include("benderdecomposition_module.jl")
+include("tools/benders/models/master_problem.jl")
+include("tools/benders/models/subproblem.jl")
+include("tools/benders/decomposition.jl")
 UnitsFreqParam, WindsFreqParam, StrogeData, DataGen, GenCost, DataBranch, LoadCurve, DataLoad, datacentra_Data = readxlssheet()
 
 # Form input data for the model
