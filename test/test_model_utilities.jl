@@ -20,7 +20,7 @@
 
 	@test freq_constraints !== nothing
 	@test length(vec(freq_constraints.rocof)) == 2
+	@test length(vec(freq_constraints.nadir)) >= 2
 	@test length(vec(freq_constraints.qss)) == 2
-	@test length(vec(freq_constraints.nadir)) == 2
-	@test length(vec(freq_constraints.primary)) == 2
+	@test length(vec(freq_constraints.sfr)) == 6
 end

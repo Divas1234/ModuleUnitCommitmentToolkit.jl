@@ -6,7 +6,7 @@ load_runtime_config!()
 
 # Load environment configurations, simulation modules, and data readers
 include(joinpath(pwd(), "src", "environment_config.jl"))
-include(joinpath(pwd(), "src", "renewables", "stochastic_simulation.jl"))
+include(joinpath(pwd(), "src", "renewables", "renewables.jl"))
 include(joinpath(pwd(), "src", "input_data", "readers.jl"))
 # include(joinpath(pwd(), "src", "unit_commitment", "unit_commitment_model.jl"))
 

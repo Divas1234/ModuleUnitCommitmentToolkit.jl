@@ -9,6 +9,7 @@ include("system_constraints.jl")
 include("network_constraints.jl")
 include("storage_constraints.jl")
 include("data_center_constraints.jl")
+include("../frequency/frequency.jl")
 include("frequency_dynamic_constraints.jl")
 
 # Export all functions from the included modules

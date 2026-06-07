@@ -16,7 +16,7 @@ using Distributions
 
 const MOI = MathOptInterface
 
-include(joinpath(PROJECT_ROOT, "src", "renewables", "renewable_simulation.jl"))
+include(joinpath(PROJECT_ROOT, "src", "renewables", "renewables.jl"))
 include(joinpath(PROJECT_ROOT, "src", "input_data", "readers.jl"))
 include(joinpath(PROJECT_ROOT, "src", "unit_commitment", "constraints", "constraints.jl"))
 include(joinpath(PROJECT_ROOT, "src", "unit_commitment", "utilities", "linearization.jl"))
