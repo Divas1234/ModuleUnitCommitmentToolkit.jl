@@ -18,6 +18,7 @@ const MOI = MathOptInterface
 
 include(joinpath(PROJECT_ROOT, "src", "renewables", "renewable_simulation.jl"))
 include(joinpath(PROJECT_ROOT, "src", "input_data", "readers.jl"))
+include(joinpath(PROJECT_ROOT, "src", "unit_commitment", "constraints", "constraints.jl"))
 include(joinpath(PROJECT_ROOT, "src", "unit_commitment", "utilities", "linearization.jl"))
 include(joinpath(PROJECT_ROOT, "src", "unit_commitment", "utilities", "decision_variables.jl"))
 include(joinpath(PROJECT_ROOT, "tools", "benders", "models", "scuc_model.jl"))
