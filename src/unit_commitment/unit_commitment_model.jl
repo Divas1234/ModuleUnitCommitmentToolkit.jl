@@ -81,7 +81,7 @@ function SUC_scucmodel(NT::Int64, NB::Int64, NG::Int64, ND::Int64, NC::Int64, ND
 	add_transmission_constraints!(scuc, NT, NG, ND, NC, NW, NL, NS, units, loads, winds, lines, stroges, Gsdf, config_param, ND2, DataCentras)
 	add_storage_constraints!(scuc, NT, NC, NS, config_param, stroges)
 	add_datacentra_constraints!(scuc, NT, NS, config_param, ND2, DataCentras)
-	add_frequency_constraints!(scuc, NT, NG, NC, NS, units, stroges, config_param, Δp_contingency)
+	add_frequency_constraints!(scuc, NT, NG, NC, NS, units, stroges, config_param, Δp_contingency; winds = winds)
 
 	# --- Solve and Extract Results ---
 	# Solve the optimization model and extract the results

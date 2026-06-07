@@ -242,7 +242,7 @@ function build_ccg_extensive_model(
 	add_transmission_constraints!(model, data.NT, data.NG, data.ND, data.NC, data.NW, data.NL, NS_active, data.units, data.loads, winds_subset, data.lines, data.psses, gsdf, data.config_param, data.ND2, data.DataCentras)
 	add_storage_constraints!(model, data.NT, data.NC, NS_active, data.config_param, data.psses)
 	add_datacentra_constraints!(model, data.NT, NS_active, data.config_param, data.ND2, data.DataCentras)
-	add_frequency_constraints!(model, data.NT, data.NG, data.NC, NS_active, data.units, data.psses, data.config_param, contingency_size)
+	add_frequency_constraints!(model, data.NT, data.NG, data.NC, NS_active, data.units, data.psses, data.config_param, contingency_size; winds = winds_subset)
 	return model
 end
 
@@ -303,7 +303,7 @@ function build_ccg_recourse_model(data, scenario_winds::wind, scenarios_prob::Fl
 	add_transmission_constraints!(model, data.NT, data.NG, data.ND, data.NC, data.NW, data.NL, Int64(1), data.units, data.loads, scenario_winds, data.lines, data.psses, gsdf, data.config_param, data.ND2, data.DataCentras)
 	add_storage_constraints!(model, data.NT, data.NC, Int64(1), data.config_param, data.psses)
 	add_datacentra_constraints!(model, data.NT, Int64(1), data.config_param, data.ND2, data.DataCentras)
-	add_frequency_constraints!(model, data.NT, data.NG, data.NC, Int64(1), data.units, data.psses, data.config_param, contingency_size)
+	add_frequency_constraints!(model, data.NT, data.NG, data.NC, Int64(1), data.units, data.psses, data.config_param, contingency_size; winds = scenario_winds)
 	return model
 end
 

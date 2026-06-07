@@ -70,6 +70,7 @@ function bd_masterfunction(
     _units_shutdown_cost_constr = add_unit_operation_constraints!(scuc_masterproblem, NT, NG, units, onoffinit)
     _master_supply_adequacy_constr = add_master_supply_adequacy_constraints!(scuc_masterproblem, NT, NG, ND, NW, units, loads, winds)
     _master_storage_binary_constr = add_master_storage_binary_constraints!(scuc_masterproblem, NT, NC, NS, config_param)
+    _frequency_constr = add_frequency_constraints!(scuc_masterproblem, NT, NG, NC, NS, units, nothing, config_param, Δp_contingency; winds = winds)
     # add_curtailment_constraints!(scuc_masterproblem, NT, ND, NW, NS, loads, winds)
     # add_generator_power_constraints!(scuc_masterproblem, NT, NG, NS, units)
     # add_reserve_constraints!(scuc_masterproblem, NT, NG, NC, NS, units, loads, winds, config_param)
