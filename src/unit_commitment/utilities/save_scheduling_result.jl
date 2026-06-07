@@ -23,18 +23,18 @@ function save_details_scheduled_results(config_param, results)
 		if config_param.is_ConsiderDataCentra == 1
 			# Extract Data Centra results if they exist
 			dc_p = get(results, "dc_p", nothing)
-			dc_f = get(results, "dc_f", nothing)
-			dc_v² = get(results, "dc_v²", nothing)
-			dc_λ = get(results, "dc_λ", nothing)
-			dc_Δu1 = get(results, "dc_Δu1", nothing)
-			dc_Δu2 = get(results, "dc_Δu2", nothing)
+			dc_fv² = get(results, "dc_fv²", nothing)
+			dc_fv²λ = get(results, "dc_fv²λ", nothing)
+			dc_fv²_plus = get(results, "dc_fv²_plus", nothing)
+			dc_fv²_minus = get(results, "dc_fv²_minus", nothing)
+			dc_fv²λ_plus = get(results, "dc_fv²λ_plus", nothing)
 		else
 			dc_p = nothing
-			dc_f = nothing
-			dc_v² = nothing
-			dc_λ = nothing
-			dc_Δu1 = nothing
-			dc_Δu2 = nothing
+			dc_fv² = nothing
+			dc_fv²λ = nothing
+			dc_fv²_plus = nothing
+			dc_fv²_minus = nothing
+			dc_fv²λ_plus = nothing
 		end
 	else
 		println("Optimization failed. Cannot proceed with saving results.")

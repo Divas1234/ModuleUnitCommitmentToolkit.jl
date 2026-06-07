@@ -22,6 +22,12 @@
 	@test size(loads.load_curve) == (ND, NT)
 	@test all(units.p_max .>= units.p_min)
 	@test all(lines.p_max .>= 0)
+	workload = data_center_workload_profile(DataCentras, NT, ND2)
+	response_peak = vec(maximum(
+		DataCentras.idale .+ 1.5 .* DataCentras.sv_constant ./ DataCentras.μ .* workload;
+		dims = 2,
+	))
+	@test all(DataCentras.p_max .>= response_peak)
 
 	redirect_stdout(devnull) do
 		boundarycondition(NB, NL, NG, NT, ND, units, loads, lines, winds, psses, config_param; show_plots = false)

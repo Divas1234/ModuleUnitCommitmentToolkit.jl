@@ -1,17 +1,22 @@
+using Dates
+
 """
-`exported_scheduling_cost(...)`
+	exported_scheduling_cost(...)
 
-Processes and exports the optimization results of the SCUC model. It calculates
-detailed cost breakdowns (Startup, Shutdown, Production, Reserves, Curtailment)
-and saves time-sequential dispatch data (Units, BESS, Data Centers) into
-text and CSV files for post-processing and reporting.
+Export solved UC schedules into the repository `output/` directory. The export
+contains both human-readable summaries and plotting/analysis-friendly CSV files:
 
-# Exports
-
-  - `schedule_commitment_result.txt`: Summary of costs and unit schedules.
-  - `bess_scheduling_result.txt`: Detailed BESS charge/discharge/SoC profiles.
-  - `Bench_datacentra_result.txt`: Data center flexible load and workload profiles.
-  - Individual CSV files for Data Center variables (if enabled).
+- `schedule_commitment_result.txt`
+- `schedule_cost_summary.csv`
+- `unit_commitment_status.csv`
+- `unit_startup_shutdown_decisions.csv`
+- `unit_startup_shutdown_costs.csv`
+- `generator_dispatch.csv`
+- `reserve_schedule.csv`
+- `curtailment_schedule.csv`
+- `power_balance_summary.csv`
+- `data_center_schedule.csv` when data centers are enabled
+- `bess_schedule.csv` when BESS is enabled
 """
 function exported_scheduling_cost(
 		NS::Int64,
@@ -27,11 +32,14 @@ function exported_scheduling_cost(
 		lines::transmissionline,
 		DataCentras::data_centra,
 		config_param::config,
+		scenarios_prob,
 		su_cost,
 		sd_cost,
 		pgₖ,
 		pg₀,
 		x₀,
+		u₀,
+		v₀,
 		seq_sr⁺,
 		seq_sr⁻,
 		pᵨ,
@@ -44,265 +52,428 @@ function exported_scheduling_cost(
 		pss_charge_p⁻ = nothing,
 		pss_Qc = nothing,
 		dc_p_res = nothing,
-		dc_f_res = nothing,
-		dc_v²_res = nothing,
-		dc_λ_res = nothing,
-		dc_Δu1_res = nothing,
-		dc_Δu2_res = nothing,
+		dc_fv²_res = nothing,
+		dc_fv²λ_res = nothing,
+		dc_fv²_plus_res = nothing,
+		dc_fv²_minus_res = nothing,
+		dc_fv²λ_plus_res = nothing,
+		;
+		output_dir_override = nothing,
+		file_prefix::AbstractString = "",
 )
-	c₀ = config_param.is_CoalPrice  # Base cost of coal
-	pₛ = scenarios_prob  # Probability of scenarios
+	output_dir = uc_output_dir(output_dir_override)
+	NW = length(winds.index)
+	cost_summary = compute_uc_cost_summary(
+		NS,
+		NT,
+		NG,
+		ND,
+		NW,
+		config_param,
+		scenarios_prob,
+		su_cost,
+		sd_cost,
+		pgₖ,
+		x₀,
+		seq_sr⁺,
+		seq_sr⁻,
+		pᵨ,
+		pᵩ,
+		eachslope,
+		refcost,
+	)
 
-	# Penalty coefficients for load and wind curtailment
-	load_curtailment_penalty = config_param.is_LoadsCuttingCoefficient * 1e10
-	wind_curtailment_penalty = config_param.is_WindsCuttingCoefficient * 1e0
+	write_cost_summary_csv(joinpath(output_dir, file_prefix * "schedule_cost_summary.csv"), cost_summary)
+	rm(joinpath(output_dir, file_prefix * "unit_startup_shutdown.csv"); force = true)
+	rm(joinpath(output_dir, "unit_startup_shutdown.csv"); force = true)
+	write_commitment_csv(joinpath(output_dir, file_prefix * "unit_commitment_status.csv"), units, x₀, NT)
+	write_startup_shutdown_decisions_csv(joinpath(output_dir, file_prefix * "unit_startup_shutdown_decisions.csv"), units, u₀, v₀, NT)
+	write_startup_shutdown_costs_csv(joinpath(output_dir, file_prefix * "unit_startup_shutdown_costs.csv"), units, su_cost, sd_cost, NT)
+	write_generator_dispatch_csv(joinpath(output_dir, file_prefix * "generator_dispatch.csv"), units, pg₀, NT, NG, NS)
+	write_reserve_schedule_csv(joinpath(output_dir, file_prefix * "reserve_schedule.csv"), units, seq_sr⁺, seq_sr⁻, NT, NG, NS)
+	write_curtailment_schedule_csv(joinpath(output_dir, file_prefix * "curtailment_schedule.csv"), loads, winds, pᵨ, pᵩ, NT, ND, NW, NS)
+	write_power_balance_summary_csv(
+		joinpath(output_dir, file_prefix * "power_balance_summary.csv"),
+		loads,
+		winds,
+		pg₀,
+		pᵨ,
+		pᵩ,
+		NT,
+		NG,
+		ND,
+		NW,
+		NS,
+		config_param,
+		NC,
+		pss_charge_p⁺,
+		pss_charge_p⁻,
+		ND2,
+		dc_p_res,
+	)
 
-	ρ⁺ = c₀ * 2
-	ρ⁻ = c₀ * 2
-
-	# --- Cost Breakdown Calculations ---
-	# Prod_cost: Sum of segment costs (variable fuel) and no-load fixed costs (refcost)
-	prod_cost = pₛ *
-				c₀ *
-				(
-					sum(
-					sum(
-						sum(sum(pgₖ[i + (s - 1) * NG, t, :] .* eachslope[:, i] for t ∈ 1:NT)) for
-					s ∈ 1:NS
-					) for i ∈ 1:NG
-				) + sum(sum(sum(x₀[:, t] .* refcost[:, 1] for t ∈ 1:NT)) for s ∈ 1:NS)
-				)
-
-	# Reserve Costs: Upward and Downward spinning reserve costs
-	cr⁺ = pₛ *
-		  c₀ *
-		  sum(sum(sum(ρ⁺ * seq_sr⁺[i + (s - 1) * NG, t] for i ∈ 1:NG) for t ∈ 1:NT) for s ∈ 1:NS)
-	cr⁻ = pₛ *
-		  c₀ *
-		  sum(sum(sum(ρ⁺ * seq_sr⁻[i + (s - 1) * NG, t] for i ∈ 1:NG) for t ∈ 1:NT) for s ∈ 1:NS)
-
-	# Curtailment Penalties: Load and Wind
-	𝜟pd = pₛ * sum(sum(sum(pᵨ[(1 + (s - 1) * ND):(s * ND), t]) for t ∈ 1:NT) for s ∈ 1:NS)
-	𝜟pw = pₛ * sum(sum(sum(pᵩ[(1 + (s - 1) * NW):(s * NW), t]) for t ∈ 1:NT) for s ∈ 1:NS)
-	str = zeros(1, 7)
-	str[1, 1] = sum(su_cost) * 1.0
-	str[1, 2] = sum(sd_cost) * 1.0
-	str[1, 3] = prod_cost
-	str[1, 4] = cr⁺
-	str[1, 5] = cr⁻
-	str[1, 6] = 𝜟pd
-	str[1, 7] = 𝜟pw
-
-	# --- Directory and File Management ---
-	if Sys.iswindows()
-		output_dir = "D:/GithubClonefiles/module_unitcommitment_gbd/output/"
-	elseif Sys.isapple()
-		output_dir = "/Users/yuanyiping/Documents/GitHub/module_unitcommitment/output/"
-	end
-
-	# Create output directory if it doesn't exist
-	try
-		if !isdir(output_dir)
-			mkdir(output_dir)
-		end
-
-		# Open output file for writing results
-		output_file = joinpath(output_dir, "schedule_commitment_result.txt")
-		open(output_file, "w") do io
-			writedlm(io, [" "])
-			writedlm(io, ["su_cost" "sd_cost" "prod_cost" "cr⁺" "cr⁻" "𝜟pd" "𝜟pw"], '\t')
-			writedlm(io, str, '\t')
-			writedlm(io, [" "])
-			writedlm(io, ["list 1: units stutup/down states"])
-			writedlm(io, x₀, '\t')
-			writedlm(io, [" "])
-			writedlm(io, ["list 2: units dispatching power in scenario NO.1"])
-			writedlm(io, pg₀[1:NG, 1:NT], '\t')
-			writedlm(io, [" "])
-			writedlm(io, ["list 3: spolied wind power"])
-			writedlm(io, pᵩ[1:NW, 1:NT], '\t')
-			writedlm(io, [" "])
-			writedlm(io, ["list 4: forced load curtailments"])
-			writedlm(io, pᵨ[1:ND, 1:NT], '\t')
-			writedlm(io, [" "])
-			writedlm(io, ["list 5: pss charge state"])
-			writedlm(io, pss_charge_state⁺[1:NC, 1:NT], '\t')
-			writedlm(io, [" "])
-			writedlm(io, ["list 6: pss discharge state"])
-			writedlm(io, pss_charge_state⁻[1:NC, 1:NT], '\t')
-			writedlm(io, [" "])
-			writedlm(io, ["list 7: pss charge power"])
-			writedlm(io, pss_charge_p⁺[1:NC, 1:NT], '\t')
-			writedlm(io, [" "])
-			writedlm(io, ["list 8: pss discharge power"])
-			writedlm(io, pss_charge_p⁻[1:NC, 1:NT], '\t')
-			writedlm(io, [" "])
-			writedlm(io, ["list 9: pss strored energy"])
-			writedlm(io, pss_Qc[1:NC, 1:NT], '\t')
-			writedlm(io, [" "])
-			writedlm(io, ["list 10: sr⁺"])
-			writedlm(io, seq_sr⁺[1:NG, 1:NT], '\t')
-			writedlm(io, [" "])
-			writedlm(io, ["list 11: sr⁻"])
-			writedlm(io, seq_sr⁻[1:NG, 1:NT], '\t')
-			return writedlm(io, [" "])
-			# writedlm(io, ["list 12: α"])
-			# writedlm(io, α[1:NC, 1:NT], '\t')
-			# writedlm(io, [" "])
-			# writedlm(io, ["list 13: β"])
-			# writedlm(io, β[1:NC, 1:NT], '\t')
-		end
-
-		println(
-			"PART1: [unit-commitment] calculation result has been saved to: $output_file",
+	if config_param.is_ConsiderBESS == 1 && NC > 0
+		write_bess_schedule_csv(
+			joinpath(output_dir, file_prefix * "bess_schedule.csv"),
+			pss_charge_state⁺,
+			pss_charge_state⁻,
+			pss_charge_p⁺,
+			pss_charge_p⁻,
+			pss_Qc,
+			NT,
+			NC,
+			NS,
 		)
-
-		if config_param.is_ConsiderBESS == 1 && NC > 0
-			# Open output file for writing results
-			output_file = joinpath(output_dir, "bess_scheduling_result.txt")
-			open(output_file, "w") do io
-				writedlm(io, [" "])
-				writedlm(io, ["list 5: pss charge state"])
-				writedlm(io, pss_charge_state⁺[1:NC, 1:NT], '\t')
-				writedlm(io, [" "])
-				writedlm(io, ["list 6: pss discharge state"])
-				writedlm(io, pss_charge_state⁻[1:NC, 1:NT], '\t')
-				writedlm(io, [" "])
-				writedlm(io, ["list 7: pss charge power"])
-				writedlm(io, pss_charge_p⁺[1:NC, 1:NT], '\t')
-				writedlm(io, [" "])
-				writedlm(io, ["list 8: pss discharge power"])
-				writedlm(io, pss_charge_p⁻[1:NC, 1:NT], '\t')
-				writedlm(io, [" "])
-				writedlm(io, ["list 9: pss strored energy"])
-				writedlm(io, pss_Qc[1:NC, 1:NT], '\t')
-				writedlm(io, [" "])
-				writedlm(io, ["list 10: sr⁺"])
-				writedlm(io, seq_sr⁺[1:NG, 1:NT], '\t')
-				writedlm(io, [" "])
-				writedlm(io, ["list 11: sr⁻"])
-				writedlm(io, seq_sr⁻[1:NG, 1:NT], '\t')
-				return writedlm(io, [" "])
-				# writedlm(io, ["list 12: α"])
-				# writedlm(io, α[1:NC, 1:NT], '\t')
-				# writedlm(io, [" "])
-				# writedlm(io, ["list 13: β"])
-				# writedlm(io, β[1:NC, 1:NT], '\t')
-			end
-			println("PART2: [BESS] calculation result has been saved to: $output_file")
-		end
-
-		if config_param.is_ConsiderDataCentra == 1 && ND2 > 0
-			output_file = joinpath(output_dir, "Bench_datacentra_result.txt")
-			open(output_file, "w") do io
-				writedlm(io, [" "])
-				writedlm(io, ["list 1: dc_p"], '\t')
-				writedlm(io, dc_p_res[1:(ND2), 1:NT], '\t')
-				writedlm(io, [" "])
-				writedlm(io, ["list 2: dc_f"])
-				writedlm(io, dc_f_res[1:(ND2), 1:NT], '\t')
-				writedlm(io, [" "])
-				writedlm(io, ["list 3: dc_v²"])
-				writedlm(io, dc_v²_res[1:(ND2), 1:NT], '\t')
-				writedlm(io, [" "])
-				writedlm(io, ["list 4: dc_λ"])
-				writedlm(io, dc_λ_res[1:(ND2), 1:NT], '\t')
-				writedlm(io, [" "])
-				writedlm(io, ["list 5: dc_Δu1"])
-				writedlm(io, dc_Δu1_res[1:(ND2), 1:NT], '\t')
-				writedlm(io, [" "])
-				writedlm(io, ["list 6: dc_Δu2"])
-				return writedlm(io, dc_Δu2_res[1:(ND2), 1:NT], '\t')
-			end
-			println(
-				"PART2: [data-centra] calculation result has been saved to: $output_file",
-			)
-			println(
-				"+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++",
-			)
-
-			# Open output file for csv writing results
-			# output_dir = "D:/GithubClonefiles/datacentra_unitcommitment/output/data_centra/"
-
-			iter_num = 6
-			coeff = 0.05
-			iter_block = Int64(round(NT / iter_num))
-
-			s = 1
-			data_to_write = [
-				("dc_delta_u2.csv", (dc_Δu2_res[1:(ND2), 1:NT])),
-				("dc_delta_u1.csv", (dc_Δu1_res[1:(ND2), 1:NT])),
-				("dc_v_squared.csv", (dc_v²_res[1:(ND2), 1:NT])),
-				("dc_lambda.csv", (dc_λ_res[1:(ND2), 1:NT])),
-				("dc_f.csv", (dc_f_res[1:(ND2), 1:NT])),
-				("dc_p.csv", (dc_p_res[1:(ND2), 1:NT])),
-				(
-					"dc_debug_tasks_1.csv",
-					((dc_λ_res[
-					((s - 1) * ND2 + 1):(s * ND2),
-					((1 - 1) * iter_block + 1):(1 * iter_block)
-		])),
-				),
-				(
-					"dc_debug_tasks_2.csv",
-					((dc_λ_res[
-					((s - 1) * ND2 + 1):(s * ND2),
-					((2 - 1) * iter_block + 1):(2 * iter_block)
-		])),
-				),
-				(
-					"dc_debug_tasks_3.csv",
-					((dc_λ_res[
-					((s - 1) * ND2 + 1):(s * ND2),
-					((3 - 1) * iter_block + 1):(3 * iter_block)
-		])),
-				),
-				(
-					"dc_debug_tasks_4.csv",
-					((dc_λ_res[
-					((s - 1) * ND2 + 1):(s * ND2),
-					((4 - 1) * iter_block + 1):(4 * iter_block)
-		])),
-				),
-				(
-					"dc_debug_tasks_5.csv",
-					((dc_λ_res[
-					((s - 1) * ND2 + 1):(s * ND2),
-					((5 - 1) * iter_block + 1):(5 * iter_block)
-		])),
-				),
-				(
-					"dc_debug_tasks_6.csv",
-					((dc_λ_res[
-					((s - 1) * ND2 + 1):(s * ND2),
-					((6 - 1) * iter_block + 1):(6 * iter_block)
-		])),
-				),
-			]
-
-			# iter = 1
-			# println("===============================================================================")
-			# @show (1 + coeff) * sum(DataCentras.λ) * iter_block .*
-			# 	  sum(DataCentras.computational_power_tasks[((iter - 1) * iter_block + 1):(iter * iter_block)])
-			# @show (1 - coeff) * sum(DataCentras.λ) * iter_block .*
-			# 	  sum(DataCentras.computational_power_tasks[((iter - 1) * iter_block + 1):(iter * iter_block)])
-			# @show sum(JuMP.value.(dc_λ[
-			# 	((s - 1) * ND2 + 1):(s * ND2), ((iter - 1) * iter_block + 1):(iter * iter_block)])) .*
-			# 	  sum(DataCentras.computational_power_tasks[((iter - 1) * iter_block + 1):(iter * iter_block)])
-
-			sub_output_dir = joinpath(pwd(), "output/data_centra/")
-			for (filename, data) in data_to_write
-				filepath = joinpath(sub_output_dir, filename)
-				try
-					CSV.write(filepath, DataFrame(data, :auto))
-					println("Successfully wrote to $filepath")
-				catch e
-					@error "Failed to write to $filepath" exception = (e, catch_backtrace())
-				end
-			end
-		end
-
-	catch e
-		println("Error writing results to file: $e")
 	end
+
+	if config_param.is_ConsiderDataCentra == 1 && ND2 > 0
+		write_data_center_schedule_csv(
+			joinpath(output_dir, file_prefix * "data_center_schedule.csv"),
+			DataCentras,
+			dc_p_res,
+			dc_fv²_res,
+			dc_fv²λ_res,
+			dc_fv²_plus_res,
+			dc_fv²_minus_res,
+			dc_fv²λ_plus_res,
+			NT,
+			ND2,
+			NS,
+		)
+	end
+
+	write_schedule_summary_txt(
+		joinpath(output_dir, file_prefix * "schedule_commitment_result.txt"),
+		cost_summary,
+		units,
+		x₀,
+		u₀,
+		v₀,
+		pg₀,
+		seq_sr⁺,
+		seq_sr⁻,
+		NT,
+		NG,
+	)
+
+	println("UC scheduling results saved to: $output_dir")
+	return cost_summary
+end
+
+function uc_output_dir(output_dir_override = nothing)
+	output_dir = output_dir_override === nothing ? get(ENV, "MODULE_UC_OUTPUT_DIR", joinpath(pwd(), "output")) : String(output_dir_override)
+	mkpath(output_dir)
+	return output_dir
+end
+
+function uc_run_id()
+	return get(ENV, "MODULE_UC_RUN_ID", Dates.format(now(), "yyyymmdd_HHMMSS"))
+end
+
+function uc_algorithm_run_dir(algorithm_name::AbstractString; run_id::AbstractString = uc_run_id())
+	return joinpath(pwd(), "output", algorithm_name, run_id)
+end
+
+function uc_scheduling_output_dir(algorithm_name::AbstractString; run_id::AbstractString = uc_run_id())
+	output_dir = joinpath(uc_algorithm_run_dir(algorithm_name; run_id = run_id), "scheduling")
+	mkpath(output_dir)
+	return output_dir
+end
+
+function uc_schedule_file_prefix(algorithm_name::AbstractString, scenario_count::Integer)
+	return "$(algorithm_name)_$(scenario_count)_scenarios_"
+end
+
+function model_value(model, variable_name::Symbol)
+	object_dictionary = JuMP.object_dictionary(model)
+	if !haskey(object_dictionary, variable_name)
+		throw(KeyError(variable_name))
+	end
+	return JuMP.value.(model[variable_name])
+end
+
+function optional_model_value(model, variable_name::Symbol)
+	object_dictionary = JuMP.object_dictionary(model)
+	if !haskey(object_dictionary, variable_name)
+		return nothing
+	end
+	variable_container = model[variable_name]
+	return isempty(variable_container) ? nothing : JuMP.value.(variable_container)
+end
+
+function export_solved_uc_model_results(
+		model,
+		data;
+		output_dir::AbstractString = joinpath(pwd(), "output"),
+		winds = data.winds,
+		NS::Int64 = Int64(winds.scenarios_nums),
+		scenarios_prob = 1.0 / NS,
+		file_prefix::AbstractString = "",
+)
+	refcost, eachslope = linearizationfuelcurve(data.units, data.NG)
+	config_param = data.config_param
+
+	x₀ = model_value(model, :x)
+	u₀ = model_value(model, :u)
+	v₀ = model_value(model, :v)
+	pg₀ = model_value(model, :pg₀)
+	pgₖ = model_value(model, :pgₖ)
+	su_cost = model_value(model, :su₀)
+	sd_cost = model_value(model, :sd₀)
+	seq_sr⁺ = model_value(model, :sr⁺)
+	seq_sr⁻ = model_value(model, :sr⁻)
+	pᵨ = model_value(model, :Δpd)
+	pᵩ = model_value(model, :Δpw)
+
+	pss_charge_state⁺ = optional_model_value(model, :κ⁺)
+	pss_charge_state⁻ = optional_model_value(model, :κ⁻)
+	pss_charge_p⁺ = optional_model_value(model, :pc⁺)
+	pss_charge_p⁻ = optional_model_value(model, :pc⁻)
+	pss_Qc = optional_model_value(model, :qc)
+
+	dc_p_res = optional_model_value(model, :dc_p)
+	dc_fv²_res = optional_model_value(model, :dc_fv²)
+	dc_fv²λ_res = optional_model_value(model, :dc_fv²λ)
+	dc_fv²_plus_res = optional_model_value(model, :dc_fv²_plus)
+	dc_fv²_minus_res = optional_model_value(model, :dc_fv²_minus)
+	dc_fv²λ_plus_res = optional_model_value(model, :dc_fv²λ_plus)
+
+	return exported_scheduling_cost(
+		NS,
+		data.NT,
+		data.NB,
+		data.NG,
+		data.ND,
+		data.NC,
+		data.ND2,
+		data.units,
+		data.loads,
+		winds,
+		data.lines,
+		data.DataCentras,
+		config_param,
+		scenarios_prob,
+		su_cost,
+		sd_cost,
+		pgₖ,
+		pg₀,
+		x₀,
+		u₀,
+		v₀,
+		seq_sr⁺,
+		seq_sr⁻,
+		pᵨ,
+		pᵩ,
+		eachslope,
+		refcost,
+		pss_charge_state⁺,
+		pss_charge_state⁻,
+		pss_charge_p⁺,
+		pss_charge_p⁻,
+		pss_Qc,
+		dc_p_res,
+		dc_fv²_res,
+		dc_fv²λ_res,
+		dc_fv²_plus_res,
+		dc_fv²_minus_res,
+		dc_fv²λ_plus_res;
+		output_dir_override = output_dir,
+		file_prefix = file_prefix,
+	)
+end
+
+function scenario_row(entity_count::Int, scenario::Int, entity::Int)
+	return (scenario - 1) * entity_count + entity
+end
+
+function compute_uc_cost_summary(NS, NT, NG, ND, NW, config_param, scenarios_prob, su_cost, sd_cost, pgₖ, x₀, seq_sr⁺, seq_sr⁻, pᵨ, pᵩ, eachslope, refcost)
+	c0 = config_param.is_CoalPrice
+	ps = scenarios_prob
+	load_curtailment_penalty = config_param.is_LoadsCuttingCoefficient * 1e10
+	wind_curtailment_penalty = config_param.is_WindsCuttingCoefficient
+	reserve_price_up = 2 * c0
+	reserve_price_down = 2 * c0
+
+	startup_cost = sum(su_cost)
+	shutdown_cost = sum(sd_cost)
+	variable_fuel_cost = ps * c0 * sum(pgₖ[scenario_row(NG, s, g), t, k] * eachslope[k, g] for s in 1:NS, g in 1:NG, t in 1:NT, k in axes(pgₖ, 3))
+	no_load_cost = ps * c0 * sum(x₀[g, t] * refcost[g, 1] for s in 1:NS, g in 1:NG, t in 1:NT)
+	reserve_up_cost = ps * c0 * sum(reserve_price_up * seq_sr⁺[scenario_row(NG, s, g), t] for s in 1:NS, g in 1:NG, t in 1:NT)
+	reserve_down_cost = ps * c0 * sum(reserve_price_down * seq_sr⁻[scenario_row(NG, s, g), t] for s in 1:NS, g in 1:NG, t in 1:NT)
+	load_curtailment_cost = ps * load_curtailment_penalty * sum(max(pᵨ[scenario_row(ND, s, d), t], 0.0) for s in 1:NS, d in 1:ND, t in 1:NT)
+	wind_curtailment_cost = ps * wind_curtailment_penalty * sum(max(pᵩ[scenario_row(NW, s, w), t], 0.0) for s in 1:NS, w in 1:NW, t in 1:NT)
+	total_cost = startup_cost + shutdown_cost + variable_fuel_cost + no_load_cost + reserve_up_cost + reserve_down_cost + load_curtailment_cost + wind_curtailment_cost
+
+	return (
+		startup_cost = startup_cost,
+		shutdown_cost = shutdown_cost,
+		variable_fuel_cost = variable_fuel_cost,
+		no_load_cost = no_load_cost,
+		reserve_up_cost = reserve_up_cost,
+		reserve_down_cost = reserve_down_cost,
+		load_curtailment_cost = load_curtailment_cost,
+		wind_curtailment_cost = wind_curtailment_cost,
+		total_cost = total_cost,
+	)
+end
+
+function write_rows_csv(path::AbstractString, header, rows)
+	open(path, "w") do io
+		writedlm(io, reshape(collect(header), 1, :), ',')
+		for row in rows
+			writedlm(io, reshape(collect(row), 1, :), ',')
+		end
+	end
+	return path
+end
+
+function write_cost_summary_csv(path, cost_summary)
+	rows = (Any[string(name), getfield(cost_summary, name)] for name in keys(cost_summary))
+	return write_rows_csv(path, ["component", "value"], rows)
+end
+
+function write_commitment_csv(path, units, x, NT)
+	unit_columns = ["unit_$(units.index[g])_commitment" for g in 1:length(units.index)]
+	rows = (Any[t, [x[g, t] for g in 1:length(units.index)]...] for t in 1:NT)
+	return write_rows_csv(path, ["time", unit_columns...], rows)
+end
+
+function write_startup_shutdown_decisions_csv(path, units, u, v, NT)
+	startup_columns = ["unit_$(units.index[g])_startup" for g in 1:length(units.index)]
+	shutdown_columns = ["unit_$(units.index[g])_shutdown" for g in 1:length(units.index)]
+	rows = (
+		Any[
+			t,
+			[u[g, t] for g in 1:length(units.index)]...,
+			[v[g, t] for g in 1:length(units.index)]...,
+		] for t in 1:NT
+	)
+	return write_rows_csv(path, ["time", startup_columns..., shutdown_columns...], rows)
+end
+
+function write_startup_shutdown_costs_csv(path, units, su_cost, sd_cost, NT)
+	startup_cost_columns = ["unit_$(units.index[g])_startup_cost" for g in 1:length(units.index)]
+	shutdown_cost_columns = ["unit_$(units.index[g])_shutdown_cost" for g in 1:length(units.index)]
+	rows = (
+		Any[
+			t,
+			[su_cost[g, t] for g in 1:length(units.index)]...,
+			[sd_cost[g, t] for g in 1:length(units.index)]...,
+		] for t in 1:NT
+	)
+	return write_rows_csv(path, ["time", startup_cost_columns..., shutdown_cost_columns...], rows)
+end
+
+function write_generator_dispatch_csv(path, units, pg, NT, NG, NS)
+	unit_columns = ["unit_$(units.index[g])_dispatch" for g in 1:NG]
+	rows = (Any[s, t, [pg[scenario_row(NG, s, g), t] for g in 1:NG]...] for s in 1:NS, t in 1:NT)
+	return write_rows_csv(path, ["scenario", "time", unit_columns...], rows)
+end
+
+function write_reserve_schedule_csv(path, units, reserve_up, reserve_down, NT, NG, NS)
+	rows = (Any[s, units.index[g], t, reserve_up[scenario_row(NG, s, g), t], reserve_down[scenario_row(NG, s, g), t]] for s in 1:NS, g in 1:NG, t in 1:NT)
+	return write_rows_csv(path, ["scenario", "unit_id", "time", "reserve_up", "reserve_down"], rows)
+end
+
+function write_curtailment_schedule_csv(path, loads, winds, load_curtailment, wind_curtailment, NT, ND, NW, NS)
+	load_columns = ["load_$(loads.index[d])_curtailment" for d in 1:ND]
+	wind_columns = ["wind_$(winds.index[w])_curtailment" for w in 1:NW]
+	rows = (
+		Any[
+			s,
+			t,
+			[load_curtailment[scenario_row(ND, s, d), t] for d in 1:ND]...,
+			[wind_curtailment[scenario_row(NW, s, w), t] for w in 1:NW]...,
+		] for s in 1:NS, t in 1:NT
+	)
+	return write_rows_csv(path, ["scenario", "time", load_columns..., wind_columns...], rows)
+end
+
+function write_power_balance_summary_csv(path, loads, winds, pg, load_curtailment, wind_curtailment, NT, NG, ND, NW, NS, config_param, NC, bess_charge, bess_discharge, ND2, dc_power)
+	rows = []
+	for s in 1:NS, t in 1:NT
+		thermal_generation = sum(pg[scenario_row(NG, s, g), t] for g in 1:NG)
+		wind_available = sum(winds.scenarios_curve[s, t] * winds.p_max[w] for w in 1:NW)
+		wind_spill = sum(wind_curtailment[scenario_row(NW, s, w), t] for w in 1:NW)
+		load_total = sum(loads.load_curve[d, t] for d in 1:ND)
+		load_shed = sum(load_curtailment[scenario_row(ND, s, d), t] for d in 1:ND)
+		bess_charge_total = (config_param.is_ConsiderBESS == 1 && NC > 0 && bess_charge !== nothing) ? sum(bess_charge[scenario_row(NC, s, c), t] for c in 1:NC) : 0.0
+		bess_discharge_total = (config_param.is_ConsiderBESS == 1 && NC > 0 && bess_discharge !== nothing) ? sum(bess_discharge[scenario_row(NC, s, c), t] for c in 1:NC) : 0.0
+		data_center_load = (config_param.is_ConsiderDataCentra == 1 && ND2 > 0 && dc_power !== nothing) ? sum(dc_power[scenario_row(ND2, s, dc), t] for dc in 1:ND2) : 0.0
+		net_balance = thermal_generation + wind_available - wind_spill + bess_discharge_total - bess_charge_total - (load_total - load_shed) - data_center_load
+		push!(
+			rows,
+			Any[
+				s,
+				t,
+				thermal_generation,
+				wind_available - wind_spill,
+				load_total - load_shed,
+				data_center_load,
+				bess_charge_total,
+				bess_discharge_total,
+				load_shed,
+				wind_spill,
+				net_balance,
+			],
+		)
+	end
+	return write_rows_csv(
+		path,
+		["scenario", "time", "thermal_generation", "wind_generation", "served_load", "data_center_load", "bess_charge", "bess_discharge", "load_shed", "wind_spill", "net_balance"],
+		rows,
+	)
+end
+
+function write_bess_schedule_csv(path, charge_state, discharge_state, charge_power, discharge_power, energy, NT, NC, NS)
+	rows = (Any[s, c, t, charge_state[scenario_row(NC, s, c), t], discharge_state[scenario_row(NC, s, c), t], charge_power[scenario_row(NC, s, c), t], discharge_power[scenario_row(NC, s, c), t], energy[scenario_row(NC, s, c), t]] for s in 1:NS, c in 1:NC, t in 1:NT)
+	return write_rows_csv(path, ["scenario", "storage_id", "time", "charge_state", "discharge_state", "charge_power", "discharge_power", "stored_energy"], rows)
+end
+
+function write_data_center_schedule_csv(path, DataCentras, dc_power, fv2, fv2lambda, fv2_plus, fv2_minus, fv2lambda_plus, NT, ND2, NS)
+	rows = (Any[s, DataCentras.index[dc], t, dc_power[scenario_row(ND2, s, dc), t], fv2[scenario_row(ND2, s, dc), t], fv2lambda[scenario_row(ND2, s, dc), t], fv2_plus[scenario_row(ND2, s, dc), t], fv2_minus[scenario_row(ND2, s, dc), t], fv2lambda_plus[scenario_row(ND2, s, dc), t]] for s in 1:NS, dc in 1:ND2, t in 1:NT)
+	return write_rows_csv(path, ["scenario", "data_center_id", "time", "power", "fv2", "fv2lambda", "fv2_plus", "fv2_minus", "fv2lambda_plus"], rows)
+end
+
+function write_schedule_summary_txt(path, cost_summary, units, commitment, startup, shutdown, dispatch, reserve_up, reserve_down, NT, NG)
+	open(path, "w") do io
+		println(io, "Unit Commitment Scheduling Summary")
+		println(io, "==================================")
+		println(io)
+		println(io, "Cost Summary")
+		for name in keys(cost_summary)
+			println(io, "  ", rpad(string(name), 28), getfield(cost_summary, name))
+		end
+		println(io)
+		println(io, "Unit Status by Time")
+		writedlm(io, reshape(["unit_id"; ["t$t" for t in 1:NT]], 1, :), '\t')
+		for g in 1:NG
+			writedlm(io, reshape([units.index[g]; [commitment[g, t] for t in 1:NT]], 1, :), '\t')
+		end
+		println(io)
+		println(io, "Startup Status by Time")
+		writedlm(io, reshape(["unit_id"; ["t$t" for t in 1:NT]], 1, :), '\t')
+		for g in 1:NG
+			writedlm(io, reshape([units.index[g]; [startup[g, t] for t in 1:NT]], 1, :), '\t')
+		end
+		println(io)
+		println(io, "Shutdown Status by Time")
+		writedlm(io, reshape(["unit_id"; ["t$t" for t in 1:NT]], 1, :), '\t')
+		for g in 1:NG
+			writedlm(io, reshape([units.index[g]; [shutdown[g, t] for t in 1:NT]], 1, :), '\t')
+		end
+		println(io)
+		println(io, "Scenario 1 Generator Dispatch")
+		writedlm(io, reshape(["unit_id"; ["t$t" for t in 1:NT]], 1, :), '\t')
+		for g in 1:NG
+			writedlm(io, reshape([units.index[g]; [dispatch[g, t] for t in 1:NT]], 1, :), '\t')
+		end
+		println(io)
+		println(io, "Scenario 1 Reserve Up / Reserve Down")
+		writedlm(io, reshape(["unit_id", "time", "reserve_up", "reserve_down"], 1, :), '\t')
+		for g in 1:NG, t in 1:NT
+			writedlm(io, reshape([units.index[g], t, reserve_up[g, t], reserve_down[g, t]], 1, :), '\t')
+		end
+	end
+	return path
 end

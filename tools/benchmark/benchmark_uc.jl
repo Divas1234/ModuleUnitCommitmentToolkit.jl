@@ -32,6 +32,15 @@ function solve_benchmark_uc(; scenario_limit::Int64 = 20)
 	)
 	optimize!(model)
 	assert_is_solved_and_feasible(model)
+	cost_summary = export_solved_uc_model_results(
+		model,
+		data;
+		output_dir = uc_scheduling_output_dir("benchmark_uc"),
+		winds = active_winds,
+		NS = data.NS,
+		scenarios_prob = data.full_scenario_probability,
+		file_prefix = uc_schedule_file_prefix("benchmark_uc", data.NS),
+	)
 	objective = objective_value(model)
 	best_bound = objective_bound(model)
 	gap = relative_gap(model)
@@ -55,5 +64,6 @@ function solve_benchmark_uc(; scenario_limit::Int64 = 20)
 		lower_bound = best_bound,
 		gap = gap,
 		dro_enabled = use_dro && data.dro.enabled,
+		cost_summary = cost_summary,
 	)
 end

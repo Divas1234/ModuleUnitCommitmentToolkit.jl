@@ -38,84 +38,26 @@ function add_transmission_constraints!(scuc::Model, NT, NG, ND, NC, NW, NL, NS, 
 		pc⁺ = check_var_exists(scuc, "pc⁺") ? scuc[:pc⁺] : nothing
 		pc⁻ = check_var_exists(scuc, "pc⁻") ? scuc[:pc⁻] : nothing
 
-		if config_param.is_NetWorkCon == 1 && Gsdf !== nothing && NL > 0 && DataCentras !== nothing
-			# This function assumes Gsdf is pre-calculated and passed
-			for l in 1:NL
-				subGsdf_units = Gsdf[l, units.locatebus]
-				subGsdf_winds = Gsdf[l, winds.index]
-				subGsdf_loads = Gsdf[l, loads.locatebus]
-				# Ensure stroges.locatebus is valid and Gsdf has correct dimensions
-				subGsdf_psses = (NC > 0 && !isempty(stroges.locatebus)) ? Gsdf[l, stroges.locatebus] : [] # Handle NC=0 or missing locatebus
+		dc_enabled = config_param.is_ConsiderDataCentra == 1 && ND2 !== nothing && ND2 > 0 && DataCentras !== nothing && check_var_exists(scuc, "dc_p")
+		dc_p = dc_enabled ? scuc[:dc_p] : nothing
 
-				# Store the scenario-indexed constraints
-				push!(
-					transmissionline_powerflow_upbound_constr,
-					@constraint(scuc,
-						[s = 1:NS, t = 1:NT],
-						# Contribution from Thermal Units
-						sum(subGsdf_units[i] * pg₀[i + (s - 1) * NG, t] for i in 1:NG) +
-						# Contribution from Wind (Max Generation minus Curtailment)
-						sum(subGsdf_winds[w] * (winds.scenarios_curve[s, t] * winds.p_max[w, 1] - Δpw[(s - 1) * NW + w, t]) for w in 1:NW) -
-						# Contribution from Loads (Base Demand minus Shedding)
-						sum(subGsdf_loads[d] * (loads.load_curve[d, t] - Δpd[(s - 1) * ND + d, t]) for d in 1:ND) +
-						# Contribution from Energy Storage (Discharge minus Charge)
-						sum((if NC > 0 && pc⁺ !== nothing && pc⁻ !== nothing && c <= length(subGsdf_psses)
-								subGsdf_psses[c] * (pc⁻[(s - 1) * NC + c, t] - pc⁺[(s - 1) * NC + c, t])
-							else
-								0.0
-							end) for c in 1:NC) <= lines.p_max[l, 1])
-				)
-				push!(
-					transmissionline_powerflow_downbound_constr,
-					@constraint(scuc,
-						[s = 1:NS, t = 1:NT],
-						# Net injection mapping to lower line limits
-						sum(subGsdf_units[i] * pg₀[i + (s - 1) * NG, t] for i in 1:NG) + sum(subGsdf_winds[w] * (winds.scenarios_curve[s, t] * winds.p_max[w, 1] - Δpw[(s - 1) * NW + w, t]) for w in 1:NW) -
-						sum(subGsdf_loads[d] * (loads.load_curve[d, t] - Δpd[(s - 1) * ND + d, t]) for d in 1:ND) + sum((if NC > 0 && pc⁺ !== nothing && pc⁻ !== nothing && c <= length(subGsdf_psses)
-								subGsdf_psses[c] * (pc⁻[(s - 1) * NC + c, t] - pc⁺[(s - 1) * NC + c, t])
-							else
-								0.0
-							end) for c in 1:NC) >= lines.p_min[l, 1])
-				)
-			end
+		for l in 1:NL
+			subGsdf_units = Gsdf[l, units.locatebus]
+			subGsdf_winds = Gsdf[l, winds.index]
+			subGsdf_loads = Gsdf[l, loads.locatebus]
+			subGsdf_psses = (NC > 0 && !isempty(stroges.locatebus)) ? Gsdf[l, stroges.locatebus] : []
+			subGsdf_dc = dc_enabled ? Gsdf[l, DataCentras.locatebus] : Float64[]
 
-		else
-			subGsdf_dc = (NC > 0 && isempty(DataCentras[:locatebus])) ? Gsdf[l, DataCentras.locatebus] : [] # Handle NC=0 or missing locatebus
-
-			if ND2 == 0 || isempty(scuc[:dc_p])
-				println("\t constraints: 12) data centra constraints skipped (ND2=0 or variables not defined)")
-				return nothing # Skip if no data centers or variables missing
-			end
-			dc_p = scuc[:dc_p]
-
-			for l in 1:NL
-				subGsdf_units = Gsdf[l, units.locatebus]
-				subGsdf_winds = Gsdf[l, winds.index]
-				subGsdf_loads = Gsdf[l, loads.locatebus]
-				# Ensure stroges.locatebus is valid and Gsdf has correct dimensions
-				subGsdf_psses = (NC > 0 && !isempty(stroges.locatebus)) ? Gsdf[l, stroges.locatebus] : [] # Handle NC=0 or missing locatebus
-
-				up_constr = @constraint(scuc,
-					[s = 1:NS, t = 1:NT],
-					sum(subGsdf_units[i] * pg₀[i + (s - 1) * NG, t] for i in 1:NG) + sum(subGsdf_winds[w] * (winds.scenarios_curve[s, t] * winds.p_max[w, 1] - Δpw[(s - 1) * NW + w, t]) for w in 1:NW) -
-					sum(subGsdf_loads[d] * (loads.load_curve[d, t] - Δpd[(s - 1) * ND + d, t]) for d in 1:ND) - sum(subGsdf_dc[c] * dc_p[i + (s - 1) * ND2, t] for c in 1:ND2) +
-					sum((if NC > 0 && pc⁺ !== nothing && pc⁻ !== nothing && c <= length(subGsdf_psses)
-							subGsdf_psses[c] * (pc⁻[(s - 1) * NC + c, t] - pc⁺[(s - 1) * NC + c, t])
-						else
-							0.0
-						end) for c in 1:NC) <= lines.p_max[l, 1])
-				down_constr = @constraint(scuc,
-					[s = 1:NS, t = 1:NT],
-					sum(subGsdf_units[i] * pg₀[i + (s - 1) * NG, t] for i in 1:NG) + sum(subGsdf_winds[w] * (winds.scenarios_curve[s, t] * winds.p_max[w, 1] - Δpw[(s - 1) * NW + w, t]) for w in 1:NW) -
-					sum(subGsdf_loads[d] * (loads.load_curve[d, t] - Δpd[(s - 1) * ND + d, t]) for d in 1:ND) - sum(subGsdf_dc[c] * dc_p[i + (s - 1) * ND2, t] for c in 1:ND2) +
-					sum((if NC > 0 && pc⁺ !== nothing && pc⁻ !== nothing && c <= length(subGsdf_psses)
-							subGsdf_psses[c] * (pc⁻[(s - 1) * NC + c, t] - pc⁺[(s - 1) * NC + c, t])
-						else
-							0.0
-						end) for c in 1:NC) >= lines.p_min[l, 1])
-				append!(transmissionline_powerflow_upbound_constr, up_constr)
-				append!(transmissionline_powerflow_downbound_constr, down_constr)
-			end
+			flow = @expression(scuc, [s = 1:NS, t = 1:NT],
+				sum(subGsdf_units[i] * pg₀[i + (s - 1) * NG, t] for i in 1:NG) +
+				sum(subGsdf_winds[w] * (winds.scenarios_curve[s, t] * winds.p_max[w, 1] - Δpw[(s - 1) * NW + w, t]) for w in 1:NW) -
+				sum(subGsdf_loads[d] * (loads.load_curve[d, t] - Δpd[(s - 1) * ND + d, t]) for d in 1:ND) -
+				(dc_enabled ? sum(subGsdf_dc[c] * dc_p[(s - 1) * ND2 + c, t] for c in 1:ND2) : 0.0) +
+				sum((NC > 0 && pc⁺ !== nothing && pc⁻ !== nothing && c <= length(subGsdf_psses)) ?
+					subGsdf_psses[c] * (pc⁻[(s - 1) * NC + c, t] - pc⁺[(s - 1) * NC + c, t]) : 0.0 for c in 1:NC)
+			)
+			push!(transmissionline_powerflow_upbound_constr, @constraint(scuc, [s = 1:NS, t = 1:NT], flow[s, t] <= lines.p_max[l, 1]))
+			push!(transmissionline_powerflow_downbound_constr, @constraint(scuc, [s = 1:NS, t = 1:NT], flow[s, t] >= lines.p_min[l, 1]))
 		end
 		println("\t constraints: 10) transmissionline limits for basline\t\t\t done")
 		return scuc, transmissionline_powerflow_upbound_constr, transmissionline_powerflow_downbound_constr
