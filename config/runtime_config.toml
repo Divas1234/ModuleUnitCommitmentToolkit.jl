@@ -107,17 +107,31 @@ CCG_WASSERSTEIN_POWER = 1.0
 
 [frequency]
 # Frequency constraints are active only when MODEL_CONSIDER_FREQUENCY_CONTROL = 1.
-# Defaults are permissive enough for local validation and can be tightened for
-# production studies after calibrating against dynamic simulation data.
+# Defaults follow the reference littlecase frequency settings:
+# f_base = 50 Hz, f_nadir/f_qss = 49.5 Hz, RoCoF_max = 4.5 Hz/s, and
+# RoCoF Δp = max(pmax) * 0.25 / 1.25 after imbalance scaling.
 FREQUENCY_BASE_HZ = 50.0
-FREQUENCY_ROCOF_LIMIT_HZ_PER_S = 5.0
-FREQUENCY_QSS_LIMIT_HZ = 5.0
-FREQUENCY_NADIR_LIMIT_HZ = 5.0
-FREQUENCY_NADIR_RESPONSE_WEIGHT = 1.0
-FREQUENCY_MIN_INERTIA = 0.0
-FREQUENCY_MIN_QSS_RESPONSE = 0.0
-FREQUENCY_MIN_NADIR_RESPONSE = 0.0
-FREQUENCY_MIN_PRIMARY_RESPONSE = 0.0
+FREQUENCY_ROCOF_LIMIT_HZ_PER_S = 4.5
+FREQUENCY_QSS_LIMIT_HZ = 0.5
+FREQUENCY_NADIR_LIMIT_HZ = 0.5
+FREQUENCY_CONTINGENCY_FRACTION = 0.25
+FREQUENCY_IMBALANCE_SCALING = 1.25
+FREQUENCY_FCR_THRESHOLD = 0.025
+# The reference nadir fitting samples use a full largest-unit step.
+FREQUENCY_NADIR_FIT_CONTINGENCY_FRACTION = 1.0
+# Empty means derive fitting coefficients from current unit/wind frequency
+# parameters. Methods: least_squares or max_min_affine.
+FREQUENCY_NADIR_FITTING_METHOD = "max_min_affine"
+# Custom cuts use semicolon-separated rows:
+# a_H,a_FgRg,a_RgInv,a_intercept;...
+FREQUENCY_NADIR_FITTING_PARAMETERS = ""
+FREQUENCY_NADIR_MAX_CUTS = 4.0
+FREQUENCY_NADIR_LS_UNDERESTIMATE = true
+FREQUENCY_NADIR_FIT_BIG_M = 100.0
+FREQUENCY_NADIR_COEFFICIENT_BOUND = 10.0
+FREQUENCY_NADIR_COEFFICIENT_REGULARIZATION = 0.001
+# Set > 0 to enforce a hard maximum fitting error for the selected closest cut.
+FREQUENCY_NADIR_FIT_TOLERANCE = 0.0
 
 [test]
 MODULE_UC_TEST_ACTIVATE_LOCAL_PROJECT = false
