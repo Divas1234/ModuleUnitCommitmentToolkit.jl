@@ -88,6 +88,8 @@ function solve_ccg_unit_commitment(; scenario_limit::Int64 = 20)
 		print_ccg_iteration(iteration, length(selected), best_lower_bound, best_upper_bound, gap, scenarios_to_add)
 
 		if gap <= gap_tolerance || isempty(scenarios_to_add)
+			exported_active_scenarios = isempty(best_active_scenarios) ? selected : best_active_scenarios
+			cost_summary = export_ccg_schedule_results(best_model, data, exported_active_scenarios)
 			println("\n====================================================")
 			println("C&CG convergence achieved")
 			println("FINAL ACTIVE SCENARIOS: ", selected)
@@ -101,10 +103,11 @@ function solve_ccg_unit_commitment(; scenario_limit::Int64 = 20)
 				evaluation = best_evaluation,
 				data = best_data,
 				history = history,
-				active_scenarios = isempty(best_active_scenarios) ? selected : best_active_scenarios,
+				active_scenarios = exported_active_scenarios,
 				upper_bound = best_upper_bound,
 				lower_bound = best_lower_bound,
 				gap = gap,
+				cost_summary = cost_summary,
 			)
 		end
 
@@ -119,20 +122,39 @@ function solve_ccg_unit_commitment(; scenario_limit::Int64 = 20)
 	println("FINAL LOWER BOUND:      ", best_lower_bound)
 	println("FINAL GAP:              ", abs(best_upper_bound - best_lower_bound) / (abs(best_upper_bound) + numerical_tolerance))
 	println("====================================================")
+	exported_active_scenarios = isempty(best_active_scenarios) ? selected : best_active_scenarios
+	cost_summary = export_ccg_schedule_results(best_model, data, exported_active_scenarios)
 	return (
 		status = "maximum_iterations",
 		model = best_model,
 		evaluation = best_evaluation,
 		data = best_data,
 		history = history,
-		active_scenarios = isempty(best_active_scenarios) ? selected : best_active_scenarios,
+		active_scenarios = exported_active_scenarios,
 		upper_bound = best_upper_bound,
 		lower_bound = best_lower_bound,
 		gap = abs(best_upper_bound - best_lower_bound) / (abs(best_upper_bound) + numerical_tolerance),
+		cost_summary = cost_summary,
 	)
 end
 
 #%%%
+function export_ccg_schedule_results(model, data, active_scenarios::Vector{Int64})
+	if model === nothing
+		return nothing
+	end
+	active_winds = build_ccg_subset_wind(data.winds, active_scenarios, data.full_scenario_probability)
+	return export_solved_uc_model_results(
+		model,
+		data;
+		output_dir = uc_scheduling_output_dir("ccg"),
+		winds = active_winds,
+		NS = length(active_scenarios),
+		scenarios_prob = data.full_scenario_probability,
+		file_prefix = uc_schedule_file_prefix("ccg", data.NS),
+	)
+end
+
 function ccg_env_bool(name::String, default::Bool)
 	# Accept common boolean spellings because these values often come from shell,
 	# CI variables, or TOML booleans converted by the runtime loader.

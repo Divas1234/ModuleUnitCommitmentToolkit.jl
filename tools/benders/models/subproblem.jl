@@ -103,7 +103,7 @@ function bd_subfunction(
 		scuc_subproblem, NT, NG, ND, NC, NW, NL, NS_copy, units, loads, winds, lines, psses, gsdf, config_param, ND2, DataCentras
 	)# Add transmission constraints
 	_storage_constr = add_storage_constraints!(scuc_subproblem, NT, NC, NS_copy, config_param, psses; include_binary_logic = false)
-	# add_datacentra_constraints!(scuc_subproblem, NT, NS, config_param, ND2, DataCentras)
+	add_datacentra_constraints!(scuc_subproblem, NT, NS_copy, config_param, ND2, DataCentras)
 	# add_frequency_constraints!(scuc_subproblem, NT, NG, NC, NS, units, psses, config_param, contingency_size)
 	# @show model_summary(scuc_subproblem)
 
@@ -242,13 +242,10 @@ function define_subproblem_decision_variables!(scuc_subproblem::Model, NT::Int64
 	end
 
 	if config_param.is_ConsiderDataCentra == 1
-		@variable(scuc_subproblem, dc_p[1:(ND2 * NS_copy), 1:NT]>=0)
-		@variable(scuc_subproblem, dc_f[1:(ND2 * NS_copy), 1:NT]>=0)
-		@variable(scuc_subproblem, dc_v[1:(ND2 * NS_copy), 1:NT]>=0) # Currently commented out
-		@variable(scuc_subproblem, dc_v²[1:(ND2 * NS_copy), 1:NT]>=0)
-		@variable(scuc_subproblem, dc_λ[1:(ND2 * NS_copy), 1:NT]>=0)
-		@variable(scuc_subproblem, dc_Δu1[1:(ND2 * NS_copy), 1:NT]>=0)
-		@variable(scuc_subproblem, dc_Δu2[1:(ND2 * NS_copy), 1:NT]>=0)
+		# Benders subproblems must remain LPs for dual-based cut generation. The
+		# benchmark and CCG paths use binary response weights; here we solve the
+		# convex relaxation of the same response grid.
+		define_data_center_variables!(scuc_subproblem, NT, ND2, NS_copy; binary_response_weights = false)
 	end
 
 	# # Frequency control related variables (assuming these might be needed based on later constraints)

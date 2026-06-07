@@ -1,10 +1,15 @@
 using XLSX
 
+function unit_commitment_data_file()
+	return get(ENV, "MODULE_UC_DATA_FILE", joinpath(pwd(), "data", "data.xlsx"))
+end
+
 """
 `readxlssheet()`
 
 Reads and parses raw system parameter and topology data from an external Excel file (`data.xlsx`).
-Detects the OS automatically to set the correct local file path.
+By default the workbook is read from the current repository's `data/` directory.
+Set `MODULE_UC_DATA_FILE` to run a different case without editing source code.
 
 # Returns
 A tuple containing matrices for generator frequency parameters, wind frequency parameters,
@@ -13,13 +18,9 @@ load curves, point loads, and data center requirements.
 """
 function readxlssheet()
 	println("Step-1: Pkgs and functions are loaded")
-	filepath = pwd()
-	# df = XLSX.readxlsx(filepath * "\\master-2\\case1\\data\\data.xlsx")
-	if Sys.isapple()
-		df = XLSX.readxlsx("/Users/yuanyiping/Documents/GitHub/module_unitcommitment/data/data.xlsx")
-	elseif Sys.iswindows()
-		df = XLSX.readxlsx(joinpath(pwd(), "data", "data.xlsx"))
-	end
+	data_file = unit_commitment_data_file()
+	isfile(data_file) || error("Input data workbook not found: $data_file")
+	df = XLSX.readxlsx(data_file)
 
 	# Part 1: Extract generation and wind frequency parameter matrices
 	unitsfreqparam = df["units_frequencyparam"]

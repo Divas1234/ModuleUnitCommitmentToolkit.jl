@@ -79,6 +79,9 @@ function bd_masterfunction(
     # add_pwl_constraints!(scuc_masterproblem, NT, NG, NS, units)
     # add_transmission_constraints!(scuc_masterproblem, NT, NG, ND, NC, NW, NL, NS, units, loads, winds, lines, stroges, Gsdf, config_param, ND2, DataCentras)
     # add_storage_constraints!(scuc_masterproblem, NT, NC, NS, config_param, stroges)
+    # Data-center response variables are operational recourse variables. They are
+    # not introduced in the first-stage Benders master; the subproblem uses the
+    # continuous response-weight relaxation so dual cuts are available.
     # add_datacentra_constraints!(scuc_masterproblem, NT, NS, config_param, ND2, DataCentras)
     # add_frequency_constraints!(scuc_masterproblem, NT, NG, NC, NS, units, stroges, config_param, Δp_contingency)
 
@@ -225,16 +228,6 @@ function define_masterproblem_decision_variables!(scuc_masterproblem::Model, NT,
         α = Matrix{VariableRef}(undef, 0, 0)
         β = Matrix{VariableRef}(undef, 0, 0)
     end
-
-    # if config_param.is_ConsiderDataCentra == 1
-    # 	@variable(scuc_masterproblem, dc_p[1:(ND2 * NS), 1:NT]>=0)
-    # 	@variable(scuc_masterproblem, dc_f[1:(ND2 * NS), 1:NT]>=0)
-    # 	# @variable(scuc_masterproblem, dc_v[1:(ND2 * NS), 1:NT]>=0) # Currently commented out
-    # 	@variable(scuc_masterproblem, dc_v²[1:(ND2 * NS), 1:NT]>=0)
-    # 	@variable(scuc_masterproblem, dc_λ[1:(ND2 * NS), 1:NT]>=0)
-    # 	@variable(scuc_masterproblem, dc_Δu1[1:(ND2 * NS), 1:NT]>=0)
-    # 	@variable(scuc_masterproblem, dc_Δu2[1:(ND2 * NS), 1:NT]>=0)
-    # end
 
     # # Frequency control related variables (assuming these might be needed based on later constraints)
     # # Check if these are actually used/defined in the constraints file later

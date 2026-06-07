@@ -16,6 +16,11 @@ function solve_and_extract_results(
 		eachslope,
 		refcost,
 		config_param,
+		units,
+		loads,
+		winds,
+		lines,
+		DataCentras,
 )
 	println(
 		"+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++",
@@ -74,14 +79,14 @@ function solve_and_extract_results(
 		end
 
 		# Data centra results
-		dc_p_res, dc_f_res, dc_v²_res, dc_λ_res, dc_Δu1_res, dc_Δu2_res = ntuple(_ -> nothing, 6) # Initialize as nothing
+		dc_p_res, dc_fv²_res, dc_fv²λ_res, dc_fv²_plus_res, dc_fv²_minus_res, dc_fv²λ_plus_res = ntuple(_ -> nothing, 6)
 		if config_param.is_ConsiderDataCentra == 1 && ND2 > 0
 			dc_p_res = JuMP.value.(scuc[:dc_p])
-			dc_f_res = JuMP.value.(scuc[:dc_f])
-			dc_v²_res = JuMP.value.(scuc[:dc_v²])
-			dc_λ_res = JuMP.value.(scuc[:dc_λ])
-			dc_Δu1_res = JuMP.value.(scuc[:dc_Δu1])
-			dc_Δu2_res = JuMP.value.(scuc[:dc_Δu2])
+			dc_fv²_res = JuMP.value.(scuc[:dc_fv²])
+			dc_fv²λ_res = JuMP.value.(scuc[:dc_fv²λ])
+			dc_fv²_plus_res = JuMP.value.(scuc[:dc_fv²_plus])
+			dc_fv²_minus_res = JuMP.value.(scuc[:dc_fv²_minus])
+			dc_fv²λ_plus_res = JuMP.value.(scuc[:dc_fv²λ_plus])
 		end
 
 		#   =================================
@@ -92,11 +97,10 @@ function solve_and_extract_results(
 		# Returning a dictionary or a custom struct might be cleaner.
 		results = Dict(
 			"objective_value" => objective_value(scuc),
+			"objective_bound" => objective_bound(scuc),
+			"relative_gap" => relative_gap(scuc),
 			"solve_time" => solve_time(scuc),
 			"status" => status,
-		)
-
-		results = Dict(
 			"x₀" => x₀,
 			"u₀" => u₀,
 			"v₀" => v₀,
@@ -128,11 +132,11 @@ function solve_and_extract_results(
 			push!(
 				results,
 				"dc_p" => dc_p_res,
-				"dc_f" => dc_f_res,
-				"dc_v²" => dc_v²_res,
-				"dc_λ" => dc_λ_res,
-				"dc_Δu1" => dc_Δu1_res,
-				"dc_Δu2" => dc_Δu2_res,
+				"dc_fv²" => dc_fv²_res,
+				"dc_fv²λ" => dc_fv²λ_res,
+				"dc_fv²_plus" => dc_fv²_plus_res,
+				"dc_fv²_minus" => dc_fv²_minus_res,
+				"dc_fv²λ_plus" => dc_fv²λ_plus_res,
 			)
 		end
 
@@ -140,7 +144,7 @@ function solve_and_extract_results(
 		# "cr⁺"       => cr⁺,
 		# "cr⁻"       => cr⁻,       # Removed as they are not calculated here anymore
 
-		exported_scheduling_cost(
+		cost_summary = exported_scheduling_cost(
 			NS,
 			NT,
 			NB,
@@ -154,11 +158,14 @@ function solve_and_extract_results(
 			lines,
 			DataCentras,
 			config_param,
+			scenarios_prob,
 			su_cost,
 			sd_cost,
 			pgₖ,
 			pg₀,
 			x₀,
+			u₀,
+			v₀,
 			seq_sr⁺,
 			seq_sr⁻,
 			pᵨ,
@@ -171,12 +178,13 @@ function solve_and_extract_results(
 			pss_charge_p⁻,
 			pss_Qc,
 			dc_p_res,
-			dc_f_res,
-			dc_v²_res,
-			dc_λ_res,
-			dc_Δu1_res,
-			dc_Δu2_res,
+			dc_fv²_res,
+			dc_fv²λ_res,
+			dc_fv²_plus_res,
+			dc_fv²_minus_res,
+			dc_fv²λ_plus_res,
 		)
+		push!(results, "cost_summary" => cost_summary)
 
 		return results
 

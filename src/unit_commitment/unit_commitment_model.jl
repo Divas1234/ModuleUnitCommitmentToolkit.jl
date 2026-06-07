@@ -87,7 +87,7 @@ function SUC_scucmodel(NT::Int64, NB::Int64, NG::Int64, ND::Int64, NC::Int64, ND
 	# Solve the optimization model and extract the results
 	try
 		# Attempt to solve the SCUC model
-		results = solve_and_extract_results(scuc, NT, NG, ND, NC, NW, NS, ND2, scenarios_prob, eachslope, refcost, config_param)
+		results = solve_and_extract_results(scuc, NT, NG, ND, NC, NW, NS, ND2, scenarios_prob, eachslope, refcost, config_param, units, loads, winds, lines, DataCentras)
 
 		# --- Return Results ---
 		# Check if the optimization was successful

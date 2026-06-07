@@ -10,7 +10,7 @@ continuous variables for power dispatch, reserves, and slack.
   - **Thermal Units**: x, u, v, pg, su, sd, sr.
   - **System Flexibility**: Δpd (Load shedding), Δpw (Wind curtailment).
   - **Storage (BESS/PSS)**: κ, pc, qc.
-  - **Data Centers**: dc_p, dc_f, dc_λ.
+  - **Data Centers**: dc_p, dc_fv², dc_fv²λ and SOS-style response weights.
 """
 function define_decision_variables!(scuc::Model, NT, NG, ND, NC, ND2, NS, NW, config_param)
 	# --- Thermal Unit Commitment Variables (Scenario-independent) ---
@@ -39,13 +39,7 @@ function define_decision_variables!(scuc::Model, NT, NG, ND, NC, ND2, NS, NW, co
 	@variable(scuc, β[1:(NS * NC), 1:NT], Bin)
 
 	if config_param.is_ConsiderDataCentra == 1
-		@variable(scuc, dc_p[1:(ND2 * NS), 1:NT] >= 0)
-		@variable(scuc, dc_f[1:(ND2 * NS), 1:NT] >= 0)
-		# @variable(scuc, dc_v[1:(ND2 * NS), 1:NT]>=0) # Currently commented out
-		@variable(scuc, dc_v²[1:(ND2 * NS), 1:NT] >= 0)
-		@variable(scuc, dc_λ[1:(ND2 * NS), 1:NT] >= 0)
-		@variable(scuc, dc_Δu1[1:(ND2 * NS), 1:NT] >= 0)
-		@variable(scuc, dc_Δu2[1:(ND2 * NS), 1:NT] >= 0)
+		define_data_center_variables!(scuc, Int(NT), Int(ND2), Int(NS); binary_response_weights = true)
 	end
 
 	# Frequency control related variables (assuming these might be needed based on later constraints)
