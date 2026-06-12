@@ -10,12 +10,26 @@ import threading
 import tomllib
 from http.server import HTTPServer, SimpleHTTPRequestHandler
 from pathlib import Path
+from urllib.parse import urlparse
 
 ROOT = Path(__file__).resolve().parent.parent
 CONFIG_PATH = ROOT / 'config' / 'runtime_config.toml'
 VALID_TASKS = ("boundary", "benchmark", "ccg", "benders", "benders_fast", "tests")
 JULIA_STARTUP_TIMEOUT = 60
 JULIA_RUN_TIMEOUT = 3600
+ANSI_RE = re.compile(r'\x1b\[[0-?]*[ -/]*[@-~]')
+
+
+def julia_env():
+    """Return a clean Julia subprocess environment.
+
+    Passing JULIA_DEPOT_PATH="" makes Julia 1.12 fail during precompilation with
+    an internal BoundsError, so preserve it only when the user actually set it.
+    """
+    env = os.environ.copy()
+    if not env.get("JULIA_DEPOT_PATH"):
+        env.pop("JULIA_DEPOT_PATH", None)
+    return env
 
 # ---------------------------------------------------------------------------
 # Julia check
@@ -30,7 +44,7 @@ def check_julia():
         r = subprocess.run(
             [julia, "-v"],
             capture_output=True, text=True, timeout=15,
-            env={**os.environ, "JULIA_DEPOT_PATH": os.environ.get("JULIA_DEPOT_PATH", "")},
+            env=julia_env(),
         )
         if r.returncode == 0 and r.stdout.strip():
             return True, r.stdout.strip()
@@ -61,6 +75,7 @@ class RunManager:
         self.output = []
         self._proc = None
         self._structured = None
+        self._cancel_requested = False
         if self._timer:
             self._timer.cancel()
             self._timer = None
@@ -97,20 +112,26 @@ class RunManager:
                 structured_lines = []
                 in_structured = False
                 for line in iter(self._proc.stdout.readline, ""):
+                    line = ANSI_RE.sub("", line)
+                    stripped = line.strip()
                     with self._lock:
-                        self.output.append(line)
                         if in_structured:
-                            if line.strip() == "###END_STRUCTURED_DATA###":
+                            if stripped == "###END_STRUCTURED_DATA###":
                                 in_structured = False
                             else:
                                 structured_lines.append(line)
-                        elif line.strip() == "###STRUCTURED_DATA###":
+                            continue
+                        if stripped == "###STRUCTURED_DATA###":
                             in_structured = True
+                            continue
+                        self.output.append(line)
 
                 self._proc.wait()
                 rc = self._proc.returncode
                 with self._lock:
-                    if rc == 0:
+                    if self._cancel_requested or self.status == "cancelled":
+                        self.status = "cancelled"
+                    elif rc == 0:
                         self.status = "completed"
                     else:
                         self.status = "failed"
@@ -143,10 +164,13 @@ class RunManager:
     def cancel(self):
         with self._lock:
             if self._proc and self._proc.poll() is None:
+                self._cancel_requested = True
                 self._proc.terminate()
+                self.output.append("\n[INFO] Cancellation requested.\n")
                 self.status = "cancelled"
                 return True
             if self.status == "running":
+                self._cancel_requested = True
                 self.status = "cancelled"
                 return True
         return False
@@ -162,9 +186,9 @@ class RunManager:
             }
 
     def _build_cmd(self, task, params):
-        env = os.environ.copy()
-        env["JULIA_DEPOT_PATH"] = env.get("JULIA_DEPOT_PATH", "")
+        env = julia_env()
         env["PYTHON"] = ""
+        env["JULIA_PKG_PRECOMPILE_AUTO"] = "0"
 
         if task == "boundary":
             limit = str(params.get("scenario_limit", 5))
@@ -304,23 +328,26 @@ class Handler(SimpleHTTPRequestHandler):
         self.wfile.write(json.dumps(data).encode())
 
     def do_GET(self):
-        if self.path == '/api/config':
+        parsed = urlparse(self.path)
+        path = parsed.path
+
+        if path == '/api/config':
             result = parse_toml_with_lines(CONFIG_PATH)
             del result['_lines']
             del result['_key_lines']
             self._send_json(result)
             return
 
-        if self.path == '/api/run':
+        if path == '/api/run':
             self._send_json(RUN_MGR.get_state())
             return
 
-        if self.path == '/api/check/julia':
+        if path == '/api/check/julia':
             ok, msg = check_julia()
             self._send_json({'ok': ok, 'msg': msg})
             return
 
-        if self.path == '/':
+        if path in ('/', '/gui', '/gui/', '/GUI', '/GUI/'):
             self.path = '/gui/index.html'
         super().do_GET()
 
@@ -332,7 +359,9 @@ class Handler(SimpleHTTPRequestHandler):
             self._send_json({'ok': False, 'error': f'Invalid JSON: {e}'}, status=400)
             return
 
-        if self.path == '/api/config':
+        path = urlparse(self.path).path
+
+        if path == '/api/config':
             try:
                 write_toml_values(CONFIG_PATH, body)
                 self._send_json({'ok': True})
@@ -340,17 +369,19 @@ class Handler(SimpleHTTPRequestHandler):
                 self._send_json({'ok': False, 'error': str(e)}, status=400)
             return
 
-        if self.path == '/api/run':
+        if path == '/api/run':
             task = body.get('task', '')
             params = body.get('params', {})
             try:
                 ok = RUN_MGR.start(task, params)
-                self._send_json({'ok': ok, 'task': task})
+                state = RUN_MGR.get_state()
+                error = 'Task already running' if not ok and state.get('status') == 'running' else None
+                self._send_json({'ok': ok, 'task': task, 'status': state.get('status'), 'error': error})
             except ValueError as e:
                 self._send_json({'ok': False, 'error': str(e)}, status=400)
             return
 
-        if self.path == '/api/run/cancel':
+        if path == '/api/run/cancel':
             self._send_json({'ok': RUN_MGR.cancel()})
             return
 

@@ -270,6 +270,303 @@ def main():
 
     all_runs = sorted(set(list(summaries.keys()) + list(qualities.keys()) + list(scheduling.keys())))
 
+    run_css = r'''
+/* ===== Run Tab ===== */
+.run-toolbar { display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px; }
+.run-btn { padding:6px 14px;border:1px solid var(--border);border-radius:5px;background:var(--card-bg);font-size:11px;font-weight:600;color:var(--text);cursor:pointer;transition:all .15s; }
+.run-btn:hover { border-color:var(--accent);color:var(--accent); }
+.run-btn.danger { background:#dc2626;color:#fff;border-color:#dc2626; }
+.run-btn:disabled { opacity:.4;cursor:not-allowed; }
+.run-params { display:flex;gap:12px;align-items:center;flex-wrap:wrap; }
+.run-params label { font-size:11px;color:var(--text2); }
+.run-params input { padding:3px 7px;border:1px solid var(--border);border-radius:4px;font-size:11px;background:var(--card-bg);color:var(--text);width:90px; }
+.run-params input:focus { outline:none;border-color:var(--accent); }
+.run-output { max-height:500px;overflow-y:auto;font-size:10px;line-height:1.5; }
+.status-badge { display:inline-block;padding:2px 10px;border-radius:4px;font-size:11px;font-weight:600; }
+.status-idle { background:var(--section-hdr);color:var(--text2); }
+.status-running { background:#dbeafe;color:#2563eb; }
+.status-completed { background:#dcfce7;color:#16a34a; }
+.status-failed { background:#fee2e2;color:#dc2626; }
+.status-cancelled { background:#fef3c7;color:#d97706; }
+.boundary-grid { display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:10px;margin-bottom:12px; }
+.boundary-stat { background:var(--section-bg);border:1px solid var(--border);border-radius:6px;padding:8px 12px;text-align:center; }
+.boundary-stat .val { font-size:22px;font-weight:700;color:var(--accent); }
+.boundary-stat .lbl { font-size:9px;color:var(--text3);text-transform:uppercase;letter-spacing:.5px;margin-top:2px; }
+.boundary-sub-tabs { display:flex;gap:4px;margin-bottom:8px;flex-wrap:wrap; }
+.boundary-sub-tab { padding:3px 10px;border:1px solid var(--border);border-radius:4px;background:var(--card-bg);font-size:10px;color:var(--text2);cursor:pointer; }
+.boundary-sub-tab.active { background:var(--accent);color:#fff;border-color:var(--accent); }
+.boundary-panel { display:none; }
+.boundary-panel.active { display:block; }
+'''
+
+    run_html = r'''
+<!-- ============ RUN TAB ============ -->
+<div id="tab-run" class="tab">
+  <div class="card">
+    <h2>Run Tasks</h2>
+    <div class="run-toolbar">
+      <button class="run-btn" onclick="runTask('boundary')">Boundary Check</button>
+      <button class="run-btn" onclick="runTask('benchmark')">Benchmark</button>
+      <button class="run-btn" onclick="runTask('ccg')">CCG</button>
+      <button class="run-btn" onclick="runTask('benders')">Benders</button>
+      <button class="run-btn" onclick="runTask('benders_fast')">Benders Fast</button>
+      <button class="run-btn" onclick="runTask('tests')">Run All Tests</button>
+      <button class="run-btn danger" id="run-cancel-btn" style="display:none" onclick="cancelRun()">Cancel</button>
+    </div>
+    <div class="run-params">
+      <label>Scenarios:</label>
+      <input type="text" id="run-scenario-counts" value="2,6,10" placeholder="counts" title="Scenario counts for benchmark (comma-separated)">
+      <label>Limit:</label>
+      <input type="number" id="run-scenario-limit" value="20" min="1" max="200" title="Scenario limit for individual CCG/Benders runs">
+      <span id="run-status-badge" class="status-badge status-idle">Idle</span>
+      <span id="julia-status" style="margin-left:auto;font-size:10px;">Checking Julia...</span>
+    </div>
+  </div>
+  <div class="card">
+    <h2>Output</h2>
+    <pre class="run-output" id="run-output">Ready. Select a task above to run.</pre>
+  </div>
+  <div id="boundary-results" style="display:none">
+    <div class="card">
+      <h2>System Boundary Summary</h2>
+      <div class="boundary-grid" id="boundary-stats"></div>
+      <div class="boundary-sub-tabs" id="boundary-sub-tabs"></div>
+      <div id="boundary-validation" class="boundary-panel active"></div>
+      <div id="boundary-units" class="boundary-panel"></div>
+      <div id="boundary-lines" class="boundary-panel"></div>
+      <div id="boundary-load" class="boundary-panel"></div>
+      <div id="boundary-wind" class="boundary-panel"></div>
+      <div id="boundary-config" class="boundary-panel"></div>
+    </div>
+  </div>
+  <div id="test-results" style="display:none">
+    <div class="card">
+      <h2>Test Results Summary</h2>
+      <div id="test-summary"></div>
+    </div>
+  </div>
+</div>
+'''
+
+    run_js = r'''
+// ============ RUN TAB ============
+var juliaOk = null;
+var boundaryActivePanel = 'validation';
+
+function escapeHTML(s){ return escapeHtml(String(s)); }
+
+function checkJuliaStatus(){
+  fetch('/api/check/julia').then(function(r){return r.json();}).then(function(d){
+    juliaOk = d.ok;
+    var el = $('julia-status');
+    if (el) {
+      el.innerHTML = d.ok
+        ? '<span style="color:#16a34a;font-weight:600">Julia OK</span>'
+        : '<span style="color:#dc2626;font-weight:600" title="' + escapeHTML(d.msg) + '">Julia unavailable: ' + escapeHTML((d.msg || '').split('\n')[0]) + '</span>';
+    }
+    setRunButtonsDisabled(!d.ok);
+  }).catch(function(){
+    juliaOk = false;
+    var el = $('julia-status');
+    if (el) el.textContent = 'Server unavailable';
+  });
+}
+
+function runTask(task){
+  var params = {};
+  if (task === 'boundary') params.scenario_limit = parseInt($('run-scenario-limit').value) || 5;
+  else if (task === 'benchmark') params.scenario_counts = $('run-scenario-counts').value || '2,6,10';
+  else if (task === 'ccg' || task === 'benders' || task === 'benders_fast') params.scenario_limit = parseInt($('run-scenario-limit').value) || 20;
+
+  $('boundary-results').style.display = 'none';
+  $('test-results').style.display = 'none';
+  $('run-output').textContent = 'Starting ' + task + '...\n';
+  $('run-cancel-btn').style.display = 'inline-block';
+  setRunButtonsDisabled(true);
+  setStatusBadge('running');
+
+  fetch('/api/run', {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({task: task, params: params})
+  }).then(function(r){return r.json();}).then(function(data){
+    if (data.ok) startPolling();
+    else {
+      fetch('/api/run').then(function(r2){return r2.json();}).then(function(state){
+        if (state.status === 'running') {
+          $('run-output').textContent += '[INFO] A task is already running.\n';
+          setStatusBadge('running');
+          startPolling();
+          return;
+        }
+        setStatusBadge('failed');
+        $('run-cancel-btn').style.display = 'none';
+        setRunButtonsDisabled(juliaOk === false);
+        var txt = (state.output || []).join('');
+        $('run-output').textContent = txt || ('[ERROR] ' + (data.error || 'Failed to start task') + '\n');
+      });
+    }
+  }).catch(function(err){
+    $('run-output').textContent += '[ERROR] ' + err.message + '\n';
+    setStatusBadge('failed');
+    $('run-cancel-btn').style.display = 'none';
+    setRunButtonsDisabled(juliaOk === false);
+  });
+}
+
+function cancelRun(){
+  fetch('/api/run/cancel', {method:'POST'}).then(function(r){return r.json();}).then(function(data){
+    if (data.ok) {
+      $('run-output').textContent += '\n[Cancelled by user]\n';
+      setStatusBadge('cancelled');
+      $('run-cancel-btn').style.display = 'none';
+      setRunButtonsDisabled(juliaOk === false);
+    }
+  });
+}
+
+function startPolling(){
+  if (runPollTimer) clearInterval(runPollTimer);
+  runPollTimer = setInterval(pollRunStatus, 500);
+  pollRunStatus();
+}
+
+function pollRunStatus(){
+  fetch('/api/run').then(function(r){return r.json();}).then(function(state){
+    var out = $('run-output');
+    if (state.output && state.output.length) {
+      var lastOutput = state.output.join('');
+      if (state.output_len > state.output.length + 100) {
+        lastOutput = '... (' + (state.output_len - state.output.length) + ' more lines) ...\n' + lastOutput;
+      }
+      out.textContent = lastOutput;
+      out.scrollTop = out.scrollHeight;
+    }
+    if (state.status === 'running') {
+      setStatusBadge('running');
+      return;
+    }
+    if (runPollTimer) { clearInterval(runPollTimer); runPollTimer = null; }
+    setStatusBadge(state.status || 'idle');
+    $('run-cancel-btn').style.display = 'none';
+    setRunButtonsDisabled(juliaOk === false);
+    if (state.status === 'completed') {
+      out.textContent += '\nTask completed.\n';
+      handleTaskResult(state.task, state.structured);
+    } else if (state.status === 'failed') {
+      out.textContent += '\nTask failed.\n';
+    }
+  }).catch(function(){
+    if (runPollTimer) { clearInterval(runPollTimer); runPollTimer = null; }
+  });
+}
+
+function setStatusBadge(status){
+  var el = $('run-status-badge');
+  if (!el) return;
+  el.className = 'status-badge status-' + status;
+  var map = {idle:'Idle', running:'Running...', completed:'Completed', failed:'Failed', cancelled:'Cancelled'};
+  el.textContent = map[status] || status;
+}
+
+function setRunButtonsDisabled(disabled){
+  document.querySelectorAll('.run-btn:not(.danger)').forEach(function(btn){ btn.disabled = disabled; });
+}
+
+function handleTaskResult(task, structured){
+  if (task === 'boundary' && structured) {
+    $('boundary-results').style.display = 'block';
+    renderBoundaryData(structured);
+  }
+  if (task === 'tests') {
+    $('test-results').style.display = 'block';
+    renderTestResults();
+  }
+}
+
+function renderBoundaryData(d){
+  var sys = d.system || {};
+  var totals = d.totals || {};
+  var items = [
+    ['Buses', sys.NB], ['Generators', sys.NG], ['Lines', sys.NL],
+    ['Loads', sys.ND], ['Time Periods', sys.NT], ['Wind Units', sys.NW],
+    ['Scenarios', sys.NS], ['Storage Units', sys.NC],
+    ['Total Pmax (MW)', fmt(totals.total_pmax, 1)],
+    ['Peak Load (MW)', fmt(totals.peak_load, 1)],
+    ['Wind Capacity (MW)', fmt(totals.total_wind_cap, 1)]
+  ];
+  $('boundary-stats').innerHTML = items.map(function(i){
+    return '<div class="boundary-stat"><div class="val">' + escapeHTML(i[1] == null ? '-' : i[1]) + '</div><div class="lbl">' + escapeHTML(i[0]) + '</div></div>';
+  }).join('');
+
+  var subtabs = [
+    {id:'validation', label:'Validation'}, {id:'units', label:'Units'},
+    {id:'lines', label:'Lines'}, {id:'load', label:'Load'},
+    {id:'wind', label:'Wind'}, {id:'config', label:'Config'}
+  ];
+  $('boundary-sub-tabs').innerHTML = subtabs.map(function(t){
+    return '<button class="boundary-sub-tab' + (t.id === boundaryActivePanel ? ' active' : '') + '" data-bpanel="' + t.id + '">' + t.label + '</button>';
+  }).join('');
+  $('boundary-sub-tabs').onclick = function(e){
+    var b = e.target.closest('.boundary-sub-tab');
+    if (!b) return;
+    boundaryActivePanel = b.dataset.bpanel;
+    document.querySelectorAll('.boundary-sub-tab').forEach(function(x){ x.classList.remove('active'); });
+    b.classList.add('active');
+    document.querySelectorAll('.boundary-panel').forEach(function(x){ x.classList.remove('active'); });
+    $('boundary-' + b.dataset.bpanel).classList.add('active');
+  };
+
+  renderBoundaryValidation(d.validation);
+  renderObjectTable('boundary-units', d.units, 'No unit data');
+  renderObjectTable('boundary-lines', d.lines, 'No line data');
+  renderObjectTable('boundary-load', d.load_totals, 'No load data');
+  renderObjectTable('boundary-wind', d.wind, 'No wind data');
+  renderObjectTable('boundary-config', d.config, 'No config data');
+}
+
+function renderBoundaryValidation(checks){
+  if (!checks || !checks.length) { $('boundary-validation').innerHTML = '<div class="empty-state">No validation data</div>'; return; }
+  var h = '<table><thead><tr><th>Check</th><th>Status</th></tr></thead><tbody>';
+  checks.forEach(function(c){
+    h += '<tr><td>' + escapeHTML(c.label) + '</td><td><span class="badge ' + (c.ok ? 'badge-ok' : 'badge-err') + '">' + (c.ok ? 'PASS' : 'FAIL') + '</span></td></tr>';
+  });
+  $('boundary-validation').innerHTML = h + '</tbody></table>';
+}
+
+function renderObjectTable(id, data, emptyText){
+  var el = $(id);
+  if (!data || (Array.isArray(data) && !data.length)) { el.innerHTML = '<div class="empty-state">' + emptyText + '</div>'; return; }
+  if (!Array.isArray(data)) {
+    var sections = Object.entries(data).map(function(e){
+      if (Array.isArray(e[1]) && e[1].length && typeof e[1][0] === 'object') {
+        return '<h3 style="font-size:11px;margin:6px 0 4px;color:var(--text2)">' + escapeHTML(e[0]) + '</h3>' + tableHtml(e[1]);
+      }
+      return '<h3 style="font-size:11px;margin:6px 0 4px;color:var(--text2)">' + escapeHTML(e[0]) + '</h3><p style="font-size:11px;margin-bottom:8px;">' + escapeHTML(Array.isArray(e[1]) ? e[1].join(', ') : e[1]) + '</p>';
+    }).join('');
+    el.innerHTML = '<div style="overflow-x:auto;max-height:400px;overflow-y:auto;">' + sections + '</div>';
+    return;
+  }
+  el.innerHTML = tableHtml(data);
+}
+
+function tableHtml(data){
+  var keys = Array.from(new Set(data.flatMap(function(row){ return Object.keys(row); })));
+  var h = '<div style="overflow-x:auto;max-height:400px;overflow-y:auto;"><table><thead><tr>' + keys.map(function(k){return '<th>' + escapeHTML(k) + '</th>';}).join('') + '</tr></thead><tbody>';
+  data.forEach(function(row){
+    h += '<tr>' + keys.map(function(k){ return '<td>' + escapeHTML(row[k] == null ? '' : row[k]) + '</td>'; }).join('') + '</tr>';
+  });
+  return h + '</tbody></table></div>';
+}
+
+function renderTestResults(){
+  var out = $('run-output').textContent;
+  var passed = (out.match(/Test.*Passed|passed/g) || []).length;
+  var failed = (out.match(/Test.*Failed|FAILED|failed|Error/g) || []).length;
+  $('test-summary').innerHTML = '<div class="metrics"><div class="metric"><div class="label">Passed</div><div class="value" style="color:#16a34a">' + passed + '</div></div><div class="metric"><div class="label">Failed/Errors</div><div class="value" style="color:' + (failed ? '#dc2626' : '#94a3b8') + '">' + failed + '</div></div></div>';
+}
+'''
+
     # ============ HTML + PLOTLY.JS ============
     html = f'''<!DOCTYPE html>
 <html lang="en">
@@ -361,6 +658,7 @@ pre.short {{ max-height:220px; }}
 @media (max-width:700px) {{ .cost-grid {{ grid-template-columns:1fr; }} }}
 
 .empty-state {{ padding:40px;text-align:center;color:var(--text3);font-size:13px; }}
+{run_css}
 </style>
 </head>
 <body>
@@ -415,19 +713,21 @@ pre.short {{ max-height:220px; }}
     <div class="settings-grid" id="settings-grid"></div>
   </div>
 </div>
+{run_html}
 
 </div>
 
 <script>
 const DATA = {json.dumps(data, ensure_ascii=False)};
 
-const TABS = [{{id:'overview',label:'Overview'}},{{id:'quality',label:'Quality'}},{{id:'schedule',label:'Schedule'}},{{id:'reports',label:'Reports'}},{{id:'settings',label:'Settings'}}];
+const TABS = [{{id:'overview',label:'Overview'}},{{id:'quality',label:'Quality'}},{{id:'schedule',label:'Schedule'}},{{id:'reports',label:'Reports'}},{{id:'settings',label:'Settings'}},{{id:'run',label:'Run'}}];
 const ACOL = {{benchmark_uc:'#5470c6',benders:'#ee6666',ccg:'#91cc75'}};
 const C10 = ['#5470c6','#ee6666','#91cc75','#fac858','#73c0de','#3ba272','#fc8452','#9a60b4','#ea7ccc','#48b8d0'];
 const PLCFG = {{responsive:true,displayModeBar:true,displaylogo:false,modeBarButtonsToRemove:['lasso2d','select2d','autoScale2d'],toImageButtonOptions:{{format:'png',height:600,width:1000,scale:2}}}};
 const PLMARGIN = {{l:55,r:15,t:20,b:40}};
 let qlActive='curtailment';
 let scActive='dispatch';
+let runPollTimer = null;
 
 function $(id){{return document.getElementById(id);}}
 function fmt(n,d){{return isNaN(n)?n:Number(n).toFixed(d||2);}}
@@ -451,7 +751,7 @@ function buildThemeSwitcher(){{
 
 function buildNav(){{
   $('nav').innerHTML=TABS.map(function(t,i){{return'<button class="nav-btn'+(i===0?' active':'')+'" data-tab="'+t.id+'">'+t.label+'</button>';}}).join('');
-  $('nav').onclick=function(e){{const b=e.target.closest('button');if(!b)return;const tid=b.dataset.tab;document.querySelectorAll('.nav-btn').forEach(function(x){{x.classList.remove('active');}});b.classList.add('active');document.querySelectorAll('.tab').forEach(function(x){{x.classList.remove('active');}});$('tab-'+tid).classList.add('active');if(tid==='quality')renderQuality();if(tid==='schedule')renderSchedule();if(tid==='reports')renderReports();}};
+  $('nav').onclick=function(e){{const b=e.target.closest('button');if(!b)return;const tid=b.dataset.tab;document.querySelectorAll('.nav-btn').forEach(function(x){{x.classList.remove('active');}});b.classList.add('active');document.querySelectorAll('.tab').forEach(function(x){{x.classList.remove('active');}});$('tab-'+tid).classList.add('active');if(tid==='quality')renderQuality();if(tid==='schedule')renderSchedule();if(tid==='reports')renderReports();if(tid==='run')checkJuliaStatus();}};
 }}
 
 // ============ OVERVIEW ============
@@ -689,6 +989,7 @@ async function saveConfig(){{
   try{{const r=await fetch('/api/config',{{method:'POST',headers:{{'Content-Type':'application/json'}},body:JSON.stringify(u)}});if(r.ok){{msg.className='msg ok';msg.textContent='Saved.';}}else{{let detail='';try{{const err=await r.json();detail=err.error?': '+err.error:'';}}catch(e){{}}msg.className='msg err';msg.textContent='Save failed: '+r.status+detail;}}}}catch(e){{msg.className='msg err';msg.textContent='Save failed - server running?';}}
   btn.disabled=false;setTimeout(function(){{msg.textContent='';}},3000);
 }}
+{run_js}
 
 try{{init();}}catch(e){{document.body.innerHTML='<div style="padding:40px;color:#dc2626;font-family:monospace;"><h2>Error</h2><pre>'+e.message+'</pre><pre>'+e.stack+'</pre></div>';}}
 </script></body></html>'''
