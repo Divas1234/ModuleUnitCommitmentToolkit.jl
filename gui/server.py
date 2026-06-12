@@ -232,7 +232,7 @@ def parse_toml_with_lines(path):
             for k, v in sec_data.items():
                 if isinstance(v, dict):
                     continue
-                t = 'bool' if isinstance(v, bool) else 'float' if isinstance(v, (int, float)) else 'string'
+                t = 'bool' if isinstance(v, bool) else 'number' if isinstance(v, (int, float)) else 'string'
                 fields.append({'key': k, 'value': v, 'type': t,
                                'section': sec_name,
                                'line': key_lines.get(k, {}).get('line', -1),
@@ -246,7 +246,7 @@ def parse_toml_with_lines(path):
                 if isinstance(v, dict):
                     sections.append({'name': f'{sec_name}.{k}', 'fields': [
                         {'key': fk, 'value': fv,
-                         'type': 'bool' if isinstance(fv, bool) else 'float' if isinstance(fv, (int, float)) else 'string',
+                         'type': 'bool' if isinstance(fv, bool) else 'number' if isinstance(fv, (int, float)) else 'string',
                          'section': f'{sec_name}.{k}',
                          'line': key_lines.get(fk, {}).get('line', -1),
                          'raw_value': key_lines.get(fk, {}).get('raw_value', str(fv))}
@@ -262,6 +262,19 @@ def write_toml_values(path, updates):
     lines = parsed['_lines'][:]
     key_lines = parsed['_key_lines']
 
+    def _format_toml_value(new_value, old_raw):
+        if new_value is None:
+            raise ValueError("Empty numeric values are not valid TOML values")
+        if isinstance(new_value, bool):
+            return 'true' if new_value else 'false'
+        if isinstance(new_value, str):
+            if old_raw.startswith(("'", '"')):
+                return json.dumps(new_value)
+            return new_value
+        if isinstance(new_value, (int, float)):
+            return str(new_value)
+        raise ValueError(f"Unsupported value type: {type(new_value).__name__}")
+
     for key, new_value in updates.items():
         if key not in key_lines:
             continue
@@ -269,14 +282,7 @@ def write_toml_values(path, updates):
         line_no = meta['line']
         old_line = lines[line_no]
         old_raw = meta['raw_value']
-        if isinstance(new_value, bool):
-            new_raw = 'true' if new_value else 'false'
-        elif isinstance(new_value, str):
-            new_raw = f'"{new_value}"' if '"' in old_raw or "'" in old_raw else new_raw
-        elif isinstance(new_value, (int, float)):
-            new_raw = str(new_value)
-        else:
-            new_raw = str(new_value)
+        new_raw = _format_toml_value(new_value, old_raw)
         lines[line_no] = old_line.replace(old_raw, new_raw, 1)
 
     path.write_text('\n'.join(lines))
@@ -320,11 +326,18 @@ class Handler(SimpleHTTPRequestHandler):
 
     def do_POST(self):
         length = int(self.headers.get('Content-Length', 0))
-        body = json.loads(self.rfile.read(length)) if length else {}
+        try:
+            body = json.loads(self.rfile.read(length)) if length else {}
+        except json.JSONDecodeError as e:
+            self._send_json({'ok': False, 'error': f'Invalid JSON: {e}'}, status=400)
+            return
 
         if self.path == '/api/config':
-            write_toml_values(CONFIG_PATH, body)
-            self._send_json({'ok': True})
+            try:
+                write_toml_values(CONFIG_PATH, body)
+                self._send_json({'ok': True})
+            except ValueError as e:
+                self._send_json({'ok': False, 'error': str(e)}, status=400)
             return
 
         if self.path == '/api/run':
@@ -354,7 +367,7 @@ class Handler(SimpleHTTPRequestHandler):
 
 if __name__ == '__main__':
     ok, msg = check_julia()
-    print(f"Julia check: {'✓' if ok else '✗'} {msg}")
+    print(f"Julia check: {'OK' if ok else 'FAIL'} {msg}")
     server = HTTPServer(('0.0.0.0', 8080), Handler)
     print(f'Server running at http://localhost:8080/gui/')
     try:

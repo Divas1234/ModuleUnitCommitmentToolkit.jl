@@ -8,4 +8,9 @@ echo "Starting server at http://localhost:8080/gui/"
 echo "Press Ctrl+C to stop."
 echo ""
 
-cd "$PROJECT" && python3 gui/server.py
+cd "$PROJECT"
+if command -v python3 >/dev/null 2>&1; then
+  python3 gui/server.py
+else
+  python gui/server.py
+fi
