@@ -9,11 +9,9 @@ function choose_initial_ccg_scenarios(data, initial_count::Int64)
 
 	wind_capacity = sum(data.winds.p_max)
 	load_by_time = vec(sum(data.loads.load_curve; dims = 1))
-	scores = [
-		(maximum(load_by_time .- data.winds.scenarios_curve[s, :] .* wind_capacity) +
-			0.05 * sum(load_by_time .- data.winds.scenarios_curve[s, :] .* wind_capacity), s)
-		for s in 1:data.NS
-	]
+	scores = [(maximum(load_by_time .- data.winds.scenarios_curve[s, :] .* wind_capacity) +
+			   0.05 * sum(load_by_time .- data.winds.scenarios_curve[s, :] .* wind_capacity), s,)
+			  for s in 1:data.NS]
 	sort!(scores; by = item -> item[1], rev = true)
 	selected = [s for (_, s) in first(scores, initial_count)]
 	sort!(selected)

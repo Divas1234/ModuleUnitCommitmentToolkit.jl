@@ -1,17 +1,210 @@
 #!/usr/bin/env python3
-"""HTTP server: serves static files + config read/write API for the dashboard."""
+"""HTTP server: serves static files + config read/write API + Julia task runner."""
 import json
+import os
 import re
+import shutil
+import signal
+import subprocess
+import threading
 import tomllib
 from http.server import HTTPServer, SimpleHTTPRequestHandler
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
 CONFIG_PATH = ROOT / 'config' / 'runtime_config.toml'
+VALID_TASKS = ("boundary", "benchmark", "ccg", "benders", "benders_fast", "tests")
+JULIA_STARTUP_TIMEOUT = 60
+JULIA_RUN_TIMEOUT = 3600
 
+# ---------------------------------------------------------------------------
+# Julia check
+# ---------------------------------------------------------------------------
+
+def check_julia():
+    """Return (ok, msg). Checks if `julia` is available and responsive."""
+    julia = shutil.which("julia")
+    if not julia:
+        return False, "`julia` not found in PATH. Install Julia (https://julialang.org) and ensure it is on $PATH."
+    try:
+        r = subprocess.run(
+            [julia, "-v"],
+            capture_output=True, text=True, timeout=15,
+            env={**os.environ, "JULIA_DEPOT_PATH": os.environ.get("JULIA_DEPOT_PATH", "")},
+        )
+        if r.returncode == 0 and r.stdout.strip():
+            return True, r.stdout.strip()
+        stderr = (r.stderr or "").strip()
+        if "locked by another process" in stderr:
+            return False, "Julia is locked by another process. Run:  pkill -f juliaup  &&  pkill -f julia"
+        return False, f"Julia binary found but not responding:\n{stderr or '(no output)'}"
+    except FileNotFoundError:
+        return False, f"Julia binary not found at {julia}"
+    except subprocess.TimeoutExpired:
+        return False, f"Julia binary at {julia} timed out (possibly corrupted installation)."
+    except OSError as e:
+        return False, f"Cannot execute Julia at {julia}: {e}"
+
+# ---------------------------------------------------------------------------
+# Run manager — background Julia process handling
+# ---------------------------------------------------------------------------
+
+class RunManager:
+    def __init__(self):
+        self._lock = threading.Lock()
+        self._timer = None
+        self.reset()
+
+    def reset(self):
+        self.task = None
+        self.status = "idle"
+        self.output = []
+        self._proc = None
+        self._structured = None
+        if self._timer:
+            self._timer.cancel()
+            self._timer = None
+
+    def start(self, task, params=None):
+        if task not in VALID_TASKS:
+            raise ValueError(f"Unknown task '{task}'. Valid: {', '.join(VALID_TASKS)}")
+
+        julia_ok, julia_msg = check_julia()
+        if not julia_ok:
+            self.output = [f"[ERROR] {julia_msg}\n"]
+            self.task = task
+            self.status = "failed"
+            return False
+
+        with self._lock:
+            if self.status == "running":
+                return False
+            self.reset()
+            self.task = task
+            self.status = "running"
+
+        def _run():
+            try:
+                cmd, env = self._build_cmd(task, params or {})
+                self._proc = subprocess.Popen(
+                    cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
+                    text=True, bufsize=1, cwd=str(ROOT), env=env,
+                )
+
+                self._timer = threading.Timer(JULIA_RUN_TIMEOUT, self._timeout_kill)
+                self._timer.start()
+
+                structured_lines = []
+                in_structured = False
+                for line in iter(self._proc.stdout.readline, ""):
+                    with self._lock:
+                        self.output.append(line)
+                        if in_structured:
+                            if line.strip() == "###END_STRUCTURED_DATA###":
+                                in_structured = False
+                            else:
+                                structured_lines.append(line)
+                        elif line.strip() == "###STRUCTURED_DATA###":
+                            in_structured = True
+
+                self._proc.wait()
+                rc = self._proc.returncode
+                with self._lock:
+                    if rc == 0:
+                        self.status = "completed"
+                    else:
+                        self.status = "failed"
+                    self._proc = None
+                    if structured_lines:
+                        try:
+                            self._structured = json.loads("".join(structured_lines))
+                        except json.JSONDecodeError:
+                            self._structured = None
+            except Exception as e:
+                with self._lock:
+                    self.output.append(f"\n[ERROR] {e}\n")
+                    self.status = "failed"
+            finally:
+                if self._timer:
+                    self._timer.cancel()
+                    self._timer = None
+
+        threading.Thread(target=_run, daemon=True).start()
+        return True
+
+    def _timeout_kill(self):
+        with self._lock:
+            if self._proc and self._proc.poll() is None:
+                self._proc.kill()
+                self.output.append(f"\n[ERROR] Task timed out after {JULIA_RUN_TIMEOUT}s\n")
+                self.status = "failed"
+                self._proc = None
+
+    def cancel(self):
+        with self._lock:
+            if self._proc and self._proc.poll() is None:
+                self._proc.terminate()
+                self.status = "cancelled"
+                return True
+            if self.status == "running":
+                self.status = "cancelled"
+                return True
+        return False
+
+    def get_state(self):
+        with self._lock:
+            return {
+                "task": self.task,
+                "status": self.status,
+                "output_len": len(self.output),
+                "output": self.output[-600:],
+                "structured": self._structured,
+            }
+
+    def _build_cmd(self, task, params):
+        env = os.environ.copy()
+        env["JULIA_DEPOT_PATH"] = env.get("JULIA_DEPOT_PATH", "")
+        env["PYTHON"] = ""
+
+        if task == "boundary":
+            limit = str(params.get("scenario_limit", 5))
+            return ["julia", "gui/run_boundary.jl", limit], env
+
+        if task == "benchmark":
+            counts = params.get("scenario_counts", "2,6,10")
+            env["BENCHMARK_SCENARIO_COUNTS"] = counts
+            return ["julia", "tools/benchmark/run_algorithm_comparison.jl"], env
+
+        if task == "ccg":
+            limit = str(params.get("scenario_limit", 20))
+            env["CCG_SCENARIO_LIMIT"] = limit
+            return ["julia", "tools/ccg/driver.jl"], env
+
+        if task == "benders":
+            limit = str(params.get("scenario_limit", 20))
+            env["BENDERS_SCENARIO_LIMIT"] = limit
+            return ["julia", "tools/benders/driver.jl"], env
+
+        if task == "benders_fast":
+            limit = str(params.get("scenario_limit", 20))
+            env["BENDERS_SCENARIO_LIMIT"] = limit
+            env["BENDERS_FAST_DIRECT_SOLVE"] = "1"
+            return ["julia", "tools/benders/driver.jl"], env
+
+        if task == "tests":
+            env["MODULE_UC_TEST_ACTIVATE_LOCAL_PROJECT"] = "0"
+            return ["julia", "test/runtests.jl"], env
+
+        raise ValueError(f"Unknown task: {task}")
+
+
+RUN_MGR = RunManager()
+
+# ---------------------------------------------------------------------------
+# TOML helpers
+# ---------------------------------------------------------------------------
 
 def parse_toml_with_lines(path):
-    """Parse TOML and return sections + line-number metadata for write-back."""
     text = path.read_text()
     lines = text.split('\n')
     parsed = tomllib.loads(text)
@@ -65,7 +258,6 @@ def parse_toml_with_lines(path):
 
 
 def write_toml_values(path, updates):
-    """Write updated values back to TOML by replacing on specific lines."""
     parsed = parse_toml_with_lines(path)
     lines = parsed['_lines'][:]
     key_lines = parsed['_key_lines']
@@ -90,36 +282,65 @@ def write_toml_values(path, updates):
     path.write_text('\n'.join(lines))
 
 
+# ---------------------------------------------------------------------------
+# HTTP handler
+# ---------------------------------------------------------------------------
+
 class Handler(SimpleHTTPRequestHandler):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, directory=str(ROOT), **kwargs)
 
+    def _send_json(self, data, status=200):
+        self.send_response(status)
+        self.send_header('Content-Type', 'application/json')
+        self.send_header('Access-Control-Allow-Origin', '*')
+        self.end_headers()
+        self.wfile.write(json.dumps(data).encode())
+
     def do_GET(self):
         if self.path == '/api/config':
-            self.send_response(200)
-            self.send_header('Content-Type', 'application/json')
-            self.send_header('Access-Control-Allow-Origin', '*')
-            self.end_headers()
             result = parse_toml_with_lines(CONFIG_PATH)
             del result['_lines']
             del result['_key_lines']
-            self.wfile.write(json.dumps(result).encode())
+            self._send_json(result)
             return
+
+        if self.path == '/api/run':
+            self._send_json(RUN_MGR.get_state())
+            return
+
+        if self.path == '/api/check/julia':
+            ok, msg = check_julia()
+            self._send_json({'ok': ok, 'msg': msg})
+            return
+
         if self.path == '/':
             self.path = '/gui/index.html'
         super().do_GET()
 
     def do_POST(self):
+        length = int(self.headers.get('Content-Length', 0))
+        body = json.loads(self.rfile.read(length)) if length else {}
+
         if self.path == '/api/config':
-            length = int(self.headers.get('Content-Length', 0))
-            body = json.loads(self.rfile.read(length))
             write_toml_values(CONFIG_PATH, body)
-            self.send_response(200)
-            self.send_header('Content-Type', 'application/json')
-            self.send_header('Access-Control-Allow-Origin', '*')
-            self.end_headers()
-            self.wfile.write(json.dumps({'ok': True}).encode())
+            self._send_json({'ok': True})
             return
+
+        if self.path == '/api/run':
+            task = body.get('task', '')
+            params = body.get('params', {})
+            try:
+                ok = RUN_MGR.start(task, params)
+                self._send_json({'ok': ok, 'task': task})
+            except ValueError as e:
+                self._send_json({'ok': False, 'error': str(e)}, status=400)
+            return
+
+        if self.path == '/api/run/cancel':
+            self._send_json({'ok': RUN_MGR.cancel()})
+            return
+
         self.send_response(404)
         self.end_headers()
 
@@ -132,8 +353,10 @@ class Handler(SimpleHTTPRequestHandler):
 
 
 if __name__ == '__main__':
+    ok, msg = check_julia()
+    print(f"Julia check: {'✓' if ok else '✗'} {msg}")
     server = HTTPServer(('0.0.0.0', 8080), Handler)
-    print('Server running at http://localhost:8080/gui/')
+    print(f'Server running at http://localhost:8080/gui/')
     try:
         server.serve_forever()
     except KeyboardInterrupt:
