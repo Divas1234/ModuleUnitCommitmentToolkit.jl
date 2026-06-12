@@ -493,7 +493,7 @@ function renderSettings(){
   var html='';cfg.sections.forEach(function(sec){html+='<div class="settings-section"><h3>'+(lm[sec.name]||sec.name)+'</h3><div class="fields">';
   sec.fields.forEach(function(f){const id='cfg-'+f.key;
     if(f.type==='bool')html+='<div class="field"><label for="'+id+'">'+f.key+'</label><input type="checkbox" id="'+id+'" data-key="'+f.key+'" '+(f.value?'checked':'')+'></div>';
-    else if(f.type==='number')html+='<div class="field"><label for="'+id+'">'+f.key+'</label><input type="number" id="'+id+'" data-key="'+f.key+'" value="'+f.value+'" step="any"></div>';
+    else if(f.type==='number'||f.type==='float'||f.type==='integer')html+='<div class="field"><label for="'+id+'">'+f.key+'</label><input type="number" id="'+id+'" data-key="'+f.key+'" value="'+f.value+'" step="any"></div>';
     else html+='<div class="field"><label for="'+id+'">'+f.key+'</label><input type="text" id="'+id+'" data-key="'+f.key+'" value="'+escapeHtml(String(f.value))+'"></div>';
   });html+='</div></div>';});$('settings-grid').innerHTML=html;
 }
@@ -502,8 +502,9 @@ function escapeHtml(s){return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').repla
 
 async function saveConfig(){
   const btn=$('save-config-btn'),msg=$('save-msg');btn.disabled=true;msg.className='msg';msg.textContent='Saving...';
-  const u={};document.querySelectorAll('[data-key]').forEach(function(el){const k=el.dataset.key;if(el.type==='checkbox')u[k]=el.checked;else if(el.type==='number')u[k]=parseFloat(el.value);else u[k]=el.value;});
-  try{const r=await fetch('/api/config',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(u)});if(r.ok){msg.className='msg ok';msg.textContent='Saved.';}else{msg.className='msg err';msg.textContent='Save failed: '+r.status;}}catch(e){msg.className='msg err';msg.textContent='Save failed - server running?';}
+  const u={};let invalid=null;document.querySelectorAll('[data-key]').forEach(function(el){const k=el.dataset.key;if(el.type==='checkbox')u[k]=el.checked;else if(el.type==='number'){const v=Number(el.value);if(el.value===''||Number.isNaN(v))invalid=k;else u[k]=v;}else u[k]=el.value;});
+  if(invalid){msg.className='msg err';msg.textContent='Invalid numeric value: '+invalid;btn.disabled=false;return;}
+  try{const r=await fetch('/api/config',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(u)});if(r.ok){msg.className='msg ok';msg.textContent='Saved.';}else{let detail='';try{const err=await r.json();detail=err.error?': '+err.error:'';}catch(e){}msg.className='msg err';msg.textContent='Save failed: '+r.status+detail;}}catch(e){msg.className='msg err';msg.textContent='Save failed - server running?';}
   btn.disabled=false;setTimeout(function(){msg.textContent='';},3000);
 }
 
