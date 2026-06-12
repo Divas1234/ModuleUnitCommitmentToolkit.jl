@@ -54,13 +54,12 @@ function solve_ccg_unit_commitment(; scenario_limit::Int64 = 20)
 
 		current_lower_bound = objective_bound(master_model)
 		recourse_costs = [evaluation[s].recourse_cost for s in 1:data.NS]
-		worst_recourse_cost, worst_probability =
-			worst_case_expected_value(
-				recourse_costs,
-				data.dro.nominal_probability,
-				data.dro.enabled ? data.dro.radius : 0.0,
-				data.dro.distance_matrix,
-			)
+		worst_recourse_cost, worst_probability = worst_case_expected_value(
+			recourse_costs,
+			data.dro.nominal_probability,
+			data.dro.enabled ? data.dro.radius : 0.0,
+			data.dro.distance_matrix,
+		)
 		current_upper_bound = first_stage.cost + worst_recourse_cost
 		best_lower_bound = max(best_lower_bound, current_lower_bound)
 		if current_upper_bound < best_upper_bound
@@ -115,7 +114,7 @@ function solve_ccg_unit_commitment(; scenario_limit::Int64 = 20)
 		sort!(unique!(selected))
 	end
 
-	println("\n====================================================")
+	println("====================================================")
 	println("C&CG stopped at maximum iterations")
 	println("FINAL ACTIVE SCENARIOS: ", selected)
 	println("FINAL UPPER BOUND:      ", best_upper_bound)
@@ -175,8 +174,7 @@ function load_ccg_data(scenario_limit::Int64)
 	# model flags, wind scenarios, and boundary diagnostics stay identical across
 	# algorithm comparisons.
 	UnitsFreqParam, WindsFreqParam, StrogeData, DataGen, GenCost, DataBranch, LoadCurve, DataLoad, datacentra_Data = readxlssheet()
-	config_param, units, lines, loads, psses, NB, NG, NL, ND, NT, NC, ND2, DataCentras =
-		forminputdata(DataGen, DataBranch, DataLoad, LoadCurve, GenCost, UnitsFreqParam, StrogeData, datacentra_Data)
+	config_param, units, lines, loads, psses, NB, NG, NL, ND, NT, NC, ND2, DataCentras = forminputdata(DataGen, DataBranch, DataLoad, LoadCurve, GenCost, UnitsFreqParam, StrogeData, datacentra_Data)
 	winds, NW = genscenario(WindsFreqParam, 1; scenario_limit = scenario_limit)
 	NS = Int64(winds.scenarios_nums)
 	maybe_print_boundarycondition(NB, NL, NG, NT, ND, units, loads, lines, winds, psses, config_param)
@@ -225,14 +223,14 @@ function solve_ccg_master(data, selected_scenarios::Vector{Int64})
 end
 
 function build_ccg_extensive_model(
-	data,
-	winds_subset::wind,
-	NS_active::Int64,
-	scenarios_prob::Float64;
-	nominal_probability::Vector{Float64} = fill(1.0 / NS_active, NS_active),
-	dro_radius::Float64 = 0.0,
-	dro_distance_matrix::Matrix{Float64} = zeros(Float64, NS_active, NS_active),
-	use_dro_objective::Bool = false,
+		data,
+		winds_subset::wind,
+		NS_active::Int64,
+		scenarios_prob::Float64;
+		nominal_probability::Vector{Float64} = fill(1.0 / NS_active, NS_active),
+		dro_radius::Float64 = 0.0,
+		dro_distance_matrix::Matrix{Float64} = zeros(Float64, NS_active, NS_active),
+		use_dro_objective::Bool = false,
 )
 	# This model is intentionally assembled from the same constraint builders used
 	# by Benders. Keeping the algebra shared makes Benders-vs-CCG comparisons about
@@ -344,8 +342,7 @@ function set_ccg_recourse_objective!(model::Model, data, NS::Int64, scenarios_pr
 	delta_pd = model[:Δpd]
 	delta_pw = model[:Δpw]
 
-	@objective(
-		model,
+	@objective(model,
 		Min,
 		scenarios_prob * c0 *
 		(
@@ -354,8 +351,7 @@ function set_ccg_recourse_objective!(model::Model, data, NS::Int64, scenarios_pr
 			sum(sum(sum(reserve_cost_positive * sr_pos[i + (s - 1) * data.NG, t] + reserve_cost_negative * sr_neg[i + (s - 1) * data.NG, t] for i in 1:data.NG) for t in 1:data.NT) for s in 1:NS)
 		) +
 		scenarios_prob * load_curtailment_penalty * sum(sum(sum(delta_pd[(1 + (s - 1) * data.ND):(s * data.ND), t]) for t in 1:data.NT) for s in 1:NS) +
-		scenarios_prob * wind_curtailment_penalty * sum(sum(sum(delta_pw[(1 + (s - 1) * data.NW):(s * data.NW), t]) for t in 1:data.NT) for s in 1:NS)
-	)
+		scenarios_prob * wind_curtailment_penalty * sum(sum(sum(delta_pw[(1 + (s - 1) * data.NW):(s * data.NW), t]) for t in 1:data.NT) for s in 1:NS))
 	return model
 end
 
