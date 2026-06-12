@@ -7,6 +7,7 @@ import shutil
 import signal
 import subprocess
 import threading
+import time
 import tomllib
 from http.server import HTTPServer, SimpleHTTPRequestHandler
 from pathlib import Path
@@ -18,6 +19,14 @@ VALID_TASKS = ("boundary", "benchmark", "ccg", "benders", "benders_fast", "tests
 JULIA_STARTUP_TIMEOUT = 60
 JULIA_RUN_TIMEOUT = 3600
 ANSI_RE = re.compile(r'\x1b\[[0-?]*[ -/]*[@-~]')
+TASK_OUTPUT_DIRS = {
+    "benchmark": ("comparison", "benchmark_uc", "benders", "ccg"),
+    "ccg": ("ccg",),
+    "benders": ("benders",),
+    "benders_fast": ("benders",),
+    "boundary": (),
+    "tests": (),
+}
 
 
 def julia_env():
@@ -75,6 +84,8 @@ class RunManager:
         self.output = []
         self._proc = None
         self._structured = None
+        self._result_meta = None
+        self._run_started_at = None
         self._cancel_requested = False
         if self._timer:
             self._timer.cancel()
@@ -97,6 +108,7 @@ class RunManager:
             self.reset()
             self.task = task
             self.status = "running"
+            self._run_started_at = time.time()
 
         def _run():
             try:
@@ -141,6 +153,8 @@ class RunManager:
                             self._structured = json.loads("".join(structured_lines))
                         except json.JSONDecodeError:
                             self._structured = None
+                    if self.status == "completed":
+                        self._result_meta = self._collect_result_metadata(task)
             except Exception as e:
                 with self._lock:
                     self.output.append(f"\n[ERROR] {e}\n")
@@ -183,7 +197,47 @@ class RunManager:
                 "output_len": len(self.output),
                 "output": self.output[-600:],
                 "structured": self._structured,
+                "result_path": (self._result_meta or {}).get("result_path"),
+                "summaries": (self._result_meta or {}).get("summaries", []),
             }
+
+    def _collect_result_metadata(self, task):
+        candidates = []
+        summaries = []
+
+        for rel in TASK_OUTPUT_DIRS.get(task, ()):
+            root = ROOT / "output" / rel
+            if not root.exists():
+                continue
+            for path in root.rglob("*"):
+                if path.is_file() and path.suffix.lower() in (".log", ".csv", ".txt", ".md"):
+                    candidates.append(path)
+
+        comparison_root = ROOT / "output" / "comparison"
+        if task == "benchmark" and comparison_root.exists():
+            for summary_path in comparison_root.glob("*/summary.csv"):
+                summaries.append({"path": str(summary_path), "mtime": summary_path.stat().st_mtime})
+                candidates.append(summary_path)
+
+        fresh_candidates = []
+        if self._run_started_at:
+            fresh_candidates = [p for p in candidates if p.stat().st_mtime >= self._run_started_at - 2]
+            if fresh_candidates:
+                candidates = fresh_candidates
+
+        if not candidates:
+            return {"result_path": None, "summaries": summaries}
+
+        newest = max(candidates, key=lambda p: p.stat().st_mtime)
+        log_candidates = [p for p in candidates if p.suffix.lower() == ".log"]
+        if log_candidates:
+            newest = max(log_candidates, key=lambda p: p.stat().st_mtime)
+
+        summaries.sort(key=lambda item: item["mtime"], reverse=True)
+        return {
+            "result_path": str(newest),
+            "summaries": summaries[:5],
+        }
 
     def _build_cmd(self, task, params):
         env = julia_env()

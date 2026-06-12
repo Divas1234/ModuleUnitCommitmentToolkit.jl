@@ -282,6 +282,11 @@ def main():
 .run-params input { padding:3px 7px;border:1px solid var(--border);border-radius:4px;font-size:11px;background:var(--card-bg);color:var(--text);width:90px; }
 .run-params input:focus { outline:none;border-color:var(--accent); }
 .run-output { max-height:500px;overflow-y:auto;font-size:10px;line-height:1.5; }
+.run-success { display:none;margin-bottom:10px;padding:10px 12px;border:1px solid #86efac;border-left:4px solid #16a34a;border-radius:6px;background:#f0fdf4;color:#166534;font-size:12px;line-height:1.5; }
+.run-success strong { font-weight:700; }
+.run-success code { display:inline-block;max-width:100%;margin-top:4px;padding:2px 6px;border-radius:4px;background:rgba(22,101,52,.08);font-family:'SF Mono',Monaco,monospace;font-size:11px;color:#14532d;white-space:normal;word-break:break-all; }
+[data-theme="dark"] .run-success { background:#052e16;border-color:#166534;color:#bbf7d0; }
+[data-theme="dark"] .run-success code { background:rgba(187,247,208,.1);color:#dcfce7; }
 .status-badge { display:inline-block;padding:2px 10px;border-radius:4px;font-size:11px;font-weight:600; }
 .status-idle { background:var(--section-hdr);color:var(--text2); }
 .status-running { background:#dbeafe;color:#2563eb; }
@@ -324,6 +329,7 @@ def main():
   </div>
   <div class="card">
     <h2>Output</h2>
+    <div id="run-success-msg" class="run-success"></div>
     <pre class="run-output" id="run-output">Ready. Select a task above to run.</pre>
   </div>
   <div id="boundary-results" style="display:none">
@@ -378,6 +384,7 @@ function runTask(task){
   else if (task === 'benchmark') params.scenario_counts = $('run-scenario-counts').value || '2,6,10';
   else if (task === 'ccg' || task === 'benders' || task === 'benders_fast') params.scenario_limit = parseInt($('run-scenario-limit').value) || 20;
 
+  clearRunSuccess();
   $('boundary-results').style.display = 'none';
   $('test-results').style.display = 'none';
   $('run-output').textContent = 'Starting ' + task + '...\n';
@@ -415,6 +422,7 @@ function runTask(task){
 }
 
 function cancelRun(){
+  clearRunSuccess();
   fetch('/api/run/cancel', {method:'POST'}).then(function(r){return r.json();}).then(function(data){
     if (data.ok) {
       $('run-output').textContent += '\n[Cancelled by user]\n';
@@ -452,6 +460,7 @@ function pollRunStatus(){
     setRunButtonsDisabled(juliaOk === false);
     if (state.status === 'completed') {
       out.textContent += '\nTask completed.\n';
+      renderRunSuccess(state.task, state);
       handleTaskResult(state.task, state.structured);
     } else if (state.status === 'failed') {
       out.textContent += '\nTask failed.\n';
@@ -471,6 +480,85 @@ function setStatusBadge(status){
 
 function setRunButtonsDisabled(disabled){
   document.querySelectorAll('.run-btn:not(.danger)').forEach(function(btn){ btn.disabled = disabled; });
+}
+
+function clearRunSuccess(){
+  var el = $('run-success-msg');
+  if (!el) return;
+  el.style.display = 'none';
+  el.innerHTML = '';
+}
+
+function renderRunSuccess(task, state){
+  var el = $('run-success-msg');
+  if (!el) return;
+  var path = getRunResultPath(task, state || {});
+  var taskName = taskLabel(task);
+  var suffix = path
+    ? '结果已具体保存在：<br><code>' + escapeHTML(path) + '</code>'
+    : '结果路径暂未返回，请查看下方 Output 日志。';
+  el.innerHTML = '<strong>&#127881; 任务 ' + escapeHTML(taskName) + ' 运行成功！</strong><br>' + suffix;
+  el.style.display = 'block';
+}
+
+function taskLabel(task){
+  var map = {boundary:'Boundary Check', benchmark:'Benchmark', ccg:'CCG', benders:'Benders', benders_fast:'Benders Fast', tests:'Run All Tests'};
+  return map[task] || task || 'Unknown';
+}
+
+function getRunResultPath(task, state){
+  if (state.result_path) return state.result_path;
+  if (state.structured) {
+    var fromStructured = findPathInObject(state.structured);
+    if (fromStructured) return fromStructured;
+  }
+  if (Array.isArray(state.summaries) && state.summaries.length) {
+    for (var i = state.summaries.length - 1; i >= 0; i--) {
+      var p = findPathInObject(state.summaries[i]);
+      if (p) return p;
+    }
+  }
+  return findPathInDataSummaries(task);
+}
+
+function findPathInObject(obj){
+  if (!obj || typeof obj !== 'object') return '';
+  var preferred = ['log_path', 'result_path', 'data_path', 'file_path', 'path'];
+  for (var i = 0; i < preferred.length; i++) {
+    var v = obj[preferred[i]];
+    if (typeof v === 'string' && v) return v;
+  }
+  if (Array.isArray(obj)) {
+    for (var j = obj.length - 1; j >= 0; j--) {
+      var p = findPathInObject(obj[j]);
+      if (p) return p;
+    }
+  }
+  return '';
+}
+
+function findPathInDataSummaries(task){
+  var expected = {benchmark:'benchmark_uc', benders_fast:'benders'}[task] || task;
+  var newest = '';
+  Object.keys(DATA.summaries || {}).sort().reverse().some(function(run){
+    var rows = DATA.summaries[run] || [];
+    if (!rows.length) return false;
+    var header = rows[0].map(function(h){ return String(h).toLowerCase(); });
+    var pathIdx = header.indexOf('log_path');
+    if (pathIdx < 0) pathIdx = header.indexOf('result_path');
+    if (pathIdx < 0) pathIdx = header.indexOf('path');
+    if (pathIdx < 0) return false;
+    for (var i = rows.length - 1; i >= 1; i--) {
+      var algo = String(rows[i][0] || '');
+      var path = rows[i][pathIdx];
+      if (path && (!expected || algo === expected || task === 'benchmark')) {
+        newest = path;
+        return true;
+      }
+    }
+    return false;
+  });
+  return newest;
 }
 
 function handleTaskResult(task, structured){
@@ -626,21 +714,65 @@ tr:hover td {{ background:var(--hover-bg); }}
 .ctrl select {{ padding:3px 7px;border:1px solid var(--border);border-radius:5px;font-size:11px;background:var(--card-bg);color:var(--text);max-width:260px; }}
 .ctrl select:focus {{ outline:none;border-color:var(--accent); }}
 
-.plot-div {{ width:100%; }}
+.chart-stage {{ display:flex;justify-content:center;align-items:stretch;width:100%;min-height:480px;margin:8px 0 14px; }}
+.plot-div {{ width:100%;max-width:1280px;height:480px;min-height:480px; }}
+.chart-stage pre.short {{ width:100%;height:480px;max-height:480px; }}
+.table-stack {{ display:grid;gap:12px; }}
+.data-block h3 {{ font-size:12px;margin:2px 0 8px;color:var(--text);font-weight:600; }}
+.table-panel {{ overflow-x:auto;max-height:300px;overflow-y:auto;border:1px solid var(--border2);border-radius:6px; }}
+.table-panel.tight {{ max-height:280px; }}
 
 pre {{ font-family:'SF Mono',Monaco,monospace;font-size:10px;line-height:1.4;overflow-x:auto;white-space:pre;max-height:480px;overflow-y:auto;background:var(--pre-bg);color:var(--pre-fg);padding:12px;border-radius:6px; }}
 pre.short {{ max-height:220px; }}
 
-.settings-grid {{ display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:12px; }}
-.settings-section {{ background:var(--section-bg);border:1px solid var(--border);border-radius:6px;overflow:hidden; }}
-.settings-section h3 {{ font-size:11px;padding:7px 10px;background:var(--section-hdr);color:var(--section-text);font-weight:600; }}
-.settings-section .fields {{ padding:7px 10px; }}
-.field {{ display:flex;align-items:center;justify-content:space-between;padding:4px 0;border-bottom:1px solid var(--border2);gap:8px; }}
+.reports-shell {{ display:grid;gap:12px; }}
+.report-toolbar {{ display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:10px; }}
+.report-toolbar label {{ font-size:11px;color:var(--text2); }}
+.report-toolbar select {{ padding:3px 7px;border:1px solid var(--border);border-radius:5px;font-size:11px;background:var(--card-bg);color:var(--text);max-width:280px; }}
+.chart-tabs {{ display:flex;gap:6px;flex-wrap:wrap;margin:8px 0 10px; }}
+.chart-tab {{ padding:5px 10px;border:1px solid var(--border);border-radius:6px;background:var(--card-bg);font-size:11px;color:var(--text2);cursor:pointer;transition:all .15s; }}
+.chart-tab:hover {{ border-color:var(--accent);color:var(--accent); }}
+.chart-tab.active {{ background:var(--accent);color:#fff;border-color:var(--accent);box-shadow:0 3px 10px rgba(37,99,235,.16); }}
+.report-svg-wrap {{ background:var(--hover-bg);border:1px solid var(--border);border-radius:8px;padding:10px;min-height:460px;overflow:auto;transition:background .2s,border-color .2s; }}
+.report-svg-stage {{ min-width:760px;transform-origin:top left;transition:transform .15s; }}
+.report-svg-stage svg {{ width:100%;height:auto;display:block;border-radius:6px;background:var(--card-bg); }}
+.report-svg-wrap.dark-chart {{ background:#1e1e1e;border-color:#3f3f46; }}
+.report-svg-wrap.dark-chart .report-svg-stage svg {{ background:#2a2a2a; }}
+.svg-tools {{ margin-left:auto;display:flex;gap:4px; }}
+.svg-tool {{ width:28px;height:24px;border:1px solid var(--border);border-radius:5px;background:var(--card-bg);color:var(--text);cursor:pointer;font-size:12px; }}
+.svg-tool:hover {{ border-color:var(--accent);color:var(--accent); }}
+.svg-hotspot {{ cursor:pointer;transition:opacity .15s,stroke-width .15s; }}
+.svg-hotspot:hover {{ opacity:.82; }}
+.svg-selected {{ stroke:var(--accent)!important;stroke-width:4!important; }}
+.report-body {{ font-size:12px;line-height:1.6;max-height:520px;overflow-y:auto;padding:12px;background:var(--section-bg);border:1px solid var(--border);border-radius:8px; }}
+
+.settings-grid {{ display:grid;grid-template-columns:repeat(auto-fit,minmax(450px,1fr));gap:20px;align-items:start; }}
+.settings-category {{ background:var(--card-bg);border:1px solid var(--border);border-radius:12px;padding:18px;box-shadow:0 4px 6px -1px rgba(0,0,0,.05);min-width:0;transition:background .2s ease,border-color .2s ease,box-shadow .2s ease; }}
+.settings-category legend {{ padding:0 6px;font-size:13px;font-weight:700;color:var(--text); }}
+.settings-category .category-note {{ margin:4px 0 14px;font-size:10px;color:var(--text3);line-height:1.5; }}
+.setting-control {{ display:grid;grid-template-columns:1.2fr 2fr;gap:16px;align-items:center;margin-bottom:14px;padding:12px;border:1px solid var(--border);border-radius:10px;background:var(--section-bg); }}
+.setting-control label {{ font-size:11px;font-weight:600;color:var(--text);text-align:left; }}
+.setting-control select,.field select,.field input[type="text"],.field input[type="number"] {{ width:100%;min-height:34px;padding:7px 10px;border:1px solid var(--border);border-radius:7px;background:var(--card-bg);color:var(--text);font-family:inherit;font-size:12px;box-shadow:none;transition:all .2s ease;accent-color:var(--accent); }}
+.setting-control select option,.field select option {{ background:var(--card-bg);color:var(--text); }}
+.setting-control select:focus,.field select:focus,.field input:focus {{ outline:none;border-color:var(--accent);box-shadow:0 0 0 3px color-mix(in srgb,var(--accent) 18%,transparent); }}
+.setting-panels {{ display:grid;gap:12px; }}
+.setting-panel {{ display:grid;gap:12px;max-height:0;opacity:0;overflow:hidden;transform:translateY(-4px);pointer-events:none;transition:max-height .24s ease,opacity .2s ease,transform .2s ease; }}
+.setting-panel.active {{ max-height:2400px;opacity:1;transform:translateY(0);pointer-events:auto; }}
+.setting-panel.sf-hidden {{ max-height:0;opacity:0;pointer-events:none; }}
+.setting-panel-note {{ padding:9px 11px;border:1px dashed var(--border);border-radius:8px;background:var(--hover-bg);color:var(--text2);font-size:11px;line-height:1.5; }}
+.settings-section {{ background:var(--section-bg);border:1px solid var(--border);border-radius:9px;overflow:hidden;margin-bottom:0; }}
+.settings-section:last-child {{ margin-bottom:0; }}
+.settings-section h3 {{ font-size:11px;padding:8px 11px;background:var(--section-hdr);color:var(--section-text);font-weight:600; }}
+.settings-section .fields {{ display:grid;grid-template-columns:1fr;gap:9px;padding:12px; }}
+.field {{ display:grid;grid-template-columns:1.2fr 2fr;align-items:center;padding:8px 10px;border:1px solid var(--border2);border-radius:8px;background:var(--card-bg);gap:16px;min-height:42px; }}
 .field:last-child {{ border-bottom:none; }}
-.field label {{ font-size:11px;color:var(--text);flex:1;cursor:pointer;overflow:hidden;text-overflow:ellipsis; }}
-.field input[type="text"],.field input[type="number"] {{ width:130px;padding:3px 5px;border:1px solid var(--border);border-radius:4px;font-size:11px;font-family:'SF Mono',Monaco,monospace;text-align:right;background:var(--card-bg);color:var(--text); }}
-.field input:focus {{ outline:none;border-color:var(--accent); }}
-.field input[type="checkbox"] {{ width:14px;height:14px;accent-color:var(--accent); }}
+.field label {{ font-size:11px;color:var(--text);flex:1;cursor:pointer;overflow:hidden;text-overflow:ellipsis;text-align:left; }}
+.field input[type="text"],.field input[type="number"] {{ text-align:right; }}
+.field input[type="checkbox"] {{ width:16px;height:16px;accent-color:var(--accent);justify-self:end; }}
+[data-theme="dark"] .setting-control select,[data-theme="dark"] .field select,[data-theme="dark"] .field input[type="text"],[data-theme="dark"] .field input[type="number"] {{ background:#111827;color:#e5e7eb;border-color:#374151; }}
+[data-theme="dark"] .setting-control select option,[data-theme="dark"] .field select option {{ background:#111827;color:#e5e7eb; }}
+@media (max-width:980px) {{ .settings-grid {{ grid-template-columns:1fr; }} }}
+@media (max-width:560px) {{ .settings-grid {{ grid-template-columns:1fr;gap:14px; }} .settings-category {{ padding:14px; }} .setting-control,.field {{ grid-template-columns:1fr;gap:7px; }} .field input[type="checkbox"] {{ justify-self:start; }} }}
 
 .save-bar {{ display:flex;align-items:center;gap:10px;margin-bottom:12px; }}
 .save-bar button {{ padding:6px 16px;background:var(--accent);color:#fff;border:none;border-radius:5px;font-size:12px;cursor:pointer;font-weight:600; }}
@@ -654,10 +786,12 @@ pre.short {{ max-height:220px; }}
 .view-tab:hover,.sched-tab:hover {{ border-color:var(--accent);color:var(--accent); }}
 .view-tab.active,.sched-tab.active {{ background:var(--accent);color:#fff;border-color:var(--accent); }}
 
-.cost-grid {{ display:grid;grid-template-columns:1fr 1fr;gap:12px; }}
-@media (max-width:700px) {{ .cost-grid {{ grid-template-columns:1fr; }} }}
+.cost-grid {{ display:grid;grid-template-columns:1fr 1fr;gap:12px;width:100%;height:480px; }}
+.cost-grid .plot-div {{ height:480px;min-height:480px; }}
+@media (max-width:700px) {{ .cost-grid {{ grid-template-columns:repeat(2,minmax(260px,1fr));overflow-x:auto; }} }}
 
 .empty-state {{ padding:40px;text-align:center;color:var(--text3);font-size:13px; }}
+.plot-div > .empty-state {{ height:480px;display:flex;align-items:center;justify-content:center;padding:0; }}
 {run_css}
 </style>
 </head>
@@ -681,29 +815,41 @@ pre.short {{ max-height:220px; }}
   <div class="card"><h2>Results &amp; Charts</h2>
     <div class="ctrl"><label>Run</label><select id="ql-run"></select><label>Algorithm</label><select id="ql-algo"><option value="">All</option></select><label>Scenarios</label><select id="ql-scen"><option value="">All</option></select></div>
     <div class="view-tabs" id="ql-view-tabs"></div>
-    <div id="ql-plot" class="plot-div"></div>
+    <div class="chart-stage"><div id="ql-plot" class="plot-div"></div></div>
+    <div class="table-stack">
+      <div class="data-block"><h3>Power Balance Quality</h3><div class="table-panel tight"><table id="ql-quality-table"></table></div></div>
+      <div class="data-block"><h3>Iteration History</h3><div class="table-panel"><table id="ql-iter-table"></table></div></div>
+    </div>
   </div>
-  <div class="card"><h2>Power Balance Quality</h2><div style="overflow-x:auto;max-height:280px;overflow-y:auto;"><table id="ql-quality-table"></table></div></div>
-  <div class="card"><h2>Iteration History</h2><div style="overflow-x:auto;max-height:300px;overflow-y:auto;"><table id="ql-iter-table"></table></div></div>
 </div>
 
 <div id="tab-schedule" class="tab">
   <div class="card"><h2>Schedule Details</h2>
     <div class="ctrl"><label>Run</label><select id="sc-run"></select><label>Algorithm</label><select id="sc-algo"></select></div>
     <div class="sched-tabs" id="sc-tabs"></div>
-    <div id="sc-plot" class="plot-div"></div>
-    <div style="overflow-x:auto;max-height:260px;overflow-y:auto;"><table id="sc-table"></table></div>
+    <div class="chart-stage"><div id="sc-plot" class="plot-div"></div></div>
+    <div class="table-panel"><table id="sc-table"></table></div>
   </div>
 </div>
 
 <div id="tab-reports" class="tab">
-  <div class="card"><h2>Benchmark Reports</h2>
-    <div class="ctrl"><label>Run</label><select id="rp-run"></select></div>
-    <div id="rp-content" style="font-size:12px;line-height:1.6;max-height:520px;overflow-y:auto;padding:12px;background:var(--card-bg);border-radius:6px;"></div>
-  </div>
-  <div class="card"><h2>Report SVGs</h2>
-    <div class="ctrl"><label>Run</label><select id="svg-run"></select><label>Chart</label><select id="svg-chart"></select></div>
-    <div id="svg-display" style="min-height:100px;"></div>
+  <div class="reports-shell">
+    <div class="card"><h2>Report Charts</h2>
+      <div class="report-toolbar">
+        <label>Run</label><select id="svg-run"></select>
+        <div class="svg-tools">
+          <button class="svg-tool" id="svg-zoom-out" title="Zoom out">-</button>
+          <button class="svg-tool" id="svg-zoom-reset" title="Reset zoom">1x</button>
+          <button class="svg-tool" id="svg-zoom-in" title="Zoom in">+</button>
+        </div>
+      </div>
+      <div class="chart-tabs" id="svg-chart-tabs"></div>
+      <div id="svg-display" class="report-svg-wrap"><div class="empty-state">No SVG</div></div>
+    </div>
+    <div class="card"><h2>Benchmark Reports</h2>
+      <div class="report-toolbar"><label>Run</label><select id="rp-run"></select></div>
+      <div id="rp-content" class="report-body"></div>
+    </div>
   </div>
 </div>
 
@@ -728,16 +874,20 @@ const PLMARGIN = {{l:55,r:15,t:20,b:40}};
 let qlActive='curtailment';
 let scActive='dispatch';
 let runPollTimer = null;
+let activeSvgChart = '';
+let svgZoom = 1;
+let themeObserver = null;
 
 function $(id){{return document.getElementById(id);}}
 function fmt(n,d){{return isNaN(n)?n:Number(n).toFixed(d||2);}}
 function pl(id){{const d=document.getElementById(id);Plotly.purge(d);return d;}}
-function show(id,data,layout){{Plotly.newPlot(pl(id),data,Object.assign({{margin:PLMARGIN,hovermode:'x unified',legend:{{orientation:'h',y:-0.2,x:0}},xaxis:{{tickfont:{{size:10}}}},yaxis:{{tickfont:{{size:10}},title:{{font:{{size:11}}}}}}}},layout),PLCFG);}}
+function show(id,data,layout){{Plotly.newPlot(pl(id),data,Object.assign({{height:480,margin:PLMARGIN,hovermode:'x unified',legend:{{orientation:'h',y:-0.2,x:0}},xaxis:{{tickfont:{{size:10}}}},yaxis:{{tickfont:{{size:10}},title:{{font:{{size:11}}}}}}}},layout),PLCFG);}}
 
 function init(){{
   try{{var s=localStorage.getItem('uc-theme');}}catch(e){{s=null;}}
   if(s)document.documentElement.dataset.theme=s;
   buildThemeSwitcher();buildNav();
+  initThemeWatcher();
   renderOverview();renderQuality();renderSchedule();renderReports();renderSettings();
 }}
 
@@ -746,7 +896,22 @@ const THEMES=[{{id:'',label:'Default',color:'#2563eb'}},{{id:'dark',label:'Dark'
 function buildThemeSwitcher(){{
   const c=document.documentElement.dataset.theme||'';
   $('theme-switcher').innerHTML=THEMES.map(function(t){{return'<div class="theme-dot'+(t.id===c?' active':'')+'" data-theme="'+t.id+'" title="'+t.label+'" style="background:'+t.color+'"></div>';}}).join('');
-  $('theme-switcher').onclick=function(e){{const d=e.target.closest('.theme-dot');if(!d)return;const t=d.dataset.theme;document.documentElement.dataset.theme=t;document.querySelectorAll('.theme-dot').forEach(function(x){{x.classList.remove('active');}});d.classList.add('active');try{{localStorage.setItem('uc-theme',t);}}catch(e){{}}}};
+  $('theme-switcher').onclick=function(e){{const d=e.target.closest('.theme-dot');if(!d)return;const t=d.dataset.theme;document.documentElement.dataset.theme=t;document.querySelectorAll('.theme-dot').forEach(function(x){{x.classList.remove('active');}});d.classList.add('active');try{{localStorage.setItem('uc-theme',t);}}catch(e){{}}applyReportTheme();}};
+}}
+
+function initThemeWatcher(){{
+  if(themeObserver)themeObserver.disconnect();
+  themeObserver=new MutationObserver(function(){{applyReportTheme();}});
+  themeObserver.observe(document.documentElement,{{attributes:true,attributeFilter:['data-theme','class']}});
+  if(document.body)themeObserver.observe(document.body,{{attributes:true,attributeFilter:['class']}});
+  applyReportTheme();
+}}
+
+function isDarkTheme(){{
+  const rootTheme=document.documentElement.dataset.theme||'';
+  const bodyClass=document.body?document.body.className:'';
+  const rootClass=document.documentElement.className||'';
+  return rootTheme==='dark'||bodyClass.indexOf('dark-theme')>=0||bodyClass.indexOf('dark')>=0||String(rootClass).indexOf('dark-theme')>=0;
 }}
 
 function buildNav(){{
@@ -789,7 +954,7 @@ function switchQl(){{
   if(qlActive==='curtailment'){{
     const rows=(DATA.qualities[run]||[]).slice(1).filter(function(r){{return(!algo||r[0]===algo)&&(!scen||r[1]===scen);}});
     if(!rows.length){{$('ql-plot').innerHTML='<div class="empty-state">No data</div>';return;}}
-    const layout=Object.assign({{yaxis:{{title:'Curtailment (MW)'}},barmode:'group'}},PLCFG);
+    const layout={{height:480,yaxis:{{title:'Curtailment (MW)'}},barmode:'group'}};
     Plotly.newPlot(pl('ql-plot'),[
       {{type:'bar',x:rows.map(function(r){{return r[0]+'-'+r[1]+'s';}}),y:rows.map(function(r){{return +r[4];}}),name:'Wind Curtailment',marker:{{color:'#91cc75'}}}},
       {{type:'bar',x:rows.map(function(r){{return r[0]+'-'+r[1]+'s';}}),y:rows.map(function(r){{return +r[3];}}),name:'Load Curtailment',marker:{{color:'#ee6666'}}}}
@@ -902,8 +1067,8 @@ function switchSc(){{
     const total=rows.slice(1).find(function(r){{return r[0]==='total_cost';}});
     $('sc-plot').innerHTML='<div class="cost-grid"><div id="sc-pie" class="plot-div"></div><div id="sc-bar" class="plot-div"></div></div>';
     const names=others.map(function(r){{return r[0].replace(/_/g,' ').replace(/cost/g,'');}});
-    Plotly.newPlot('sc-pie',[{{type:'pie',labels:names,values:others.map(function(r){{return +r[1];}}),marker:{{colors:C10}},textinfo:'label+percent',textfont:{{size:10}}}}],{{margin:{{l:10,r:10,t:10,b:10}}}},PLCFG);
-    Plotly.newPlot('sc-bar',[{{type:'bar',y:others.map(function(r){{return r[0];}}),x:others.map(function(r){{return +r[1];}}),orientation:'h',marker:{{color:others.map(function(_,i){{return C10[i%C10.length];}})}}}}],{{margin:{{l:140,r:15,t:10,b:30}},xaxis:{{title:'Cost'}}}},PLCFG);
+    Plotly.newPlot('sc-pie',[{{type:'pie',labels:names,values:others.map(function(r){{return +r[1];}}),marker:{{colors:C10}},textinfo:'label+percent',textfont:{{size:10}}}}],{{height:480,margin:{{l:10,r:10,t:10,b:10}}}},PLCFG);
+    Plotly.newPlot('sc-bar',[{{type:'bar',y:others.map(function(r){{return r[0];}}),x:others.map(function(r){{return +r[1];}}),orientation:'h',marker:{{color:others.map(function(_,i){{return C10[i%C10.length];}})}}}}],{{height:480,margin:{{l:140,r:15,t:10,b:30}},xaxis:{{title:'Cost'}}}},PLCFG);
     var th='<thead><tr><th>Component</th><th>Value</th></tr></thead><tbody>';
     if(total)th+='<tr><td><strong>'+total[0]+'</strong></td><td><strong>'+fmt(total[1],2)+'</strong></td></tr>';
     others.forEach(function(r){{th+='<tr><td>'+r[0]+'</td><td>'+fmt(r[1],2)+'</td></tr>';}});th+='</tbody>';$('sc-table').innerHTML=th;
@@ -935,7 +1100,7 @@ function switchSc(){{
     dr.forEach(function(r){{th+='<tr>'+r.map(function(v){{return'<td>'+fmt(v,2)+'</td>';}}).join('')+'</tr>';}});th+='</tbody>';$('sc-table').innerHTML=th;
   }}else if(scActive==='commit_txt'){{
     var txt=sched['schedule_commitment_result']||'';for(const k of Object.keys(sched)){{if(k.endsWith('_schedule_commitment_result')){{txt=sched[k];break;}}}}
-    $('sc-plot').innerHTML='<pre class="short">'+(txt||'No commitment report available')+'</pre>';$('sc-table').innerHTML='';
+    $('sc-plot').innerHTML='<pre class="short">'+escapeHTML(txt||'No commitment report available')+'</pre>';$('sc-table').innerHTML='';
   }}else if(scActive==='reserve'){{
     const rows=sched['reserve_schedule'];if(!rows||rows.length<2){{$('sc-plot').innerHTML='<div class="empty-state">No reserve data</div>';return;}}
     const hdr=rows[0],dr=rows.slice(1);
@@ -958,26 +1123,162 @@ function renderReports(){{
   $('rp-run').onchange=updateRp;
   const svgRuns=Object.keys(DATA.svgs).filter(function(r){{return Object.keys(DATA.svgs[r]).length;}}).sort();
   $('svg-run').innerHTML=svgRuns.map(function(r){{return'<option>'+r+'</option>';}}).join('');
-  $('svg-run').onchange=updateSvgCharts;$('svg-chart').onchange=updateSvgDisplay;
+  $('svg-run').onchange=updateSvgCharts;
+  $('svg-zoom-out').onclick=function(){{setSvgZoom(Math.max(.5,svgZoom-.15));}};
+  $('svg-zoom-reset').onclick=function(){{setSvgZoom(1);}};
+  $('svg-zoom-in').onclick=function(){{setSvgZoom(Math.min(2.5,svgZoom+.15));}};
   if(runs.length)updateRp();if(svgRuns.length)updateSvgCharts();
 }}
 
 function updateRp(){{const r=$('rp-run').value;const h=DATA.reports[r]||'';$('rp-content').innerHTML=h||'<div class="empty-state">No report</div>';}}
 
-function updateSvgCharts(){{const r=$('svg-run').value;const charts=Object.keys(DATA.svgs[r]||{{}}).sort();$('svg-chart').innerHTML=charts.map(function(c){{return'<option>'+c+'</option>';}}).join('');updateSvgDisplay();}}
+function updateSvgCharts(){{
+  const r=$('svg-run').value;
+  const charts=Object.keys(DATA.svgs[r]||{{}}).sort();
+  if(!charts.length){{activeSvgChart='';$('svg-chart-tabs').innerHTML='';updateSvgDisplay();return;}}
+  if(!activeSvgChart||charts.indexOf(activeSvgChart)<0)activeSvgChart=charts[0];
+  $('svg-chart-tabs').innerHTML=charts.map(function(c){{return'<button class="chart-tab'+(c===activeSvgChart?' active':'')+'" data-chart="'+escapeHTML(c)+'">'+formatChartLabel(c)+'</button>';}}).join('');
+  $('svg-chart-tabs').onclick=function(e){{const b=e.target.closest('.chart-tab');if(!b)return;activeSvgChart=b.dataset.chart;document.querySelectorAll('.chart-tab').forEach(function(x){{x.classList.remove('active');}});b.classList.add('active');setSvgZoom(1);updateSvgDisplay();}};
+  updateSvgDisplay();
+}}
 
-function updateSvgDisplay(){{const r=$('svg-run').value,c=$('svg-chart').value,b64=(DATA.svgs[r]||{{}})[c];if(!b64){{$('svg-display').innerHTML='<div class="empty-state">No SVG</div>';return;}}$('svg-display').innerHTML='<div style="max-height:450px;overflow:auto;background:var(--hover-bg);border-radius:6px;">'+atob(b64)+'</div>';}}
+function updateSvgDisplay(){{
+  const r=$('svg-run').value,c=activeSvgChart,b64=(DATA.svgs[r]||{{}})[c];
+  if(!b64){{$('svg-display').innerHTML='<div class="empty-state">No SVG</div>';applyReportTheme();return;}}
+  $('svg-display').innerHTML='<div class="report-svg-stage">'+atob(b64)+'</div>';
+  const svg=$('svg-display').querySelector('svg');
+  if(svg){{svg.setAttribute('role','img');svg.setAttribute('aria-label',formatChartLabel(c));if(!svg.querySelector('title')){{const title=document.createElementNS('http://www.w3.org/2000/svg','title');title.textContent=formatChartLabel(c);svg.prepend(title);}}}}
+  attachSvgInteractions();
+  setSvgZoom(svgZoom);
+  applyReportTheme();
+}}
+
+function formatChartLabel(c){{return String(c||'Chart').replace(/_/g,' ').replace(/\\b\\w/g,function(m){{return m.toUpperCase();}});}}
+
+function setSvgZoom(z){{
+  svgZoom=z;
+  const stage=$('svg-display')?$('svg-display').querySelector('.report-svg-stage'):null;
+  if(stage)stage.style.transform='scale('+svgZoom+')';
+  const reset=$('svg-zoom-reset');
+  if(reset)reset.textContent=svgZoom.toFixed(1)+'x';
+}}
+
+function attachSvgInteractions(){{
+  const svg=$('svg-display')?$('svg-display').querySelector('svg'):null;
+  if(!svg)return;
+  svg.querySelectorAll('rect,polyline,line,path,circle,text').forEach(function(el,i){{
+    el.classList.add('svg-hotspot');
+    if(!el.querySelector('title')){{const t=document.createElementNS('http://www.w3.org/2000/svg','title');t.textContent=(el.textContent||el.getAttribute('aria-label')||formatChartLabel(activeSvgChart)||'Chart item').trim();el.appendChild(t);}}
+    el.addEventListener('click',function(ev){{ev.stopPropagation();svg.querySelectorAll('.svg-selected').forEach(function(x){{x.classList.remove('svg-selected');}});el.classList.add('svg-selected');}});
+  }});
+  svg.addEventListener('click',function(){{svg.querySelectorAll('.svg-selected').forEach(function(x){{x.classList.remove('svg-selected');}});}});
+}}
+
+function applyReportTheme(){{
+  const wrap=$('svg-display');
+  if(!wrap)return;
+  const dark=isDarkTheme();
+  wrap.classList.toggle('dark-chart',dark);
+  const svg=wrap.querySelector('svg');
+  if(!svg)return;
+  const bg=dark?'#2a2a2a':'#ffffff';
+  const text=dark?'#f8fafc':'#1e293b';
+  const muted=dark?'#b0b0b0':'#333333';
+  svg.style.background=bg;
+  svg.querySelectorAll('rect').forEach(function(el,i){{const fill=(el.getAttribute('fill')||'').toLowerCase();if(i===0||fill==='white'||fill==='#fff'||fill==='#ffffff')el.setAttribute('fill',bg);}});
+  svg.querySelectorAll('text').forEach(function(el){{el.setAttribute('fill',text);}});
+  svg.querySelectorAll('line').forEach(function(el){{el.setAttribute('stroke',muted);}});
+}}
 
 // ============ SETTINGS ============
 function renderSettings(){{
   const cfg=DATA.config;if(!cfg||!cfg.sections)return;
   const lm={{boundary:'Boundary',common:'Common',model:'Model',benders:'Benders','benders.cuts':'Benders \\u2014 Cuts','benders.subproblems':'Benders \\u2014 Subproblems',ccg:'CCG',dro:'DRO',frequency:'Frequency',test:'Test'}};
-  var html='';cfg.sections.forEach(function(sec){{html+='<div class="settings-section"><h3>'+(lm[sec.name]||sec.name)+'</h3><div class="fields">';
-  sec.fields.forEach(function(f){{const id='cfg-'+f.key;
-    if(f.type==='bool')html+='<div class="field"><label for="'+id+'">'+f.key+'</label><input type="checkbox" id="'+id+'" data-key="'+f.key+'" '+(f.value?'checked':'')+'></div>';
-    else if(f.type==='number'||f.type==='float'||f.type==='integer')html+='<div class="field"><label for="'+id+'">'+f.key+'</label><input type="number" id="'+id+'" data-key="'+f.key+'" value="'+f.value+'" step="any"></div>';
-    else html+='<div class="field"><label for="'+id+'">'+f.key+'</label><input type="text" id="'+id+'" data-key="'+f.key+'" value="'+escapeHtml(String(f.value))+'"></div>';
-  }});html+='</div></div>';}});$('settings-grid').innerHTML=html;
+  const bySec={{}};cfg.sections.forEach(function(sec){{bySec[sec.name]=sec.fields||[];}});
+  const inputSections=collectSections(cfg.sections,function(sec,f){{return classifySetting(sec.name,f)==='input';}});
+  const testSections=collectSections(cfg.sections,function(sec,f){{return classifySetting(sec.name,f)==='testing';}});
+  const modelLinearKeys=['MODEL_IS_PIECE_LINEAR','MODEL_NUM_SEGMENTS','MODEL_ALPHA','MODEL_BETA'];
+  const modelLinear=collectSections(cfg.sections,function(sec,f){{return modelLinearKeys.indexOf(f.key)>=0;}});
+  const modelFrequency=collectSections(cfg.sections,function(sec,f){{return String(sec.name).toLowerCase()==='frequency';}});
+  const modelBase=collectSections(cfg.sections,function(sec,f){{return classifySetting(sec.name,f)==='model'&&modelLinearKeys.indexOf(f.key)<0&&String(sec.name).toLowerCase()!=='frequency';}});
+  const bendersSections=['benders','benders.cuts','benders.subproblems'].map(function(name){{return{{name:name,fields:bySec[name]||[]}};}}).filter(function(sec){{return sec.fields.length;}});
+  const ccgSections=['ccg','dro'].map(function(name){{return{{name:name,fields:bySec[name]||[]}};}}).filter(function(sec){{return sec.fields.length;}});
+
+  var html='';
+  html+=settingsCard('algorithm','Algorithm Settings','Solvers, decomposition controls, convergence tolerances, cuts, and iteration policies.',
+    'Algorithm Mode','settings-algorithm-mode',[['benders','Benders'],['ccg','CCG']],[
+      panelHtml('benders',bendersSections,'Benders-specific relaxation, cut, and subproblem parameters.'),
+      panelHtml('ccg',ccgSections,'Column-and-constraint generation master/recourse and DRO parameters.')
+    ]);
+  html+=settingsCard('input','Input Settings','Input source presets and boundary/data loading controls.',
+    'Data Source','settings-data-source',[['excel','Custom Excel'],['ieee118','Built-in IEEE 118 Case'],['ieee14','Built-in IEEE 14 Case']],[
+      panelHtml('excel',inputSections,'Custom data source and boundary import controls.'),
+      panelNote('ieee118','Built-in IEEE 118 benchmark selected. Custom Excel path controls are hidden but kept in the saved configuration.'),
+      panelNote('ieee14','Built-in IEEE 14 benchmark selected. Use this lightweight case for fast validation runs.')
+    ]);
+  html+=settingsCard('model','Model Settings','Network topology, constraint architecture, relaxation coefficients, BESS, and frequency model parameters.',
+    '网络模型拓扑/约束架构','settings-model-formulation',[['dc','DC-OPF (直流潮流)'],['ac','AC-OPF (交流潮流)'],['linearized','Grid Linearization (网格线性化)']],[
+      panelHtml('dc',modelBase,'DC-OPF and system-level model switches.'),
+      panelHtml('ac',modelFrequency,'AC-OPF placeholder mapped to frequency/security related controls available in this project.'),
+      panelHtml('linearized',modelLinear,'Piecewise and grid linearization parameters.')
+    ]);
+  html+=settingsCard('testing','Testing Settings','Benchmark cases, scenario mode, deterministic/stochastic validation, and test harness options.',
+    'Testing Mode','settings-testing-mode',[['deterministic','Deterministic Validation'],['stochastic','Stochastic Scenario Test'],['reduction','Scenario Reduction']],[
+      panelHtml('deterministic',testSections,'Deterministic test harness and local project activation settings.'),
+      panelNote('stochastic','Stochastic scenario count and algorithm iteration controls are managed in Algorithm Settings for Benders/CCG.'),
+      panelNote('reduction','Scenario reduction mode is a UI preset; add project-specific reduction keys to runtime_config.toml to expose editable fields here.')
+    ]);
+  $('settings-grid').innerHTML=html;
+  bindSettingSelects();
+}}
+
+function classifySetting(sectionName,f){{
+  const sec=String(sectionName||'').toLowerCase();
+  const key=String(f.key||'').toUpperCase();
+  if(sec==='test'||key.indexOf('TEST')>=0||key.indexOf('BENCHMARK')>=0||key.indexOf('IEEE')>=0||key.indexOf('CASE')>=0)return'testing';
+  if(sec==='boundary'||key.indexOf('PATH')>=0||key.indexOf('EXCEL')>=0||key.indexOf('SOURCE')>=0||key.indexOf('INPUT')>=0||key.indexOf('SAMPLE')>=0||key.indexOf('LOAD')>=0)return'input';
+  if(sec==='model'||sec==='frequency'||key.indexOf('MODEL_')===0||key.indexOf('FREQUENCY_')===0||key.indexOf('NETWORK')>=0||key.indexOf('SYSTEM')>=0||key.indexOf('THERMAL')>=0||key.indexOf('WIND')>=0||key.indexOf('BESS')>=0||key.indexOf('COEFFICIENT')>=0||key.indexOf('BASE')>=0)return'model';
+  return'algorithm';
+}}
+
+function settingFieldHtml(f){{
+  const id='cfg-'+f.key;
+  if(f.type==='bool')return'<div class="field"><label for="'+id+'">'+f.key+'</label><input type="checkbox" id="'+id+'" data-key="'+f.key+'" '+(f.value?'checked':'')+'></div>';
+  if(f.type==='number'||f.type==='float'||f.type==='integer')return'<div class="field"><label for="'+id+'">'+f.key+'</label><input type="number" id="'+id+'" data-key="'+f.key+'" value="'+f.value+'" step="any"></div>';
+  return'<div class="field"><label for="'+id+'">'+f.key+'</label><input type="text" id="'+id+'" data-key="'+f.key+'" value="'+escapeHtml(String(f.value))+'"></div>';
+}}
+
+function collectSections(sections,predicate){{
+  return sections.map(function(sec){{return{{name:sec.name,fields:(sec.fields||[]).filter(function(f){{return predicate(sec,f);}})}};}}).filter(function(sec){{return sec.fields.length;}});
+}}
+
+function settingsCard(id,title,note,controlLabel,selectId,options,panels){{
+  return '<fieldset class="settings-category settings-'+id+'"><legend>'+title+'</legend><div class="category-note">'+note+'</div><div class="setting-control"><label for="'+selectId+'">'+controlLabel+'</label><select id="'+selectId+'" data-setting-router="'+id+'">'+options.map(function(o){{return'<option value="'+o[0]+'">'+o[1]+'</option>';}}).join('')+'</select></div><div class="setting-panels" data-setting-panels="'+id+'">'+panels.join('')+'</div></fieldset>';
+}}
+
+function panelHtml(value,sections,note){{
+  var body=sections.length?sections.map(renderSettingsSection).join(''):'<div class="setting-panel-note">No editable fields are currently mapped to this mode.</div>';
+  return '<div class="setting-panel sf-hidden" data-panel="'+value+'"><div class="setting-panel-note">'+note+'</div>'+body+'</div>';
+}}
+
+function panelNote(value,note){{
+  return '<div class="setting-panel sf-hidden" data-panel="'+value+'"><div class="setting-panel-note">'+note+'</div></div>';
+}}
+
+function renderSettingsSection(sec){{
+  const lm={{boundary:'Boundary',common:'Common',model:'Model',benders:'Benders','benders.cuts':'Benders \\u2014 Cuts','benders.subproblems':'Benders \\u2014 Subproblems',ccg:'CCG',dro:'DRO',frequency:'Frequency',test:'Test'}};
+  return '<div class="settings-section"><h3>'+(lm[sec.name]||sec.name)+'</h3><div class="fields">'+sec.fields.map(settingFieldHtml).join('')+'</div></div>';
+}}
+
+function bindSettingSelects(){{
+  document.querySelectorAll('[data-setting-router]').forEach(function(sel){{
+    function sync(){{
+      const group=sel.dataset.settingRouter;
+      document.querySelectorAll('[data-setting-panels="'+group+'"] .setting-panel').forEach(function(panel){{const active=panel.dataset.panel===sel.value;panel.classList.toggle('active',active);panel.classList.toggle('sf-hidden',!active);}});
+    }}
+    sel.onchange=sync;
+    sync();
+  }});
 }}
 
 function escapeHtml(s){{return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}}
