@@ -1,14 +1,14 @@
 using Pkg
 if Sys.iswindows()
-	Pkg.activate("D:\\GithubClonefiles\\RFCUC\\RfcucCaseStudies\\eacharea_BFSFR\\.pkg")
+    Pkg.activate("D:\\GithubClonefiles\\RFCUC\\RfcucCaseStudies\\eacharea_BFSFR\\.pkg")
 elseif Sys.isapple()
-	Pkg.activate("/Users/yuanyiping/Documents/GitHub/RfcucCaseStudies/eacharea_BFSFR/.pkg/")
+    Pkg.activate("/Users/yuanyiping/Documents/GitHub/RfcucCaseStudies/eacharea_BFSFR/.pkg/")
 end
 
 Pkg.add(["DelimitedFiles", "Random", "Plots", "PlotThemes", "LaTeXStrings", "Distributions", "StatsPlots", "XLSX", "MAT"])
 # Plots, DelimitedFiles, LaTeXStrings, PlotThemes
 # Distributions, Plots, StatsPlots
-using DelimitedFiles, Random, Plots, Colors, PlotThemes,LaTeXStrings, Distributions, StatsPlots, XLSX, MAT
+using DelimitedFiles, Random, Plots, Colors, PlotThemes, LaTeXStrings, Distributions, StatsPlots, XLSX, MAT
 
 using CSV
 using DataFrames

@@ -10,9 +10,8 @@ function boundrycondition(
     loads::load,
     lines::transmissionline,
     winds::wind,
-    stroges::stroge
+    stroges::stroge,
 )
-
     NS = winds.scenarios_nums
     NW = length(winds.index)
 
@@ -107,17 +106,16 @@ function boundrycondition(
     println("\t\t\t\t\t")
     println("pss_info+++++++++++++++++++++++++++++++++++++++++++++++++++++")
     println("\t\t\t\t\t")
-    println("stroges.index>>\t\t\t\t\t",stroges.index)
-    println("stroges.locatebus>>\t\t\t\t",stroges.locatebus)
-    println("stroges.q_max>>\t\t\t\t\t",stroges.Q_max)
-    println("stroges.q_min>>\t\t\t\t\t",stroges.Q_min)
-    println("stroges.p⁺>>\t\t\t\t\t",stroges.p⁺)
-    println("stroges.p⁻>>\t\t\t\t\t",stroges.p⁻)
-    println("stroges.P₀>>\t\t\t\t\t",stroges.P₀)
-    println("stroges.γ⁺>>\t\t\t\t\t",stroges.γ⁺)
-    println("stroges.γ⁻>>\t\t\t\t\t",stroges.γ⁻)
-    println("stroges.η⁺>>\t\t\t\t\t",stroges.η⁺)
-    println("stroges.η⁻>>\t\t\t\t\t",stroges.η⁻)
-    println("stroges.δₛ>>\t\t\t\t\t",stroges.δₛ)
-
+    println("stroges.index>>\t\t\t\t\t", stroges.index)
+    println("stroges.locatebus>>\t\t\t\t", stroges.locatebus)
+    println("stroges.q_max>>\t\t\t\t\t", stroges.Q_max)
+    println("stroges.q_min>>\t\t\t\t\t", stroges.Q_min)
+    println("stroges.p⁺>>\t\t\t\t\t", stroges.p⁺)
+    println("stroges.p⁻>>\t\t\t\t\t", stroges.p⁻)
+    println("stroges.P₀>>\t\t\t\t\t", stroges.P₀)
+    println("stroges.γ⁺>>\t\t\t\t\t", stroges.γ⁺)
+    println("stroges.γ⁻>>\t\t\t\t\t", stroges.γ⁻)
+    println("stroges.η⁺>>\t\t\t\t\t", stroges.η⁺)
+    println("stroges.η⁻>>\t\t\t\t\t", stroges.η⁻)
+    return println("stroges.δₛ>>\t\t\t\t\t", stroges.δₛ)
 end

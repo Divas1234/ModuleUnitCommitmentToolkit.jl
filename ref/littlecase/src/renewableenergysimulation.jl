@@ -31,10 +31,8 @@ struct wind
             end
         end
     end
-    function wind(index, locatebus, p_max, scenarios_prob, scenarios_nums, scenarios_curve,
-                Fcmode, Kw, Rw, Mw, Dw, Tw)
-        return new(index, locatebus, p_max, scenarios_prob, scenarios_nums, scenarios_curve,
-                Fcmode, Kw, Rw, Mw, Dw, Tw)
+    function wind(index, locatebus, p_max, scenarios_prob, scenarios_nums, scenarios_curve, Fcmode, Kw, Rw, Mw, Dw, Tw)
+        return new(index, locatebus, p_max, scenarios_prob, scenarios_nums, scenarios_curve, Fcmode, Kw, Rw, Mw, Dw, Tw)
     end
 end
 
@@ -51,12 +49,13 @@ cap = [0.5] * 4
 p_max = cap .* ones(NW, 1)
 p_max = p_max[:, 1]
 scenarios_curve = zeros(scenarios_nums, NT)
-scenarios_curvebase = [
-    0.440724927203680 0.420965256587272 0.449034794022911 0.454128108336623 0.436483077739172 0.477450522402300
-    0.443871634609799 0.374756446192485 0.448192193924943 0.431190577826877 0.428867647037057 0.445673091565042
-    0.433764408789611 0.421900481861469 0.429104412188035 0.463277796146724 0.426579282372516 0.448189506134410
-    0.429353980231385 0.434861266141317 0.437494540514197 0.456877055120346 0.425139803090161 0.425629623577982
-] * 1.0
+scenarios_curvebase =
+    [
+        0.440724927203680 0.420965256587272 0.449034794022911 0.454128108336623 0.436483077739172 0.477450522402300
+        0.443871634609799 0.374756446192485 0.448192193924943 0.431190577826877 0.428867647037057 0.445673091565042
+        0.433764408789611 0.421900481861469 0.429104412188035 0.463277796146724 0.426579282372516 0.448189506134410
+        0.429353980231385 0.434861266141317 0.437494540514197 0.456877055120346 0.425139803090161 0.425629623577982
+    ] * 1.0
 scenarios_curvebase = reshape(scenarios_curvebase, 1, NT)
 
 function genscenario(WindsFreqParam, flag)
@@ -64,10 +63,10 @@ function genscenario(WindsFreqParam, flag)
         rand(123)
         scenarios_nums = 30
         sample_sets = rand(Weibull(), scenarios_nums * NT) * 0.025
-        scenarios_curve, scenarios_error = reshape(sample_sets, scenarios_nums, NT),reshape(sample_sets, scenarios_nums, NT)
+        scenarios_curve, scenarios_error = reshape(sample_sets, scenarios_nums, NT), reshape(sample_sets, scenarios_nums, NT)
 
-        for i = 1 : scenarios_nums
-            for j in 1 : NT
+        for i in 1:scenarios_nums
+            for j in 1:NT
                 sample_temp = rand()
                 if sample_temp > 0.5
                     scenarios_curve[i, j] = scenarios_curvebase[1, j] + scenarios_error[i, j]
@@ -93,9 +92,8 @@ function genscenario(WindsFreqParam, flag)
     MW = WindsFreqParam[:, 4]
     DW = WindsFreqParam[:, 5]
     TW = WindsFreqParam[:, 6]
-    scenarios_nums = size(scenarios_curve,1)
-    winds = wind(index, locatebus, p_max, scenarios_prob, scenarios_nums, scenarios_curve,
-                FCmode, KW, RW, MW, DW, TW)
+    scenarios_nums = size(scenarios_curve, 1)
+    winds = wind(index, locatebus, p_max, scenarios_prob, scenarios_nums, scenarios_curve, FCmode, KW, RW, MW, DW, TW)
 
     return winds, NW
 end

@@ -5,8 +5,8 @@ neededPackages = [:FileIO, :LinearAlgebra, :Random, :GLM, :Plots, :DelimitedFile
 
 # Ensure all required packages are available in the active environment.
 for neededpackage in neededPackages
-	(String(neededpackage) in keys(Pkg.project().dependencies)) || Pkg.add(String(neededpackage))
-	# @eval using $neededpackage
+    (String(neededpackage) in keys(Pkg.project().dependencies)) || Pkg.add(String(neededpackage))
+    # @eval using $neededpackage
 end
 
 using Plots, PlotThemes

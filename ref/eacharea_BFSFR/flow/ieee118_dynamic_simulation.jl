@@ -69,7 +69,7 @@ function swing_equation!(du, u, p, t)
     # 解构参数和状态变量
     M, D, Pm = p
     δ = u[1:num_gens]
-    ω = u[num_gens+1:end]
+    ω = u[(num_gens + 1):end]
 
     # --- 模拟扰动 ---
     # 假设扰动前，电磁功率 `Pe` 等于机械功率 `Pm`。
@@ -91,7 +91,7 @@ function swing_equation!(du, u, p, t)
 
     # 更新导数向量
     du[1:num_gens] = dδ_dt
-    du[num_gens+1:end] = dω_dt
+    return du[(num_gens + 1):end] = dω_dt
 end
 
 # --- 5. 运行仿真 ---
@@ -102,25 +102,25 @@ params = (M, D, Pm)   # 将模型参数打包
 # 我们将摇摆方程、初始状态、时间范围和参数传递给求解器。
 prob = ODEProblem(swing_equation!, u₀, t_span, params)
 println("正在求解微分方程，仿真时间为 $(t_span[2]) 秒...")
-sol = solve(prob, Rodas5(), progress=true, progress_steps=1) # Rodas5 是一个适合刚性问题的求解器
+sol = solve(prob, Rodas5(), progress = true, progress_steps = 1) # Rodas5 是一个适合刚性问题的求解器
 println("仿真完成。")
 
 # --- 6. 结果可视化 ---
 # 从仿真结果 `sol` 中提取时间和频率数据。
 # 频率偏差 (pu) 等于转子角速度偏差 (pu)。
 time_steps = sol.t
-freq_deviation = sol[num_gens+1:end, :]' # 转置以匹配绘图库的格式
+freq_deviation = sol[(num_gens + 1):end, :]' # 转置以匹配绘图库的格式
 
 # 绘制所有发电机频率偏差的曲线图
 plot(
     time_steps,
     freq_deviation,
-    xlabel="时间 (s)",
-    ylabel="频率偏差 (pu)",
-    title="IEEE 118 系统在1号发电机脱网后的频率响应",
-    label=permutedims("Gen " .* string.(1:num_gens)), # 为每条线添加标签
-    legend=:outertopright,
-    linewidth=1.5
+    xlabel = "时间 (s)",
+    ylabel = "频率偏差 (pu)",
+    title = "IEEE 118 系统在1号发电机脱网后的频率响应",
+    label = permutedims("Gen " .* string.(1:num_gens)), # 为每条线添加标签
+    legend = :outertopright,
+    linewidth = 1.5,
 )
 
 # 保存图像到文件

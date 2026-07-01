@@ -11,7 +11,7 @@ data = Matrix(df)
 
 function get_distributiondensity(data)
     function get_kdeestimation_data(data, bandwidth)
-        kde_result = kde(data, bandwidth=bandwidth)
+        kde_result = kde(data, bandwidth = bandwidth)
         return kde_result
     end
 
@@ -30,7 +30,7 @@ end
 
 # Compute density grids
 ygrid, zgrid = get_distributiondensity(data)
-xdata = range(1, 1201, length=1201)
+xdata = range(1, 1201, length = 1201)
 
 # # Interpolation
 # zgrid_interpolated = zeros(length(xdata), size(ygrid, 2))
@@ -84,31 +84,42 @@ xdata = range(1, 1201, length=1201)
 # heatmap(zgrid_interpolated, title="Interpolated Density")
 # Plots.surface(zgrid_interpolated * 100, title="Interpolated Surface")
 n_ticks = length(0:500:2048)
-tick_labels = range(minimum(ygrid), stop=maximum(ygrid), length=n_ticks)
+tick_labels = range(minimum(ygrid), stop = maximum(ygrid), length = n_ticks)
 
-p1 = Plots.surface(zgrid;
-    colorbar=false,              # Disable the color bar
-    colormap=:bwr,
-    alpha=0.5,
+p1 = Plots.surface(
+    zgrid;
+    colorbar = false,              # Disable the color bar
+    colormap = :bwr,
+    alpha = 0.5,
     # ylims = (-0.5, 0.2),
-    ztickfontsize=12, xtickfontsize=12, ytickfontsize=12, legendfontsize=10, xguidefontsize=10, yguidefontsize=10,
-    titlefontsize=8, linealpha=0.75, ylabelfontsize=14, xlabelfontsize=14, zlabelfontsize=14,
+    ztickfontsize = 12,
+    xtickfontsize = 12,
+    ytickfontsize = 12,
+    legendfontsize = 10,
+    xguidefontsize = 10,
+    yguidefontsize = 10,
+    titlefontsize = 8,
+    linealpha = 0.75,
+    ylabelfontsize = 14,
+    xlabelfontsize = 14,
+    zlabelfontsize = 14,
     # tickfontfamily = "Palatino Bold",
     # legendfontfamily = "Palatino Bold",
     # tickfontfamily = "Computer Modern",
     # legendfontfamily = "Computer Modern",
-    fontfamily="Helvetica",
-    tickfontfamily="Helvetica",
-    legendfontfamily="Helvetica", lw=1.5,
-    yticks=(0:200:1200, 0:10:60),
-    xticks=(0:500:2048, round.(tick_labels, digits=3)),
-    camera=(45, 30),
-    size=(800, 600),
-    marker=:circle,                       # Set marker to circle
+    fontfamily = "Helvetica",
+    tickfontfamily = "Helvetica",
+    legendfontfamily = "Helvetica",
+    lw = 1.5,
+    yticks = (0:200:1200, 0:10:60),
+    xticks = (0:500:2048, round.(tick_labels, digits = 3)),
+    camera = (45, 30),
+    size = (800, 600),
+    marker = :circle,                       # Set marker to circle
     # fontfamily="Helvetica",             # Set font to Helvetica
-    xlabel="Δf(t) (Hz)",                # X-axis label
-    ylabel="t (s)",                     # Y-axis label
-    zlabel="Posterior density",                 # Optional Z-axis label for clarity
+    xlabel = "Δf(t) (Hz)",                # X-axis label
+    ylabel = "t (s)",                     # Y-axis label
+    zlabel = "Posterior density",                 # Optional Z-axis label for clarity
 )
 base_dir = "D:\\GithubClonefiles\\RFCUC\\RfcucCaseStudies\\eacharea_BFSFR\\res\\surface\\"
 Plots.savefig(p1, joinpath(base_dir, "3D_surface_plot_sampledata1.pdf"))
@@ -121,33 +132,43 @@ df = CSV.read("D:\\GithubClonefiles\\RFCUC\\RfcucCaseStudies\\eacharea_BFSFR\\re
 data = Matrix(df)
 
 ygrid, zgrid = get_distributiondensity(data)
-xdata = range(1, 1201, length=1201)
+xdata = range(1, 1201, length = 1201)
 n_ticks = length(0:500:2048)
-tick_labels = range(minimum(ygrid), stop=maximum(ygrid), length=n_ticks)
+tick_labels = range(minimum(ygrid), stop = maximum(ygrid), length = n_ticks)
 
-p1 = Plots.surface(zgrid;
-    colorbar=false,              # Disable the color bar
-    colormap=:viridis,
+p1 = Plots.surface(
+    zgrid;
+    colorbar = false,              # Disable the color bar
+    colormap = :viridis,
     # ylims = (-0.5, 0.2),
-    ztickfontsize=12, xtickfontsize=12, ytickfontsize=12, legendfontsize=10, xguidefontsize=10, yguidefontsize=10,
-    titlefontsize=8, linealpha=0.75, ylabelfontsize=14, xlabelfontsize=14, zlabelfontsize=14,
+    ztickfontsize = 12,
+    xtickfontsize = 12,
+    ytickfontsize = 12,
+    legendfontsize = 10,
+    xguidefontsize = 10,
+    yguidefontsize = 10,
+    titlefontsize = 8,
+    linealpha = 0.75,
+    ylabelfontsize = 14,
+    xlabelfontsize = 14,
+    zlabelfontsize = 14,
     # tickfontfamily = "Palatino Bold",
     # legendfontfamily = "Palatino Bold",
     # tickfontfamily = "Computer Modern",
     # legendfontfamily = "Computer Modern",
-    fontfamily="Helvetica",
-    tickfontfamily="Helvetica",
-    legendfontfamily="Helvetica", lw=1.5,
-    yticks=(0:200:1200, 0:10:60),
-    xticks=(0:500:2048, round.(tick_labels, digits=3)),
-    camera=(45, 30),
-    size=(800, 600),
-    marker=:circle,                       # Set marker to circle
+    fontfamily = "Helvetica",
+    tickfontfamily = "Helvetica",
+    legendfontfamily = "Helvetica",
+    lw = 1.5,
+    yticks = (0:200:1200, 0:10:60),
+    xticks = (0:500:2048, round.(tick_labels, digits = 3)),
+    camera = (45, 30),
+    size = (800, 600),
+    marker = :circle,                       # Set marker to circle
     # fontfamily="Helvetica",             # Set font to Helvetica
-    xlabel="Δf(t) (Hz)",                # X-axis label
-    ylabel="t (s)",                     # Y-axis label
-    zlabel="Posterior density",                 # Optional Z-axis label for clarity
+    xlabel = "Δf(t) (Hz)",                # X-axis label
+    ylabel = "t (s)",                     # Y-axis label
+    zlabel = "Posterior density",                 # Optional Z-axis label for clarity
 )
 
 Plots.savefig(p1, joinpath(base_dir, "3D_surface_plot_sampledata2.pdf"))
-

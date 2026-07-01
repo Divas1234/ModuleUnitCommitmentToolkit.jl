@@ -60,7 +60,7 @@ function convert_matpower_to_psat(input_file::String, output_file::String)
                 row[6] / base_mva,  # Bs
                 row[2] == 3 ? 1 : row[2],  # type
                 row[13], # Vmin
-                row[12]  # Vmax
+                row[12],  # Vmax
             ]
             writedlm(f, psat_bus', ' ')
         end
@@ -77,28 +77,34 @@ function convert_matpower_to_psat(input_file::String, output_file::String)
                 bus_idx = gen_data[i, 1]
                 if bus_idx == slack_bus_idx
                     # SW.con: bus, Vsp, ang, Qmax, Qmin, Pmax, Pmin
-                    push!(slack_gen, [
-                        bus_idx,
-                        gen_data[i, 6],  # Vg
-                        bus_data[bus_data[:,1] .== bus_idx, 9][1], # Va from bus data
-                        gen_data[i, 4] / base_mva,  # Qmax
-                        gen_data[i, 5] / base_mva,  # Qmin
-                        gen_data[i, 9] / base_mva,  # Pmax
-                        gen_data[i, 10] / base_mva  # Pmin
-                    ])
+                    push!(
+                        slack_gen,
+                        [
+                            bus_idx,
+                            gen_data[i, 6],  # Vg
+                            bus_data[bus_data[:, 1] .== bus_idx, 9][1], # Va from bus data
+                            gen_data[i, 4] / base_mva,  # Qmax
+                            gen_data[i, 5] / base_mva,  # Qmin
+                            gen_data[i, 9] / base_mva,  # Pmax
+                            gen_data[i, 10] / base_mva,  # Pmin
+                        ],
+                    )
                 else
                     bus_type = bus_data[bus_data[:, 1] .== bus_idx, 2][1]
                     if bus_type == 2 # PV bus
                         # PV.con: bus, P, Vsp, Qmax, Qmin, Pmax, Pmin
-                         push!(pv_gens, [
-                            bus_idx,
-                            gen_data[i, 2] / base_mva, # Pg
-                            gen_data[i, 6],  # Vg
-                            gen_data[i, 4] / base_mva,  # Qmax
-                            gen_data[i, 5] / base_mva,  # Qmin
-                            gen_data[i, 9] / base_mva,  # Pmax
-                            gen_data[i, 10] / base_mva  # Pmin
-                        ])
+                        push!(
+                            pv_gens,
+                            [
+                                bus_idx,
+                                gen_data[i, 2] / base_mva, # Pg
+                                gen_data[i, 6],  # Vg
+                                gen_data[i, 4] / base_mva,  # Qmax
+                                gen_data[i, 5] / base_mva,  # Qmin
+                                gen_data[i, 9] / base_mva,  # Pmax
+                                gen_data[i, 10] / base_mva,  # Pmin
+                            ],
+                        )
                     end
                 end
             end
@@ -119,7 +125,6 @@ function convert_matpower_to_psat(input_file::String, output_file::String)
             end
             write(f, "];\n\n")
         end
-
 
         # --- Line and Transformer Data ---
         lines = []
@@ -159,9 +164,9 @@ function convert_matpower_to_psat(input_file::String, output_file::String)
         write(f, "data.Line = Line;\n")
         write(f, "if exist('Trsf', 'var'), data.Trsf = Trsf; end\n\n")
 
-        write(f, "end\n")
+        return write(f, "end\n")
     end
-    println("Conversion complete. Output written to $output_file")
+    return println("Conversion complete. Output written to $output_file")
 end
 
 # To run the conversion:

@@ -1,13 +1,4 @@
-function linearpowerflow(
-    units::unit,
-    lines::transmissionline,
-    loads::load,
-    NG::Int64,
-    NB::Int64,
-    ND::Int64,
-    NL::Int64,
-)
-
+function linearpowerflow(units::unit, lines::transmissionline, loads::load, NG::Int64, NB::Int64, ND::Int64, NL::Int64)
     B = zeros(NB, NB)
     M = zeros(NB, NL)
 
@@ -41,13 +32,10 @@ function linearpowerflow(
     if Note_slack == 1
         B1[1:(NB - 1), :] = B[2:NB, 2:NB]
     else
-        B1[1:(Note_slack - 1), 1:(Note_slack - 1)] =
-            B[1:(Note_slack - 1), 1:(Note_slack - 1)]
+        B1[1:(Note_slack - 1), 1:(Note_slack - 1)] = B[1:(Note_slack - 1), 1:(Note_slack - 1)]
         B1[Note_slack:(NB - 1), 1:(Note_slack - 1)] = B[Note_slack:NB, 1:(Note_slack - 1)]
-        B1[1:(Note_slack - 1), (Note_slack - 1):(NB - 1)] =
-            B[1:(Note_slack - 1), Note_slack:NB]
-        B1[(Note_slack - 1):(NB - 1), (Note_slack - 1):(NB - 1)] =
-            B[Note_slack:NB, Note_slack:NB]
+        B1[1:(Note_slack - 1), (Note_slack - 1):(NB - 1)] = B[1:(Note_slack - 1), Note_slack:NB]
+        B1[(Note_slack - 1):(NB - 1), (Note_slack - 1):(NB - 1)] = B[Note_slack:NB, Note_slack:NB]
     end
 
     Z = inv(B1)
@@ -70,5 +58,4 @@ function linearpowerflow(
     end
 
     return G2B, D2B, Gsdf
-
 end

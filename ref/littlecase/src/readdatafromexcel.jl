@@ -18,41 +18,39 @@ function readxlssheet()
     Sheet1_list = string("A2", ":", "G", string(size(unitsfreqparam[:], 1)))
     Sheet2_list = string("A2", ":", "F", string(size(windsfreqparam[:], 1)))
 
-    unitsfreqparam = convert(Array{Float64,2}, unitsfreqparam[Sheet1_list])
-    windsfreqparam = convert(Array{Float64,2}, windsfreqparam[Sheet2_list])
+    unitsfreqparam = convert(Array{Float64, 2}, unitsfreqparam[Sheet1_list])
+    windsfreqparam = convert(Array{Float64, 2}, windsfreqparam[Sheet2_list])
 
     # part-2: read stroge data
     strogesystemdata = df["strogesystem_data"]
     Sheet3_list = string("A2", ":", "L", string(size(strogesystemdata[:], 1)))
-    strogesystemdata = convert(Array{Float64,2}, strogesystemdata[Sheet3_list])
+    strogesystemdata = convert(Array{Float64, 2}, strogesystemdata[Sheet3_list])
 
     # part-3: read conventional unit, network ,and load data
     gendata = df["units_data"]
     Sheet4_list = string("A2", ":", "M", string(size(gendata[:], 1)))
-    gendata = convert(Array{Float64,2}, gendata[Sheet4_list])
+    gendata = convert(Array{Float64, 2}, gendata[Sheet4_list])
 
     gencost = df["units_cost"]
     Sheet5_list = string("A2", ":", "H", string(size(gencost[:], 1)))
-    gencost = convert(Array{Float64,2}, gencost[Sheet5_list])
+    gencost = convert(Array{Float64, 2}, gencost[Sheet5_list])
 
     linedata = df["branch_data"]
     Sheet6_list = string("A2", ":", "E", string(size(linedata[:], 1)))
-    linedata = convert(Array{Float64,2}, linedata[Sheet6_list])
+    linedata = convert(Array{Float64, 2}, linedata[Sheet6_list])
 
     loadcurve = df["load_curve"]
     Sheet7_list = string("A2", ":", "B", string(size(loadcurve[:], 1)))
-    loadcurve = convert(Array{Float64,2}, loadcurve[Sheet7_list])
+    loadcurve = convert(Array{Float64, 2}, loadcurve[Sheet7_list])
 
     loaddata = df["load_data"]
     Sheet8_list = string("A2", ":", "C", string(size(loaddata[:], 1)))
-    loaddata = convert(Array{Float64,2}, loaddata[Sheet8_list])
+    loaddata = convert(Array{Float64, 2}, loaddata[Sheet8_list])
 
-    return unitsfreqparam, windsfreqparam, strogesystemdata, gendata, gencost, linedata,
-    loadcurve, loaddata
+    return unitsfreqparam, windsfreqparam, strogesystemdata, gendata, gencost, linedata, loadcurve, loaddata
 end
 
-function forminputdata(
-    DataGen, DataBranch, DataLoad, LoadCurve, GenCost, UnitsFreqParam, StrogeData)
+function forminputdata(DataGen, DataBranch, DataLoad, LoadCurve, GenCost, UnitsFreqParam, StrogeData)
 
     # DataGen,DataBranch,DataLoad,LoadCurve,GenCost = IEEE_RTS6()
     NB = Int64(maximum([maximum(DataBranch[:, 2]), maximum(DataBranch[:, 3])]))::Int64
@@ -127,18 +125,39 @@ function forminputdata(
     # re-normazied data
     config_param = config(0, 1, 1, 1, 1, 3, 0.005, 0.005, 1, 1, 1, 1e5, 1e5, 50, 0.01)
 
-    units = unit(Gens_Index, Gens_LocateBus, Gens_Pmax, Gens_Pmin, Gens_RU, Gens_RD,
-        Gens_SU, Gens_SD, Gens_TU, Gens_TD, Gens_x0, Gens_t0, Gens_p0, Gens_a,
-        Gens_b, Gens_c, Gens_CU, Gens_CU1, Gens_CD, Gens_Cold, Hg, Dg, Kg, Fg, Tg,
-        Rg)
+    units = unit(
+        Gens_Index,
+        Gens_LocateBus,
+        Gens_Pmax,
+        Gens_Pmin,
+        Gens_RU,
+        Gens_RD,
+        Gens_SU,
+        Gens_SD,
+        Gens_TU,
+        Gens_TD,
+        Gens_x0,
+        Gens_t0,
+        Gens_p0,
+        Gens_a,
+        Gens_b,
+        Gens_c,
+        Gens_CU,
+        Gens_CU1,
+        Gens_CD,
+        Gens_Cold,
+        Hg,
+        Dg,
+        Kg,
+        Fg,
+        Tg,
+        Rg,
+    )
     # lines = transmissionline(Trans_From, Trans_To, Trans_x, Trans_b, Trans_Pmax, Trans_Pmin)
 
-    lines = transmissionline(Trans_index, Trans_From, Trans_To, Trans_x, Trans_Pmax,
-        Trans_Pmin)
+    lines = transmissionline(Trans_index, Trans_From, Trans_To, Trans_x, Trans_Pmax, Trans_Pmin)
 
-    stroges = stroge(
-        Pss_index, Pss_locatebus, Pss_q_max, Pss_q_min, Pss_p⁺, Pss_p⁻, Pss_P₀,
-        Pss_γ⁺, Pss_γ⁻, Pss_η⁺, Pss_η⁻, Pss_δₛ)
+    stroges = stroge(Pss_index, Pss_locatebus, Pss_q_max, Pss_q_min, Pss_p⁺, Pss_p⁻, Pss_P₀, Pss_γ⁺, Pss_γ⁻, Pss_η⁺, Pss_η⁻, Pss_δₛ)
 
     if size(Loads_PerLoad, 1) == ND
         if size(Loads_PerLoad, 2) == NT

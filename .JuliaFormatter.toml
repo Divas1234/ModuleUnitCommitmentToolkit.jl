@@ -1,6 +1,9 @@
 # default：函数调用换行时用块缩进，不会像 YAS 那样与开括号对齐造成“极右缩进”
 style = "default"
+# 这个项目里部分约束函数的参数列表较长；提高 margin，避免函数签名被拆成一参一行
 margin = 150
+indent = 4
+normalize_line_endings = "unix"
 always_for_in = true
 remove_extra_newlines = true
 short_to_long_function_def = false
