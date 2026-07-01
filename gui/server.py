@@ -7,15 +7,38 @@ import shutil
 import signal
 import subprocess
 import threading
+import time
 import tomllib
 from http.server import HTTPServer, SimpleHTTPRequestHandler
 from pathlib import Path
+from urllib.parse import urlparse
 
 ROOT = Path(__file__).resolve().parent.parent
 CONFIG_PATH = ROOT / 'config' / 'runtime_config.toml'
 VALID_TASKS = ("boundary", "benchmark", "ccg", "benders", "benders_fast", "tests")
 JULIA_STARTUP_TIMEOUT = 60
 JULIA_RUN_TIMEOUT = 3600
+ANSI_RE = re.compile(r'\x1b\[[0-?]*[ -/]*[@-~]')
+TASK_OUTPUT_DIRS = {
+    "benchmark": ("comparison", "benchmark_uc", "benders", "ccg"),
+    "ccg": ("ccg",),
+    "benders": ("benders",),
+    "benders_fast": ("benders",),
+    "boundary": (),
+    "tests": (),
+}
+
+
+def julia_env():
+    """Return a clean Julia subprocess environment.
+
+    Passing JULIA_DEPOT_PATH="" makes Julia 1.12 fail during precompilation with
+    an internal BoundsError, so preserve it only when the user actually set it.
+    """
+    env = os.environ.copy()
+    if not env.get("JULIA_DEPOT_PATH"):
+        env.pop("JULIA_DEPOT_PATH", None)
+    return env
 
 # ---------------------------------------------------------------------------
 # Julia check
@@ -30,7 +53,7 @@ def check_julia():
         r = subprocess.run(
             [julia, "-v"],
             capture_output=True, text=True, timeout=15,
-            env={**os.environ, "JULIA_DEPOT_PATH": os.environ.get("JULIA_DEPOT_PATH", "")},
+            env=julia_env(),
         )
         if r.returncode == 0 and r.stdout.strip():
             return True, r.stdout.strip()
@@ -61,6 +84,9 @@ class RunManager:
         self.output = []
         self._proc = None
         self._structured = None
+        self._result_meta = None
+        self._run_started_at = None
+        self._cancel_requested = False
         if self._timer:
             self._timer.cancel()
             self._timer = None
@@ -82,6 +108,7 @@ class RunManager:
             self.reset()
             self.task = task
             self.status = "running"
+            self._run_started_at = time.time()
 
         def _run():
             try:
@@ -97,20 +124,26 @@ class RunManager:
                 structured_lines = []
                 in_structured = False
                 for line in iter(self._proc.stdout.readline, ""):
+                    line = ANSI_RE.sub("", line)
+                    stripped = line.strip()
                     with self._lock:
-                        self.output.append(line)
                         if in_structured:
-                            if line.strip() == "###END_STRUCTURED_DATA###":
+                            if stripped == "###END_STRUCTURED_DATA###":
                                 in_structured = False
                             else:
                                 structured_lines.append(line)
-                        elif line.strip() == "###STRUCTURED_DATA###":
+                            continue
+                        if stripped == "###STRUCTURED_DATA###":
                             in_structured = True
+                            continue
+                        self.output.append(line)
 
                 self._proc.wait()
                 rc = self._proc.returncode
                 with self._lock:
-                    if rc == 0:
+                    if self._cancel_requested or self.status == "cancelled":
+                        self.status = "cancelled"
+                    elif rc == 0:
                         self.status = "completed"
                     else:
                         self.status = "failed"
@@ -120,6 +153,8 @@ class RunManager:
                             self._structured = json.loads("".join(structured_lines))
                         except json.JSONDecodeError:
                             self._structured = None
+                    if self.status == "completed":
+                        self._result_meta = self._collect_result_metadata(task)
             except Exception as e:
                 with self._lock:
                     self.output.append(f"\n[ERROR] {e}\n")
@@ -143,10 +178,13 @@ class RunManager:
     def cancel(self):
         with self._lock:
             if self._proc and self._proc.poll() is None:
+                self._cancel_requested = True
                 self._proc.terminate()
+                self.output.append("\n[INFO] Cancellation requested.\n")
                 self.status = "cancelled"
                 return True
             if self.status == "running":
+                self._cancel_requested = True
                 self.status = "cancelled"
                 return True
         return False
@@ -159,12 +197,52 @@ class RunManager:
                 "output_len": len(self.output),
                 "output": self.output[-600:],
                 "structured": self._structured,
+                "result_path": (self._result_meta or {}).get("result_path"),
+                "summaries": (self._result_meta or {}).get("summaries", []),
             }
 
+    def _collect_result_metadata(self, task):
+        candidates = []
+        summaries = []
+
+        for rel in TASK_OUTPUT_DIRS.get(task, ()):
+            root = ROOT / "output" / rel
+            if not root.exists():
+                continue
+            for path in root.rglob("*"):
+                if path.is_file() and path.suffix.lower() in (".log", ".csv", ".txt", ".md"):
+                    candidates.append(path)
+
+        comparison_root = ROOT / "output" / "comparison"
+        if task == "benchmark" and comparison_root.exists():
+            for summary_path in comparison_root.glob("*/summary.csv"):
+                summaries.append({"path": str(summary_path), "mtime": summary_path.stat().st_mtime})
+                candidates.append(summary_path)
+
+        fresh_candidates = []
+        if self._run_started_at:
+            fresh_candidates = [p for p in candidates if p.stat().st_mtime >= self._run_started_at - 2]
+            if fresh_candidates:
+                candidates = fresh_candidates
+
+        if not candidates:
+            return {"result_path": None, "summaries": summaries}
+
+        newest = max(candidates, key=lambda p: p.stat().st_mtime)
+        log_candidates = [p for p in candidates if p.suffix.lower() == ".log"]
+        if log_candidates:
+            newest = max(log_candidates, key=lambda p: p.stat().st_mtime)
+
+        summaries.sort(key=lambda item: item["mtime"], reverse=True)
+        return {
+            "result_path": str(newest),
+            "summaries": summaries[:5],
+        }
+
     def _build_cmd(self, task, params):
-        env = os.environ.copy()
-        env["JULIA_DEPOT_PATH"] = env.get("JULIA_DEPOT_PATH", "")
+        env = julia_env()
         env["PYTHON"] = ""
+        env["JULIA_PKG_PRECOMPILE_AUTO"] = "0"
 
         if task == "boundary":
             limit = str(params.get("scenario_limit", 5))
@@ -304,23 +382,26 @@ class Handler(SimpleHTTPRequestHandler):
         self.wfile.write(json.dumps(data).encode())
 
     def do_GET(self):
-        if self.path == '/api/config':
+        parsed = urlparse(self.path)
+        path = parsed.path
+
+        if path == '/api/config':
             result = parse_toml_with_lines(CONFIG_PATH)
             del result['_lines']
             del result['_key_lines']
             self._send_json(result)
             return
 
-        if self.path == '/api/run':
+        if path == '/api/run':
             self._send_json(RUN_MGR.get_state())
             return
 
-        if self.path == '/api/check/julia':
+        if path == '/api/check/julia':
             ok, msg = check_julia()
             self._send_json({'ok': ok, 'msg': msg})
             return
 
-        if self.path == '/':
+        if path in ('/', '/gui', '/gui/', '/GUI', '/GUI/'):
             self.path = '/gui/index.html'
         super().do_GET()
 
@@ -332,7 +413,9 @@ class Handler(SimpleHTTPRequestHandler):
             self._send_json({'ok': False, 'error': f'Invalid JSON: {e}'}, status=400)
             return
 
-        if self.path == '/api/config':
+        path = urlparse(self.path).path
+
+        if path == '/api/config':
             try:
                 write_toml_values(CONFIG_PATH, body)
                 self._send_json({'ok': True})
@@ -340,17 +423,19 @@ class Handler(SimpleHTTPRequestHandler):
                 self._send_json({'ok': False, 'error': str(e)}, status=400)
             return
 
-        if self.path == '/api/run':
+        if path == '/api/run':
             task = body.get('task', '')
             params = body.get('params', {})
             try:
                 ok = RUN_MGR.start(task, params)
-                self._send_json({'ok': ok, 'task': task})
+                state = RUN_MGR.get_state()
+                error = 'Task already running' if not ok and state.get('status') == 'running' else None
+                self._send_json({'ok': ok, 'task': task, 'status': state.get('status'), 'error': error})
             except ValueError as e:
                 self._send_json({'ok': False, 'error': str(e)}, status=400)
             return
 
-        if self.path == '/api/run/cancel':
+        if path == '/api/run/cancel':
             self._send_json({'ok': RUN_MGR.cancel()})
             return
 

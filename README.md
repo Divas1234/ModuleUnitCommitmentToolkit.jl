@@ -1,144 +1,299 @@
-# Datacenter Unit Commitment Model
+# Module Unit Commitment Toolkit
 
-## Table of Contents
+Julia toolkit and browser dashboard for stochastic Unit Commitment (UC)
+experiments with data-center load, renewable scenarios, decomposition
+algorithms, and result comparison workflows.
 
-- [Datacenter Unit Commitment Model](#datacenter-unit-commitment-model)
-  - [Table of Contents](#table-of-contents)
-  - [Description](#description)
-  - [Usage](#usage)
-  - [File Structure](#file-structure)
-  - [Benders Decomposition Implementation](#benders-decomposition-implementation)
-  - [CCG and Wasserstein DRO](#ccg-and-wasserstein-dro)
-  - [Runtime Configuration](#runtime-configuration)
-  - [Testing](#testing)
-  - [Dependencies](#dependencies)
-  - [License](#license)
+The repository contains three connected layers:
 
-## Description
+- A JuMP/Gurobi UC modeling core under `src/`
+- Algorithm drivers for Benchmark UC, Benders decomposition, and CCG under `tools/`
+- A native HTML/CSS/JavaScript dashboard served by a small Python server under `gui/`
 
-This project implements a unit commitment model for power systems integrated with datacenters. The model optimizes the commitment and dispatch of generation units, considering the power consumption of datacenters, generation costs, transmission constraints, and renewable energy integration. It aims to provide a cost-effective and reliable power system operation.
+## Contents
 
-## Usage
+- [Features](#features)
+- [Requirements](#requirements)
+- [Quick Start](#quick-start)
+- [Dashboard](#dashboard)
+- [Command-Line Workflows](#command-line-workflows)
+- [Runtime Configuration](#runtime-configuration)
+- [Outputs](#outputs)
+- [Project Layout](#project-layout)
+- [Testing](#testing)
+- [Troubleshooting](#troubleshooting)
+- [License](#license)
 
-1.  **Prerequisites:**
-    *   [Julia](https://julialang.org/downloads/) (version 1.6 or higher).
-    *   Install required Julia packages: Run `] instantiate` in the Julia REPL within the project directory. This installs all dependencies from `Project.toml`.
-2.  **Environment Activation:**
-    *   Open a Julia REPL in the project directory.
-    *   Activate the project environment: `julia --project=.` or `julia -p auto --project=.`
-3.  **Model Execution:**
-    *   Run the main script: `julia main_function.jl`
-    *   Alternatively, from within the Julia REPL: `include("main_function.jl")`
+## Features
 
-## File Structure
+- Stochastic and security-constrained UC model components built with JuMP.
+- Benchmark extensive-form UC runner for baseline comparisons.
+- Benders decomposition workflow with cut, subproblem, and fast benchmark modes.
+- Column-and-Constraint Generation (CCG) workflow with optional Wasserstein DRO.
+- Data-center, wind, network, storage, and frequency-control modeling modules.
+- Runtime configuration through `config/runtime_config.toml`.
+- Local GUI dashboard for:
+  - overview metrics
+  - quality and convergence charts
+  - schedule inspection
+  - benchmark reports and SVG charts
+  - runtime configuration editing
+  - launching Julia tasks from the browser
 
-*   `main_function.jl`: Main script to run the unit commitment model.
-*   `src/environment_config.jl`: Environment configurations.
-*   `src/input_data`: Excel readers, data formatting, and boundary checks.
-*   `src/renewables`: Renewable scenario generation and stochastic simulation.
-*   `src/unit_commitment`: Core SUC-SCUC formulation.
-*   `src/unit_commitment/constraints`: Generator, network, storage, system, data center, and frequency constraints.
-*   `src/unit_commitment/objectives`: Economic objective definitions.
-*   `src/unit_commitment/utilities`: Decision variables, linearization, solver helpers, power flow, exports, and result saving.
-*   `src/unit_commitment/validation`: Input and model validation helpers.
-*   `src/visualization`: Plotting and visualization helpers.
-*   `tools/ccg`: Column-and-Constraint Generation solver with Wasserstein DRO renewable uncertainty.
-*   `test`: Lightweight Julia unit and smoke tests.
-*   `docs/algorithms`: Algorithm notes and modeling documentation.
-*   `docs/testing.md`: Testing guide.
+## Requirements
 
-## Benders Decomposition Implementation
+- Julia with the project environment available. The current development setup is
+  tested with Julia `1.12.x`.
+- Python 3 for the local dashboard server.
+- Gurobi and a valid Gurobi license for optimization runs that use Gurobi.
+- Git submodules and data files required by the selected case.
 
-The Benders decomposition algorithm is implemented in the `tools` directory to solve the stochastic unit commitment problem. The main components are:
-
-*   `tools/benders/driver.jl`: Benders executable entry point and optional extensive-form benchmark path.
-*   `tools/benders/setup.jl`: Data loading, scenario generation, master/subproblem construction, and batch subproblem setup.
-*   `tools/benders/decomposition.jl`: Core Benders decomposition loop, cut generation, cut rollback, and convergence checks.
-*   `tools/benders/models`: Master, subproblem, batch subproblem, and SCUC model structure definitions.
-*   `tools/benders/cuts`: Benders optimality, feasibility, coefficient, and multi-cut helpers.
-*   `tools/archive`: Historical Benders cut-construction drafts kept out of the active include path.
-*   `dev/debug`: Development-only debugging scripts.
-*   `examples/benders`: Small standalone Benders, LP dual, and Farkas examples.
-*   `docs/benchmarks/benders`: Benders performance report and raw benchmark logs.
-*   `scripts/run_benders_benchmarks.sh`: Reproducible Benders benchmark runner.
-
-## CCG and Wasserstein DRO
-
-The CCG workflow for renewable uncertainty is implemented in `tools/ccg`. It uses generated wind scenarios as the finite support and can solve a Wasserstein distributionally robust model.
-
-Run a quick DRO CCG example:
+Install Julia dependencies from the repository root:
 
 ```bash
-julia examples/ccg/run_wasserstein_dro_ccg.jl
+julia --project=. -e 'using Pkg; Pkg.instantiate()'
 ```
 
-Key controls:
+If Gurobi is not configured yet, verify that Julia can load it:
 
 ```bash
-CCG_SCENARIO_LIMIT=20
-CCG_INITIAL_SCENARIOS=3
-CCG_MAX_ITERATIONS=20
-CCG_DRO_ENABLED=1
-CCG_DRO_RADIUS=0.05
+julia --project=. -e 'using Gurobi; println(Gurobi.Env())'
 ```
 
-See `docs/algorithms/wasserstein_dro_ccg.md` for the modeling and algorithm details.
+## Quick Start
 
-## Runtime Configuration
-
-Runtime parameters are centralized in `config/runtime_config.toml`. Benders and CCG drivers load this file before reading their environment variables.
+Run the dashboard:
 
 ```bash
-julia tools/benders/driver.jl
-julia tools/ccg/driver.jl
+./gui/start.sh
 ```
 
-Shell variables still override the config file for one-off runs:
+Then open:
 
-```bash
-BENDERS_SCENARIO_LIMIT=5 julia tools/benders/driver.jl
-CCG_SCENARIO_LIMIT=5 julia tools/ccg/driver.jl
+```text
+http://localhost:8080/gui/
 ```
-
-See `docs/runtime_configuration.md` for all sections and variables.
-
-## Testing
 
 Run the lightweight test suite:
 
 ```bash
-julia test/runtests.jl
+julia --project=. test/runtests.jl
 ```
 
-Or from examples:
+Run a small Benders or CCG experiment:
 
 ```bash
-julia examples/testing/run_light_tests.jl
+julia --project=. tools/benders/driver.jl
+julia --project=. tools/ccg/driver.jl
 ```
 
-See `docs/testing.md` for test coverage and conventions.
+## Dashboard
 
-## Dependencies
+The GUI is generated from `gui/build_html.py` into `gui/index.html` and served
+by `gui/server.py`.
 
-The project depends on the following Julia packages:
+Start it with:
 
-*   CSV
-*   Clustering
-*   DataFrames
-*   DelimitedFiles
-*   Distributions
-*   Gurobi
-*   JLD
-*   JuMP
-*   LaTeXStrings
-*   MultivariateStats
-*   PlotlyJS
-*   Plots
-*   Revise
-*   StatsPlots
-*   Test
-*   XLSX
+```bash
+python3 gui/server.py
+```
+
+or use the convenience scripts:
+
+```bash
+./gui/start.sh
+gui/start.bat
+gui/start.ps1
+```
+
+The dashboard exposes these panels:
+
+- `Overview`: run-level summary table and status metrics.
+- `Quality`: Plotly charts for curtailment, gap, runtime, RAM, convergence, and
+  bounds, with quality and iteration tables.
+- `Schedule`: dispatch, commitment, cost, curtailment, power balance, startup,
+  reserve, and report views.
+- `Reports`: benchmark report text and generated SVG chart previews.
+- `Settings`: structured runtime configuration editor.
+- `Run`: browser controls for boundary checks, benchmark runs, CCG, Benders,
+  Benders Fast, and tests.
+
+After changing the dashboard generator, rebuild the static HTML:
+
+```bash
+python3 gui/build_html.py
+```
+
+## Command-Line Workflows
+
+### Benchmark UC
+
+```bash
+julia --project=. tools/benchmark/run_algorithm_comparison.jl
+```
+
+This runner compares Benchmark UC, Benders, and CCG for configured scenario
+counts and writes consolidated output under `output/`.
+
+### Benders
+
+```bash
+julia --project=. tools/benders/driver.jl
+```
+
+Useful one-off override:
+
+```bash
+BENDERS_SCENARIO_LIMIT=5 julia --project=. tools/benders/driver.jl
+```
+
+### CCG
+
+```bash
+julia --project=. tools/ccg/driver.jl
+```
+
+Useful one-off override:
+
+```bash
+CCG_SCENARIO_LIMIT=5 julia --project=. tools/ccg/driver.jl
+```
+
+### Wasserstein DRO Example
+
+```bash
+julia --project=. examples/ccg/run_wasserstein_dro_ccg.jl
+```
+
+See [docs/algorithms/wasserstein_dro_ccg.md](docs/algorithms/wasserstein_dro_ccg.md)
+for the modeling notes.
+
+## Runtime Configuration
+
+Central runtime settings live in:
+
+```text
+config/runtime_config.toml
+```
+
+The algorithm drivers load this file before reading environment variable
+overrides. Shell variables are still useful for temporary runs:
+
+```bash
+CCG_MAX_ITERATIONS=20 CCG_DRO_ENABLED=1 julia --project=. tools/ccg/driver.jl
+```
+
+Important configuration groups include:
+
+- `boundary`: input and boundary report options.
+- `common`: shared display and compatibility switches.
+- `model`: network, system, wind, thermal, data-center, BESS, and precision flags.
+- `benders`: scenario limits, iteration limits, fast mode, and solver controls.
+- `benders.cuts`: cut violation tolerances and cut selection controls.
+- `benders.subproblems`: parallel subproblem options.
+- `ccg`: master, recourse, scenario, and convergence controls.
+- `dro`: Wasserstein DRO controls for CCG.
+- `frequency`: frequency support and nadir fitting settings.
+- `test`: test harness switches.
+
+See [docs/runtime_configuration.md](docs/runtime_configuration.md) for more
+detail.
+
+## Outputs
+
+Most experiments write to `output/` using timestamped run folders. Common output
+locations include:
+
+- `output/benchmark_uc/`
+- `output/benders/`
+- `output/ccg/`
+- `output/comparison/`
+
+Typical artifacts are:
+
+- `summary.csv`
+- algorithm logs under `logs/`
+- quality metrics
+- iteration history
+- schedule result tables
+- report text and SVG charts
+
+The dashboard reads these artifacts and renders them into the Overview, Quality,
+Schedule, and Reports panels.
+
+## Project Layout
+
+```text
+config/                  Runtime TOML configuration
+data/                    Input data used by model readers
+docs/                    Algorithm, benchmark, runtime, and testing notes
+examples/                Small reproducible examples
+gui/                     Native HTML/CSS/JS dashboard and Python server
+output/                  Generated run artifacts
+ref/                     Reference projects and input cases
+scripts/                 Helper scripts
+src/                     Core Julia model, data, renewable, and visualization code
+test/                    Julia unit and smoke tests
+tools/benchmark/         Benchmark UC and comparison runner
+tools/benders/           Benders decomposition implementation
+tools/ccg/               CCG and Wasserstein DRO implementation
+```
+
+## Testing
+
+Run all tests:
+
+```bash
+julia --project=. test/runtests.jl
+```
+
+Run the lightweight example test entry:
+
+```bash
+julia --project=. examples/testing/run_light_tests.jl
+```
+
+See [docs/testing.md](docs/testing.md) for test scope and conventions.
+
+## Troubleshooting
+
+### Julia is not found from the dashboard
+
+Ensure `julia` is on `PATH`:
+
+```bash
+julia -v
+```
+
+Then restart `gui/server.py`.
+
+### Port 8080 is already in use
+
+Stop the existing server or process using the port:
+
+```bash
+lsof -i :8080
+```
+
+### Gurobi cannot start
+
+Confirm that Gurobi is installed, licensed, and visible to Julia:
+
+```bash
+julia --project=. -e 'using Gurobi; println(Gurobi.Env())'
+```
+
+### Dashboard data looks stale
+
+Rebuild the generated dashboard after changing the generator or refreshing data
+schemas:
+
+```bash
+python3 gui/build_html.py
+```
+
+Then reload `http://localhost:8080/gui/`.
 
 ## License
 
-This project is licensed under the [MIT License](LICENSE). See the `LICENSE` file for details.
+This project is licensed under the MIT License. See [LICENSE](LICENSE).

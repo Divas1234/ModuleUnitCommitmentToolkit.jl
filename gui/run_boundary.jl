@@ -41,7 +41,31 @@ maybe_print_boundarycondition(NB, NL, NG, NT, ND, units, loads, lines, winds, ps
 
 refcost, eachslope = linearizationfuelcurve(units, NG)
 
-using JSON
+function json_escape(text::AbstractString)
+    escaped = replace(text, "\\" => "\\\\", "\"" => "\\\"", "\n" => "\\n", "\r" => "\\r", "\t" => "\\t")
+    return "\"$escaped\""
+end
+
+function json_value(value)
+    if value === nothing || value === missing
+        return "null"
+    elseif value isa Bool
+        return value ? "true" : "false"
+    elseif value isa Integer
+        return string(value)
+    elseif value isa AbstractFloat
+        return isfinite(value) ? string(value) : "null"
+    elseif value isa AbstractString || value isa Symbol
+        return json_escape(string(value))
+    elseif value isa AbstractDict
+        parts = [json_escape(string(key)) * ":" * json_value(val) for (key, val) in value]
+        return "{" * join(parts, ",") * "}"
+    elseif value isa AbstractVector || value isa Tuple
+        return "[" * join((json_value(item) for item in value), ",") * "]"
+    else
+        return json_escape(string(value))
+    end
+end
 
 checks_list = [
     Dict("label" => "NG matches length(units.index)",       "ok" => NG == length(units.index)),
@@ -107,5 +131,5 @@ data = Dict(
 )
 
 println("\n###STRUCTURED_DATA###")
-println(JSON.json(data))
+println(json_value(data))
 println("###END_STRUCTURED_DATA###")
