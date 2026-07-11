@@ -215,9 +215,9 @@ end
 # end
 function add_hydros_constraints!(scuc::Model, NT, NH, NS, hydros)
     # Check if PWL variables exist
-    if isempty(scuc[:ph])
+    if !check_var_exists(scuc, "ph")
         return println(
-            "\t constraints: 9) hydro decision variables skipped (pgₖ not defined)",
+            "\t constraints: 9) hydro decision variables skipped (ph not defined)",
         )
     end
 

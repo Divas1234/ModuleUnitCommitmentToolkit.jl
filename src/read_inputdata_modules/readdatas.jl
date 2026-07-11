@@ -16,7 +16,8 @@ include("_formatteddata.jl")
 include("_readdatafromexcel.jl")
 include("_showboundrycase.jl")
 include("_get_totalboundarydata.jl")
+include("powersystems_bridge.jl")
 
-export readxlssheet, forminputdata, boundrycondition
+export readxlssheet, forminputdata, boundrycondition, build_system_from_powersystems, extract_uc_data_from_powersystems
 
 println("\t→ Input data module loaded and ready for UC modeling.")
