@@ -87,12 +87,39 @@ function SUC_scucmodel(NT::Int64, NB::Int64, NG::Int64, ND::Int64, NC::Int64, ND
 			return results # Return the dictionary containing the optimization results
 		else
 			# Handle optimization failure
-			println("Optimization failed, returning nothing.")
+			println("Optimization failed. Computing Gurobi IIS...")
+			try
+				compute_iis(scuc)
+				write_iis(scuc, "model.iis")
+				println("IIS written to model.iis:")
+				for line in readlines("model.iis")[1:min(100, end)]
+					println(line)
+				end
+			catch err
+				println("Failed to compute IIS: ", err)
+			end
 			return nothing
 		end
 	catch e
 		# Catch any errors that occur during the optimization process
 		println("An error occurred during optimization: ", e)
+		println("Computing Gurobi IIS to diagnose infeasibility...")
+		try
+			JuMP.compute_conflict!(scuc)
+			println("IIS computation completed. Conflicting constraints:")
+			for (F, S) in list_of_constraint_types(scuc)
+				for con in all_constraints(scuc, F, S)
+					try
+						if get_attribute(con, MOI.ConstraintConflictStatus()) == MOI.IN_CONFLICT
+							println("  IN_CONFLICT: ", con)
+						end
+					catch
+					end
+				end
+			end
+		catch err
+			println("Failed to compute IIS: ", err)
+		end
 		return nothing
 	end
 end # end SUC_scucmodel function

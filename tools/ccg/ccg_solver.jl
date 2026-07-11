@@ -169,11 +169,32 @@ function ccg_optimizer_threads(env_name::String, default_value::Int64)
 	return parse(Int64, get(ENV, env_name, string(default_value)))
 end
 
-function load_ccg_data(scenario_limit::Int64; use_powersystems::Bool = false, sys = nothing, case_dir::String = "")
+function load_ccg_data(
+	scenario_limit::Int64;
+	use_powersystems::Bool = false,
+	sys = nothing,
+	case_name = nothing,
+	case_category = MatpowerTestSystems,
+	case_dir::String = "",
+	frequency_parameters = nothing,
+	data_centers = NamedTuple[],
+	horizon::Int64 = 24,
+)
 	# CCG reuses the same data ingestion pipeline as Benders so that topology,
 	# model flags, wind scenarios, and boundary diagnostics stay identical across
 	# algorithm comparisons.
-	data = load_uc_data(; scenario_limit = scenario_limit, use_powersystems = use_powersystems, sys = sys, case_dir = case_dir)
+	data = load_uc_data(
+		;
+		scenario_limit = scenario_limit,
+		use_powersystems = use_powersystems,
+		sys = sys,
+		case_name = case_name,
+		case_category = case_category,
+		case_dir = case_dir,
+		frequency_parameters = frequency_parameters,
+		data_centers = data_centers,
+		horizon = horizon,
+	)
 	maybe_print_boundarycondition(data.NB, data.NL, data.NG, data.NT, data.ND, data.units, data.loads, data.lines, data.winds, data.psses, data.config_param)
 	return (
 		config_param = data.config_param,

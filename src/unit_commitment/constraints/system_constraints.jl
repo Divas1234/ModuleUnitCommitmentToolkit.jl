@@ -139,14 +139,15 @@ function add_power_balance_constraints!(scuc::Model, NT, NG, ND, NC, NW, NS, loa
     end
 
     sys_balance_constr = []
-    if config_param.is_ConsiderDataCentra == 1 && ND2 > 0 && !isempty(scuc[:dc_p])
+    dc_enabled = config_param.is_ConsiderDataCentra == 1 && ND2 > 0 && check_var_exists(scuc, "dc_p")
+    if dc_enabled
         dc_p = scuc[:dc_p]
         # Add data center load if considered
         push!(sys_balance_constr, @constraint(scuc, [s = 1:NS, t = 1:NT], common_balance[s, t] - sum(dc_p[((s - 1) * ND2 + 1):(s * ND2), t]) == 0))
     else
         # Constraint without data center load
         push!(sys_balance_constr, @constraint(scuc, [s = 1:NS, t = 1:NT], common_balance[s, t] == 0))
-        if config_param.is_ConsiderDataCentra == 1 && (ND2 == 0 || dc_p === nothing)
+        if config_param.is_ConsiderDataCentra == 1
             println("Warning: is_ConsiderDataCentra is true, but ND2 is 0 or dc_p missing. Data center load ignored.")
         end
     end

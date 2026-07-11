@@ -28,8 +28,9 @@ function validate_inputs(NT, NB, NG, ND, NC, ND2, units, loads, winds, lines, Da
         return false
     end
 
+    NW = size(winds.index, 1)
     if size(winds.index, 1) != NW
-        @warn "Number of wind scenarios in `winds` ($(size(winds.p_wind, 1))) does not match NW ($NW). This might lead to errors."
+        @warn "Number of wind farms in `winds` ($(size(winds.index, 1))) does not match NW ($NW). This might lead to errors."
         return false
     end
 

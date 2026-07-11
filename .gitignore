@@ -51,6 +51,9 @@ docs/site/
 # environment.
 Manifest.toml
 
+# Tooling/IDE
+.codegraph/
+
 # Node/local tool state
 node_modules/
 **/node_modules/
