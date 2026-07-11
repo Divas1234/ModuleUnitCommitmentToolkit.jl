@@ -55,6 +55,7 @@ Manifest.toml
 node_modules/
 **/node_modules/
 .kilo/
+.worktrees/
 
 # Runtime outputs
 output/
