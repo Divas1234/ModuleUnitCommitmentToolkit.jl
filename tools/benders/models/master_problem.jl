@@ -141,11 +141,21 @@ function add_master_storage_binary_constraints!(scuc_masterproblem::Model, NT::I
     β = scuc_masterproblem[:β]
 
     exclusion = @constraint(scuc_masterproblem, [s = 1:NS, c = 1:NC, t = 1:NT], κ⁺[(s - 1) * NC + c, t] + κ⁻[(s - 1) * NC + c, t] <= 1)
-    start_logic = @constraint(scuc_masterproblem, [s = 1:NS, c = 1:NC, t = 1:NT], α[(s - 1) * NC + c, t] >= κ⁺[(s - 1) * NC + c, t] - ((t == 1) ? 0 : κ⁺[(s - 1) * NC + c, t - 1]))
-    stop_logic = @constraint(scuc_masterproblem, [s = 1:NS, c = 1:NC, t = 1:NT], β[(s - 1) * NC + c, t] >= ((t == 1) ? 0 : κ⁺[(s - 1) * NC + c, t - 1]) - κ⁺[(s - 1) * NC + c, t])
+    start_logic = @constraint(
+        scuc_masterproblem,
+        [s = 1:NS, c = 1:NC, t = 1:NT],
+        α[(s - 1) * NC + c, t] >= κ⁺[(s - 1) * NC + c, t] - ((t == 1) ? 0 : κ⁺[(s - 1) * NC + c, t - 1])
+    )
+    stop_logic = @constraint(
+        scuc_masterproblem,
+        [s = 1:NS, c = 1:NC, t = 1:NT],
+        β[(s - 1) * NC + c, t] >= ((t == 1) ? 0 : κ⁺[(s - 1) * NC + c, t - 1]) - κ⁺[(s - 1) * NC + c, t]
+    )
     start_state_upper = @constraint(scuc_masterproblem, [s = 1:NS, c = 1:NC, t = 1:NT], α[(s - 1) * NC + c, t] <= κ⁺[(s - 1) * NC + c, t])
-    start_prev_upper = @constraint(scuc_masterproblem, [s = 1:NS, c = 1:NC, t = 1:NT], α[(s - 1) * NC + c, t] <= (t == 1 ? 1 : 1 - κ⁺[(s - 1) * NC + c, t - 1]))
-    stop_prev_upper = @constraint(scuc_masterproblem, [s = 1:NS, c = 1:NC, t = 1:NT], β[(s - 1) * NC + c, t] <= (t == 1 ? 0 : κ⁺[(s - 1) * NC + c, t - 1]))
+    start_prev_upper =
+        @constraint(scuc_masterproblem, [s = 1:NS, c = 1:NC, t = 1:NT], α[(s - 1) * NC + c, t] <= (t == 1 ? 1 : 1 - κ⁺[(s - 1) * NC + c, t - 1]))
+    stop_prev_upper =
+        @constraint(scuc_masterproblem, [s = 1:NS, c = 1:NC, t = 1:NT], β[(s - 1) * NC + c, t] <= (t == 1 ? 0 : κ⁺[(s - 1) * NC + c, t - 1]))
     stop_state_upper = @constraint(scuc_masterproblem, [s = 1:NS, c = 1:NC, t = 1:NT], β[(s - 1) * NC + c, t] <= 1 - κ⁺[(s - 1) * NC + c, t])
     start_cycle_limit = @constraint(scuc_masterproblem, [s = 1:NS, c = 1:NC], sum(α[(s - 1) * NC + c, t] for t in 1:NT) <= 5)
     stop_cycle_limit = @constraint(scuc_masterproblem, [s = 1:NS, c = 1:NC], sum(β[(s - 1) * NC + c, t] for t in 1:NT) <= 5)
@@ -164,17 +174,22 @@ function add_master_storage_binary_constraints!(scuc_masterproblem::Model, NT::I
     )
 end
 
-function add_master_supply_adequacy_constraints!(scuc_masterproblem::Model, NT::Int64, NG::Int64, ND::Int64, NW::Int64, units::unit, loads::load, winds::wind)
+function add_master_supply_adequacy_constraints!(
+    scuc_masterproblem::Model,
+    NT::Int64,
+    NG::Int64,
+    ND::Int64,
+    NW::Int64,
+    units::unit,
+    loads::load,
+    winds::wind,
+)
     x = scuc_masterproblem[:x]
     wind_capacity = sum(winds.p_max[:, 1])
     conservative_wind = [minimum(winds.scenarios_curve[:, t]) * wind_capacity for t in 1:NT]
     demand = [sum(loads.load_curve[d, t] for d in 1:ND) for t in 1:NT]
 
-    supply_adequacy = @constraint(
-        scuc_masterproblem,
-        [t = 1:NT],
-        sum(units.p_max[g, 1] * x[g, t] for g in 1:NG) + conservative_wind[t] >= demand[t]
-    )
+    supply_adequacy = @constraint(scuc_masterproblem, [t = 1:NT], sum(units.p_max[g, 1] * x[g, t] for g in 1:NG) + conservative_wind[t] >= demand[t])
     reserve_adequacy = @constraint(
         scuc_masterproblem,
         [i = 1:NG, t = 1:NT],

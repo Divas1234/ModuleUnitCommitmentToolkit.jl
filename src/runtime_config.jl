@@ -13,15 +13,15 @@ loader is intentionally a thin compatibility layer: it validates supported
 scalar types and leaves domain-specific parsing to each algorithm module.
 """
 function runtime_config_value_to_env(value)
-	if value isa Bool
-		return value ? "1" : "0"
-	elseif value isa AbstractString
-		return String(value)
-	elseif value isa Integer || value isa AbstractFloat
-		return string(value)
-	else
-		throw(ArgumentError("Unsupported runtime config value type: $(typeof(value))"))
-	end
+    if value isa Bool
+        return value ? "1" : "0"
+    elseif value isa AbstractString
+        return String(value)
+    elseif value isa Integer || value isa AbstractFloat
+        return string(value)
+    else
+        throw(ArgumentError("Unsupported runtime config value type: $(typeof(value))"))
+    end
 end
 
 """
@@ -34,14 +34,14 @@ human organization in the TOML file and are not prefixed onto the final ENV key.
 This keeps the public variable names stable, e.g. `BENDERS_MAX_ITERATIONS`.
 """
 function collect_runtime_config_entries!(entries::Vector{Pair{String, String}}, table)
-	for (key, value) in table
-		if value isa AbstractDict
-			collect_runtime_config_entries!(entries, value)
-		else
-			push!(entries, String(key) => runtime_config_value_to_env(value))
-		end
-	end
-	return entries
+    for (key, value) in table
+        if value isa AbstractDict
+            collect_runtime_config_entries!(entries, value)
+        else
+            push!(entries, String(key) => runtime_config_value_to_env(value))
+        end
+    end
+    return entries
 end
 
 """
@@ -52,11 +52,11 @@ Use this function in tests or diagnostics when the caller only needs to inspect
 what would be exported to `ENV`.
 """
 function runtime_config_entries(config_path::AbstractString)
-	isfile(config_path) || throw(ArgumentError("Runtime config file not found: $config_path"))
-	config = TOML.parsefile(config_path)
-	entries = Pair{String, String}[]
-	collect_runtime_config_entries!(entries, config)
-	return entries
+    isfile(config_path) || throw(ArgumentError("Runtime config file not found: $config_path"))
+    config = TOML.parsefile(config_path)
+    entries = Pair{String, String}[]
+    collect_runtime_config_entries!(entries, config)
+    return entries
 end
 
 """
@@ -74,30 +74,30 @@ such as `CCG_INITIAL_SCENARIOS`, where an empty value means "derive a default
 from the loaded scenario count" instead of forcing a literal empty string.
 """
 function load_runtime_config!(;
-		config_path::AbstractString = get(ENV, "MODULE_UC_CONFIG_FILE", DEFAULT_RUNTIME_CONFIG_PATH),
-		override::Bool = false,
-		verbose::Bool = get(ENV, "MODULE_UC_CONFIG_VERBOSE", "0") in ("1", "true", "yes", "on"),
+    config_path::AbstractString = get(ENV, "MODULE_UC_CONFIG_FILE", DEFAULT_RUNTIME_CONFIG_PATH),
+    override::Bool = false,
+    verbose::Bool = get(ENV, "MODULE_UC_CONFIG_VERBOSE", "0") in ("1", "true", "yes", "on"),
 )
-	entries = runtime_config_entries(config_path)
-	applied = String[]
-	skipped = String[]
+    entries = runtime_config_entries(config_path)
+    applied = String[]
+    skipped = String[]
 
-	for (key, value) in entries
-		if isempty(value)
-			continue
-		end
-		if !override && haskey(ENV, key)
-			push!(skipped, key)
-			continue
-		end
-		ENV[key] = value
-		push!(applied, key)
-	end
+    for (key, value) in entries
+        if isempty(value)
+            continue
+        end
+        if !override && haskey(ENV, key)
+            push!(skipped, key)
+            continue
+        end
+        ENV[key] = value
+        push!(applied, key)
+    end
 
-	if verbose
-		println("Runtime config loaded: ", config_path)
-		println("  applied: ", sort(applied))
-		println("  preserved existing ENV: ", sort(skipped))
-	end
-	return (config_path = config_path, applied = applied, skipped = skipped)
+    if verbose
+        println("Runtime config loaded: ", config_path)
+        println("  applied: ", sort(applied))
+        println("  preserved existing ENV: ", sort(skipped))
+    end
+    return (config_path = config_path, applied = applied, skipped = skipped)
 end

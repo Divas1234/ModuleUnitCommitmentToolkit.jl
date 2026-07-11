@@ -6,11 +6,7 @@
 const PROJECT_ROOT = normpath(joinpath(@__DIR__, "..", ".."))
 cd(PROJECT_ROOT)
 
-ENV["MODULE_UC_CONFIG_FILE"] = get(
-	ENV,
-	"MODULE_UC_CONFIG_FILE",
-	joinpath(PROJECT_ROOT, "examples", "ccg", "runtime_config_quick.toml"),
-)
+ENV["MODULE_UC_CONFIG_FILE"] = get(ENV, "MODULE_UC_CONFIG_FILE", joinpath(PROJECT_ROOT, "examples", "ccg", "runtime_config_quick.toml"))
 
 println("Running Wasserstein DRO CCG example")
 println("  config file: ", ENV["MODULE_UC_CONFIG_FILE"])

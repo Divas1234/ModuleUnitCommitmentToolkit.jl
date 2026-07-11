@@ -72,54 +72,60 @@ function get_benders_multicuts_expression(scuc_masterproblem::JuMP.Model, sub_mo
                         (
                             if (max(x_order, u_order, v_order) <= 0)
                                 dual_coefficient[(t - 1) * NG + g, 1] .* (
-                                (
-                                    if (x_order < 0)
-                                        0
-                                    else
-                                        operator_precedence[(t - 1) * NG + g, 1] .* x_coefficient[(t - 1) * NG + g, 1] .* scuc_masterproblem[:x][g, t]
-                                    end
-                                ) +
-                                (
-                                    if (u_order < 0)
-                                        0
-                                    else
-                                        operator_precedence[(t - 1) * NG + g, 1] .* u_coefficient[(t - 1) * NG + g, 1] .* scuc_masterproblem[:u][g, t]
-                                    end
-                                ) +
-                                (
-                                    if (v_order < 0)
-                                        0
-                                    else
-                                        operator_precedence[(t - 1) * NG + g, 1] .* v_coefficient[(t - 1) * NG + g, 1] .* scuc_masterproblem[:v][g, t]
-                                    end
-                                ) +
-                                rhs[(t - 1) * NG + g, 1]
-                            )
+                                    (
+                                        if (x_order < 0)
+                                            0
+                                        else
+                                            operator_precedence[(t - 1) * NG + g, 1] .* x_coefficient[(t - 1) * NG + g, 1] .*
+                                            scuc_masterproblem[:x][g, t]
+                                        end
+                                    ) +
+                                    (
+                                        if (u_order < 0)
+                                            0
+                                        else
+                                            operator_precedence[(t - 1) * NG + g, 1] .* u_coefficient[(t - 1) * NG + g, 1] .*
+                                            scuc_masterproblem[:u][g, t]
+                                        end
+                                    ) +
+                                    (
+                                        if (v_order < 0)
+                                            0
+                                        else
+                                            operator_precedence[(t - 1) * NG + g, 1] .* v_coefficient[(t - 1) * NG + g, 1] .*
+                                            scuc_masterproblem[:v][g, t]
+                                        end
+                                    ) +
+                                    rhs[(t - 1) * NG + g, 1]
+                                )
                             else
                                 dual_coefficient[(g - 1) * NT + g, 1] .* (
-                                (
-                                    if (x_order < 0)
-                                        0
-                                    else
-                                        operator_precedence[(g - 1) * NT + g, 1] .* x_coefficient[(g - 1) * NT + g, 1] .* scuc_masterproblem[:x][g, t]
-                                    end
-                                ) +
-                                (
-                                    if (u_order < 0)
-                                        0
-                                    else
-                                        operator_precedence[(g - 1) * NT + g, 1] .* u_coefficient[(g - 1) * NT + g, 1] .* scuc_masterproblem[:u][g, t]
-                                    end
-                                ) +
-                                (
-                                    if (v_order < 0)
-                                        0
-                                    else
-                                        operator_precedence[(g - 1) * NT + g, 1] .* v_coefficient[(g - 1) * NT + g, 1] .* scuc_masterproblem[:v][g, t]
-                                    end
-                                ) +
-                                rhs[(g - 1) * NT + g, 1]
-                            )
+                                    (
+                                        if (x_order < 0)
+                                            0
+                                        else
+                                            operator_precedence[(g - 1) * NT + g, 1] .* x_coefficient[(g - 1) * NT + g, 1] .*
+                                            scuc_masterproblem[:x][g, t]
+                                        end
+                                    ) +
+                                    (
+                                        if (u_order < 0)
+                                            0
+                                        else
+                                            operator_precedence[(g - 1) * NT + g, 1] .* u_coefficient[(g - 1) * NT + g, 1] .*
+                                            scuc_masterproblem[:u][g, t]
+                                        end
+                                    ) +
+                                    (
+                                        if (v_order < 0)
+                                            0
+                                        else
+                                            operator_precedence[(g - 1) * NT + g, 1] .* v_coefficient[(g - 1) * NT + g, 1] .*
+                                            scuc_masterproblem[:v][g, t]
+                                        end
+                                    ) +
+                                    rhs[(g - 1) * NT + g, 1]
+                                )
                             end
                         ) for g in 1:NG
                     ) for t in 1:NT

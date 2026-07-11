@@ -2,10 +2,7 @@ using Pkg
 Pkg.activate("./.pkg")
 
 # List of required packages
-required_pkgs = [
-    "Revise", "JuMP", "Gurobi", "Test", "DelimitedFiles", "LaTeXStrings", "Plots", "DataFrames",
-    "Clustering", "StatsPlots"
-]
+required_pkgs = ["Revise", "JuMP", "Gurobi", "Test", "DelimitedFiles", "LaTeXStrings", "Plots", "DataFrames", "Clustering", "StatsPlots"]
 
 # Install any missing packages
 for pkg in required_pkgs

@@ -54,7 +54,7 @@ sim = Simulation!(
     sys,
     pwd(),
     (0.0, 10.0), # 仿真时间 10 秒
-    perturbation
+    perturbation,
 )
 
 # 3. 执行并绘制频率曲线

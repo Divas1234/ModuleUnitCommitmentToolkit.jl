@@ -9,17 +9,17 @@ const SAMPLE_DROOP_INDICES = (1, 4, 6, 10)
 Generate inertia-damping curve and overlay feasible polygon region.
 """
 function build_feasible_region_plot(droop_parameter)
-	p = generate_inertia_damping_figure(droop_parameter)
-	_, sub_vertices = get_inertiatodamping_functions(droop_parameter)
+    p = generate_inertia_damping_figure(droop_parameter)
+    _, sub_vertices = get_inertiatodamping_functions(droop_parameter)
 
-	# Extract damping (x) and inertia (y) coordinates from vertices.
-	x_coords = [v[2] for v in sub_vertices]
-	y_coords = [v[3] for v in sub_vertices]
+    # Extract damping (x) and inertia (y) coordinates from vertices.
+    x_coords = [v[2] for v in sub_vertices]
+    y_coords = [v[3] for v in sub_vertices]
 
-	# Overlay polygon region on top of the original plot.
-	plot!(p, x_coords, y_coords; seriestype = :shape, fillalpha = 0.2, fillcolor = :red, label = "Feasible Region")
+    # Overlay polygon region on top of the original plot.
+    plot!(p, x_coords, y_coords; seriestype = :shape, fillalpha = 0.2, fillcolor = :red, label = "Feasible Region")
 
-	return p, sub_vertices
+    return p, sub_vertices
 end
 
 selected_droops = DROOP_PARAMETERS[collect(SAMPLE_DROOP_INDICES)]

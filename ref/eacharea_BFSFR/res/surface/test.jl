@@ -16,7 +16,7 @@ data_matrix = Matrix(df)
 rows, cols = size(data_matrix)
 
 if rows < 2 || cols < 2
-	error("数据维度太小，无法绘制表面图")
+    error("数据维度太小，无法绘制表面图")
 end
 
 # 创建坐标网格
@@ -26,16 +26,8 @@ X = repeat(x, 1, cols)
 Y = repeat(y', rows, 1)
 
 # 绘制表面图
-surface(x, y, data_matrix,
-	title = "数据表面图",
-	xlabel = "X 轴",
-	ylabel = "Y 轴",
-	zlabel = "值",
-	color = :viridis,
-	alpha = 0.8,
-	legend = false)
+surface(x, y, data_matrix, title = "数据表面图", xlabel = "X 轴", ylabel = "Y 轴", zlabel = "值", color = :viridis, alpha = 0.8, legend = false)
 
 # 保存图形（可选）
 savefig("surface_plot.png")
 println("表面图已保存为 surface_plot.png")
-
