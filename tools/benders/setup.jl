@@ -30,23 +30,31 @@ include("decomposition.jl")
 	A tuple containing all formulated JuMP models, internal data structures, and topological scenario dimensions.
 """
 
-function main(; scenario_limit::Int64 = 50)
-	# Read raw system data from Excel sheets
-	UnitsFreqParam, WindsFreqParam, StrogeData, DataGen, GenCost, DataBranch, LoadCurve, DataLoad, datacentra_Data = readxlssheet()
+function main(; scenario_limit::Int64 = 50, use_powersystems::Bool = false, sys = nothing, case_dir::String = "")
+	# Load system data using the unified data loader
+	data = load_uc_data(; scenario_limit = scenario_limit, use_powersystems = use_powersystems, sys = sys, case_dir = case_dir)
 
-	# Structure matrices and topological parameters for the SCUC model formulation
-	config_param, units, lines, loads, psses, NB, NG, NL, ND, NT, NC, ND2, DataCentras = forminputdata(DataGen, DataBranch, DataLoad, LoadCurve, GenCost, UnitsFreqParam, StrogeData, datacentra_Data)
-
-	# Generate stochastic wind scenarios after base topology is known so the
-	# boundary report can validate dimensions across load, wind, and network data.
-	winds, NW = genscenario(WindsFreqParam, 1; scenario_limit = scenario_limit)
+	config_param = data.config_param
+	units = data.units
+	lines = data.lines
+	loads = data.loads
+	winds = data.winds
+	psses = data.psses
+	DataCentras = data.DataCentras
+	NB = data.NB
+	NG = data.NG
+	NL = data.NL
+	ND = data.ND
+	NT = data.NT
+	NC = data.NC
+	ND2 = data.ND2
+	NW = data.NW
+	NS = data.NS
+	scenarios_prob = data.full_scenario_probability
 
 	# Print imported system statistics and validate core boundaries when enabled.
 	maybe_print_boundarycondition(NB, NL, NG, NT, ND, units, loads, lines, winds, psses, config_param)
 
-	# Define assumed scenario probability (assuming equal distribution)
-	scenarios_prob = 1.0 / winds.scenarios_nums
-	NS = Int64(winds.scenarios_nums)
 
 	# Linearize generator fuel cost curves
 	refcost, eachslope = linearizationfuelcurve(units, NG)

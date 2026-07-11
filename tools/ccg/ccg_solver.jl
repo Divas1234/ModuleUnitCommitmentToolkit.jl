@@ -169,34 +169,31 @@ function ccg_optimizer_threads(env_name::String, default_value::Int64)
 	return parse(Int64, get(ENV, env_name, string(default_value)))
 end
 
-function load_ccg_data(scenario_limit::Int64)
+function load_ccg_data(scenario_limit::Int64; use_powersystems::Bool = false, sys = nothing, case_dir::String = "")
 	# CCG reuses the same data ingestion pipeline as Benders so that topology,
 	# model flags, wind scenarios, and boundary diagnostics stay identical across
 	# algorithm comparisons.
-	UnitsFreqParam, WindsFreqParam, StrogeData, DataGen, GenCost, DataBranch, LoadCurve, DataLoad, datacentra_Data = readxlssheet()
-	config_param, units, lines, loads, psses, NB, NG, NL, ND, NT, NC, ND2, DataCentras = forminputdata(DataGen, DataBranch, DataLoad, LoadCurve, GenCost, UnitsFreqParam, StrogeData, datacentra_Data)
-	winds, NW = genscenario(WindsFreqParam, 1; scenario_limit = scenario_limit)
-	NS = Int64(winds.scenarios_nums)
-	maybe_print_boundarycondition(NB, NL, NG, NT, ND, units, loads, lines, winds, psses, config_param)
+	data = load_uc_data(; scenario_limit = scenario_limit, use_powersystems = use_powersystems, sys = sys, case_dir = case_dir)
+	maybe_print_boundarycondition(data.NB, data.NL, data.NG, data.NT, data.ND, data.units, data.loads, data.lines, data.winds, data.psses, data.config_param)
 	return (
-		config_param = config_param,
-		units = units,
-		lines = lines,
-		loads = loads,
-		winds = winds,
-		psses = psses,
-		DataCentras = DataCentras,
-		NB = NB,
-		NG = NG,
-		NL = NL,
-		ND = ND,
-		NT = NT,
-		NC = NC,
-		ND2 = ND2,
-		NW = NW,
-		NS = NS,
-		full_scenario_probability = 1.0 / NS,
-		dro = build_renewable_dro_model(winds),
+		config_param = data.config_param,
+		units = data.units,
+		lines = data.lines,
+		loads = data.loads,
+		winds = data.winds,
+		psses = data.psses,
+		DataCentras = data.DataCentras,
+		NB = data.NB,
+		NG = data.NG,
+		NL = data.NL,
+		ND = data.ND,
+		NT = data.NT,
+		NC = data.NC,
+		ND2 = data.ND2,
+		NW = data.NW,
+		NS = data.NS,
+		full_scenario_probability = data.full_scenario_probability,
+		dro = build_renewable_dro_model(data.winds),
 	)
 end
 
@@ -252,17 +249,28 @@ function build_ccg_extensive_model(
 	else
 		set_objective!(model, data.NT, data.NG, data.ND, data.NW, NS_active, data.units, data.config_param, scenarios_prob, refcost, eachslope)
 	end
-	add_unit_operation_constraints!(model, data.NT, data.NG, data.units, onoffinit)
-	add_curtailment_constraints!(model, data.NT, data.ND, data.NW, NS_active, data.loads, winds_subset)
-	add_generator_power_constraints!(model, data.NT, data.NG, NS_active, data.units)
-	add_reserve_constraints!(model, data.NT, data.NG, data.NC, NS_active, data.units, data.loads, winds_subset, data.config_param)
-	add_power_balance_constraints!(model, data.NT, data.NG, data.ND, data.NC, data.NW, NS_active, data.loads, winds_subset, data.config_param, data.ND2)
-	add_ramp_constraints!(model, data.NT, data.NG, NS_active, data.units, onoffinit)
-	add_pwl_constraints!(model, data.NT, data.NG, NS_active, data.units)
-	add_transmission_constraints!(model, data.NT, data.NG, data.ND, data.NC, data.NW, data.NL, NS_active, data.units, data.loads, winds_subset, data.lines, data.psses, gsdf, data.config_param, data.ND2, data.DataCentras)
-	add_storage_constraints!(model, data.NT, data.NC, NS_active, data.config_param, data.psses)
-	add_datacentra_constraints!(model, data.NT, NS_active, data.config_param, data.ND2, data.DataCentras)
-	add_frequency_constraints!(model, data.NT, data.NG, data.NC, NS_active, data.units, data.psses, data.config_param, contingency_size; winds = winds_subset)
+	apply_scuc_constraints!(
+		model,
+		data.NT,
+		data.NB,
+		data.NL,
+		data.NG,
+		data.ND,
+		data.NC,
+		data.ND2,
+		NS_active,
+		data.NW,
+		data.units,
+		data.loads,
+		winds_subset,
+		data.lines,
+		data.DataCentras,
+		data.psses,
+		data.config_param,
+		onoffinit,
+		gsdf,
+		contingency_size
+	)
 	return model
 end
 

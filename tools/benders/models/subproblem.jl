@@ -88,23 +88,40 @@ function bd_subfunction(
 
 	NS_copy = (config_param.is_ConsiderMultiCUTs == 1) ? Int64(1) : NS
 
-	# scuc_subproblem, _units_minuptime_constr, _units_mindowntime_constr, _units_init_stateslogic_consist_constr, _units_states_consist_constr,
-	# _units_init_shutup_cost_constr, _units_init_shutdown_cost_constr,
-	# _units_shutup_cost_constr, _units_shutdown_cost_constr = add_unit_operation_constraints!(
-	# 	scuc_subproblem, NT, NG, units, onoffinit
-	# )# Add unit operation constraints
-	scuc_subproblem, _winds_curt_constr, _loads_curt_const = add_curtailment_constraints!(scuc_subproblem, NT, ND, NW, NS_copy, loads, winds)# Add curtailment constraints for wind and loads
-	scuc_subproblem, _units_minpower_constr, _units_maxpower_constr = add_generator_power_constraints!(scuc_subproblem, NT, NG, NS_copy, units)# Add generator power constraints
-	scuc_subproblem, _sys_upreserve_constr, _sys_down_reserve_constr = add_reserve_constraints!(scuc_subproblem, NT, NG, NC, NS_copy, units, loads, winds, config_param)# Add reserve constraints
-	scuc_subproblem, _sys_balance_constr = add_power_balance_constraints!(scuc_subproblem, NT, NG, ND, NC, NW, NS_copy, loads, winds, config_param, ND2)# Add power balance constraints
-	scuc_subproblem, _units_upramp_constr, _units_downramp_constr = add_ramp_constraints!(scuc_subproblem, NT, NG, NS_copy, units, onoffinit)# Add ramp constraints
-	scuc_subproblem, _units_pwlpower_sum_constr, _units_pwlblock_upbound_constr, _units_pwlblock_dwbound_constr = add_pwl_constraints!(scuc_subproblem, NT, NG, NS_copy, units)# Add piecewise linear constraints
-	scuc_subproblem, _transmissionline_powerflow_upbound_constr, _transmissionline_powerflow_downbound_constr = add_transmission_constraints!(
-		scuc_subproblem, NT, NG, ND, NC, NW, NL, NS_copy, units, loads, winds, lines, psses, gsdf, config_param, ND2, DataCentras
-	)# Add transmission constraints
-	_storage_constr = add_storage_constraints!(scuc_subproblem, NT, NC, NS_copy, config_param, psses; include_binary_logic = false)
-	add_datacentra_constraints!(scuc_subproblem, NT, NS_copy, config_param, ND2, DataCentras)
-	# add_frequency_constraints!(scuc_subproblem, NT, NG, NC, NS, units, psses, config_param, contingency_size)
+	# Add constraints using the unified modular activator
+	constrs = apply_scuc_constraints!(
+		scuc_subproblem,
+		NT,
+		NB,
+		NL,
+		NG,
+		ND,
+		NC,
+		ND2,
+		NS_copy,
+		NW,
+		units,
+		loads,
+		winds,
+		lines,
+		DataCentras,
+		psses,
+		config_param,
+		onoffinit,
+		gsdf,
+		contingency_size;
+		include_unit_operation = false,
+		include_binary_logic_for_storage = false,
+		include_frequency_constraints = false
+	)
+
+	_winds_curt_constr, _loads_curt_const = constrs.curtailment[2], constrs.curtailment[3]
+	_units_minpower_constr, _units_maxpower_constr = constrs.generator_power[2], constrs.generator_power[3]
+	_sys_upreserve_constr, _sys_down_reserve_constr = constrs.reserve[2], constrs.reserve[3]
+	_sys_balance_constr = constrs.power_balance[2]
+	_units_upramp_constr, _units_downramp_constr = constrs.ramp[2], constrs.ramp[3]
+	_units_pwlpower_sum_constr, _units_pwlblock_upbound_constr, _units_pwlblock_dwbound_constr = constrs.pwl[2], constrs.pwl[3], constrs.pwl[4]
+	_transmissionline_powerflow_upbound_constr, _transmissionline_powerflow_downbound_constr = constrs.transmission[2], constrs.transmission[3]
 	# @show model_summary(scuc_subproblem)
 
 	if get(ENV, "BENDERS_SHOW_MODEL_SUMMARY", "0") == "1"
