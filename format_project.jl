@@ -103,7 +103,11 @@ function format_files(files::Vector{String}; check::Bool, verbose::Bool)
     formatter = getfield(FORMATTER_MODULE[], :format)
 
     for file in files
-        verbose && println(check ? "Checking $(relpath(file, PROJECT_ROOT))" : "Formatting $(relpath(file, PROJECT_ROOT))")
+        verbose && println(if check
+            "Checking $(relpath(file, PROJECT_ROOT))"
+        else
+            "Formatting $(relpath(file, PROJECT_ROOT))"
+        end)
         try
             already_formatted = Base.invokelatest(formatter, file; overwrite = !check, throw_on_error = true)
             already_formatted || push!(changed, file)

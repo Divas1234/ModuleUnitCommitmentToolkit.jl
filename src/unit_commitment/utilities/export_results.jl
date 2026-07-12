@@ -19,33 +19,9 @@ contains both human-readable summaries and plotting/analysis-friendly CSV files:
 - `bess_schedule.csv` when BESS is enabled
 """
 function exported_scheduling_cost(
-    NS::Int64,
-    NT::Int64,
-    NB::Int64,
-    NG::Int64,
-    ND::Int64,
-    NC::Int64,
-    ND2::Int64,
-    units::unit,
-    loads::load,
-    winds::wind,
-    lines::transmissionline,
-    DataCentras::data_centra,
-    config_param::config,
-    scenarios_prob,
-    su_cost,
-    sd_cost,
-    pgₖ,
-    pg₀,
-    x₀,
-    u₀,
-    v₀,
-    seq_sr⁺,
-    seq_sr⁻,
-    pᵨ,
-    pᵩ,
-    eachslope,
-    refcost,
+    NS::Int64, NT::Int64, NB::Int64, NG::Int64, ND::Int64, NC::Int64, ND2::Int64, units::unit, loads::load, winds::wind, lines::transmissionline,
+    DataCentras::data_centra, config_param::config,
+    scenarios_prob, su_cost, sd_cost, pgₖ, pg₀, x₀, u₀, v₀, seq_sr⁺, seq_sr⁻, pᵨ, pᵩ, eachslope, refcost,
     pss_charge_state⁺ = nothing,
     pss_charge_state⁻ = nothing,
     pss_charge_p⁺ = nothing,
@@ -64,23 +40,7 @@ function exported_scheduling_cost(
     output_dir = uc_output_dir(output_dir_override)
     NW = length(winds.index)
     cost_summary = compute_uc_cost_summary(
-        NS,
-        NT,
-        NG,
-        ND,
-        NW,
-        config_param,
-        scenarios_prob,
-        su_cost,
-        sd_cost,
-        pgₖ,
-        x₀,
-        seq_sr⁺,
-        seq_sr⁻,
-        pᵨ,
-        pᵩ,
-        eachslope,
-        refcost,
+        NS, NT, NG, ND, NW, config_param, scenarios_prob, su_cost, sd_cost, pgₖ, x₀, seq_sr⁺, seq_sr⁻, pᵨ, pᵩ, eachslope, refcost,
     )
 
     write_cost_summary_csv(joinpath(output_dir, file_prefix * "schedule_cost_summary.csv"), cost_summary)
@@ -94,66 +54,26 @@ function exported_scheduling_cost(
     write_curtailment_schedule_csv(joinpath(output_dir, file_prefix * "curtailment_schedule.csv"), loads, winds, pᵨ, pᵩ, NT, ND, NW, NS)
     write_power_balance_summary_csv(
         joinpath(output_dir, file_prefix * "power_balance_summary.csv"),
-        loads,
-        winds,
-        pg₀,
-        pᵨ,
-        pᵩ,
-        NT,
-        NG,
-        ND,
-        NW,
-        NS,
-        config_param,
-        NC,
-        pss_charge_p⁺,
-        pss_charge_p⁻,
-        ND2,
-        dc_p_res,
+        loads, winds, pg₀, pᵨ, pᵩ, NT, NG, ND, NW, NS, config_param, NC, pss_charge_p⁺, pss_charge_p⁻, ND2, dc_p_res,
     )
 
     if config_param.is_ConsiderBESS == 1 && NC > 0
         write_bess_schedule_csv(
             joinpath(output_dir, file_prefix * "bess_schedule.csv"),
-            pss_charge_state⁺,
-            pss_charge_state⁻,
-            pss_charge_p⁺,
-            pss_charge_p⁻,
-            pss_Qc,
-            NT,
-            NC,
-            NS,
+            pss_charge_state⁺, pss_charge_state⁻, pss_charge_p⁺, pss_charge_p⁻, pss_Qc, NT, NC, NS,
         )
     end
 
     if config_param.is_ConsiderDataCentra == 1 && ND2 > 0
         write_data_center_schedule_csv(
             joinpath(output_dir, file_prefix * "data_center_schedule.csv"),
-            DataCentras,
-            dc_p_res,
-            dc_fv²_res,
-            dc_fv²λ_res,
-            dc_fv²_plus_res,
-            dc_fv²_minus_res,
-            dc_fv²λ_plus_res,
-            NT,
-            ND2,
-            NS,
+            DataCentras, dc_p_res, dc_fv²_res, dc_fv²λ_res, dc_fv²_plus_res, dc_fv²_minus_res, dc_fv²λ_plus_res, NT, ND2, NS,
         )
     end
 
     write_schedule_summary_txt(
         joinpath(output_dir, file_prefix * "schedule_commitment_result.txt"),
-        cost_summary,
-        units,
-        x₀,
-        u₀,
-        v₀,
-        pg₀,
-        seq_sr⁺,
-        seq_sr⁻,
-        NT,
-        NG,
+        cost_summary, units, x₀, u₀, v₀, pg₀, seq_sr⁺, seq_sr⁻, NT, NG,
     )
 
     println("UC scheduling results saved to: $output_dir")
@@ -161,7 +81,11 @@ function exported_scheduling_cost(
 end
 
 function uc_output_dir(output_dir_override = nothing)
-    output_dir = output_dir_override === nothing ? get(ENV, "MODULE_UC_OUTPUT_DIR", joinpath(pwd(), "output")) : String(output_dir_override)
+    output_dir = if output_dir_override === nothing
+        get(ENV, "MODULE_UC_OUTPUT_DIR", joinpath(pwd(), "output"))
+    else
+        String(output_dir_override)
+    end
     mkpath(output_dir)
     return output_dir
 end
@@ -240,44 +164,10 @@ function export_solved_uc_model_results(
 
     return exported_scheduling_cost(
         NS,
-        data.NT,
-        data.NB,
-        data.NG,
-        data.ND,
-        data.NC,
-        data.ND2,
-        data.units,
-        data.loads,
-        winds,
-        data.lines,
-        data.DataCentras,
-        config_param,
-        scenarios_prob,
-        su_cost,
-        sd_cost,
-        pgₖ,
-        pg₀,
-        x₀,
-        u₀,
-        v₀,
-        seq_sr⁺,
-        seq_sr⁻,
-        pᵨ,
-        pᵩ,
-        eachslope,
-        refcost,
-        pss_charge_state⁺,
-        pss_charge_state⁻,
-        pss_charge_p⁺,
-        pss_charge_p⁻,
-        pss_Qc,
-        dc_p_res,
-        dc_fv²_res,
-        dc_fv²λ_res,
-        dc_fv²_plus_res,
-        dc_fv²_minus_res,
-        dc_fv²λ_plus_res;
-        output_dir_override = output_dir,
+        data.NT, data.NB, data.NG, data.ND, data.NC, data.ND2, data.units, data.loads,
+        winds, data.lines, data.DataCentras, config_param, scenarios_prob, su_cost, sd_cost, pgₖ, pg₀, x₀, u₀, v₀, seq_sr⁺, seq_sr⁻, pᵨ, pᵩ, eachslope, refcost,
+        pss_charge_state⁺, pss_charge_state⁻, pss_charge_p⁺, pss_charge_p⁻, pss_Qc,
+        dc_p_res, dc_fv²_res, dc_fv²λ_res, dc_fv²_plus_res, dc_fv²_minus_res, dc_fv²λ_plus_res; output_dir_override = output_dir,
         file_prefix = file_prefix,
     )
 end
@@ -287,23 +177,9 @@ function scenario_row(entity_count::Int, scenario::Int, entity::Int)
 end
 
 function compute_uc_cost_summary(
-    NS,
-    NT,
-    NG,
-    ND,
-    NW,
-    config_param,
-    scenarios_prob,
-    su_cost,
-    sd_cost,
-    pgₖ,
-    x₀,
-    seq_sr⁺,
-    seq_sr⁻,
-    pᵨ,
-    pᵩ,
-    eachslope,
-    refcost,
+    NS, NT, NG, ND, NW,
+    config_param, scenarios_prob,
+    su_cost, sd_cost, pgₖ, x₀, seq_sr⁺, seq_sr⁻, pᵨ, pᵩ, eachslope, refcost,
 )
     c0 = config_param.is_CoalPrice
     ps = scenarios_prob
@@ -320,15 +196,7 @@ function compute_uc_cost_summary(
     reserve_down_cost = ps * c0 * sum(reserve_price_down * seq_sr⁻[scenario_row(NG, s, g), t] for s in 1:NS, g in 1:NG, t in 1:NT)
     load_curtailment_cost = ps * load_curtailment_penalty * sum(max(pᵨ[scenario_row(ND, s, d), t], 0.0) for s in 1:NS, d in 1:ND, t in 1:NT)
     wind_curtailment_cost = ps * wind_curtailment_penalty * sum(max(pᵩ[scenario_row(NW, s, w), t], 0.0) for s in 1:NS, w in 1:NW, t in 1:NT)
-    total_cost =
-        startup_cost +
-        shutdown_cost +
-        variable_fuel_cost +
-        no_load_cost +
-        reserve_up_cost +
-        reserve_down_cost +
-        load_curtailment_cost +
-        wind_curtailment_cost
+    total_cost = startup_cost + shutdown_cost + variable_fuel_cost + no_load_cost + reserve_up_cost + reserve_down_cost + load_curtailment_cost + wind_curtailment_cost
 
     return (
         startup_cost = startup_cost,
@@ -402,23 +270,7 @@ function write_curtailment_schedule_csv(path, loads, winds, load_curtailment, wi
 end
 
 function write_power_balance_summary_csv(
-    path,
-    loads,
-    winds,
-    pg,
-    load_curtailment,
-    wind_curtailment,
-    NT,
-    NG,
-    ND,
-    NW,
-    NS,
-    config_param,
-    NC,
-    bess_charge,
-    bess_discharge,
-    ND2,
-    dc_power,
+    path, loads, winds, pg, load_curtailment, wind_curtailment, NT, NG, ND, NW, NS, config_param, NC, bess_charge, bess_discharge, ND2, dc_power,
 )
     rows = []
     for s in 1:NS, t in 1:NT
@@ -427,8 +279,11 @@ function write_power_balance_summary_csv(
         wind_spill = sum(wind_curtailment[scenario_row(NW, s, w), t] for w in 1:NW)
         load_total = sum(loads.load_curve[d, t] for d in 1:ND)
         load_shed = sum(load_curtailment[scenario_row(ND, s, d), t] for d in 1:ND)
-        bess_charge_total =
-            (config_param.is_ConsiderBESS == 1 && NC > 0 && bess_charge !== nothing) ? sum(bess_charge[scenario_row(NC, s, c), t] for c in 1:NC) : 0.0
+        bess_charge_total = if (config_param.is_ConsiderBESS == 1 && NC > 0 && bess_charge !== nothing)
+            sum(bess_charge[scenario_row(NC, s, c), t] for c in 1:NC)
+        else
+            0.0
+        end
         bess_discharge_total = if (config_param.is_ConsiderBESS == 1 && NC > 0 && bess_discharge !== nothing)
             sum(bess_discharge[scenario_row(NC, s, c), t] for c in 1:NC)
         else
@@ -444,34 +299,18 @@ function write_power_balance_summary_csv(
         push!(
             rows,
             Any[
-                s,
-                t,
-                thermal_generation,
-                wind_available - wind_spill,
-                load_total - load_shed,
-                data_center_load,
-                bess_charge_total,
-                bess_discharge_total,
-                load_shed,
-                wind_spill,
-                net_balance,
+                s, t, thermal_generation, 
+                wind_available - wind_spill, load_total - load_shed, 
+                data_center_load, bess_charge_total, bess_discharge_total, load_shed, wind_spill, net_balance,
             ],
         )
     end
     return write_rows_csv(
         path,
         [
-            "scenario",
-            "time",
-            "thermal_generation",
-            "wind_generation",
-            "served_load",
-            "data_center_load",
-            "bess_charge",
-            "bess_discharge",
-            "load_shed",
-            "wind_spill",
-            "net_balance",
+            "scenario", "time", "thermal_generation", "wind_generation", "served_load",
+            "data_center_load", "bess_charge", "bess_discharge",
+            "load_shed", "wind_spill", "net_balance",
         ],
         rows,
     )
@@ -480,9 +319,7 @@ end
 function write_bess_schedule_csv(path, charge_state, discharge_state, charge_power, discharge_power, energy, NT, NC, NS)
     rows = (
         Any[
-            s,
-            c,
-            t,
+            s, c, t,
             charge_state[scenario_row(NC, s, c), t],
             discharge_state[scenario_row(NC, s, c), t],
             charge_power[scenario_row(NC, s, c), t],

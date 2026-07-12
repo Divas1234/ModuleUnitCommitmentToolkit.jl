@@ -64,8 +64,11 @@ function add_storage_constraints!(scuc::Model, NT, NC, NS, config_param, stroges
         )
 
         # Mutual exclusion constraints in charge and discharge states
-        state_exclusion =
-            include_binary_logic ? @constraint(scuc, [s = 1:NS, t = 1:NT, c = 1:NC], κ⁺[(s - 1) * NC + c, t] + κ⁻[(s - 1) * NC + c, t] <= 1) : nothing
+        state_exclusion = if include_binary_logic
+            @constraint(scuc, [s = 1:NS, t = 1:NT, c = 1:NC], κ⁺[(s - 1) * NC + c, t] + κ⁻[(s - 1) * NC + c, t] <= 1)
+        else
+            nothing
+        end
 
         # --- Energy Storage Dynamics (State of Charge) ---
         # qc(t) = qc(t-1) + η⁺*pc⁺(t) - pc⁻(t)/η⁻
@@ -102,8 +105,16 @@ function add_storage_constraints!(scuc::Model, NT, NC, NS, config_param, stroges
             nothing
         end
 
-        start_cycle_limit = include_binary_logic ? @constraint(scuc, [s = 1:NS, c = 1:NC], sum(α[(s - 1) * NC + c, t] for t in 1:NT) <= 5) : nothing
-        stop_cycle_limit = include_binary_logic ? @constraint(scuc, [s = 1:NS, c = 1:NC], sum(β[(s - 1) * NC + c, t] for t in 1:NT) <= 5) : nothing
+        start_cycle_limit = if include_binary_logic
+            @constraint(scuc, [s = 1:NS, c = 1:NC], sum(α[(s - 1) * NC + c, t] for t in 1:NT) <= 5)
+        else
+            nothing
+        end
+        stop_cycle_limit = if include_binary_logic
+            @constraint(scuc, [s = 1:NS, c = 1:NC], sum(β[(s - 1) * NC + c, t] for t in 1:NT) <= 5)
+        else
+            nothing
+        end
 
         println("\t constraints: 11) stroges system constraints limits\t\t\t done")
         return (

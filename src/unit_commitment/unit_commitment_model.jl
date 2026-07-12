@@ -38,21 +38,9 @@ Stochastic Unit Commitment (SUC) model for power system optimization (Refactored
 # NOTE - function module
 
 function SUC_scucmodel(
-    NT::Int64,
-    NB::Int64,
-    NG::Int64,
-    ND::Int64,
-    NC::Int64,
-    ND2::Int64,
-    units::unit,
-    loads::load,
-    winds::wind,
-    lines::transmissionline,
-    DataCentras::data_centra,
-    config_param::config,
-    stroges::Any,
-    scenarios_prob::Float64,
-    NL::Int64,
+    NT::Int64, NB::Int64, NG::Int64, ND::Int64, NC::Int64, ND2::Int64,
+    units::unit, loads::load, winds::wind, lines::transmissionline, DataCentras::data_centra, config_param::config, stroges::Any,
+    scenarios_prob::Float64, NL::Int64,
 )
     println("Step-3: Creating dispatching model (Refactored & Modularized)")
 
@@ -88,26 +76,7 @@ function SUC_scucmodel(
     # --- Add Constraints ---
     # Add the constraints to the optimization model using the modular activator
     apply_scuc_constraints!(
-        scuc,
-        NT,
-        NB,
-        NL,
-        NG,
-        ND,
-        NC,
-        ND2,
-        NS,
-        NW,
-        units,
-        loads,
-        winds,
-        lines,
-        DataCentras,
-        stroges,
-        config_param,
-        onoffinit,
-        Gsdf,
-        Δp_contingency,
+        scuc, NT, NB, NL, NG, ND, NC, ND2, NS, NW, units, loads, winds, lines, DataCentras, stroges, config_param, onoffinit, Gsdf, Δp_contingency,
     )
 
     # --- Solve and Extract Results ---
@@ -115,23 +84,7 @@ function SUC_scucmodel(
     try
         # Attempt to solve the SCUC model
         results = solve_and_extract_results(
-            scuc,
-            NT,
-            NG,
-            ND,
-            NC,
-            NW,
-            NS,
-            ND2,
-            scenarios_prob,
-            eachslope,
-            refcost,
-            config_param,
-            units,
-            loads,
-            winds,
-            lines,
-            DataCentras,
+            scuc, NT, NG, ND, NC, NW, NS, ND2, scenarios_prob, eachslope, refcost, config_param, units, loads, winds, lines, DataCentras,
         )
 
         # --- Return Results ---

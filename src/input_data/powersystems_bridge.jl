@@ -1,7 +1,8 @@
 using PowerSystems
 using PowerSystemCaseBuilder
 
-export build_system_from_powersystems, extract_uc_data_from_powersystems, generate_wind_scenarios_from_system, load_native_powersystems_case, generate_frequency_parameters
+export build_system_from_powersystems,
+    extract_uc_data_from_powersystems, generate_wind_scenarios_from_system, load_native_powersystems_case, generate_frequency_parameters
 
 """
     build_system_from_powersystems(case_name; case_category = MatpowerTestSystems)
@@ -144,7 +145,11 @@ function _data_center_struct(data_centers, bus_to_index::Dict{Int, Int}, horizon
         service_rate > 0 || throw(ArgumentError("Data center service rate mu must be positive at index $i"))
         workload = Float64.(collect(_field_or_default(center, :workload, fill(0.0, horizon))))
         isempty(workload) && throw(ArgumentError("Data center workload cannot be empty at index $i"))
-        workloads[i, :] = length(workload) >= horizon ? workload[1:horizon] : vcat(workload, fill(workload[end], horizon - length(workload)))
+        workloads[i, :] = if length(workload) >= horizon
+            workload[1:horizon]
+        else
+            vcat(workload, fill(workload[end], horizon - length(workload)))
+        end
 
         push!(locatebus, bus_to_index[bus])
         push!(p_max, maximum_power / base_power)
@@ -350,8 +355,16 @@ function generate_wind_scenarios_from_system(
     base_profile =
         reshape([clamp(Float64(getproperty(item, :active_power)) / max(Float64(get_rating(item)), eps()), 0.0, 1.0) for item in renewables], :, 1)
     profile = repeat(mean(base_profile; dims = 1), 1, horizon)
-    scenarios = mode == 1 ? generate_weibull_wind_availability(profile, scenario_limit, horizon) : profile
-    frequency = size(wind_frequency_parameters, 1) == count ? wind_frequency_parameters : zeros(count, 6)
+    scenarios = if mode == 1
+        generate_weibull_wind_availability(profile, scenario_limit, horizon)
+    else
+        profile
+    end
+    frequency = if size(wind_frequency_parameters, 1) == count
+        wind_frequency_parameters
+    else
+        zeros(count, 6)
+    end
     scenario_count = size(scenarios, 1)
     return wind(
         index,
@@ -409,7 +422,7 @@ Chinese description:
 """
 function generate_frequency_parameters(sys::System; overrides::Dict = Dict())
     frequency_parameters = Dict{String, NamedTuple}()
-    
+
     # Define templates for typical generator technologies
     # 定义各类发电技术的典型调频参数模板
     templates = Dict(
@@ -417,19 +430,19 @@ function generate_frequency_parameters(sys::System; overrides::Dict = Dict())
         :gas => (H = 4.0, D = 0.05, K = 0.90, F = 0.15, T = 5.0, R = 0.04),
         :hydro => (H = 3.0, D = 0.10, K = 1.00, F = 0.50, T = 4.0, R = 0.05),
         :nuclear => (H = 7.0, D = 0.10, K = 0.00, F = 0.00, T = 0.0, R = 1.00), # No governor response
-        :default => (H = 5.0, D = 0.00, K = 0.00, F = 0.00, T = 0.0, R = 1.00)  # Safe default (no governor)
+        :default => (H = 5.0, D = 0.00, K = 0.00, F = 0.00, T = 0.0, R = 1.00),  # Safe default (no governor)
     )
-    
+
     for generator in get_components(ThermalGen, sys)
         name = get_name(generator)
-        
+
         # Check user overrides first
         # 优先使用用户自定义的机组覆盖
         if haskey(overrides, name)
             frequency_parameters[name] = overrides[name]
             continue
         end
-        
+
         # Determine fuel type if available in PowerSystems
         # 从 PowerSystems 机组信息获取燃料类型或类型名称
         fuel = :default
@@ -449,14 +462,17 @@ function generate_frequency_parameters(sys::System; overrides::Dict = Dict())
             catch
             end
         end
-        
+
         # Secondary check based on name heuristic if fuel property wasn't conclusive
         # 若燃料属性不明确，根据名称特征进行启发式匹配
         if fuel == :default
             lower_name = lowercase(name)
             if occursin("solitude", lower_name) || occursin("coal", lower_name) || occursin("steam", lower_name)
                 fuel = :coal
-            elseif occursin("park city", lower_name) || occursin("alta", lower_name) || occursin("gas", lower_name) || occursin("combustion", lower_name)
+            elseif occursin("park city", lower_name) ||
+                   occursin("alta", lower_name) ||
+                   occursin("gas", lower_name) ||
+                   occursin("combustion", lower_name)
                 fuel = :gas
             elseif occursin("hydro", lower_name) || occursin("water", lower_name)
                 fuel = :hydro
@@ -464,12 +480,12 @@ function generate_frequency_parameters(sys::System; overrides::Dict = Dict())
                 fuel = :nuclear
             end
         end
-        
+
         # Assign matching template
         # 赋予匹配的参数模板
         template = get(templates, fuel, templates[:default])
         frequency_parameters[name] = template
     end
-    
+
     return frequency_parameters
 end

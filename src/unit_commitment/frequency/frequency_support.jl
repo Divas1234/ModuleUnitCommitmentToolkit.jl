@@ -37,11 +37,19 @@ function frequency_sum_apparent_power(units, winds)
 end
 
 function wind_virtual_inertia_coeff(winds, wind_index::Int64)
-    return wind_frequency_mode(winds, wind_index) >= 0.5 ? max(0.0, safe_frequency_coeff(winds.Mw, wind_index)) : 0.0
+    return if wind_frequency_mode(winds, wind_index) >= 0.5
+        max(0.0, safe_frequency_coeff(winds.Mw, wind_index))
+    else
+        0.0
+    end
 end
 
 function wind_virtual_damping_coeff(winds, wind_index::Int64)
-    return wind_frequency_mode(winds, wind_index) >= 0.5 ? max(0.0, safe_frequency_coeff(winds.Dw, wind_index)) : 0.0
+    return if wind_frequency_mode(winds, wind_index) >= 0.5
+        max(0.0, safe_frequency_coeff(winds.Dw, wind_index))
+    else
+        0.0
+    end
 end
 
 function wind_droop_response_coeff(winds, wind_index::Int64)

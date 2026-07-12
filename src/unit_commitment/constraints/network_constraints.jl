@@ -19,20 +19,7 @@ Net_Injection(Bus b) = P_gen + P_wind_net - P_load_net - P_storage_net - P_datac
 """
 function add_transmission_constraints!(
     scuc::Model,
-    NT,
-    NG,
-    ND,
-    NC,
-    NW,
-    NL,
-    NS,
-    units,
-    loads,
-    winds,
-    lines,
-    stroges,
-    Gsdf,
-    config_param,
+    NT, NG, ND, NC, NW, NL, NS, units, loads, winds, lines, stroges, Gsdf, config_param,
     ND2 = nothing,
     DataCentras = nothing,
 )
@@ -72,9 +59,13 @@ function add_transmission_constraints!(
                 [s = 1:NS, t = 1:NT],
                 sum(subGsdf_units[i] * pg₀[i + (s - 1) * NG, t] for i in 1:NG) +
                 sum(subGsdf_winds[w] * (winds.scenarios_curve[s, t] * winds.p_max[w, 1] - Δpw[(s - 1) * NW + w, t]) for w in 1:NW) -
-                sum(subGsdf_loads[d] * (loads.load_curve[d, t] - Δpd[(s - 1) * ND + d, t]) for d in 1:ND) -
-                (dc_enabled ? sum(subGsdf_dc[c] * dc_p[(s - 1) * ND2 + c, t] for c in 1:ND2) : 0.0) +
-                sum(if (NC > 0 && pc⁺ !== nothing && pc⁻ !== nothing && c <= length(subGsdf_psses))
+                sum(subGsdf_loads[d] * (loads.load_curve[d, t] - Δpd[(s - 1) * ND + d, t]) for d in 1:ND) - (
+                    if dc_enabled
+                        sum(subGsdf_dc[c] * dc_p[(s - 1) * ND2 + c, t] for c in 1:ND2)
+                    else
+                        0.0
+                    end
+                ) + sum(if (NC > 0 && pc⁺ !== nothing && pc⁻ !== nothing && c <= length(subGsdf_psses))
                     subGsdf_psses[c] * (pc⁻[(s - 1) * NC + c, t] - pc⁺[(s - 1) * NC + c, t])
                 else
                     0.0

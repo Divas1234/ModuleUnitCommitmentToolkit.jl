@@ -119,7 +119,13 @@ function multiple_bender_decomposition_scuc(
         # A mismatch here usually means scenario generation or model construction
         # changed without rebuilding the batch dictionary.
         batch_subproblem_nummber = length(ret_dic)
-        if ((config_param.is_ConsiderMultiCUTs == 1) ? batch_subproblem_nummber == NS : batch_subproblem_nummber == Int64(1)) == false
+        if (
+            if (config_param.is_ConsiderMultiCUTs == 1)
+                batch_subproblem_nummber == NS
+            else
+                batch_subproblem_nummber == Int64(1)
+            end
+        ) == false
             println("Error: The number of batch_subproblems does not match the expected number.")
             termination_reason = "subproblem_count_mismatch"
             return (
@@ -160,7 +166,11 @@ function multiple_bender_decomposition_scuc(
                 "; adding feasibility cuts",
             )
         end
-        gap = isfinite(best_upper_bound) ? abs(best_upper_bound - best_lower_bound) / (abs(best_upper_bound) + NUMERICAL_TOLERANCE) : Inf
+        gap = if isfinite(best_upper_bound)
+            abs(best_upper_bound - best_lower_bound) / (abs(best_upper_bound) + NUMERICAL_TOLERANCE)
+        else
+            Inf
+        end
         push!(
             history,
             (
@@ -255,7 +265,11 @@ function multiple_bender_decomposition_scuc(
             end
         end
     end
-    final_gap = isfinite(best_upper_bound) ? abs(best_upper_bound - best_lower_bound) / (abs(best_upper_bound) + NUMERICAL_TOLERANCE) : Inf
+    final_gap = if isfinite(best_upper_bound)
+        abs(best_upper_bound - best_lower_bound) / (abs(best_upper_bound) + NUMERICAL_TOLERANCE)
+    else
+        Inf
+    end
     return (
         status = termination_reason,
         model = scuc_masterproblem,
@@ -377,7 +391,11 @@ end
 
 function storage_mismatch_expression(vars, values, excluded_indices::Set{CartesianIndex{2}}, tolerance::Float64)
     vars === nothing && return AffExpr(0.0)
-    return sum((idx in excluded_indices) ? 0.0 : ((values[idx] >= tolerance) ? (1 - vars[idx]) : vars[idx]) for idx in CartesianIndices(values))
+    return sum(if (idx in excluded_indices)
+        0.0
+    else
+        ((values[idx] >= tolerance) ? (1 - vars[idx]) : vars[idx])
+    end for idx in CartesianIndices(values))
 end
 
 function collect_scenario_cut_candidates(
@@ -409,7 +427,11 @@ function collect_scenario_cut_candidates(
                     expr
                 end
             elseif cut_mode == "dual_safe"
-                dual_cut_at_incumbent = incumbent === nothing ? -Inf : evaluate_reduced_cost_optimality_cut(ret, incumbent)
+                dual_cut_at_incumbent = if incumbent === nothing
+                    -Inf
+                else
+                    evaluate_reduced_cost_optimality_cut(ret, incumbent)
+                end
                 if incumbent !== nothing && dual_cut_at_incumbent > incumbent.θ[s] + tolerance
                     get_binary_integer_optimality_cut_expression(model, ret, nothing; scenario_id = s)
                 else
@@ -687,7 +709,11 @@ function get_storage_binary_match_expression(model::Model, ret, scenario_id::Int
     charge === nothing && return (AffExpr(0.0), 0)
     matches =
         sum((ret.storage_values.charge[i] >= tolerance) ? charge[i] : (1 - charge[i]) for i in eachindex(charge)) +
-        sum((ret.storage_values.discharge[i] >= tolerance) ? discharge[i] : (1 - discharge[i]) for i in eachindex(discharge)) +
+        sum(if (ret.storage_values.discharge[i] >= tolerance)
+            discharge[i]
+        else
+            (1 - discharge[i])
+        end for i in eachindex(discharge)) +
         sum((ret.storage_values.start[i] >= tolerance) ? start[i] : (1 - start[i]) for i in eachindex(start)) +
         sum((ret.storage_values.stop[i] >= tolerance) ? stop[i] : (1 - stop[i]) for i in eachindex(stop))
     return matches, length(charge) + length(discharge) + length(start) + length(stop)

@@ -227,7 +227,11 @@ function main(args)
     require_clean_worktree(options)
 
     old_version = read_project_version()
-    new_version = options.version === nothing ? bump_version(old_version, options.bump) : options.version
+    new_version = if options.version === nothing
+        bump_version(old_version, options.bump)
+    else
+        options.version
+    end
     parse_version(new_version)
 
     tag_name = "$(options.tag_prefix)$(new_version)"
@@ -272,7 +276,11 @@ function main(args)
     end
 
     println()
-    println(options.execute ? "Release workflow completed." : "Dry-run completed. Add --execute to apply these steps.")
+    println(if options.execute
+        "Release workflow completed."
+    else
+        "Dry-run completed. Add --execute to apply these steps."
+    end)
     return nothing
 end
 

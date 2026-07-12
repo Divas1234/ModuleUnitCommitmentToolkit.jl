@@ -359,9 +359,9 @@ function set_subproblem_objective_economic!(
     c₀ = config_param.is_CoalPrice  # Base cost of coal
 
     # Penalty coefficients for load and wind curtailment
-    load_curtailment_penalty = config_param.is_LoadsCuttingCoefficient * 1e10
+    load_curtailment_penalty = config_param.is_LoadsCuttingCoefficient * 1e4
     wind_curtailment_penalty = config_param.is_WindsCuttingCoefficient * 1e0
-    reserve_shortage_penalty = max(load_curtailment_penalty / 100, c₀ * 1e6)
+    reserve_shortage_penalty = max(load_curtailment_penalty / 100, c₀ * 1e0)
 
     NS_copy = (config_param.is_ConsiderMultiCUTs == 1) ? Int64(1) : NS
     pₛ = scenarios_prob

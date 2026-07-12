@@ -128,8 +128,16 @@ function add_ramp_constraints!(scuc::Model, NT, NG, NS, units, onoffinit)
     u = scuc[:u]
     v = scuc[:v]
     pg₀ = scuc[:pg₀]
-    ramp_violation⁺ = haskey(JuMP.object_dictionary(scuc), :ramp_violation⁺) ? scuc[:ramp_violation⁺] : nothing
-    ramp_violation⁻ = haskey(JuMP.object_dictionary(scuc), :ramp_violation⁻) ? scuc[:ramp_violation⁻] : nothing
+    ramp_violation⁺ = if haskey(JuMP.object_dictionary(scuc), :ramp_violation⁺)
+        scuc[:ramp_violation⁺]
+    else
+        nothing
+    end
+    ramp_violation⁻ = if haskey(JuMP.object_dictionary(scuc), :ramp_violation⁻)
+        scuc[:ramp_violation⁻]
+    else
+        nothing
+    end
 
     p_0 = units.p_0
     ramp_up = units.ramp_up
@@ -146,17 +154,26 @@ function add_ramp_constraints!(scuc::Model, NT, NG, NS, units, onoffinit)
         ramp_up[:, 1] .* ((t == 1) ? onoffinit[:, 1] : x[:, t - 1]) +
         shut_up[:, 1] .* ((t == 1) ? ones(NG, 1) : u[:, t - 1]) +
         p_max[:, 1] .* (ones(NG, 1) - ((t == 1) ? onoffinit[:, 1] : x[:, t - 1])) +
-        (ramp_violation⁺ === nothing ? zeros(NG) : ramp_violation⁺[(1 + (s - 1) * NG):(s * NG), t])
+        (
+            if ramp_violation⁺ === nothing
+                zeros(NG)
+            else
+                ramp_violation⁺[(1 + (s - 1) * NG):(s * NG), t]
+            end
+        )
     )
 
     units_downramp_constr = @constraint(
         scuc,
         [s = 1:NS, t = 1:NT],
         ((t == 1) ? units.p_0[:, 1] : pg₀[(1 + (s - 1) * NG):(s * NG), t - 1]) - pg₀[(1 + (s - 1) * NG):(s * NG), t] .<=
-        ramp_down[:, 1] .* x[:, t] +
-        shut_down[:, 1] .* v[:, t] +
-        p_max[:, 1] .* (x[:, t]) +
-        (ramp_violation⁻ === nothing ? zeros(NG) : ramp_violation⁻[(1 + (s - 1) * NG):(s * NG), t])
+        ramp_down[:, 1] .* x[:, t] + shut_down[:, 1] .* v[:, t] + p_max[:, 1] .* (x[:, t]) + (
+            if ramp_violation⁻ === nothing
+                zeros(NG)
+            else
+                ramp_violation⁻[(1 + (s - 1) * NG):(s * NG), t]
+            end
+        )
     )
     println("\t constraints: 8) ramp-up/ramp-down constraints\t\t\t\t done")
     return scuc, units_upramp_constr, units_downramp_constr

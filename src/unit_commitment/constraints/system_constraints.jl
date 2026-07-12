@@ -52,8 +52,16 @@ function add_reserve_constraints!(scuc::Model, NT, NG, NC, NS, units, loads, win
     x = scuc[:x]
     sr⁺ = scuc[:sr⁺]
     sr⁻ = scuc[:sr⁻]
-    reserve_shortage⁺ = haskey(JuMP.object_dictionary(scuc), :reserve_shortage⁺) ? scuc[:reserve_shortage⁺] : nothing
-    reserve_shortage⁻ = haskey(JuMP.object_dictionary(scuc), :reserve_shortage⁻) ? scuc[:reserve_shortage⁻] : nothing
+    reserve_shortage⁺ = if haskey(JuMP.object_dictionary(scuc), :reserve_shortage⁺)
+        scuc[:reserve_shortage⁺]
+    else
+        nothing
+    end
+    reserve_shortage⁻ = if haskey(JuMP.object_dictionary(scuc), :reserve_shortage⁻)
+        scuc[:reserve_shortage⁻]
+    else
+        nothing
+    end
     pc⁺ = check_var_exists(scuc, "pc⁺") ? scuc[:pc⁺] : nothing # Storage might not exist
     pc⁻ = check_var_exists(scuc, "pc⁻") ? scuc[:pc⁻] : nothing # Storage might not exist
 
@@ -132,9 +140,19 @@ function add_power_balance_constraints!(scuc::Model, NT, NG, ND, NC, NW, NS, loa
             scuc,
             [s = 1:NS, t = 1:NT],
             sum(pg₀[(1 + (s - 1) * NG):(s * NG), t]) + sum(winds.scenarios_curve[s, t] * wind_pmax[w, 1] - Δpw[(s - 1) * NW + w, t] for w in 1:NW) -
-            sum(load_curve[d, t] - Δpd[(s - 1) * ND + d, t] for d in 1:ND) +
-            (NC > 0 && pc⁻ !== nothing ? sum(pc⁻[((s - 1) * NC + 1):(s * NC), t]) : 0.0) -
-            (NC > 0 && pc⁺ !== nothing ? sum(pc⁺[((s - 1) * NC + 1):(s * NC), t]) : 0.0)
+            sum(load_curve[d, t] - Δpd[(s - 1) * ND + d, t] for d in 1:ND) + (
+                if NC > 0 && pc⁻ !== nothing
+                    sum(pc⁻[((s - 1) * NC + 1):(s * NC), t])
+                else
+                    0.0
+                end
+            ) - (
+                if NC > 0 && pc⁺ !== nothing
+                    sum(pc⁺[((s - 1) * NC + 1):(s * NC), t])
+                else
+                    0.0
+                end
+            )
         )
     end
 

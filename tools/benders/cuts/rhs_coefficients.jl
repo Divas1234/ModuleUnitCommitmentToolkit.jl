@@ -87,7 +87,13 @@ function get_v_coeff_vectors_from_constr(nam, current_model, constr, NT, NG)
         coeffs = zeros(NG * NT, 1)
 
         for t in 2:NT, g in 1:NG
-            target_var = ((alignment_cons == 0) ? current_model[:v][g, t] : current_model[:v][g, t - 1])
+            target_var = (
+                if (alignment_cons == 0)
+                    current_model[:v][g, t]
+                else
+                    current_model[:v][g, t - 1]
+                end
+            )
             res, _, _ = get_index_in_constraint(target_var, current_model, constr, NG, NT, g, t, sort_order)
             idx = ((sort_order == 0) ? NG * (t - 1) + g : NT * (g - 1) + t)
             coeffs[idx, 1] = res
@@ -157,7 +163,13 @@ function get_u_coeff_vectors_from_constr(nam, current_model, constr, NT, NG)
         coeffs = zeros(NG * NT, 1)
 
         for t in 2:NT, g in 1:NG
-            target_var = ((alignment_cons == 0) ? current_model[:u][g, t] : current_model[:u][g, t - 1])
+            target_var = (
+                if (alignment_cons == 0)
+                    current_model[:u][g, t]
+                else
+                    current_model[:u][g, t - 1]
+                end
+            )
             res, _, _ = get_index_in_constraint(target_var, current_model, constr, NG, NT, g, t, sort_order)
             idx = ((sort_order == 0) ? NG * (t - 1) + g : NT * (g - 1) + t)
             coeffs[idx, 1] = res
@@ -233,7 +245,13 @@ function get_x_coeff_vectors_from_constr(nam, current_model, constr, NT, NG)
         coeffs = zeros(NG * NT, 1)
 
         for t in 2:NT, g in 1:NG
-            target_var = ((alignment_cons == 0) ? current_model[:x][g, t] : current_model[:x][g, t - 1])
+            target_var = (
+                if (alignment_cons == 0)
+                    current_model[:x][g, t]
+                else
+                    current_model[:x][g, t - 1]
+                end
+            )
             res, _, _ = get_index_in_constraint(target_var, current_model, constr, NG, NT, g, t, sort_order)
             idx = ((sort_order == 0) ? NG * (t - 1) + g : NT * (g - 1) + t)
             coeffs[idx, 1] = res

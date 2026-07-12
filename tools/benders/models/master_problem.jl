@@ -266,7 +266,7 @@ function set_masterproblem_objective_economic!(scuc_masterproblem::Model, NT, NG
     c₀ = config_param.is_CoalPrice  # Reference fuel/coal price factor
 
     # Penalty weights for load shed and wind curtailment (often used in subproblem recourse)
-    load_curtailment_penalty = config_param.is_LoadsCuttingCoefficient * 1e10
+    load_curtailment_penalty = config_param.is_LoadsCuttingCoefficient * 1e4
     wind_curtailment_penalty = config_param.is_WindsCuttingCoefficient * 1e0
 
     # Penalty coefficients for violations

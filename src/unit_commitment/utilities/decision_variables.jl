@@ -29,14 +29,16 @@ function define_decision_variables!(scuc::Model, NT, NG, ND, NC, ND2, NS, NW, co
     @variable(scuc, Δpw[1:(NW * NS), 1:NT] >= 0)       # Wind curtailment slack
 
     # --- Energy Storage (BESS) Variables ---
-    @variable(scuc, κ⁺[1:(NC * NS), 1:NT], Bin)   # Charging binary status
-    @variable(scuc, κ⁻[1:(NC * NS), 1:NT], Bin)   # Discharging binary status
-    @variable(scuc, pc⁺[1:(NC * NS), 1:NT] >= 0)  # Charging power power
-    @variable(scuc, pc⁻[1:(NC * NS), 1:NT] >= 0)  # Discharging power power
-    @variable(scuc, qc[1:(NC * NS), 1:NT] >= 0)   # State of Charge (SoC) energy
+    if config_param.is_ConsiderBESS == 1 && NC > 0
+        @variable(scuc, κ⁺[1:(NC * NS), 1:NT], Bin)   # Charging binary status
+        @variable(scuc, κ⁻[1:(NC * NS), 1:NT], Bin)   # Discharging binary status
+        @variable(scuc, pc⁺[1:(NC * NS), 1:NT] >= 0)  # Charging power power
+        @variable(scuc, pc⁻[1:(NC * NS), 1:NT] >= 0)  # Discharging power power
+        @variable(scuc, qc[1:(NC * NS), 1:NT] >= 0)   # State of Charge (SoC) energy
 
-    @variable(scuc, α[1:(NS * NC), 1:NT], Bin)  # Auxiliary flags for cycle counting
-    @variable(scuc, β[1:(NS * NC), 1:NT], Bin)
+        @variable(scuc, α[1:(NS * NC), 1:NT], Bin)  # Auxiliary flags for cycle counting
+        @variable(scuc, β[1:(NS * NC), 1:NT], Bin)
+    end
 
     if config_param.is_ConsiderDataCentra == 1
         define_data_center_variables!(scuc, Int(NT), Int(ND2), Int(NS); binary_response_weights = true)

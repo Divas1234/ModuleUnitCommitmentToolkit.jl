@@ -19,7 +19,7 @@ function set_objective_economic!(scuc::Model, NT, NG, ND, NW, NS, units, config_
     pₛ = scenarios_prob  # Probability of scenarios
 
     # Penalty coefficients for load and wind curtailment
-    load_curtailment_penalty = config_param.is_LoadsCuttingCoefficient * 1e10
+    load_curtailment_penalty = config_param.is_LoadsCuttingCoefficient * 1e4
     wind_curtailment_penalty = config_param.is_WindsCuttingCoefficient * 1e0
 
     ρ⁺ = c₀ * 2

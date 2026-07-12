@@ -169,32 +169,10 @@ function forminputdata(DataGen, DataBranch, DataLoad, LoadCurve, GenCost, UnitsF
     # CU/CU1/CD/Cold: Startup costs (intervals) and shutdown costs, cold start limits
     # Hg/Dg/Kg/Fg/Tg/Rg: Frequency regulation parameters (inertia, damping, gain, deadband, etc.)
     units = unit(
-        Gens_Index,
-        Gens_LocateBus,
-        Gens_Pmax,
-        Gens_Pmin,
-        Gens_RU,
-        Gens_RD,
-        Gens_SU,
-        Gens_SD,
-        Gens_TU,
-        Gens_TD,
-        Gens_x0,
-        Gens_t0,
-        Gens_p0,
-        Gens_a,
-        Gens_b,
-        Gens_c,
-        Gens_CU,
-        Gens_CU1,
-        Gens_CD,
-        Gens_Cold,
-        Hg,
-        Dg,
-        Kg,
-        Fg,
-        Tg,
-        Rg,
+        Gens_Index, Gens_LocateBus, Gens_Pmax, Gens_Pmin,
+        Gens_RU, Gens_RD, Gens_SU, Gens_SD, Gens_TU, Gens_TD, Gens_x0, Gens_t0, Gens_p0,
+        Gens_a, Gens_b, Gens_c, Gens_CU, Gens_CU1, Gens_CD, Gens_Cold,
+        Hg, Dg, Kg, Fg, Tg, Rg,
     )
     # lines = transmissionline(Trans_From, Trans_To, Trans_x, Trans_b, Trans_Pmax, Trans_Pmin)
 
@@ -249,16 +227,7 @@ function forminputdata(DataGen, DataBranch, DataLoad, LoadCurve, GenCost, UnitsF
     # λ/μ: Task arrival rate and processing service rate parameters
     # computational_power_tasks: Time-series computational load task curve
     datacentra_data = data_centra(
-        dc_index,
-        dc_locatebus,
-        dc_pmax,
-        dc_pmin,
-        dc_voltage_regulation,
-        dc_idale,
-        dc_sv_constent,
-        dc_λ,
-        dc_μ,
-        dc_computational_power_tasks,
+        dc_index, dc_locatebus, dc_pmax, dc_pmin, dc_voltage_regulation, dc_idale, dc_sv_constent, dc_λ, dc_μ, dc_computational_power_tasks,
     )
 
     println("Step-2: imput data are loaded")
