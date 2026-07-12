@@ -1,7 +1,7 @@
 using PowerSystems
 using PowerSystemCaseBuilder
 
-export build_system_from_powersystems, extract_uc_data_from_powersystems, generate_wind_scenarios_from_system, load_native_powersystems_case
+export build_system_from_powersystems, extract_uc_data_from_powersystems, generate_wind_scenarios_from_system, load_native_powersystems_case, generate_frequency_parameters
 
 """
     build_system_from_powersystems(case_name; case_category = MatpowerTestSystems)
@@ -243,7 +243,7 @@ function extract_uc_data_from_powersystems(
         push!(gain, _frequency_value(frequency_parameters, name, index, :K, 0.0));
         push!(turbine_fraction, _frequency_value(frequency_parameters, name, index, :F, 0.0))
         push!(time_constant, _frequency_value(frequency_parameters, name, index, :T, 0.0));
-        push!(droop, _frequency_value(frequency_parameters, name, index, :R, 0.0))
+        push!(droop, _frequency_value(frequency_parameters, name, index, :R, 1.0))
     end
     units = unit(
         generator_index,
@@ -394,4 +394,82 @@ function _load_native_powersystems_system(sys::System; scenario_limit::Int64, fr
         NS = NS,
         full_scenario_probability = 1.0 / NS,
     )
+end
+
+"""
+    generate_frequency_parameters(sys::System; overrides::Dict = Dict())
+
+Generate a complete frequency parameters dictionary for all conventional generators 
+in the given PowerSystems `System`. The default parameters are assigned based on the 
+generator's fuel type and name prefix to ensure realistic physical behavior.
+
+Chinese description:
+根据 PowerSystems 系统对象自动为所有常规机组生成调频参数字典。默认参数根据机组燃料类型和
+名称特征匹配，符合真实物理特性，同时支持用户自定义覆盖。
+"""
+function generate_frequency_parameters(sys::System; overrides::Dict = Dict())
+    frequency_parameters = Dict{String, NamedTuple}()
+    
+    # Define templates for typical generator technologies
+    # 定义各类发电技术的典型调频参数模板
+    templates = Dict(
+        :coal => (H = 6.0, D = 0.08, K = 0.95, F = 0.30, T = 7.0, R = 0.05),
+        :gas => (H = 4.0, D = 0.05, K = 0.90, F = 0.15, T = 5.0, R = 0.04),
+        :hydro => (H = 3.0, D = 0.10, K = 1.00, F = 0.50, T = 4.0, R = 0.05),
+        :nuclear => (H = 7.0, D = 0.10, K = 0.00, F = 0.00, T = 0.0, R = 1.00), # No governor response
+        :default => (H = 5.0, D = 0.00, K = 0.00, F = 0.00, T = 0.0, R = 1.00)  # Safe default (no governor)
+    )
+    
+    for generator in get_components(ThermalGen, sys)
+        name = get_name(generator)
+        
+        # Check user overrides first
+        # 优先使用用户自定义的机组覆盖
+        if haskey(overrides, name)
+            frequency_parameters[name] = overrides[name]
+            continue
+        end
+        
+        # Determine fuel type if available in PowerSystems
+        # 从 PowerSystems 机组信息获取燃料类型或类型名称
+        fuel = :default
+        if hasproperty(generator, :fuel)
+            try
+                gen_fuel = get_fuel(generator)
+                fuel_str = lowercase(string(gen_fuel))
+                if occursin("coal", fuel_str) || occursin("coal/steam", fuel_str) || occursin("steam", fuel_str)
+                    fuel = :coal
+                elseif occursin("gas", fuel_str) || occursin("distillate", fuel_str) || occursin("oil", fuel_str)
+                    fuel = :gas
+                elseif occursin("hydro", fuel_str) || occursin("water", fuel_str)
+                    fuel = :hydro
+                elseif occursin("nuclear", fuel_str)
+                    fuel = :nuclear
+                end
+            catch
+            end
+        end
+        
+        # Secondary check based on name heuristic if fuel property wasn't conclusive
+        # 若燃料属性不明确，根据名称特征进行启发式匹配
+        if fuel == :default
+            lower_name = lowercase(name)
+            if occursin("solitude", lower_name) || occursin("coal", lower_name) || occursin("steam", lower_name)
+                fuel = :coal
+            elseif occursin("park city", lower_name) || occursin("alta", lower_name) || occursin("gas", lower_name) || occursin("combustion", lower_name)
+                fuel = :gas
+            elseif occursin("hydro", lower_name) || occursin("water", lower_name)
+                fuel = :hydro
+            elseif occursin("nuclear", lower_name) || occursin("nuc", lower_name)
+                fuel = :nuclear
+            end
+        end
+        
+        # Assign matching template
+        # 赋予匹配的参数模板
+        template = get(templates, fuel, templates[:default])
+        frequency_parameters[name] = template
+    end
+    
+    return frequency_parameters
 end

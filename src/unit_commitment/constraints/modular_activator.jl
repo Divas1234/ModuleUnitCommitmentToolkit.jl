@@ -44,7 +44,7 @@ function apply_scuc_constraints!(
     include_unit_operation = true,
     include_binary_logic_for_storage = true,
     include_frequency_constraints = true,
-    winds_for_freq = winds
+    winds_for_freq = winds,
 )
     # 1. Unit Operation (Commitment logic, min up/down time, shutup/shutdown cost)
     unit_op_constrs = if include_unit_operation
@@ -72,7 +72,8 @@ function apply_scuc_constraints!(
     pwl_constrs = add_pwl_constraints!(model, NT, NG, NS, units)
 
     # 8. Transmission Line Limits
-    transmission_constrs = add_transmission_constraints!(model, NT, NG, ND, NC, NW, NL, NS, units, loads, winds, lines, psses, gsdf, config_param, ND2, DataCentras)
+    transmission_constrs =
+        add_transmission_constraints!(model, NT, NG, ND, NC, NW, NL, NS, units, loads, winds, lines, psses, gsdf, config_param, ND2, DataCentras)
 
     # 9. Energy Storage (BESS) Module
     storage_constrs = if config_param.is_ConsiderBESS == 1

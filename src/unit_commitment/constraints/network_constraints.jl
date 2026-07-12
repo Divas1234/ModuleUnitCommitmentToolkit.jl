@@ -73,13 +73,12 @@ function add_transmission_constraints!(
                 sum(subGsdf_units[i] * pg₀[i + (s - 1) * NG, t] for i in 1:NG) +
                 sum(subGsdf_winds[w] * (winds.scenarios_curve[s, t] * winds.p_max[w, 1] - Δpw[(s - 1) * NW + w, t]) for w in 1:NW) -
                 sum(subGsdf_loads[d] * (loads.load_curve[d, t] - Δpd[(s - 1) * ND + d, t]) for d in 1:ND) -
-                (dc_enabled ? sum(subGsdf_dc[c] * dc_p[(s - 1) * ND2 + c, t] for c in 1:ND2) : 0.0) + sum(
-                    if (NC > 0 && pc⁺ !== nothing && pc⁻ !== nothing && c <= length(subGsdf_psses))
-                        subGsdf_psses[c] * (pc⁻[(s - 1) * NC + c, t] - pc⁺[(s - 1) * NC + c, t])
-                    else
-                        0.0
-                    end for c in 1:NC
-                )
+                (dc_enabled ? sum(subGsdf_dc[c] * dc_p[(s - 1) * ND2 + c, t] for c in 1:ND2) : 0.0) +
+                sum(if (NC > 0 && pc⁺ !== nothing && pc⁻ !== nothing && c <= length(subGsdf_psses))
+                    subGsdf_psses[c] * (pc⁻[(s - 1) * NC + c, t] - pc⁺[(s - 1) * NC + c, t])
+                else
+                    0.0
+                end for c in 1:NC)
             )
             push!(transmissionline_powerflow_upbound_constr, @constraint(scuc, [s = 1:NS, t = 1:NT], flow[s, t] <= lines.p_max[l, 1]))
             push!(transmissionline_powerflow_downbound_constr, @constraint(scuc, [s = 1:NS, t = 1:NT], flow[s, t] >= lines.p_min[l, 1]))

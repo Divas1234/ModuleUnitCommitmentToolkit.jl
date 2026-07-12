@@ -31,10 +31,10 @@ for i in 1:NB
         bustype = ACBusTypes.PQ,
         angle = 0.0,
         magnitude = 1.0,
-        voltage_limits = (min=0.95, max=1.05),
+        voltage_limits = (min = 0.95, max = 1.05),
         base_voltage = 138.0,
         area = nothing,
-        load_zone = nothing
+        load_zone = nothing,
     )
     add_component!(sys, bus; skip_validation = true)
     buses[i] = bus
@@ -53,15 +53,15 @@ for i in 1:NG
         active_power = DataGen[i, 13],
         reactive_power = 0.0,
         rating = DataGen[i, 3],
-        active_power_limits = (min=DataGen[i, 4], max=DataGen[i, 3]),
+        active_power_limits = (min = DataGen[i, 4], max = DataGen[i, 3]),
         reactive_power_limits = nothing,
-        ramp_limits = (up=DataGen[i, 6], down=DataGen[i, 5]),
+        ramp_limits = (up = DataGen[i, 6], down = DataGen[i, 5]),
         operation_cost = ThermalGenerationCost(nothing),
         base_power = 100.0,
-        time_limits = (up=DataGen[i, 9], down=DataGen[i, 10]),
+        time_limits = (up = DataGen[i, 9], down = DataGen[i, 10]),
         must_run = false,
         prime_mover_type = PrimeMovers.ST,
-        fuel = ThermalFuels.COAL
+        fuel = ThermalFuels.COAL,
     )
     add_component!(sys, gen; skip_validation = true)
 end
@@ -80,10 +80,10 @@ for i in 1:NL
         arc = Arc(buses[from], buses[to]),
         r = 0.0,
         x = DataBranch[i, 4],
-        b = (from=0.0, to=0.0),
-        g = (from=0.0, to=0.0),
+        b = (from = 0.0, to = 0.0),
+        g = (from = 0.0, to = 0.0),
         rating = DataBranch[i, 5],
-        angle_limits = (min=-1.5, max=1.5)
+        angle_limits = (min = -1.5, max = 1.5),
     )
     add_component!(sys, line; skip_validation = true)
 end
@@ -106,7 +106,7 @@ for j in 1:ND
         reactive_power = 0.0,
         base_power = 100.0,
         max_active_power = percent,
-        max_reactive_power = 0.0
+        max_reactive_power = 0.0,
     )
     add_component!(sys, load; skip_validation = true)
     add_time_series!(sys, load, time_series_load)
@@ -127,7 +127,7 @@ for w in 1:size(WindsFreqParam, 1)
         reactive_power_limits = nothing,
         power_factor = 1.0,
         base_power = 100.0,
-        operation_cost = RenewableGenerationCost(nothing)
+        operation_cost = RenewableGenerationCost(nothing),
     )
     add_component!(sys, wind; skip_validation = true)
 end
@@ -144,16 +144,16 @@ for k in 1:NC
         prime_mover_type = PrimeMovers.BA,
         storage_technology_type = StorageTech.OTHER_CHEM,
         storage_capacity = StrogeData[k, 3],
-        storage_level_limits = (min=StrogeData[k, 4], max=StrogeData[k, 3]),
+        storage_level_limits = (min = StrogeData[k, 4], max = StrogeData[k, 3]),
         initial_storage_capacity_level = StrogeData[k, 7],
         rating = StrogeData[k, 6],
         active_power = 0.0,
-        input_active_power_limits = (min=0.0, max=StrogeData[k, 5]),
-        output_active_power_limits = (min=0.0, max=StrogeData[k, 6]),
-        efficiency = (in=StrogeData[k, 10], out=StrogeData[k, 11]),
+        input_active_power_limits = (min = 0.0, max = StrogeData[k, 5]),
+        output_active_power_limits = (min = 0.0, max = StrogeData[k, 6]),
+        efficiency = (in = StrogeData[k, 10], out = StrogeData[k, 11]),
         reactive_power = 0.0,
         reactive_power_limits = nothing,
-        base_power = 100.0
+        base_power = 100.0,
     )
     add_component!(sys, storage; skip_validation = true)
 end
@@ -179,7 +179,7 @@ df_uc = DataFrame(
     ramp_up = DataGen[:, 6],
     ramp_down = DataGen[:, 5],
     startup_ramp = DataGen[:, 8],
-    shutdown_ramp = DataGen[:, 7]
+    shutdown_ramp = DataGen[:, 7],
 )
 CSV.write(joinpath(case_dir, "thermal_uc.csv"), df_uc)
 
@@ -192,7 +192,7 @@ df_freq = DataFrame(
     F = vcat(UnitsFreqParam[:, 5], zeros(size(WindsFreqParam, 1))),
     T = vcat(UnitsFreqParam[:, 6], WindsFreqParam[:, 6]),
     R = vcat(UnitsFreqParam[:, 7], WindsFreqParam[:, 3]),
-    Mw = vcat(zeros(NG), WindsFreqParam[:, 4])
+    Mw = vcat(zeros(NG), WindsFreqParam[:, 4]),
 )
 CSV.write(joinpath(case_dir, "frequency_parameters.csv"), df_freq)
 
@@ -202,7 +202,7 @@ df_storage = DataFrame(
     initial_soc = StrogeData[:, 7],
     charge_ramp = StrogeData[:, 8],
     discharge_ramp = StrogeData[:, 9],
-    self_discharge = StrogeData[:, 12]
+    self_discharge = StrogeData[:, 12],
 )
 CSV.write(joinpath(case_dir, "storage_uc.csv"), df_storage)
 
@@ -211,16 +211,16 @@ CSV.write(joinpath(case_dir, "storage_uc.csv"), df_storage)
 # const DEFAULT_WIND_AVAILABILITY_PROFILE = [...]
 # There are size(WindsFreqParam, 1) wind generators (Wind1, Wind2) with 2.5 rating each (250 MW).
 const DEFAULT_WIND_AVAILABILITY_PROFILE = [
-	0.440724927203680 0.420965256587272 0.449034794022911 0.454128108336623 0.436483077739172 0.477450522402300
-	0.443871634609799 0.374756446192485 0.448192193924943 0.431190577826877 0.428867647037057 0.445673091565042
-	0.433764408789611 0.421900481861469 0.429104412188035 0.463277796146724 0.426579282372516 0.448189506134410
-	0.429353980231385 0.434861266141317 0.437494540514197 0.456877055120346 0.425139803090161 0.425629623577982
+    0.440724927203680 0.420965256587272 0.449034794022911 0.454128108336623 0.436483077739172 0.477450522402300
+    0.443871634609799 0.374756446192485 0.448192193924943 0.431190577826877 0.428867647037057 0.445673091565042
+    0.433764408789611 0.421900481861469 0.429104412188035 0.463277796146724 0.426579282372516 0.448189506134410
+    0.429353980231385 0.434861266141317 0.437494540514197 0.456877055120346 0.425139803090161 0.425629623577982
 ]
 
 df_ren = DataFrame(
-    generator_name = repeat(["Wind$i" for i in 1:size(WindsFreqParam, 1)], inner=24),
+    generator_name = repeat(["Wind$i" for i in 1:size(WindsFreqParam, 1)], inner = 24),
     time = repeat(collect(1:24), size(WindsFreqParam, 1)),
-    generation = repeat(vec(DEFAULT_WIND_AVAILABILITY_PROFILE) * 250.0, size(WindsFreqParam, 1))
+    generation = repeat(vec(DEFAULT_WIND_AVAILABILITY_PROFILE) * 250.0, size(WindsFreqParam, 1)),
 )
 CSV.write(joinpath(case_dir, "renewable_profiles.csv"), df_ren)
 
@@ -235,16 +235,13 @@ df_dc = DataFrame(
     idale = datacentra_Data[:, 6] * 100.0,
     sv_constant = datacentra_Data[:, 7] * 100.0,
     λ = datacentra_Data[:, 8],
-    μ = datacentra_Data[:, 9]
+    μ = datacentra_Data[:, 9],
 )
 CSV.write(joinpath(case_dir, "data_centers.csv"), df_dc)
 
 # data_center_workloads.csv
-df_dc_wl = DataFrame(
-    data_center_name = repeat(["DC$i" for i in 1:ND2], inner=24),
-    time = repeat(collect(1:24), ND2),
-    workload = fill(0.2, 24 * ND2)
-)
+df_dc_wl =
+    DataFrame(data_center_name = repeat(["DC$i" for i in 1:ND2], inner = 24), time = repeat(collect(1:24), ND2), workload = fill(0.2, 24 * ND2))
 CSV.write(joinpath(case_dir, "data_center_workloads.csv"), df_dc_wl)
 
 # 4. Include benchmark UC tools

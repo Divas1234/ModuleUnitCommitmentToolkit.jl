@@ -39,153 +39,176 @@ fixed first-stage commitment decisions.
 """
 
 function bd_subfunction(
-	NT::Int64, NB::Int64, NL::Int64, NG::Int64, ND::Int64, NC::Int64, ND2::Int64, NS::Int64, NW::Int64, units::unit, winds::wind, loads::load, lines::transmissionline, DataCentras::data_centra, psses::pss, scenarios_prob::Float64, config_param::config
+    NT::Int64,
+    NB::Int64,
+    NL::Int64,
+    NG::Int64,
+    ND::Int64,
+    NC::Int64,
+    ND2::Int64,
+    NS::Int64,
+    NW::Int64,
+    units::unit,
+    winds::wind,
+    loads::load,
+    lines::transmissionline,
+    DataCentras::data_centra,
+    psses::pss,
+    scenarios_prob::Float64,
+    config_param::config,
 )
-	println("Initializing Benders Subproblem (Recourse) construction...")
-	# Input validation
-	@assert NT>0 "Number of time periods (NT) must be positive."
-	@assert NB>0 "Number of buses (NB) must be positive."
-	@assert NG>0 "Number of generators (NG) must be positive."
-	@assert ND>=0 "Number of loads (ND) must be non-negative."
-	@assert NC>=0 "Number of storage units (NC) must be non-negative."
-	@assert ND2>=0 "Number of data centers (ND2) must be non-negative."
-	@assert NS>0 "Number of scenarios (NS) must be positive."
-	@assert NW>=0 "Number of wind power plants (NW) must be non-negative."
-	@assert scenarios_prob >= 0&&scenarios_prob <= 1 "Scenario probability must be between 0 and 1."
+    println("Initializing Benders Subproblem (Recourse) construction...")
+    # Input validation
+    @assert NT>0 "Number of time periods (NT) must be positive."
+    @assert NB>0 "Number of buses (NB) must be positive."
+    @assert NG>0 "Number of generators (NG) must be positive."
+    @assert ND>=0 "Number of loads (ND) must be non-negative."
+    @assert NC>=0 "Number of storage units (NC) must be non-negative."
+    @assert ND2>=0 "Number of data centers (ND2) must be non-negative."
+    @assert NS>0 "Number of scenarios (NS) must be positive."
+    @assert NW>=0 "Number of wind power plants (NW) must be non-negative."
+    @assert scenarios_prob >= 0&&scenarios_prob <= 1 "Scenario probability must be between 0 and 1."
 
-	# Create the subproblem model
-	scuc_subproblem = Model(Gurobi.Optimizer)
-	set_silent(scuc_subproblem)
+    # Create the subproblem model
+    scuc_subproblem = Model(Gurobi.Optimizer)
+    set_silent(scuc_subproblem)
 
-	# Define decision variables
-	# scuc_subproblem, x, u, v, su₀, sd₀, pg₀, pgₖ, sr⁺, sr⁻, Δpd, Δpw, κ⁺, κ⁻, pc⁺, pc⁻, qc, pss_sumchargeenergy,
-	# α, β = define_subproblem_decision_variables!(
-	# 	scuc_subproblem, NT, NG, ND, NC, ND2, NS, NW, config_param
-	# )
+    # Define decision variables
+    # scuc_subproblem, x, u, v, su₀, sd₀, pg₀, pgₖ, sr⁺, sr⁻, Δpd, Δpw, κ⁺, κ⁻, pc⁺, pc⁻, qc, pss_sumchargeenergy,
+    # α, β = define_subproblem_decision_variables!(
+    # 	scuc_subproblem, NT, NG, ND, NC, ND2, NS, NW, config_param
+    # )
 
-	scuc_subproblem, x, u, v, pg₀, pgₖ, sr⁺, sr⁻, Δpd, Δpw, κ⁺, κ⁻, pc⁺, pc⁻, qc, pss_sumchargeenergy, α, β = define_subproblem_decision_variables!(scuc_subproblem, NT, NG, ND, NC, ND2, NS, NW, config_param)
-	θ = Matrix{VariableRef}(undef, 0, 0)
+    scuc_subproblem, x, u, v, pg₀, pgₖ, sr⁺, sr⁻, Δpd, Δpw, κ⁺, κ⁻, pc⁺, pc⁻, qc, pss_sumchargeenergy, α, β =
+        define_subproblem_decision_variables!(scuc_subproblem, NT, NG, ND, NC, ND2, NS, NW, config_param)
+    θ = Matrix{VariableRef}(undef, 0, 0)
 
-	# NOTE - save the decision variables in a dictionary for easy access
-	# sub_vars = SCUCModel_decision_variables(u, x, v, su₀, sd₀, pg₀, pgₖ, sr⁺, sr⁻, Δpd, Δpw, κ⁺, κ⁻, pc⁺, pc⁻, qc, pss_sumchargeenergy, α, β,θ)
-	# sub_vars = build_decision_variables(; u, x, v, su₀, sd₀, pg₀, pgₖ, sr⁺, sr⁻, Δpd, Δpw, κ⁺, κ⁻, pc⁺, pc⁻, qc, pss_sumchargeenergy, α, β, θ)
-	sub_vars = build_decision_variables(; x, u, v, pg₀, pgₖ, sr⁺, sr⁻, Δpd, Δpw, κ⁺, κ⁻, pc⁺, pc⁻, qc, pss_sumchargeenergy, α, β, θ)
+    # NOTE - save the decision variables in a dictionary for easy access
+    # sub_vars = SCUCModel_decision_variables(u, x, v, su₀, sd₀, pg₀, pgₖ, sr⁺, sr⁻, Δpd, Δpw, κ⁺, κ⁻, pc⁺, pc⁻, qc, pss_sumchargeenergy, α, β,θ)
+    # sub_vars = build_decision_variables(; u, x, v, su₀, sd₀, pg₀, pgₖ, sr⁺, sr⁻, Δpd, Δpw, κ⁺, κ⁻, pc⁺, pc⁻, qc, pss_sumchargeenergy, α, β, θ)
+    sub_vars = build_decision_variables(; x, u, v, pg₀, pgₖ, sr⁺, sr⁻, Δpd, Δpw, κ⁺, κ⁻, pc⁺, pc⁻, qc, pss_sumchargeenergy, α, β, θ)
 
-	# Set the objective function
-	scuc_subproblem, obj = set_subproblem_objective_economic!(scuc_subproblem, NT, NG, ND, NW, NS, units, config_param, scenarios_prob)
-	# @show typeof(obj)
-	# NOTE - save the objective function in a dictionary for easy access
-	sub_obj = SCUCModel_objective_function(obj)
+    # Set the objective function
+    scuc_subproblem, obj = set_subproblem_objective_economic!(scuc_subproblem, NT, NG, ND, NW, NS, units, config_param, scenarios_prob)
+    # @show typeof(obj)
+    # NOTE - save the objective function in a dictionary for easy access
+    sub_obj = SCUCModel_objective_function(obj)
 
-	# Calculate the Generator Shift Distribution Factor (GSDF)
-	gsdf = calculate_gsdf(config_param, NL, units, lines, loads, NG, NB, ND)
+    # Calculate the Generator Shift Distribution Factor (GSDF)
+    gsdf = calculate_gsdf(config_param, NL, units, lines, loads, NG, NB, ND)
 
-	# Calculate initial unit status
-	onoffinit = calculate_initial_unit_status(units, NG)
+    # Calculate initial unit status
+    onoffinit = calculate_initial_unit_status(units, NG)
 
-	# Define contingency size
-	contingency_size = define_contingency_size(units, NG)
+    # Define contingency size
+    contingency_size = define_contingency_size(units, NG)
 
-	NS_copy = (config_param.is_ConsiderMultiCUTs == 1) ? Int64(1) : NS
+    NS_copy = (config_param.is_ConsiderMultiCUTs == 1) ? Int64(1) : NS
 
-	# Add constraints using the unified modular activator
-	constrs = apply_scuc_constraints!(
-		scuc_subproblem,
-		NT,
-		NB,
-		NL,
-		NG,
-		ND,
-		NC,
-		ND2,
-		NS_copy,
-		NW,
-		units,
-		loads,
-		winds,
-		lines,
-		DataCentras,
-		psses,
-		config_param,
-		onoffinit,
-		gsdf,
-		contingency_size;
-		include_unit_operation = false,
-		include_binary_logic_for_storage = false,
-		include_frequency_constraints = false
-	)
+    # Add constraints using the unified modular activator
+    constrs = apply_scuc_constraints!(
+        scuc_subproblem,
+        NT,
+        NB,
+        NL,
+        NG,
+        ND,
+        NC,
+        ND2,
+        NS_copy,
+        NW,
+        units,
+        loads,
+        winds,
+        lines,
+        DataCentras,
+        psses,
+        config_param,
+        onoffinit,
+        gsdf,
+        contingency_size;
+        include_unit_operation = false,
+        include_binary_logic_for_storage = false,
+        include_frequency_constraints = false,
+    )
 
-	_winds_curt_constr, _loads_curt_const = constrs.curtailment[2], constrs.curtailment[3]
-	_units_minpower_constr, _units_maxpower_constr = constrs.generator_power[2], constrs.generator_power[3]
-	_sys_upreserve_constr, _sys_down_reserve_constr = constrs.reserve[2], constrs.reserve[3]
-	_sys_balance_constr = constrs.power_balance[2]
-	_units_upramp_constr, _units_downramp_constr = constrs.ramp[2], constrs.ramp[3]
-	_units_pwlpower_sum_constr, _units_pwlblock_upbound_constr, _units_pwlblock_dwbound_constr = constrs.pwl[2], constrs.pwl[3], constrs.pwl[4]
-	_transmissionline_powerflow_upbound_constr, _transmissionline_powerflow_downbound_constr = constrs.transmission[2], constrs.transmission[3]
-	# @show model_summary(scuc_subproblem)
+    _winds_curt_constr, _loads_curt_const = constrs.curtailment[2], constrs.curtailment[3]
+    _units_minpower_constr, _units_maxpower_constr = constrs.generator_power[2], constrs.generator_power[3]
+    _sys_upreserve_constr, _sys_down_reserve_constr = constrs.reserve[2], constrs.reserve[3]
+    _sys_balance_constr = constrs.power_balance[2]
+    _units_upramp_constr, _units_downramp_constr = constrs.ramp[2], constrs.ramp[3]
+    _units_pwlpower_sum_constr, _units_pwlblock_upbound_constr, _units_pwlblock_dwbound_constr = constrs.pwl[2], constrs.pwl[3], constrs.pwl[4]
+    _transmissionline_powerflow_upbound_constr, _transmissionline_powerflow_downbound_constr = constrs.transmission[2], constrs.transmission[3]
+    # @show model_summary(scuc_subproblem)
 
-	if get(ENV, "BENDERS_SHOW_MODEL_SUMMARY", "0") == "1"
-		println("\n")
-		@show scuc_subproblem
-		println("\n")
-	end
+    if get(ENV, "BENDERS_SHOW_MODEL_SUMMARY", "0") == "1"
+        println("\n")
+        @show scuc_subproblem
+        println("\n")
+    end
 
-	all_constraints_dict = Dict{Symbol, Any}()
+    all_constraints_dict = Dict{Symbol, Any}()
 
-	# all_constraints_dict[:key_units_minuptime_constr] = vec(_units_minuptime_constr)
-	# all_constraints_dict[:key_units_mindowntime_constr] = vec(_units_mindowntime_constr)
-	# all_constraints_dict[:key_units_init_stateslogic_consist_constr] = vec(_units_init_stateslogic_consist_constr)
-	# all_constraints_dict[:key_units_states_consist_constr] = vec(_units_states_consist_constr)
-	# all_constraints_dict[:key_units_init_shutup_cost_constr] = vec(_units_init_shutup_cost_constr)
-	# all_constraints_dict[:key_units_init_shutdown_cost_constr] = vec(_units_init_shutdown_cost_constr)  # corrected typo here
-	# all_constraints_dict[:key_units_shutup_cost_constr] = vec(collect(Iterators.flatten(_units_shutup_cost_constr.data)))
-	# all_constraints_dict[:key_units_shutdown_cost_constr] = vec(collect(Iterators.flatten(_units_shutdown_cost_constr.data)))
+    # all_constraints_dict[:key_units_minuptime_constr] = vec(_units_minuptime_constr)
+    # all_constraints_dict[:key_units_mindowntime_constr] = vec(_units_mindowntime_constr)
+    # all_constraints_dict[:key_units_init_stateslogic_consist_constr] = vec(_units_init_stateslogic_consist_constr)
+    # all_constraints_dict[:key_units_states_consist_constr] = vec(_units_states_consist_constr)
+    # all_constraints_dict[:key_units_init_shutup_cost_constr] = vec(_units_init_shutup_cost_constr)
+    # all_constraints_dict[:key_units_init_shutdown_cost_constr] = vec(_units_init_shutdown_cost_constr)  # corrected typo here
+    # all_constraints_dict[:key_units_shutup_cost_constr] = vec(collect(Iterators.flatten(_units_shutup_cost_constr.data)))
+    # all_constraints_dict[:key_units_shutdown_cost_constr] = vec(collect(Iterators.flatten(_units_shutdown_cost_constr.data)))
 
-	# DEBUG - Helper
-	all_constraints_dict[:key_winds_curt_constr] = vec(collect(Iterators.flatten(_winds_curt_constr)))
-	all_constraints_dict[:key_loads_curt_constr] = vec(collect(Iterators.flatten(_loads_curt_const)))
-	all_constraints_dict[:key_transmissionline_powerflow_upbound_constr] = vec(vcat(_transmissionline_powerflow_upbound_constr...))
-	all_constraints_dict[:key_transmissionline_powerflow_downbound_constr] = vec(vcat(_transmissionline_powerflow_downbound_constr...))
-	all_constraints_dict[:key_sys_down_reserve_constr] = vec(_sys_down_reserve_constr)
-	all_constraints_dict[:key_units_minpower_constr] = vec(collect(Iterators.flatten(_units_minpower_constr)))
-	all_constraints_dict[:key_units_maxpower_constr] = vec(collect(Iterators.flatten(_units_maxpower_constr)))
-	all_constraints_dict[:key_sys_upreserve_constr] = vec(_sys_upreserve_constr)
-	all_constraints_dict[:key_units_downramp_constr] = vec(collect(Iterators.flatten(_units_downramp_constr)))
-	all_constraints_dict[:key_balance_constr] = vec((_sys_balance_constr[1]))
-	all_constraints_dict[:key_units_pwlblock_upbound_constr] = vec(_units_pwlblock_upbound_constr)
-	all_constraints_dict[:key_units_pwlblock_dwbound_constr] = vec(_units_pwlblock_dwbound_constr)
-	all_constraints_dict[:key_units_pwlpower_sum_constr] = vec(_units_pwlpower_sum_constr)
-	all_constraints_dict[:key_units_upramp_constr] = vec(collect(Iterators.flatten(_units_upramp_constr)))
-	fields = [Symbol(string(k)[5:end]) for k in keys(all_constraints_dict) if startswith(string(k), "key_")]
-	sub_cons = build_constraints(; (f => all_constraints_dict[Symbol("key_", f)] for f in fields)...)
+    # DEBUG - Helper
+    all_constraints_dict[:key_winds_curt_constr] = vec(collect(Iterators.flatten(_winds_curt_constr)))
+    all_constraints_dict[:key_loads_curt_constr] = vec(collect(Iterators.flatten(_loads_curt_const)))
+    all_constraints_dict[:key_transmissionline_powerflow_upbound_constr] = vec(vcat(_transmissionline_powerflow_upbound_constr...))
+    all_constraints_dict[:key_transmissionline_powerflow_downbound_constr] = vec(vcat(_transmissionline_powerflow_downbound_constr...))
+    all_constraints_dict[:key_sys_down_reserve_constr] = vec(_sys_down_reserve_constr)
+    all_constraints_dict[:key_units_minpower_constr] = vec(collect(Iterators.flatten(_units_minpower_constr)))
+    all_constraints_dict[:key_units_maxpower_constr] = vec(collect(Iterators.flatten(_units_maxpower_constr)))
+    all_constraints_dict[:key_sys_upreserve_constr] = vec(_sys_upreserve_constr)
+    all_constraints_dict[:key_units_downramp_constr] = vec(collect(Iterators.flatten(_units_downramp_constr)))
+    all_constraints_dict[:key_balance_constr] = vec((_sys_balance_constr[1]))
+    all_constraints_dict[:key_units_pwlblock_upbound_constr] = vec(_units_pwlblock_upbound_constr)
+    all_constraints_dict[:key_units_pwlblock_dwbound_constr] = vec(_units_pwlblock_dwbound_constr)
+    all_constraints_dict[:key_units_pwlpower_sum_constr] = vec(_units_pwlpower_sum_constr)
+    all_constraints_dict[:key_units_upramp_constr] = vec(collect(Iterators.flatten(_units_upramp_constr)))
+    fields = [Symbol(string(k)[5:end]) for k in keys(all_constraints_dict) if startswith(string(k), "key_")]
+    sub_cons = build_constraints(; (f => all_constraints_dict[Symbol("key_", f)] for f in fields)...)
 
-	# NOTE - save the reformated constraints in a dictionary for easy access
-	all_constr_lessthan_sets, all_constr_greaterthan_sets, all_constr_equalto_sets = reorginze_constraints_sets(all_constraints_dict)
-	sub_reformat_cons = SCUCModel_reformat_constraints(all_constr_equalto_sets, all_constr_greaterthan_sets, all_constr_lessthan_sets)
+    # NOTE - save the reformated constraints in a dictionary for easy access
+    all_constr_lessthan_sets, all_constr_greaterthan_sets, all_constr_equalto_sets = reorginze_constraints_sets(all_constraints_dict)
+    sub_reformat_cons = SCUCModel_reformat_constraints(all_constr_equalto_sets, all_constr_greaterthan_sets, all_constr_lessthan_sets)
 
-	# NOTE - save all scuc model components in struct! SCUC_model
-	sub_scuc_struct = SCUC_Model(scuc_subproblem::Model, sub_vars::SCUCModel_decision_variables, sub_obj::SCUCModel_objective_function, sub_cons::SCUCModel_constraints, sub_reformat_cons::SCUCModel_reformat_constraints)
+    # NOTE - save all scuc model components in struct! SCUC_model
+    sub_scuc_struct = SCUC_Model(
+        scuc_subproblem::Model,
+        sub_vars::SCUCModel_decision_variables,
+        sub_obj::SCUCModel_objective_function,
+        sub_cons::SCUCModel_constraints,
+        sub_reformat_cons::SCUCModel_reformat_constraints,
+    )
 
-	return scuc_subproblem, sub_scuc_struct
+    return scuc_subproblem, sub_scuc_struct
 end
 
 function flatten_constraint_refs(constr)
-	if constr === nothing
-		return ConstraintRef[]
-	end
-	return vec(collect(Iterators.flatten(constr)))
+    if constr === nothing
+        return ConstraintRef[]
+    end
+    return vec(collect(Iterators.flatten(constr)))
 end
 
 function get_reorganize_constraints_struct(all_constraints_dict) #depreated
-	all_constr_lessthan_sets, all_constr_greaterthan_sets, all_constr_equalto_sets = reorginze_constraints_sets(all_constraints_dict)
+    all_constr_lessthan_sets, all_constr_greaterthan_sets, all_constr_equalto_sets = reorginze_constraints_sets(all_constraints_dict)
 
-	all_reorginzed_constraints_dict = Dict{Symbol, Dict{Symbol, Any}}()
-	all_reorginzed_constraints_dict[:LessThan] = collect(Iterators.flatten(all_constr_lessthan_sets))
-	all_reorginzed_constraints_dict[:GreaterThan] = collect(Iterators.flatten(all_constr_greaterthan_sets))
-	all_reorginzed_constraints_dict[:EqualTo] = collect(Iterators.flatten(all_constr_equalto_sets))
+    all_reorginzed_constraints_dict = Dict{Symbol, Dict{Symbol, Any}}()
+    all_reorginzed_constraints_dict[:LessThan] = collect(Iterators.flatten(all_constr_lessthan_sets))
+    all_reorginzed_constraints_dict[:GreaterThan] = collect(Iterators.flatten(all_constr_greaterthan_sets))
+    all_reorginzed_constraints_dict[:EqualTo] = collect(Iterators.flatten(all_constr_equalto_sets))
 
-	sub_reformat_cons = SCUCModel_reformat_constraints([vec(all_reorginzed_constraints_dict[key]) for key in [:EqualTo, :GreaterThan, :LessThan]]...)
-	return sub_reformat_cons
+    sub_reformat_cons = SCUCModel_reformat_constraints([vec(all_reorginzed_constraints_dict[key]) for key in [:EqualTo, :GreaterThan, :LessThan]]...)
+    return sub_reformat_cons
 end
 
 # Helper function to flatten constraints
@@ -213,68 +236,82 @@ end
 	the master problem during the cut generation phase.
 """
 
-function define_subproblem_decision_variables!(scuc_subproblem::Model, NT::Int64, NG::Int64, ND::Int64, NC::Int64, ND2::Int64, NS::Int64, NW::Int64, config_param::config)
-	# Multi-cut mode solves one scenario per cloned subproblem; single-cut mode
-	# keeps the aggregated stochastic recourse model.
-	NS_copy = (config_param.is_ConsiderMultiCUTs == 1) ? Int64(1) : NS
+function define_subproblem_decision_variables!(
+    scuc_subproblem::Model,
+    NT::Int64,
+    NG::Int64,
+    ND::Int64,
+    NC::Int64,
+    ND2::Int64,
+    NS::Int64,
+    NW::Int64,
+    config_param::config,
+)
+    # Multi-cut mode solves one scenario per cloned subproblem; single-cut mode
+    # keeps the aggregated stochastic recourse model.
+    NS_copy = (config_param.is_ConsiderMultiCUTs == 1) ? Int64(1) : NS
 
-	# --- Unit Status Variables (Fixed during subproblem solving) ---
-	@variable(scuc_subproblem, x[1:NG, 1:NT]) # Commitment
-	@variable(scuc_subproblem, u[1:NG, 1:NT]) # Startup
-	@variable(scuc_subproblem, v[1:NG, 1:NT]) # Shutdown
+    # --- Unit Status Variables (Fixed during subproblem solving) ---
+    @variable(scuc_subproblem, x[1:NG, 1:NT]) # Commitment
+    @variable(scuc_subproblem, u[1:NG, 1:NT]) # Startup
+    @variable(scuc_subproblem, v[1:NG, 1:NT]) # Shutdown
 
-	# --- Continuous Generation & Reserve Variables ---
-	# pg0: Base active power output; pgk: Output per cost-curve segment
-	@variable(scuc_subproblem, pg₀[1:(NG * NS_copy), 1:NT]>=0)
-	@variable(scuc_subproblem, pgₖ[1:(NG * NS_copy), 1:NT, 1:3]>=0)
+    # --- Continuous Generation & Reserve Variables ---
+    # pg0: Base active power output; pgk: Output per cost-curve segment
+    @variable(scuc_subproblem, pg₀[1:(NG * NS_copy), 1:NT]>=0)
+    @variable(scuc_subproblem, pgₖ[1:(NG * NS_copy), 1:NT, 1:3]>=0)
 
-	# Upward (sr+) and Downward (sr-) spinning reserves
-	@variable(scuc_subproblem, sr⁺[1:(NG * NS_copy), 1:NT]>=0)
-	@variable(scuc_subproblem, sr⁻[1:(NG * NS_copy), 1:NT]>=0)
-	@variable(scuc_subproblem, reserve_shortage⁺[1:NS_copy, 1:NT] >= 0)
-	@variable(scuc_subproblem, reserve_shortage⁻[1:NS_copy, 1:NT] >= 0)
-	@variable(scuc_subproblem, ramp_violation⁺[1:(NG * NS_copy), 1:NT] >= 0)
-	@variable(scuc_subproblem, ramp_violation⁻[1:(NG * NS_copy), 1:NT] >= 0)
+    # Upward (sr+) and Downward (sr-) spinning reserves
+    @variable(scuc_subproblem, sr⁺[1:(NG * NS_copy), 1:NT]>=0)
+    @variable(scuc_subproblem, sr⁻[1:(NG * NS_copy), 1:NT]>=0)
+    @variable(scuc_subproblem, reserve_shortage⁺[1:NS_copy, 1:NT] >= 0)
+    @variable(scuc_subproblem, reserve_shortage⁻[1:NS_copy, 1:NT] >= 0)
+    @variable(scuc_subproblem, ramp_violation⁺[1:(NG * NS_copy), 1:NT] >= 0)
+    @variable(scuc_subproblem, ramp_violation⁻[1:(NG * NS_copy), 1:NT] >= 0)
 
-	# Load shedding (Δpd) and Wind curtailment (Δpw) penalties
-	@variable(scuc_subproblem, Δpd[1:(ND * NS_copy), 1:NT]>=0)
-	@variable(scuc_subproblem, Δpw[1:(NW * NS_copy), 1:NT]>=0)
+    # Load shedding (Δpd) and Wind curtailment (Δpw) penalties
+    @variable(scuc_subproblem, Δpd[1:(ND * NS_copy), 1:NT]>=0)
+    @variable(scuc_subproblem, Δpw[1:(NW * NS_copy), 1:NT]>=0)
 
-	# --- Energy Storage & Flexible Resource Variables ---
-	if config_param.is_ConsiderBESS == 1
-		@variable(scuc_subproblem, 0 <= κ⁺[1:(NC * NS_copy), 1:NT] <= 1) # Charge status linked to master binary
-		@variable(scuc_subproblem, 0 <= κ⁻[1:(NC * NS_copy), 1:NT] <= 1) # Discharge status linked to master binary
-		@variable(scuc_subproblem, pc⁺[1:(NC * NS_copy), 1:NT]>=0)# Charge power
-		@variable(scuc_subproblem, pc⁻[1:(NC * NS_copy), 1:NT]>=0)# Discharge power
-		@variable(scuc_subproblem, qc[1:(NC * NS_copy), 1:NT]>=0) # Cumulative energy (SoC)
-		@variable(scuc_subproblem, pss_sumchargeenergy[1:(NC * NS_copy), 1:1]>=0)
+    # --- Energy Storage & Flexible Resource Variables ---
+    if config_param.is_ConsiderBESS == 1
+        @variable(scuc_subproblem, 0 <= κ⁺[1:(NC * NS_copy), 1:NT] <= 1) # Charge status linked to master binary
+        @variable(scuc_subproblem, 0 <= κ⁻[1:(NC * NS_copy), 1:NT] <= 1) # Discharge status linked to master binary
+        @variable(scuc_subproblem, pc⁺[1:(NC * NS_copy), 1:NT]>=0)# Charge power
+        @variable(scuc_subproblem, pc⁻[1:(NC * NS_copy), 1:NT]>=0)# Discharge power
+        @variable(scuc_subproblem, qc[1:(NC * NS_copy), 1:NT]>=0) # Cumulative energy (SoC)
+        @variable(scuc_subproblem, pss_sumchargeenergy[1:(NC * NS_copy), 1:1]>=0)
 
-		# Continuous copies of master binary flags. They are fixed by linking constraints.
-		@variable(scuc_subproblem, 0 <= α[1:(NS_copy * NC), 1:NT] <= 1)
-		@variable(scuc_subproblem, 0 <= β[1:(NS_copy * NC), 1:NT] <= 1)
-	else
-		κ⁺, κ⁻, pc⁺, pc⁻, qc = Matrix{VariableRef}(undef, 0, 0), Matrix{VariableRef}(undef, 0, 0), Matrix{VariableRef}(undef, 0, 0), Matrix{VariableRef}(undef, 0, 0), Matrix{VariableRef}(undef, 0, 0)
-		pss_sumchargeenergy = Matrix{VariableRef}(undef, 0, 0)
-		α, β = Matrix{VariableRef}(undef, 0, 0), Matrix{VariableRef}(undef, 0, 0)
-	end
+        # Continuous copies of master binary flags. They are fixed by linking constraints.
+        @variable(scuc_subproblem, 0 <= α[1:(NS_copy * NC), 1:NT] <= 1)
+        @variable(scuc_subproblem, 0 <= β[1:(NS_copy * NC), 1:NT] <= 1)
+    else
+        κ⁺, κ⁻, pc⁺, pc⁻, qc = Matrix{VariableRef}(undef, 0, 0),
+        Matrix{VariableRef}(undef, 0, 0),
+        Matrix{VariableRef}(undef, 0, 0),
+        Matrix{VariableRef}(undef, 0, 0),
+        Matrix{VariableRef}(undef, 0, 0)
+        pss_sumchargeenergy = Matrix{VariableRef}(undef, 0, 0)
+        α, β = Matrix{VariableRef}(undef, 0, 0), Matrix{VariableRef}(undef, 0, 0)
+    end
 
-	if config_param.is_ConsiderDataCentra == 1
-		# Benders subproblems must remain LPs for dual-based cut generation. The
-		# benchmark and CCG paths use binary response weights; here we solve the
-		# convex relaxation of the same response grid.
-		define_data_center_variables!(scuc_subproblem, NT, ND2, NS_copy; binary_response_weights = false)
-	end
+    if config_param.is_ConsiderDataCentra == 1
+        # Benders subproblems must remain LPs for dual-based cut generation. The
+        # benchmark and CCG paths use binary response weights; here we solve the
+        # convex relaxation of the same response grid.
+        define_data_center_variables!(scuc_subproblem, NT, ND2, NS_copy; binary_response_weights = false)
+    end
 
-	# # Frequency control related variables (assuming these might be needed based on later constraints)
-	# # Check if these are actually used/defined in the constraints file later
-	# if config_param.is_ConsiderFrequencyControl == 1 # Assuming flag exists
-	# 	@variable(scuc_subproblem, Δf_nadir[1:NS]>=0)
-	# 	@variable(scuc_subproblem, Δf_qss[1:NS]>=0)
-	# 	@variable(scuc_subproblem, Δp_imbalance[1:NS]>=0) # Placeholder, adjust as needed based on full constraints
-	# end
+    # # Frequency control related variables (assuming these might be needed based on later constraints)
+    # # Check if these are actually used/defined in the constraints file later
+    # if config_param.is_ConsiderFrequencyControl == 1 # Assuming flag exists
+    # 	@variable(scuc_subproblem, Δf_nadir[1:NS]>=0)
+    # 	@variable(scuc_subproblem, Δf_qss[1:NS]>=0)
+    # 	@variable(scuc_subproblem, Δp_imbalance[1:NS]>=0) # Placeholder, adjust as needed based on full constraints
+    # end
 
-	# println("\t Variables defined.")
-	return scuc_subproblem, x, u, v, pg₀, pgₖ, sr⁺, sr⁻, Δpd, Δpw, κ⁺, κ⁻, pc⁺, pc⁻, qc, pss_sumchargeenergy, α, β
+    # println("\t Variables defined.")
+    return scuc_subproblem, x, u, v, pg₀, pgₖ, sr⁺, sr⁻, Δpd, Δpw, κ⁺, κ⁻, pc⁺, pc⁻, qc, pss_sumchargeenergy, α, β
 end
 
 """
@@ -299,90 +336,103 @@ end
 
 """
 
-function set_subproblem_objective_economic!(scuc_subproblem::Model, NT::Int64, NG::Int64, ND::Int64, NW::Int64, NS::Int64, units::unit, config_param::config, scenarios_prob::Float64)
-	# Input validation
-	@assert NT>0 "Number of time periods (NT) must be positive."
-	@assert NG>0 "Number of generators (NG) must be positive."
-	@assert ND>=0 "Number of loads (ND) must be non-negative."
-	@assert NW>=0 "Number of wind power plants (NW) must be non-negative."
-	@assert NS>0 "Number of scenarios (NS) must be positive."
-	@assert scenarios_prob >= 0&&scenarios_prob <= 1 "Scenario probability must be between 0 and 1."
+function set_subproblem_objective_economic!(
+    scuc_subproblem::Model,
+    NT::Int64,
+    NG::Int64,
+    ND::Int64,
+    NW::Int64,
+    NS::Int64,
+    units::unit,
+    config_param::config,
+    scenarios_prob::Float64,
+)
+    # Input validation
+    @assert NT>0 "Number of time periods (NT) must be positive."
+    @assert NG>0 "Number of generators (NG) must be positive."
+    @assert ND>=0 "Number of loads (ND) must be non-negative."
+    @assert NW>=0 "Number of wind power plants (NW) must be non-negative."
+    @assert NS>0 "Number of scenarios (NS) must be positive."
+    @assert scenarios_prob >= 0&&scenarios_prob <= 1 "Scenario probability must be between 0 and 1."
 
-	# Cost parameters
-	c₀ = config_param.is_CoalPrice  # Base cost of coal
+    # Cost parameters
+    c₀ = config_param.is_CoalPrice  # Base cost of coal
 
-	# Penalty coefficients for load and wind curtailment
-	load_curtailment_penalty = config_param.is_LoadsCuttingCoefficient * 1e10
-	wind_curtailment_penalty = config_param.is_WindsCuttingCoefficient * 1e0
-	reserve_shortage_penalty = max(load_curtailment_penalty / 100, c₀ * 1e6)
+    # Penalty coefficients for load and wind curtailment
+    load_curtailment_penalty = config_param.is_LoadsCuttingCoefficient * 1e10
+    wind_curtailment_penalty = config_param.is_WindsCuttingCoefficient * 1e0
+    reserve_shortage_penalty = max(load_curtailment_penalty / 100, c₀ * 1e6)
 
-	NS_copy = (config_param.is_ConsiderMultiCUTs == 1) ? Int64(1) : NS
-	pₛ = scenarios_prob
+    NS_copy = (config_param.is_ConsiderMultiCUTs == 1) ? Int64(1) : NS
+    pₛ = scenarios_prob
 
-	# Constants for reserve cost (can be adjusted based on market conditions)
-	RESERVE_COST_POSITIVE = 2 * c₀
-	RESERVE_COST_NEGATIVE = 2 * c₀
+    # Constants for reserve cost (can be adjusted based on market conditions)
+    RESERVE_COST_POSITIVE = 2 * c₀
+    RESERVE_COST_NEGATIVE = 2 * c₀
 
-	ρ⁺ = RESERVE_COST_POSITIVE
-	ρ⁻ = RESERVE_COST_NEGATIVE
+    ρ⁺ = RESERVE_COST_POSITIVE
+    ρ⁻ = RESERVE_COST_NEGATIVE
 
-	x = scuc_subproblem[:x]
-	# su₀ = scuc_subproblem[:su₀]
-	# sd₀ = scuc_subproblem[:sd₀]
-	pgₖ = scuc_subproblem[:pgₖ]
-	sr⁺ = scuc_subproblem[:sr⁺]
-	sr⁻ = scuc_subproblem[:sr⁻]
-	reserve_shortage⁺ = scuc_subproblem[:reserve_shortage⁺]
-	reserve_shortage⁻ = scuc_subproblem[:reserve_shortage⁻]
-	ramp_violation⁺ = scuc_subproblem[:ramp_violation⁺]
-	ramp_violation⁻ = scuc_subproblem[:ramp_violation⁻]
-	Δpd = scuc_subproblem[:Δpd]
-	Δpw = scuc_subproblem[:Δpw]
+    x = scuc_subproblem[:x]
+    # su₀ = scuc_subproblem[:su₀]
+    # sd₀ = scuc_subproblem[:sd₀]
+    pgₖ = scuc_subproblem[:pgₖ]
+    sr⁺ = scuc_subproblem[:sr⁺]
+    sr⁻ = scuc_subproblem[:sr⁻]
+    reserve_shortage⁺ = scuc_subproblem[:reserve_shortage⁺]
+    reserve_shortage⁻ = scuc_subproblem[:reserve_shortage⁻]
+    ramp_violation⁺ = scuc_subproblem[:ramp_violation⁺]
+    ramp_violation⁻ = scuc_subproblem[:ramp_violation⁻]
+    Δpd = scuc_subproblem[:Δpd]
+    Δpw = scuc_subproblem[:Δpw]
 
-	# Linearize fuel cost curve (assuming function is in linearization.jl)
-	refcost, eachslope = linearizationfuelcurve(units, NG)
+    # Linearize fuel cost curve (assuming function is in linearization.jl)
+    refcost, eachslope = linearizationfuelcurve(units, NG)
 
-	obj = @objective(
-		scuc_subproblem,
-		Min,
-		# sum(sum(su₀[i, t] + sd₀[i, t] for i in 1:NG) for t in 1:NT)+
-		pₛ *
-		c₀ *
-		(
-			sum(sum(sum(sum(pgₖ[i + (s - 1) * NG, t, :] .* eachslope[:, i] for t in 1:NT)) for s in 1:NS_copy) for i in 1:NG) +
-			sum(sum(sum(x[:, t] .* refcost[:, 1] for t in 1:NT)) for s in 1:NS_copy) +
-			sum(sum(sum(ρ⁺ * sr⁺[i + (s - 1) * NG, t] + ρ⁻ * sr⁻[i + (s - 1) * NG, t] for i in 1:NG) for t in 1:NT) for s in 1:NS_copy)
-		)+pₛ*reserve_shortage_penalty*sum(sum(reserve_shortage⁺[s, t] + reserve_shortage⁻[s, t] for t in 1:NT) for s in 1:NS_copy)+pₛ*reserve_shortage_penalty*sum(sum(sum(ramp_violation⁺[(1 + (s - 1) * NG):(s * NG), t] + ramp_violation⁻[(1 + (s - 1) * NG):(s * NG), t]) for t in 1:NT) for s in 1:NS_copy)+pₛ*load_curtailment_penalty*sum(sum(sum(Δpd[(1 + (s - 1) * ND):(s * ND), t]) for t in 1:NT) for s in 1:NS_copy)+pₛ*wind_curtailment_penalty*sum(sum(sum(Δpw[
-			(1 + (s - 1) * NW):(s * NW), t
-		]) for t in 1:NT) for s in 1:NS_copy)
-	)
+    obj = @objective(
+        scuc_subproblem,
+        Min,
+        # sum(sum(su₀[i, t] + sd₀[i, t] for i in 1:NG) for t in 1:NT)+
+        pₛ *
+        c₀ *
+        (
+            sum(sum(sum(sum(pgₖ[i + (s - 1) * NG, t, :] .* eachslope[:, i] for t in 1:NT)) for s in 1:NS_copy) for i in 1:NG) +
+            sum(sum(sum(x[:, t] .* refcost[:, 1] for t in 1:NT)) for s in 1:NS_copy) +
+            sum(sum(sum(ρ⁺ * sr⁺[i + (s - 1) * NG, t] + ρ⁻ * sr⁻[i + (s - 1) * NG, t] for i in 1:NG) for t in 1:NT) for s in 1:NS_copy)
+        )+pₛ*reserve_shortage_penalty*sum(sum(reserve_shortage⁺[s, t] + reserve_shortage⁻[s, t] for t in 1:NT) for s in 1:NS_copy)+pₛ*reserve_shortage_penalty*sum(
+            sum(sum(ramp_violation⁺[(1 + (s - 1) * NG):(s * NG), t] + ramp_violation⁻[(1 + (s - 1) * NG):(s * NG), t]) for t in 1:NT) for
+            s in 1:NS_copy
+        )+pₛ*load_curtailment_penalty*sum(sum(sum(Δpd[(1 + (s - 1) * ND):(s * ND), t]) for t in 1:NT) for s in 1:NS_copy)+pₛ*wind_curtailment_penalty*sum(
+            sum(sum(Δpw[(1 + (s - 1) * NW):(s * NW), t]) for t in 1:NT) for s in 1:NS_copy
+        )
+    )
 
-	# @objective(scuc_subproblem,
-	# 	Min,
-	# 	sum(sum(su₀[i, t] + sd₀[i, t] for i in 1:NG) for t in 1:NT) +
-	# 		pₛ * c₀ *
-	# 		(
-	# 			sum(
-	# 				sum(
-	# 					sum(sum(pgₖ[i + (s - 1) * NG, t, :] .* eachslope[:, i] for t in 1:NT))
-	# 					for s in 1:NS
-	# 				) for i in 1:NG
-	# 			) +
-	# 			sum(sum(sum(x[:, t] .* refcost[:, 1] for t in 1:NT)) for s in 1:NS) +
-	# 			sum(
-	# 				sum(
-	# 					sum(
-	# 						ρ⁺ * sr⁺[i + (s - 1) * NG, t] + ρ⁻ * sr⁻[i + (s - 1) * NG, t]
-	# 						for i in 1:NG
-	# 					) for t in 1:NT
-	# 				) for s in 1:NS
-	# 			)
-	# 		) +
-	# 		pₛ * load_curtailment_penalty * sum(sum(sum(Δpd[(1 + (s - 1) * ND):(s * ND), t]) for t in 1:NT) for s in 1:NS) +
-	# 		pₛ * wind_curtailment_penalty * sum(sum(sum(Δpw[(1 + (s - 1) * NW):(s * NW), t]) for t in 1:NT) for s in 1:NS))
-	# println("objective_function")
-	println("\t LP_type subproblem objective_function \t\t\t\t\t done")
+    # @objective(scuc_subproblem,
+    # 	Min,
+    # 	sum(sum(su₀[i, t] + sd₀[i, t] for i in 1:NG) for t in 1:NT) +
+    # 		pₛ * c₀ *
+    # 		(
+    # 			sum(
+    # 				sum(
+    # 					sum(sum(pgₖ[i + (s - 1) * NG, t, :] .* eachslope[:, i] for t in 1:NT))
+    # 					for s in 1:NS
+    # 				) for i in 1:NG
+    # 			) +
+    # 			sum(sum(sum(x[:, t] .* refcost[:, 1] for t in 1:NT)) for s in 1:NS) +
+    # 			sum(
+    # 				sum(
+    # 					sum(
+    # 						ρ⁺ * sr⁺[i + (s - 1) * NG, t] + ρ⁻ * sr⁻[i + (s - 1) * NG, t]
+    # 						for i in 1:NG
+    # 					) for t in 1:NT
+    # 				) for s in 1:NS
+    # 			)
+    # 		) +
+    # 		pₛ * load_curtailment_penalty * sum(sum(sum(Δpd[(1 + (s - 1) * ND):(s * ND), t]) for t in 1:NT) for s in 1:NS) +
+    # 		pₛ * wind_curtailment_penalty * sum(sum(sum(Δpw[(1 + (s - 1) * NW):(s * NW), t]) for t in 1:NT) for s in 1:NS))
+    # println("objective_function")
+    println("\t LP_type subproblem objective_function \t\t\t\t\t done")
 
-	println("Objective function has been set.")
-	return scuc_subproblem, obj
+    println("Objective function has been set.")
+    return scuc_subproblem, obj
 end

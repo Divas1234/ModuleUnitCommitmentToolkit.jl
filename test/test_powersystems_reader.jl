@@ -18,10 +18,10 @@
         bustype = ACBusTypes.PQ,
         angle = 0.0,
         magnitude = 1.0,
-        voltage_limits = (min=0.95, max=1.05),
+        voltage_limits = (min = 0.95, max = 1.05),
         base_voltage = 138.0,
         area = nothing,
-        load_zone = nothing
+        load_zone = nothing,
     )
     add_component!(sys, bus1; skip_validation = true)
 
@@ -32,10 +32,10 @@
         bustype = ACBusTypes.PV,
         angle = 0.0,
         magnitude = 1.0,
-        voltage_limits = (min=0.95, max=1.05),
+        voltage_limits = (min = 0.95, max = 1.05),
         base_voltage = 138.0,
         area = nothing,
-        load_zone = nothing
+        load_zone = nothing,
     )
     add_component!(sys, bus2; skip_validation = true)
 
@@ -47,15 +47,15 @@
         active_power = 20.0,
         reactive_power = 10.0,
         rating = 60.0,
-        active_power_limits = (min=10.0, max=50.0),
-        reactive_power_limits = (min=-20.0, max=20.0),
-        ramp_limits = (up=15.0, down=15.0),
+        active_power_limits = (min = 10.0, max = 50.0),
+        reactive_power_limits = (min = -20.0, max = 20.0),
+        ramp_limits = (up = 15.0, down = 15.0),
         operation_cost = ThermalGenerationCost(nothing),
         base_power = 100.0,
-        time_limits = (up=4.0, down=4.0),
+        time_limits = (up = 4.0, down = 4.0),
         must_run = false,
         prime_mover_type = PrimeMovers.ST,
-        fuel = ThermalFuels.COAL
+        fuel = ThermalFuels.COAL,
     )
     add_component!(sys, gen1; skip_validation = true)
 
@@ -67,10 +67,10 @@
         arc = Arc(bus1, bus2),
         r = 0.01,
         x = 0.1,
-        b = (from=0.0, to=0.0),
-        g = (from=0.0, to=0.0),
+        b = (from = 0.0, to = 0.0),
+        g = (from = 0.0, to = 0.0),
         rating = 40.0,
-        angle_limits = (min=-1.5, max=1.5)
+        angle_limits = (min = -1.5, max = 1.5),
     )
     add_component!(sys, line1; skip_validation = true)
 
@@ -82,7 +82,7 @@
         reactive_power = 15.0,
         base_power = 100.0,
         max_active_power = 30.0,
-        max_reactive_power = 18.0
+        max_reactive_power = 18.0,
     )
     add_component!(sys, load1; skip_validation = true)
 
@@ -93,16 +93,16 @@
         prime_mover_type = PrimeMovers.BA,
         storage_technology_type = StorageTech.OTHER_CHEM,
         storage_capacity = 20.0,
-        storage_level_limits = (min=2.0, max=20.0),
+        storage_level_limits = (min = 2.0, max = 20.0),
         initial_storage_capacity_level = 10.0,
         rating = 10.0,
         active_power = 0.0,
-        input_active_power_limits = (min=0.0, max=10.0),
-        output_active_power_limits = (min=0.0, max=10.0),
-        efficiency = (in=0.9, out=0.9),
+        input_active_power_limits = (min = 0.0, max = 10.0),
+        output_active_power_limits = (min = 0.0, max = 10.0),
+        efficiency = (in = 0.9, out = 0.9),
         reactive_power = 0.0,
         reactive_power_limits = nothing,
-        base_power = 100.0
+        base_power = 100.0,
     )
     add_component!(sys, storage1; skip_validation = true)
 
@@ -117,7 +117,7 @@
         reactive_power_limits = nothing,
         power_factor = 1.0,
         base_power = 100.0,
-        operation_cost = RenewableGenerationCost(nothing)
+        operation_cost = RenewableGenerationCost(nothing),
     )
     add_component!(sys, wind1; skip_validation = true)
 
@@ -148,7 +148,7 @@
         ramp_up = [15.0],
         ramp_down = [15.0],
         startup_ramp = [20.0],
-        shutdown_ramp = [20.0]
+        shutdown_ramp = [20.0],
     )
     CSV.write(joinpath(temp_dir, "thermal_uc.csv"), df_uc)
 
@@ -161,26 +161,16 @@
         F = [0.3, 0.0],
         T = [0.2, 0.0],
         R = [0.05, 0.1],
-        Mw = [0.0, 1.0]
+        Mw = [0.0, 1.0],
     )
     CSV.write(joinpath(temp_dir, "frequency_parameters.csv"), df_freq)
 
     # Storage extensions
-    df_storage = DataFrame(
-        storage_name = ["Storage1"],
-        initial_soc = [8.0],
-        charge_ramp = [5.0],
-        discharge_ramp = [5.0],
-        self_discharge = [0.001]
-    )
+    df_storage = DataFrame(storage_name = ["Storage1"], initial_soc = [8.0], charge_ramp = [5.0], discharge_ramp = [5.0], self_discharge = [0.001])
     CSV.write(joinpath(temp_dir, "storage_uc.csv"), df_storage)
 
     # Renewable profiles
-    df_ren = DataFrame(
-        generator_name = repeat(["Wind1"], 24),
-        time = collect(1:24),
-        generation = fill(10.0, 24)
-    )
+    df_ren = DataFrame(generator_name = repeat(["Wind1"], 24), time = collect(1:24), generation = fill(10.0, 24))
     CSV.write(joinpath(temp_dir, "renewable_profiles.csv"), df_ren)
 
     # Data center extensions
@@ -193,24 +183,16 @@
         idale = [1.0],
         sv_constant = [0.1],
         λ = [10.0],
-        μ = [20.0]
+        μ = [20.0],
     )
     CSV.write(joinpath(temp_dir, "data_centers.csv"), df_dc)
 
     # Data center workloads
-    df_dc_wl = DataFrame(
-        data_center_name = repeat(["DC1"], 24),
-        time = collect(1:24),
-        workload = fill(0.5, 24)
-    )
+    df_dc_wl = DataFrame(data_center_name = repeat(["DC1"], 24), time = collect(1:24), workload = fill(0.5, 24))
     CSV.write(joinpath(temp_dir, "data_center_workloads.csv"), df_dc_wl)
 
     # Enable all relevant sub-components in env config for the test scope
-    withenv(
-        "MODEL_CONSIDER_BESS" => "1",
-        "MODEL_CONSIDER_FREQUENCY_CONTROL" => "1",
-        "MODEL_CONSIDER_DATA_CENTER" => "1"
-    ) do
+    withenv("MODEL_CONSIDER_BESS" => "1", "MODEL_CONSIDER_FREQUENCY_CONTROL" => "1", "MODEL_CONSIDER_DATA_CENTER" => "1") do
         # 3. Call the adapter
         config_param, units, lines, loads, stroges, winds, NB, NG, NL, ND, NT, NC, ND2, datacentra_data =
             read_powersystems_case(sys, temp_dir; scenario_limit = 1)
