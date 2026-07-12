@@ -44,7 +44,33 @@ frequency_params = Dict(
 )
 ```
 
-### B. Data Center Configurations
+### B. Modular Parameter Generation for Large Scale Systems
+For large test networks (e.g., IEEE 118-bus or 300-bus systems) with dozens of generators, manually writing parameter dictionaries is impractical. 
+
+The toolkit provides a modular helper function `generate_frequency_parameters` which automatically constructs a complete parameters dictionary for all conventional generators in the `System` based on their **fuel type** and **name prefix heuristics**:
+
+```julia
+# Automatically generate baseline parameters for all units in a large system
+# 自动为大规模系统中的所有发电机组生成调频参数字典
+frequency_params = generate_frequency_parameters(sys)
+
+# Optional: Apply specific manual overrides for key generators
+# 用户可提供特定关键机组的自定义参数覆盖
+custom_overrides = Dict(
+    "Gen-Coal-1" => (H = 6.5, D = 0.08, K = 0.95, F = 0.3, T = 7.0, R = 0.05),
+    "Gen-Nuclear-3" => (H = 8.0, D = 0.10, K = 0.0, F = 0.0, T = 0.0, R = 1.0)
+)
+frequency_params = generate_frequency_parameters(sys; overrides = custom_overrides)
+```
+
+The underlying templates used by the generator are physically categorized as follows:
+- **Coal / Steam Turbine (`:coal`)**: $H = 6.0, D = 0.08, K = 0.95, F = 0.30, T = 7.0, R = 0.05$
+- **Gas Turbine (`:gas`)**: $H = 4.0, D = 0.05, K = 0.90, F = 0.15, T = 5.0, R = 0.04$
+- **Hydro (`:hydro`)**: $H = 3.0, D = 0.10, K = 1.00, F = 0.50, T = 4.0, R = 0.05$
+- **Nuclear (`:nuclear`)**: $H = 7.0, D = 0.10, K = 0.00, F = 0.00, T = 0.0, R = 1.00$ (No primary response)
+- **Others / Default (`:default`)**: $H = 5.0, D = 0.00, K = 0.00, F = 0.00, T = 0.0, R = 1.00$ (No governor)
+
+### C. Data Center Configurations
 Data centers can be mounted on network buses. Their workload, compute capacity, and active power limits are defined as:
 - `bus`: The network bus index where the data center is located.
 - `p_max`: Maximum active power demand (MW).
