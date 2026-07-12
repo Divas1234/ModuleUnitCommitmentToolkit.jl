@@ -154,14 +154,3 @@ function add_power_balance_constraints!(scuc::Model, NT, NG, ND, NC, NW, NS, loa
     println("\t constraints: 7) power balance constraints\t\t\t\t done")
     return scuc, sys_balance_constr
 end
-
-"""
-`check_var_exists(model::Model, name::String)`
-
-Utility function to check if a variable with a specific name has been registered
-in the JuMP model.
-"""
-
-function check_var_exists(model::Model, name::String)
-    return haskey(JuMP.object_dictionary(model), Symbol(name))
-end

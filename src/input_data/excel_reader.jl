@@ -1,7 +1,8 @@
 using XLSX
 
 function unit_commitment_data_file()
-    return get(ENV, "MODULE_UC_DATA_FILE", joinpath(pwd(), "data", "data.xlsx"))
+    default_path = normpath(joinpath(@__DIR__, "..", "..", "data", "data.xlsx"))
+    return get(ENV, "MODULE_UC_DATA_FILE", default_path)
 end
 
 """
