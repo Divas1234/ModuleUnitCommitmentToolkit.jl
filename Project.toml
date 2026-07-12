@@ -41,9 +41,9 @@ XLSX = "fdbf4ff8-1666-58a4-91e7-1b58723a45e0"
 
 [compat]
 DataStructures = "0.19.5"
-Dates = "1.11.0"
+Dates = "1"
 JLD2 = "0.6.4"
-Pkg = "1.12.1"
+Pkg = "1"
 PowerSystemCaseBuilder = "2.4.0"
 PowerSystems = "5.11.1"
 
