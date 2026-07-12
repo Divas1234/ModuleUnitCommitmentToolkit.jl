@@ -1,7 +1,6 @@
-using Pkg
-
 const PROJECT_ROOT = normpath(joinpath(@__DIR__, ".."))
 if get(ENV, "MODULE_UC_TEST_ACTIVATE_LOCAL_PROJECT", "0") in ("1", "true", "yes")
+    using Pkg
     Pkg.activate(joinpath(PROJECT_ROOT, ".pkg"))
 end
 

@@ -1,34 +1,3 @@
-using Pkg
-
-neededPackages = [
-    :Revise,
-    :JuMP,
-    :MathOptInterface,
-    :Gurobi,
-    :Test,
-    :DelimitedFiles,
-    :LaTeXStrings,
-    :Plots,
-    :JLD2,
-    :DataFrames,
-    :Clustering,
-    :XLSX,
-    :StatsPlots,
-    :Distributions,
-    :CSV,
-    :Random,
-    :DataFrames,
-    :MultivariateStats,
-    :UnicodePlots,
-    :DataStructures,
-]
-
-# Make sure all needed Pkg's are ready to go
-for neededpackage in neededPackages
-    (String(neededpackage) in keys(Pkg.project().dependencies)) || Pkg.add(String(neededpackage))
-    # @eval using $neededpackage
-end
-
 using Revise,
     JuMP,
     MathOptInterface,
