@@ -109,26 +109,7 @@ withenv(
     # ----------------------------------------------------------------------
     println("\n[Method B] Solving via Benders Decomposition...")
     # 1. Initialize Benders Master and Subproblem models
-    scuc_masterproblem,
-    scuc_subproblem,
-    master_model_struct,
-    sub_model_struct,
-    batch_sub_model_struct_dic,
-    config_param,
-    units,
-    lines,
-    loads,
-    winds,
-    psses,
-    NB,
-    NG,
-    NL,
-    ND,
-    NS,
-    NT,
-    NC,
-    ND2,
-    DataCentras = main(;
+    setup = main(;
         scenario_limit = 3,
         use_powersystems = true,
         sys = sys,
@@ -136,6 +117,12 @@ withenv(
         data_centers = data_centers,
         horizon = 24,
     )
+    scuc_masterproblem, scuc_subproblem = setup.master_model, setup.sub_model
+    master_model_struct = setup.master_struct
+    batch_sub_model_struct_dic = setup.batch_subproblems
+    config_param, units, loads, winds = setup.config_param, setup.units, setup.loads, setup.winds
+    NB, NG, NL, ND, NS, NT, NC, ND2, DataCentras = setup.NB, setup.NG, setup.NL, setup.ND, setup.NS, setup.NT, setup.NC, setup.ND2, setup.DataCentras
+    psses = setup.psses
 
     # 2. Build auxiliary Jensen cuts structure if multi-cut mode is active
     NW = Int64(length(winds.index))

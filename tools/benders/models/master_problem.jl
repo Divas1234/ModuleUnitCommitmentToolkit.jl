@@ -1,5 +1,5 @@
-# include(joinpath(pwd(), "src", "environment_config.jl"))
-include(joinpath(pwd(), "src", "unit_commitment", "unit_commitment_model.jl"))
+# Environment configuration is loaded by the Benders setup entry point.
+include(joinpath(@__DIR__, "..", "..", "..", "src", "unit_commitment", "unit_commitment_model.jl"))
 
 """
 `bd_masterfunction(...)`

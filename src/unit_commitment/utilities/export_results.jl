@@ -1,5 +1,8 @@
 using Dates
 
+const UC_PROJECT_ROOT = normpath(joinpath(@__DIR__, "..", "..", ".."))
+const DEFAULT_UC_OUTPUT_DIR = joinpath(UC_PROJECT_ROOT, "output")
+
 """
 	exported_scheduling_cost(...)
 
@@ -80,12 +83,17 @@ function exported_scheduling_cost(
     return cost_summary
 end
 
+function _resolve_uc_output_path(path)
+    candidate = expanduser(String(path))
+    return isabspath(candidate) ? normpath(candidate) : normpath(joinpath(UC_PROJECT_ROOT, candidate))
+end
+
+function uc_output_root()
+    return _resolve_uc_output_path(get(ENV, "MODULE_UC_OUTPUT_DIR", DEFAULT_UC_OUTPUT_DIR))
+end
+
 function uc_output_dir(output_dir_override = nothing)
-    output_dir = if output_dir_override === nothing
-        get(ENV, "MODULE_UC_OUTPUT_DIR", joinpath(pwd(), "output"))
-    else
-        String(output_dir_override)
-    end
+    output_dir = output_dir_override === nothing ? uc_output_root() : _resolve_uc_output_path(output_dir_override)
     mkpath(output_dir)
     return output_dir
 end
@@ -95,7 +103,7 @@ function uc_run_id()
 end
 
 function uc_algorithm_run_dir(algorithm_name::AbstractString; run_id::AbstractString = uc_run_id())
-    return joinpath(pwd(), "output", algorithm_name, run_id)
+    return joinpath(uc_output_dir(), algorithm_name, run_id)
 end
 
 function uc_scheduling_output_dir(algorithm_name::AbstractString; run_id::AbstractString = uc_run_id())
@@ -128,12 +136,13 @@ end
 function export_solved_uc_model_results(
     model,
     data;
-    output_dir::AbstractString = joinpath(pwd(), "output"),
+    output_dir::Union{Nothing,AbstractString} = nothing,
     winds = data.winds,
     NS::Int64 = Int64(winds.scenarios_nums),
     scenarios_prob = 1.0 / NS,
     file_prefix::AbstractString = "",
 )
+    resolved_output_dir = output_dir === nothing ? uc_output_root() : String(output_dir)
     refcost, eachslope = linearizationfuelcurve(data.units, data.NG)
     config_param = data.config_param
 
@@ -167,7 +176,7 @@ function export_solved_uc_model_results(
         data.NT, data.NB, data.NG, data.ND, data.NC, data.ND2, data.units, data.loads,
         winds, data.lines, data.DataCentras, config_param, scenarios_prob, su_cost, sd_cost, pgₖ, pg₀, x₀, u₀, v₀, seq_sr⁺, seq_sr⁻, pᵨ, pᵩ, eachslope, refcost,
         pss_charge_state⁺, pss_charge_state⁻, pss_charge_p⁺, pss_charge_p⁻, pss_Qc,
-        dc_p_res, dc_fv²_res, dc_fv²λ_res, dc_fv²_plus_res, dc_fv²_minus_res, dc_fv²λ_plus_res; output_dir_override = output_dir,
+        dc_p_res, dc_fv²_res, dc_fv²λ_res, dc_fv²_plus_res, dc_fv²_minus_res, dc_fv²λ_plus_res; output_dir_override = resolved_output_dir,
         file_prefix = file_prefix,
     )
 end

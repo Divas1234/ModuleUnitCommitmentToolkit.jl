@@ -1,6 +1,9 @@
 #!/usr/bin/env python3
 """HTTP server: serves static files + config read/write API + Julia task runner."""
 import json
+import hmac
+import ipaddress
+import math
 import os
 import re
 import shutil
@@ -19,6 +22,22 @@ VALID_TASKS = ("boundary", "benchmark", "ccg", "benders", "benders_fast", "tests
 JULIA_STARTUP_TIMEOUT = 60
 JULIA_RUN_TIMEOUT = 3600
 ANSI_RE = re.compile(r'\x1b\[[0-?]*[ -/]*[@-~]')
+SCENARIO_COUNTS_RE = re.compile(r'^[1-9][0-9]*(,[1-9][0-9]*)*$')
+MAX_REQUEST_BYTES = 1_048_576
+RATE_LIMIT_WINDOW = 60.0
+API_RATE_LIMIT = 120
+RUN_RATE_LIMIT = 10
+GUI_HOST = os.environ.get("MODULE_UC_GUI_HOST", "127.0.0.1")
+GUI_PORT = int(os.environ.get("MODULE_UC_GUI_PORT", "8080"))
+GUI_TOKEN = os.environ.get("MODULE_UC_GUI_TOKEN", "")
+GUI_ALLOW_REMOTE = os.environ.get("MODULE_UC_GUI_ALLOW_REMOTE", "0").lower() in {"1", "true", "yes", "on"}
+GUI_ALLOWED_ORIGINS = {
+    origin.strip().rstrip("/")
+    for origin in os.environ.get("MODULE_UC_GUI_ALLOWED_ORIGINS", "").split(",")
+    if origin.strip()
+}
+RATE_STATE = {}
+RATE_LOCK = threading.Lock()
 TASK_OUTPUT_DIRS = {
     "benchmark": ("comparison", "benchmark_uc", "benders", "ccg"),
     "ccg": ("ccg",),
@@ -27,6 +46,45 @@ TASK_OUTPUT_DIRS = {
     "boundary": (),
     "tests": (),
 }
+
+
+def is_loopback_host(host):
+    if host.lower() == "localhost":
+        return True
+    try:
+        return ipaddress.ip_address(host).is_loopback
+    except ValueError:
+        return False
+
+
+def validate_server_config():
+    if not 1 <= GUI_PORT <= 65535:
+        raise RuntimeError("MODULE_UC_GUI_PORT must be between 1 and 65535")
+    remote = not is_loopback_host(GUI_HOST)
+    if remote and not GUI_ALLOW_REMOTE:
+        raise RuntimeError("Remote GUI binding requires MODULE_UC_GUI_ALLOW_REMOTE=1")
+    if remote and not GUI_TOKEN:
+        raise RuntimeError("Remote GUI binding requires MODULE_UC_GUI_TOKEN")
+    if remote and not GUI_ALLOWED_ORIGINS:
+        raise RuntimeError("Remote GUI binding requires MODULE_UC_GUI_ALLOWED_ORIGINS")
+
+
+def rate_limit_key(handler, bucket):
+    address = handler.client_address[0] if handler.client_address else "unknown"
+    return bucket, address
+
+
+def allow_request(handler, bucket, limit):
+    now = time.monotonic()
+    key = rate_limit_key(handler, bucket)
+    with RATE_LOCK:
+        timestamps = [stamp for stamp in RATE_STATE.get(key, []) if now - stamp < RATE_LIMIT_WINDOW]
+        if len(timestamps) >= limit:
+            RATE_STATE[key] = timestamps
+            return False
+        timestamps.append(now)
+        RATE_STATE[key] = timestamps
+        return True
 
 
 def julia_env():
@@ -92,9 +150,7 @@ class RunManager:
             self._timer = None
 
     def start(self, task, params=None):
-        if task not in VALID_TASKS:
-            raise ValueError(f"Unknown task '{task}'. Valid: {', '.join(VALID_TASKS)}")
-
+        task, params = validate_run_request({"task": task, "params": params or {}})
         julia_ok, julia_msg = check_julia()
         if not julia_ok:
             self.output = [f"[ERROR] {julia_msg}\n"]
@@ -112,7 +168,7 @@ class RunManager:
 
         def _run():
             try:
-                cmd, env = self._build_cmd(task, params or {})
+                cmd, env = self._build_cmd(task, params)
                 self._proc = subprocess.Popen(
                     cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
                     text=True, bufsize=1, cwd=str(ROOT), env=env,
@@ -366,6 +422,59 @@ def write_toml_values(path, updates):
     path.write_text('\n'.join(lines))
 
 
+def validate_config_updates(updates):
+    if not isinstance(updates, dict):
+        raise ValueError("Configuration updates must be a JSON object")
+    known_keys = set(parse_toml_with_lines(CONFIG_PATH)["_key_lines"])
+    for key, value in updates.items():
+        if not isinstance(key, str) or key not in known_keys:
+            raise ValueError(f"Unknown configuration key: {key}")
+        if isinstance(value, bool):
+            continue
+        if isinstance(value, (int, float)):
+            if isinstance(value, float) and not math.isfinite(value):
+                raise ValueError(f"Invalid numeric value for {key}")
+            continue
+        if isinstance(value, str) and len(value) <= 256:
+            continue
+        raise ValueError(f"Invalid value for {key}")
+
+
+def validate_run_request(body):
+    if not isinstance(body, dict):
+        raise ValueError("Run request must be a JSON object")
+    task = body.get("task")
+    if not isinstance(task, str) or task not in VALID_TASKS:
+        raise ValueError(f"Unknown task '{task}'. Valid: {', '.join(VALID_TASKS)}")
+    params = body.get("params", {})
+    if not isinstance(params, dict):
+        raise ValueError("params must be a JSON object")
+
+    allowed = {
+        "boundary": {"scenario_limit"},
+        "benchmark": {"scenario_counts"},
+        "ccg": {"scenario_limit"},
+        "benders": {"scenario_limit"},
+        "benders_fast": {"scenario_limit"},
+        "tests": set(),
+    }[task]
+    unknown = set(params) - allowed
+    if unknown:
+        raise ValueError(f"Unsupported parameters for {task}: {sorted(unknown)}")
+
+    if "scenario_limit" in params:
+        limit = params["scenario_limit"]
+        if isinstance(limit, bool) or not isinstance(limit, int) or not 1 <= limit <= 200:
+            raise ValueError("scenario_limit must be an integer between 1 and 200")
+    if "scenario_counts" in params:
+        counts = params["scenario_counts"]
+        if not isinstance(counts, str) or len(counts) > 128 or not SCENARIO_COUNTS_RE.fullmatch(counts):
+            raise ValueError("scenario_counts must be comma-separated positive integers")
+        if any(int(value) > 200 for value in counts.split(",")):
+            raise ValueError("scenario_counts values must be between 1 and 200")
+    return task, params
+
+
 # ---------------------------------------------------------------------------
 # HTTP handler
 # ---------------------------------------------------------------------------
@@ -374,16 +483,88 @@ class Handler(SimpleHTTPRequestHandler):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, directory=str(ROOT), **kwargs)
 
+    def end_headers(self):
+        self.send_header('X-Content-Type-Options', 'nosniff')
+        self.send_header('X-Frame-Options', 'DENY')
+        self.send_header('Referrer-Policy', 'no-referrer')
+        self.send_header('Content-Security-Policy', "default-src 'self'; script-src 'self' 'unsafe-inline' https://cdn.plot.ly; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self'; frame-ancestors 'none'; base-uri 'self'; form-action 'self'")
+        super().end_headers()
+
+    def _allowed_origins(self):
+        if GUI_ALLOWED_ORIGINS:
+            return GUI_ALLOWED_ORIGINS
+        if is_loopback_host(GUI_HOST):
+            return {
+                f'http://localhost:{GUI_PORT}',
+                f'http://127.0.0.1:{GUI_PORT}',
+                f'http://[::1]:{GUI_PORT}',
+            }
+        return set()
+
+    def _origin_allowed(self):
+        origin = self.headers.get('Origin')
+        return not origin or origin.rstrip('/') in self._allowed_origins()
+
+    def _authorized(self):
+        if not GUI_TOKEN and is_loopback_host(GUI_HOST):
+            return True
+        authorization = self.headers.get('Authorization', '')
+        scheme, _, token = authorization.partition(' ')
+        return scheme.lower() == 'bearer' and bool(token) and hmac.compare_digest(token, GUI_TOKEN)
+
+    def _guard_api(self, mutating=False, expensive=False):
+        if not allow_request(self, 'api', API_RATE_LIMIT):
+            self._send_json({'ok': False, 'error': 'Rate limit exceeded'}, status=429)
+            return False
+        if not self._authorized():
+            self._send_json({'ok': False, 'error': 'Authentication required'}, status=401)
+            return False
+        if mutating and not self._origin_allowed():
+            self._send_json({'ok': False, 'error': 'Origin is not allowed'}, status=403)
+            return False
+        if expensive and not allow_request(self, 'run', RUN_RATE_LIMIT):
+            self._send_json({'ok': False, 'error': 'Run request rate limit exceeded'}, status=429)
+            return False
+        return True
+
+    def _read_json_body(self):
+        content_length = self.headers.get('Content-Length')
+        if content_length is None:
+            raise ValueError('Content-Length is required')
+        try:
+            length = int(content_length)
+        except ValueError as exc:
+            raise ValueError('Invalid Content-Length') from exc
+        if length < 0 or length > MAX_REQUEST_BYTES:
+            raise ValueError('Request body is too large')
+        raw = self.rfile.read(length)
+        if len(raw) != length:
+            raise ValueError('Incomplete request body')
+        try:
+            body = json.loads(raw) if raw else {}
+        except json.JSONDecodeError as exc:
+            raise ValueError('Invalid JSON body') from exc
+        if not isinstance(body, dict):
+            raise ValueError('JSON body must be an object')
+        return body
+
     def _send_json(self, data, status=200):
         self.send_response(status)
         self.send_header('Content-Type', 'application/json')
-        self.send_header('Access-Control-Allow-Origin', '*')
+        origin = self.headers.get('Origin', '').rstrip('/')
+        if origin and origin in self._allowed_origins():
+            self.send_header('Access-Control-Allow-Origin', origin)
+            self.send_header('Vary', 'Origin')
+        self.send_header('Cache-Control', 'no-store')
         self.end_headers()
-        self.wfile.write(json.dumps(data).encode())
+        self.wfile.write(json.dumps(data, separators=(',', ':')).encode())
 
     def do_GET(self):
         parsed = urlparse(self.path)
         path = parsed.path
+
+        if path.startswith('/api/') and not self._guard_api():
+            return
 
         if path == '/api/config':
             result = parse_toml_with_lines(CONFIG_PATH)
@@ -403,20 +584,33 @@ class Handler(SimpleHTTPRequestHandler):
 
         if path in ('/', '/gui', '/gui/', '/GUI', '/GUI/'):
             self.path = '/gui/index.html'
-        super().do_GET()
+        if self.path.startswith('/gui/'):
+            super().do_GET()
+            return
+        self.send_error(404, 'Not found')
 
     def do_POST(self):
-        length = int(self.headers.get('Content-Length', 0))
-        try:
-            body = json.loads(self.rfile.read(length)) if length else {}
-        except json.JSONDecodeError as e:
-            self._send_json({'ok': False, 'error': f'Invalid JSON: {e}'}, status=400)
-            return
-
         path = urlparse(self.path).path
+        if path not in ('/api/config', '/api/run', '/api/run/cancel'):
+            self.send_error(404, 'Not found')
+            return
+        if not self._guard_api(mutating=True, expensive=path == '/api/run'):
+            return
+        if path == '/api/run/cancel':
+            body = {}
+        else:
+            if self.headers.get('Content-Type', '').split(';', 1)[0].lower() != 'application/json':
+                self._send_json({'ok': False, 'error': 'Content-Type must be application/json'}, status=415)
+                return
+            try:
+                body = self._read_json_body()
+            except ValueError as exc:
+                self._send_json({'ok': False, 'error': str(exc)}, status=400)
+                return
 
         if path == '/api/config':
             try:
+                validate_config_updates(body)
                 write_toml_values(CONFIG_PATH, body)
                 self._send_json({'ok': True})
             except ValueError as e:
@@ -424,37 +618,43 @@ class Handler(SimpleHTTPRequestHandler):
             return
 
         if path == '/api/run':
-            task = body.get('task', '')
-            params = body.get('params', {})
             try:
+                task, params = validate_run_request(body)
                 ok = RUN_MGR.start(task, params)
                 state = RUN_MGR.get_state()
                 error = 'Task already running' if not ok and state.get('status') == 'running' else None
                 self._send_json({'ok': ok, 'task': task, 'status': state.get('status'), 'error': error})
-            except ValueError as e:
-                self._send_json({'ok': False, 'error': str(e)}, status=400)
+            except ValueError as exc:
+                self._send_json({'ok': False, 'error': str(exc)}, status=400)
             return
 
         if path == '/api/run/cancel':
             self._send_json({'ok': RUN_MGR.cancel()})
             return
 
-        self.send_response(404)
-        self.end_headers()
-
     def do_OPTIONS(self):
+        if not self._origin_allowed():
+            self._send_json({'ok': False, 'error': 'Origin is not allowed'}, status=403)
+            return
         self.send_response(204)
-        self.send_header('Access-Control-Allow-Origin', '*')
+        origin = self.headers.get('Origin', '').rstrip('/')
+        if origin:
+            self.send_header('Access-Control-Allow-Origin', origin)
+            self.send_header('Vary', 'Origin')
         self.send_header('Access-Control-Allow-Methods', 'GET, POST, OPTIONS')
-        self.send_header('Access-Control-Allow-Headers', 'Content-Type')
+        self.send_header('Access-Control-Allow-Headers', 'Authorization, Content-Type')
         self.end_headers()
 
 
 if __name__ == '__main__':
+    validate_server_config()
     ok, msg = check_julia()
     print(f"Julia check: {'OK' if ok else 'FAIL'} {msg}")
-    server = HTTPServer(('0.0.0.0', 8080), Handler)
-    print(f'Server running at http://localhost:8080/gui/')
+    # The dashboard exposes local config-write and process-launch endpoints.
+    # Keep the default listener local unless deployment explicitly adds its own
+    # authenticated front end.
+    server = HTTPServer((GUI_HOST, GUI_PORT), Handler)
+    print(f'Server running at http://{GUI_HOST}:{GUI_PORT}/gui/')
     try:
         server.serve_forever()
     except KeyboardInterrupt:

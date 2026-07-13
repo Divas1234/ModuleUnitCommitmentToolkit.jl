@@ -5,7 +5,7 @@ using JuMP
 include(joinpath(@__DIR__, "..", "ccg", "ccg_solver.jl"))
 include(joinpath(@__DIR__, "benchmark_uc.jl"))
 
-const ALGORITHM_OUTPUT_ROOT = joinpath(pwd(), "output")
+const ALGORITHM_OUTPUT_ROOT = uc_output_root()
 
 function algorithm_output_dir(algorithm_name::AbstractString; run_id::AbstractString = uc_run_id())
     output_dir = uc_algorithm_run_dir(algorithm_name; run_id = run_id)
@@ -169,26 +169,26 @@ function benders_data_tuple_to_namedtuple(config_param, units, lines, loads, win
 end
 
 function solve_benchmark_benders(; scenario_limit::Int64 = 20)
-    scuc_masterproblem,
-    scuc_subproblem,
-    master_model_struct,
-    sub_model_struct,
-    batch_sub_model_struct_dic,
-    config_param,
-    units,
-    lines,
-    loads,
-    winds,
-    psses,
-    NB,
-    NG,
-    NL,
-    ND,
-    NS,
-    NT,
-    NC,
-    ND2,
-    DataCentras = main(; scenario_limit = scenario_limit)
+    setup = main(; scenario_limit = scenario_limit)
+    scuc_masterproblem = setup.master_model
+    scuc_subproblem = setup.sub_model
+    master_model_struct = setup.master_struct
+    batch_sub_model_struct_dic = setup.batch_subproblems
+    config_param = setup.config_param
+    units = setup.units
+    lines = setup.lines
+    loads = setup.loads
+    winds = setup.winds
+    psses = setup.psses
+    NB = setup.NB
+    NG = setup.NG
+    NL = setup.NL
+    ND = setup.ND
+    NS = setup.NS
+    NT = setup.NT
+    NC = setup.NC
+    ND2 = setup.ND2
+    DataCentras = setup.DataCentras
 
     NW = Int64(length(winds.index))
     jensen_subproblem_struct = if get(ENV, "BENDERS_ENABLE_JENSEN_CUT", "0") == "1" && config_param.is_ConsiderMultiCUTs == 1

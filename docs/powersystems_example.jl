@@ -149,28 +149,7 @@ withenv("MODEL_CONSIDER_BESS" => "0", "MODEL_CONSIDER_FREQUENCY_CONTROL" => "0",
     println("=======================================================")
     # 1. Initialize Benders Master and Subproblems algebraically.
     # 1. 代数化初始化 Benders 主问题与子问题。
-    (
-        scuc_masterproblem,
-        scuc_subproblem,
-        master_model_struct,
-        sub_model_struct,
-        batch_sub_model_struct_dic,
-        config_param,
-        units,
-        lines,
-        loads,
-        winds,
-        psses,
-        NB,
-        NG,
-        NL,
-        ND,
-        NS,
-        NT,
-        NC,
-        ND2,
-        DataCentras,
-    ) = main(;
+    setup = main(;
         scenario_limit = 3,
         use_powersystems = true,
         sys = sys,
@@ -178,21 +157,17 @@ withenv("MODEL_CONSIDER_BESS" => "0", "MODEL_CONSIDER_FREQUENCY_CONTROL" => "0",
         data_centers = data_centers,
         horizon = 24,
     )
+    scuc_masterproblem, scuc_subproblem = setup.master_model, setup.sub_model
+    master_model_struct = setup.master_struct
+    batch_sub_model_struct_dic = setup.batch_subproblems
+    config_param, units, loads, winds = setup.config_param, setup.units, setup.loads, setup.winds
+    NG, NT, ND, NL = setup.NG, setup.NT, setup.ND, setup.NL
 
     # 2. Execute Benders iterative decomposition.
     # 2. 执行 Benders 迭代分解求解。
     res_benders = multiple_bender_decomposition_scuc(
-        scuc_masterproblem,
-        scuc_subproblem,
-        master_model_struct,
-        batch_sub_model_struct_dic,
-        winds,
-        config_param,
-        NG,
-        NT,
-        winds.scenarios_nums,
-        ND,
-        NL,
+        scuc_masterproblem, scuc_subproblem, master_model_struct, batch_sub_model_struct_dic,
+        winds, config_param, NG, NT, length(winds.index), ND, NL,
     )
     val_benders = res_benders.upper_bound
     println("→ Benders Upper Bound: $val_benders")

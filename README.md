@@ -17,7 +17,9 @@ The repository contains three connected layers:
 - [Quick Start](#quick-start)
 - [Dashboard](#dashboard)
 - [Command-Line Workflows](#command-line-workflows)
+- [Unified Solver Entry](#unified-solver-entry)
 - [Runtime Configuration](#runtime-configuration)
+- [API and Code Review](#api-and-code-review)
 - [Outputs](#outputs)
 - [Project Layout](#project-layout)
 - [Testing](#testing)
@@ -73,6 +75,20 @@ Then open:
 ```text
 http://localhost:8080/gui/
 ```
+
+The dashboard binds to `127.0.0.1` by default. Remote deployment is disabled unless all
+security settings are provided explicitly:
+
+```bash
+MODULE_UC_GUI_ALLOW_REMOTE=1 \
+MODULE_UC_GUI_HOST=0.0.0.0 \
+MODULE_UC_GUI_TOKEN='replace-with-a-long-random-token' \
+MODULE_UC_GUI_ALLOWED_ORIGINS='https://dashboard.example.com' \
+python3 gui/server.py
+```
+
+Remote API requests use `Authorization: Bearer <token>`. The browser dashboard asks for the
+token once per page session; it is kept in memory only.
 
 Run the lightweight test suite:
 
@@ -168,6 +184,26 @@ julia --project=. examples/ccg/run_wasserstein_dro_ccg.jl
 See [docs/algorithms/wasserstein_dro_ccg.md](docs/algorithms/wasserstein_dro_ccg.md)
 for the modeling notes.
 
+## Unified Solver Entry
+
+New integrations should use one data/algorithm entry point and select behavior
+with parameters:
+
+```julia
+using ModuleUnitCommitmentToolkit
+
+result = solve_uc(
+    algorithm = :benchmark,  # :benchmark, :benders, or :ccg
+    input = :excel,          # :excel, :powersystems, or :powersystems_csv
+    scenario_limit = 3,
+    calibration = (CCG_MAX_ITERATIONS = 10,),
+)
+```
+
+The runnable example is [examples/unified_solver.jl](examples/unified_solver.jl).
+Detailed input, calibration, result, and compatibility rules are in
+[docs/api_reference.md](docs/api_reference.md).
+
 ## Runtime Configuration
 
 Central runtime settings live in:
@@ -199,7 +235,26 @@ Important configuration groups include:
 See [docs/runtime_configuration.md](docs/runtime_configuration.md) for more
 detail.
 
+## API and Code Review
+
+The public package functions, algorithm script interfaces, input conventions,
+result fields, output paths, and runnable examples are documented in
+[docs/api_reference.md](docs/api_reference.md). The project-wide review findings,
+security boundary, test evidence, and follow-up priorities are recorded in
+[docs/code_review.md](docs/code_review.md).
+
 ## Outputs
+
+All unified solver and export functions write below the project `output/` directory by
+default, independent of the caller's current directory. Set `MODULE_UC_OUTPUT_DIR` to
+override the root globally, or pass `output_dir` to `solve_uc` for one request:
+
+```bash
+MODULE_UC_OUTPUT_DIR=/tmp/module-uc-output julia --project=. test/smoke_algorithms.jl
+```
+
+The `solve_uc` result also exposes the resolved `output_dir` so callers can discover the
+location without reconstructing algorithm-specific paths.
 
 Most experiments write to `output/` using timestamped run folders. Common output
 locations include:

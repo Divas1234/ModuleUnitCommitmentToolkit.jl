@@ -251,32 +251,10 @@ function extract_uc_data_from_powersystems(
         push!(droop, _frequency_value(frequency_parameters, name, index, :R, 1.0))
     end
     units = unit(
-        generator_index,
-        generator_bus,
-        p_max,
-        p_min,
-        ramp_up,
-        ramp_down,
-        startup_ramp,
-        shutdown_ramp,
-        min_up,
-        min_down,
-        initial_status,
-        initial_hours,
-        initial_power,
-        cost_a,
-        cost_b,
-        cost_c,
-        hot_start,
-        cold_start,
-        shutdown_cost,
-        cold_time,
-        inertia,
-        damping,
-        gain,
-        turbine_fraction,
-        time_constant,
-        droop,
+        generator_index, generator_bus,
+        p_max, p_min, ramp_up, ramp_down, startup_ramp, shutdown_ramp, min_up, min_down,
+        initial_status, initial_hours, initial_power,
+        cost_a, cost_b, cost_c, hot_start, cold_start, shutdown_cost, cold_time, inertia, damping, gain, turbine_fraction, time_constant, droop,
     )
 
     branches = sort(collect(get_components(ACBranch, sys)), by = get_name)
@@ -320,20 +298,8 @@ function extract_uc_data_from_powersystems(
     config_parameter = config_from_env()
     renewable_frequency_parameters = zeros(length(collect(get_components(RenewableGen, sys))), 6)
     return config_parameter,
-    units,
-    lines,
-    loads,
-    psses,
-    length(buses),
-    generator_count,
-    branch_count,
-    load_count,
-    horizon,
-    storage_count,
-    length(centers),
-    data_center_data,
-    renewable_frequency_parameters,
-    bus_to_index
+    units, lines, loads, psses, length(buses), generator_count, branch_count, load_count,
+    horizon, storage_count, length(centers), data_center_data, renewable_frequency_parameters, bus_to_index
 end
 
 function generate_wind_scenarios_from_system(

@@ -7,26 +7,26 @@
 include("setup.jl")
 
 scenario_limit = parse(Int64, get(ENV, "BENDERS_SCENARIO_LIMIT", "50"))
-scuc_masterproblem,
-scuc_subproblem,
-master_model_struct,
-sub_model_struct,
-batch_sub_model_struct_dic,
-config_param,
-units,
-lines,
-loads,
-winds,
-psses,
-NB,
-NG,
-NL,
-ND,
-NS,
-NT,
-NC,
-ND2,
-DataCentras = main(; scenario_limit = scenario_limit);
+setup = main(; scenario_limit = scenario_limit)
+scuc_masterproblem = setup.master_model
+scuc_subproblem = setup.sub_model
+master_model_struct = setup.master_struct
+batch_sub_model_struct_dic = setup.batch_subproblems
+config_param = setup.config_param
+units = setup.units
+lines = setup.lines
+loads = setup.loads
+winds = setup.winds
+psses = setup.psses
+NB = setup.NB
+NG = setup.NG
+NL = setup.NL
+ND = setup.ND
+NS = setup.NS
+NT = setup.NT
+NC = setup.NC
+ND2 = setup.ND2
+DataCentras = setup.DataCentras
 
 # `NW` is derived from the final wind object to stay correct after scenario
 # filtering or stochastic generator changes.
@@ -94,17 +94,8 @@ if get(ENV, "BENDERS_FAST_DIRECT_SOLVE", "0") == "1"
     solve_fast_extensive_uc(NT, NB, NG, ND, NC, ND2, NS, NW, NL, units, loads, winds, lines, DataCentras, psses, config_param, 1.0 / NS)
 else
     multiple_bender_decomposition_scuc(
-        scuc_masterproblem,
-        scuc_subproblem,
-        master_model_struct,
-        batch_sub_model_struct_dic,
-        winds,
-        config_param,
-        NG,
-        NT,
-        NW,
-        ND,
-        NL;
+        scuc_masterproblem, scuc_subproblem, master_model_struct, batch_sub_model_struct_dic,
+        winds, config_param, NG, NT, NW, ND, NL;
         jensen_subproblem_struct = jensen_subproblem_struct,
     )
 end

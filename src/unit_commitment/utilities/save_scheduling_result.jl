@@ -60,9 +60,10 @@ function save_UCresults(
     bench_p₀, bench_pᵨ, bench_pᵩ, bench_seq_sr⁺, bench_seq_sr⁻, bench_pss_charge_p⁺, bench_pss_charge_p⁻, bench_su_cost, bench_sd_cost, bench_prod_cost, bench_cost_sr⁺, bench_cost_sr⁻,
     NT, NG, ND, NW, units, winds,
 )
-    # filepath = pwd()
+    output_path = joinpath(uc_output_dir(), "bench", "mydata_1.jld")
+    mkpath(dirname(output_path))
     return save(
-        "D:/ieee_tpws/code/littlecase//output/bench/" * "mydata_1.jld",
+        output_path,
         "x₀", x₀,
         "p₀", p₀,
         "pᵨ", pᵨ,
@@ -100,8 +101,9 @@ end
 
 #LINK -  sub exported modelue for saving results as .txt file
 function read_UCresults()
-    filepath = pwd()
-    jldopen("D:/ieee_tpws/code/littlecase//output/pros/" * "mydata_1.jld", "w") do file
+    output_path = joinpath(uc_output_dir(), "pros", "mydata_1.jld")
+    mkpath(dirname(output_path))
+    jldopen(output_path, "w") do file
         write(file, "x₀", x₀)
         write(file, "bench_x₀", bench_x₀)
         write(file, "p₀", p₀)
@@ -140,7 +142,7 @@ function read_UCresults()
     NT, NG, ND, NW, units, winds
 end
 
-function savebalance_result(bench_p₀, bench_pᵨ, bench_pᵩ, bench_pss_charge_p⁺, bench_pss_charge_p⁻, flag)
+function savebalance_result(bench_p₀, bench_pᵨ, bench_pᵩ, bench_pss_charge_p⁺, bench_pss_charge_p⁻, flag; output_dir = nothing)
     # @show DataFrame(bench_p₀[1:3,:],:auto)
     thermalunits_output = zeros(24, 1)
     for i in 1:24
@@ -171,18 +173,18 @@ function savebalance_result(bench_p₀, bench_pᵨ, bench_pᵩ, bench_pss_charge
     # Plots.plot(-bench_pss_charge_p⁺[1,:])
     # Plots.plot!(bench_pss_charge_p⁻[1,:])
 
-    filepath = pwd()
+    output_root = uc_output_dir(output_dir)
     if Sys.iswindows()
         if flag == 1
-            filepath = joinpath(pwd(), "output", "details_schedule_results")
+            filepath = joinpath(output_root, "details_schedule_results")
         elseif flag == 2
-            filepath = joinpath(pwd(), "output")
+            filepath = output_root
         else
             flag == 3
-            filepath = joinpath(pwd(), "output")
+            filepath = output_root
         end
     else
-        filepath = joinpath(pwd(), "output", "details_schedule_results")
+        filepath = joinpath(output_root, "details_schedule_results")
     end
     if !isdir(filepath)
         mkpath(filepath)

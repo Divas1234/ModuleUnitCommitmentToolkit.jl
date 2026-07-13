@@ -33,3 +33,13 @@ jobs:
       - uses: julia-actions/julia-buildpkg@v1
 
       - uses: julia-actions/julia-runtest@v1
+
+      - name: Run fast public interface tests
+        run: julia --project=. test/fast_interface.jl
+
+      - name: Run unified algorithm smoke tests
+        timeout-minutes: 20
+        run: julia --project=. test/smoke_algorithms.jl
+
+      - name: Run GUI security tests
+        run: python3 -m unittest discover -s test -p 'test_gui_security.py'

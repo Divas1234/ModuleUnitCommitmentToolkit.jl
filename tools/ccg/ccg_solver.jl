@@ -22,23 +22,29 @@ uses the Wasserstein worst-case probability vector instead of the nominal
 empirical distribution.
 """
 function solve_ccg_unit_commitment(;
+    input::Union{Symbol, AbstractString} = :excel,
     scenario_limit::Int64 = 20,
-    use_powersystems::Bool = false,
+    use_powersystems::Union{Nothing, Bool} = nothing,
     sys = nothing,
     case_name = nothing,
     case_category = MatpowerTestSystems,
     case_dir::String = "",
+    data_center_buses::Vector{Int} = Int[],
+    data_center_pmax::Vector{Float64} = Float64[],
     frequency_parameters = nothing,
     data_centers = NamedTuple[],
     horizon::Int64 = 24,
 )
     data = load_ccg_data(
         scenario_limit;
+        input = input,
         use_powersystems = use_powersystems,
         sys = sys,
         case_name = case_name,
         case_category = case_category,
         case_dir = case_dir,
+        data_center_buses = data_center_buses,
+        data_center_pmax = data_center_pmax,
         frequency_parameters = frequency_parameters,
         data_centers = data_centers,
         horizon = horizon,
@@ -191,11 +197,14 @@ end
 
 function load_ccg_data(
     scenario_limit::Int64;
-    use_powersystems::Bool = false,
+    input::Union{Symbol, AbstractString} = :excel,
+    use_powersystems::Union{Nothing, Bool} = nothing,
     sys = nothing,
     case_name = nothing,
     case_category = MatpowerTestSystems,
     case_dir::String = "",
+    data_center_buses::Vector{Int} = Int[],
+    data_center_pmax::Vector{Float64} = Float64[],
     frequency_parameters = nothing,
     data_centers = NamedTuple[],
     horizon::Int64 = 24,
@@ -205,11 +214,14 @@ function load_ccg_data(
     # algorithm comparisons.
     data = load_uc_data(;
         scenario_limit = scenario_limit,
+        input = input,
         use_powersystems = use_powersystems,
         sys = sys,
         case_name = case_name,
         case_category = case_category,
         case_dir = case_dir,
+        data_center_buses = data_center_buses,
+        data_center_pmax = data_center_pmax,
         frequency_parameters = frequency_parameters,
         data_centers = data_centers,
         horizon = horizon,

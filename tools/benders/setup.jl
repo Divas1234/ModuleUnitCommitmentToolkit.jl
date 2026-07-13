@@ -1,14 +1,19 @@
 # Runtime configuration must be loaded before any downstream include reads ENV.
 # Shell-provided ENV values still have priority, which keeps scheduler scripts
 # and one-off terminal overrides reproducible.
-include(joinpath(pwd(), "src", "runtime_config.jl"))
+const BENDERS_PROJECT_ROOT = normpath(joinpath(@__DIR__, "..", ".."))
+if !isdefined(@__MODULE__, :load_runtime_config!)
+    include(joinpath(BENDERS_PROJECT_ROOT, "src", "runtime_config.jl"))
+end
+isdefined(@__MODULE__, :BendersSetup) || include(joinpath(BENDERS_PROJECT_ROOT, "src", "api_types.jl"))
 load_runtime_config!()
 
 # Load environment configurations, simulation modules, and data readers
-include(joinpath(pwd(), "src", "environment_config.jl"))
-include(joinpath(pwd(), "src", "renewables", "renewables.jl"))
-include(joinpath(pwd(), "src", "input_data", "readers.jl"))
-# include(joinpath(pwd(), "src", "unit_commitment", "unit_commitment_model.jl"))
+isdefined(@__MODULE__, :gr) || include(joinpath(BENDERS_PROJECT_ROOT, "src", "environment_config.jl"))
+isdefined(@__MODULE__, :wind) || include(joinpath(BENDERS_PROJECT_ROOT, "src", "renewables", "renewables.jl"))
+isdefined(@__MODULE__, :load_uc_data) || include(joinpath(BENDERS_PROJECT_ROOT, "src", "input_data", "readers.jl"))
+# The model stack is loaded by the formulation includes below; paths are rooted
+# from this file rather than from the caller's current directory.
 
 # Load Benders decomposition formulation and cut-generation libraries.
 include("models/construct_models.jl")
@@ -22,33 +27,40 @@ include("decomposition.jl")
 	Main execution pipeline mapping raw data to the stochastic SCUC formulation.
 
 	This function is the single data-construction entry point used by the Benders
-	driver and by the CCG loader. Runtime options arrive through TOML-backed ENV
+	driver and by the CCG loader. It returns a named `BendersSetup`; runtime options arrive through TOML-backed ENV
 	values before `forminputdata` builds the `config` struct, which keeps model
 	flags consistent across both algorithms.
 
 	# Returns
-	A tuple containing all formulated JuMP models, internal data structures, and topological scenario dimensions.
+	A named `BendersSetup` containing all formulated JuMP models, internal data structures,
+	and topological scenario dimensions.
 """
 
 function main(;
+    input::Union{Symbol, AbstractString} = :excel,
     scenario_limit::Int64 = 50,
-    use_powersystems::Bool = false,
+    use_powersystems::Union{Nothing, Bool} = nothing,
     sys = nothing,
     case_name = nothing,
     case_category = MatpowerTestSystems,
     case_dir::String = "",
+    data_center_buses::Vector{Int} = Int[],
+    data_center_pmax::Vector{Float64} = Float64[],
     frequency_parameters = nothing,
     data_centers = NamedTuple[],
     horizon::Int64 = 24,
 )
     # Load system data using the unified data loader
     data = load_uc_data(;
+        input = input,
         scenario_limit = scenario_limit,
         use_powersystems = use_powersystems,
         sys = sys,
         case_name = case_name,
         case_category = case_category,
         case_dir = case_dir,
+        data_center_buses = data_center_buses,
+        data_center_pmax = data_center_pmax,
         frequency_parameters = frequency_parameters,
         data_centers = data_centers,
         horizon = horizon,
@@ -126,24 +138,27 @@ function main(;
     end
 
     # Output constructed structs, models, constraints, and optimization environment settings
-    return scuc_masterproblem,
-    scuc_subproblem,
-    master_model_struct,
-    sub_model_struct,
-    batch_scuc_subproblem_struct_dic,
-    config_param,
-    units,
-    lines,
-    loads,
-    winds,
-    psses,
-    NB,
-    NG,
-    NL,
-    ND,
-    NS,
-    NT,
-    NC,
-    ND2,
-    DataCentras
+    return BendersSetup(
+        scuc_masterproblem,
+        scuc_subproblem,
+        master_model_struct,
+        sub_model_struct,
+        batch_scuc_subproblem_struct_dic,
+        config_param,
+        units,
+        lines,
+        loads,
+        winds,
+        psses,
+        Int64(NB),
+        Int64(NG),
+        Int64(NL),
+        Int64(ND),
+        Int64(NS),
+        Int64(NT),
+        Int64(NC),
+        Int64(ND2),
+        DataCentras,
+        data,
+    )
 end

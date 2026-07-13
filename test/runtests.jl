@@ -30,9 +30,12 @@ end
 
 include(joinpath(PROJECT_ROOT, "tools", "ccg", "dro_uncertainty.jl"))
 include(joinpath(PROJECT_ROOT, "tools", "ccg", "ccg_helpers.jl"))
+include(joinpath(PROJECT_ROOT, "src", "api_types.jl"))
+include(joinpath(PROJECT_ROOT, "src", "solver_interface.jl"))
 
 @testset "module_unitcommitment" begin
     include("test_runtime_config.jl")
+    include("test_unified_interface.jl")
     include("test_renewables.jl")
     include("test_data_pipeline.jl")
     include("test_powersystems_reader.jl")

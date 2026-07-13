@@ -129,7 +129,8 @@ withenv(
         scenario_limit = 3,
         frequency_parameters = frequency_params,
         data_centers = data_centers,
-        horizon = 24
+        horizon = 24,
+    )
     val_extensive = res_extensive.upper_bound
     println("Extensive Form Objective: ", val_extensive)
 end
@@ -142,7 +143,7 @@ Decomposes the problem into a Master Problem (deciding commitment variables `x, 
 include("tools/benders/setup.jl")
 
 # 1. Initialize Benders Master and Subproblems
-scuc_masterproblem, scuc_subproblem, master_model_struct, sub_model_struct, batch_sub_model_struct_dic, config_param, units, lines, loads, winds, psses, NB, NG, NL, ND, NS, NT, NC, ND2, DataCentras = main(;
+setup = main(;
     scenario_limit = 3,
     use_powersystems = true,
     sys = sys,
@@ -150,6 +151,13 @@ scuc_masterproblem, scuc_subproblem, master_model_struct, sub_model_struct, batc
     data_centers = data_centers,
     horizon = 24
 )
+
+scuc_masterproblem = setup.master_model
+scuc_subproblem = setup.sub_model
+master_model_struct = setup.master_struct
+batch_sub_model_struct_dic = setup.batch_subproblems
+config_param, units, loads, winds = setup.config_param, setup.units, setup.loads, setup.winds
+NG, NT, ND, NL = setup.NG, setup.NT, setup.ND, setup.NL
 
 # 2. Execute Benders iterations
 res_benders = multiple_bender_decomposition_scuc(
@@ -161,7 +169,7 @@ res_benders = multiple_bender_decomposition_scuc(
     config_param,
     NG,
     NT,
-    winds.scenarios_nums,
+    length(winds.index),
     ND,
     NL
 )
@@ -174,10 +182,16 @@ Generates recourse constraints and dispatch columns dynamically based on identif
 ```julia
 include("tools/ccg/ccg_solver.jl")
 
-# Solve stochastic UC using Column-and-Constraint Generation
+# Solve stochastic UC using Column-and-Constraint Generation. The solver
+# accepts input-selection keywords; it does not take the `load_uc_data` result
+# as a positional argument.
 res_ccg = solve_ccg_unit_commitment(
-    data;
-    initial_scenarios = [2, 3] # scenarios to start CCG with
+    scenario_limit = 3,
+    use_powersystems = true,
+    sys = sys,
+    frequency_parameters = frequency_params,
+    data_centers = data_centers,
+    horizon = 24,
 )
 println("CCG Upper Bound: ", res_ccg.upper_bound)
 ```
@@ -215,4 +229,3 @@ A complete, runnable example script containing detailed bilingual (English/Chine
 ```bash
 julia --project=. docs/powersystems_example.jl
 ```
-

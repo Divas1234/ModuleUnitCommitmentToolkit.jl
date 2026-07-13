@@ -358,11 +358,29 @@ def main():
 // ============ RUN TAB ============
 var juliaOk = null;
 var boundaryActivePanel = 'validation';
+let GUI_TOKEN = '';
+
+async function apiFetch(url, options){
+  const request = options || {};
+  const headers = Object.assign({}, request.headers || {});
+  if (GUI_TOKEN) headers.Authorization = 'Bearer ' + GUI_TOKEN;
+  request.headers = headers;
+  let response = await fetch(url, request);
+  if (response.status === 401 && !GUI_TOKEN) {
+    const token = window.prompt('GUI token required:');
+    if (token) {
+      GUI_TOKEN = token.trim();
+      headers.Authorization = 'Bearer ' + GUI_TOKEN;
+      response = await fetch(url, request);
+    }
+  }
+  return response;
+}
 
 function escapeHTML(s){ return escapeHtml(String(s)); }
 
 function checkJuliaStatus(){
-  fetch('/api/check/julia').then(function(r){return r.json();}).then(function(d){
+  apiFetch('/api/check/julia').then(function(r){return r.json();}).then(function(d){
     juliaOk = d.ok;
     var el = $('julia-status');
     if (el) {
@@ -392,14 +410,14 @@ function runTask(task){
   setRunButtonsDisabled(true);
   setStatusBadge('running');
 
-  fetch('/api/run', {
+  apiFetch('/api/run', {
     method: 'POST',
     headers: {'Content-Type': 'application/json'},
     body: JSON.stringify({task: task, params: params})
   }).then(function(r){return r.json();}).then(function(data){
     if (data.ok) startPolling();
     else {
-      fetch('/api/run').then(function(r2){return r2.json();}).then(function(state){
+      apiFetch('/api/run').then(function(r2){return r2.json();}).then(function(state){
         if (state.status === 'running') {
           $('run-output').textContent += '[INFO] A task is already running.\n';
           setStatusBadge('running');
@@ -423,7 +441,7 @@ function runTask(task){
 
 function cancelRun(){
   clearRunSuccess();
-  fetch('/api/run/cancel', {method:'POST'}).then(function(r){return r.json();}).then(function(data){
+  apiFetch('/api/run/cancel', {method:'POST'}).then(function(r){return r.json();}).then(function(data){
     if (data.ok) {
       $('run-output').textContent += '\n[Cancelled by user]\n';
       setStatusBadge('cancelled');
@@ -440,7 +458,7 @@ function startPolling(){
 }
 
 function pollRunStatus(){
-  fetch('/api/run').then(function(r){return r.json();}).then(function(state){
+  apiFetch('/api/run').then(function(r){return r.json();}).then(function(state){
     var out = $('run-output');
     if (state.output && state.output.length) {
       var lastOutput = state.output.join('');
@@ -1287,7 +1305,7 @@ async function saveConfig(){{
   const btn=$('save-config-btn'),msg=$('save-msg');btn.disabled=true;msg.className='msg';msg.textContent='Saving...';
   const u={{}};let invalid=null;document.querySelectorAll('[data-key]').forEach(function(el){{const k=el.dataset.key;if(el.type==='checkbox')u[k]=el.checked;else if(el.type==='number'){{const v=Number(el.value);if(el.value===''||Number.isNaN(v))invalid=k;else u[k]=v;}}else u[k]=el.value;}});
   if(invalid){{msg.className='msg err';msg.textContent='Invalid numeric value: '+invalid;btn.disabled=false;return;}}
-  try{{const r=await fetch('/api/config',{{method:'POST',headers:{{'Content-Type':'application/json'}},body:JSON.stringify(u)}});if(r.ok){{msg.className='msg ok';msg.textContent='Saved.';}}else{{let detail='';try{{const err=await r.json();detail=err.error?': '+err.error:'';}}catch(e){{}}msg.className='msg err';msg.textContent='Save failed: '+r.status+detail;}}}}catch(e){{msg.className='msg err';msg.textContent='Save failed - server running?';}}
+  try{{const r=await apiFetch('/api/config',{{method:'POST',headers:{{'Content-Type':'application/json'}},body:JSON.stringify(u)}});if(r.ok){{msg.className='msg ok';msg.textContent='Saved.';}}else{{let detail='';try{{const err=await r.json();detail=err.error?': '+err.error:'';}}catch(e){{}}msg.className='msg err';msg.textContent='Save failed: '+r.status+detail;}}}}catch(e){{msg.className='msg err';msg.textContent='Save failed - server running?';}}
   btn.disabled=false;setTimeout(function(){{msg.textContent='';}},3000);
 }}
 {run_js}
