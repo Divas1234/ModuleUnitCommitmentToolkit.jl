@@ -11,6 +11,7 @@ The canonical, fully commented examples for the current package interface are in
 julia --project=. examples/unified_api/01_excel_single_solve.jl
 julia --project=. examples/unified_api/02_input_spec_and_data.jl
 julia --project=. examples/unified_api/03_three_algorithm_comparison.jl
+julia --project=. examples/unified_api/07_ieee30_frequency_datacenter_uc.jl
 ```
 
 The detailed guide is [`examples/unified_api/README.md`](unified_api/README.md). It covers
@@ -44,6 +45,16 @@ The current unified PowerSystems example is:
 ```bash
 julia --project=. examples/unified_api/04_powersystems_native.jl
 ```
+
+For a complete 30-bus UC workflow with frequency support and a data center attached to bus 5,
+run:
+
+```bash
+UC_HORIZON=4 julia --project=. examples/unified_api/07_ieee30_frequency_datacenter_uc.jl
+```
+
+This demo prints the PowerSystems boundary, effective model configuration, unified data
+dimensions, and a detailed layered optimization result.
 
 `examples/powersystems_algorithms_demo.jl` is retained as a low-level comparative and
 formulation-debugging program. It is not the recommended public API entry point.

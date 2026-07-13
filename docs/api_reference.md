@@ -233,6 +233,21 @@ frequency_parameters = Dict(
 频率拟合中的除零问题。大型系统可先调用 `generate_frequency_parameters`，再用
 `overrides` 覆盖关键机组。
 
+同一个字典也可以配置 PowerSystems 中的风电机组。风电记录按组件名称索引，使用
+`Fcmode`、`Kw`、`Rw`、`Mw`、`Dw`、`Tw` 六个字段：`Fcmode >= 0.5` 开启虚拟惯量/阻尼
+模式，`Kw/Rw` 表示一次调频增益和下垂，`Mw/Dw/Tw` 表示等效惯量、阻尼和响应时间常数。
+因此热机组和风电可以合并后一次传给 `UCSolveRequest`：
+
+```julia
+frequency_parameters = merge(
+    generate_frequency_parameters(sys),
+    Dict("Wind Farm 1" => (Fcmode = 1.0, Kw = 0.08, Rw = 0.10, Mw = 1.50, Dw = 0.40, Tw = 5.0)),
+)
+```
+
+完整的 IEEE 30 节点、风电、频率控制和数据中心 UC 示例见
+[`examples/unified_api/07_ieee30_frequency_datacenter_uc.jl`](../examples/unified_api/07_ieee30_frequency_datacenter_uc.jl)。
+
 ### 数据中心
 
 每个数据中心至少提供 `bus` 和 `p_max`，可选字段为 `p_min`、`idle_power`、

@@ -35,6 +35,7 @@ result = solve_uc(
 | `04_powersystems_native.jl` | PowerSystems 原生系统 + 数据中心参数 | 是 |
 | `05_benders_named_setup.jl` | Benders 新命名字段和旧位置解构兼容层 | 是 |
 | `06_powersystems_case_catalog.jl` | 6/30/118 总线及大算例目录、桥接和可选求解 | 默认否 |
+| `07_ieee30_frequency_datacenter_uc.jl` | IEEE 30 节点 + 频率问题 + 数据中心挂载的完整 UC | 默认是 |
 
 从仓库根目录执行：
 
@@ -43,6 +44,7 @@ julia --project=. examples/unified_api/01_excel_single_solve.jl
 julia --project=. examples/unified_api/02_input_spec_and_data.jl
 julia --project=. examples/unified_api/03_three_algorithm_comparison.jl
 julia --project=. examples/unified_api/06_powersystems_case_catalog.jl
+UC_HORIZON=4 julia --project=. examples/unified_api/07_ieee30_frequency_datacenter_uc.jl
 ```
 
 选择不同 PowerSystems 算例时只需改变环境变量，数据入口保持不变：
@@ -68,6 +70,32 @@ PowerSystems 示例需要 `PowerSystemCaseBuilder` 的内置算例和可用的 G
 ```bash
 julia --project=. examples/unified_api/04_powersystems_native.jl
 ```
+
+### IEEE 30 节点频率-数据中心 UC
+
+`07_ieee30_frequency_datacenter_uc.jl` 是一个更完整的业务侧示例：它固定读取 `:ieee30`
+算例，打印 30 个母线、6 台常规机组、1 台风电、41 条线路和 21 个负荷的系统边界，为
+常规机组配置 `H/D/K/F/T/R`，为风电配置 `Fcmode/Kw/Rw/Mw/Dw/Tw`，并把一个 20 MW
+数据中心挂载到 5 号母线。随后程序通过 `load_uc_data` 打印统一数据维度和有效 config，
+再用 `UCSolveRequest` 统一调用 `benchmark`、`benders` 或 `ccg`。
+
+建议先用 4 小时窗口验证接口和模型链路：
+
+```bash
+UC_HORIZON=4 UC_ALGORITHM=benchmark \
+  julia --project=. examples/unified_api/07_ieee30_frequency_datacenter_uc.jl
+```
+
+只检查 PowerSystems 桥接、频率参数和数据中心数据，不启动优化：
+
+```bash
+UC_HORIZON=4 UC_RUN_SOLVE=0 \
+  julia --project=. examples/unified_api/07_ieee30_frequency_datacenter_uc.jl
+```
+
+`PowerSystems` 原生功率字段已经是 `SYSTEM_BASE` 标幺值；示例中的数据中心参数仍按 MW
+填写，由统一桥接层转换为模型内部标幺值。示例设置的 5% 事故容量是便于教学 smoke test
+的标定值，正式研究应依据实际 N-1 事故重新设定 `FREQUENCY_CONTINGENCY_FRACTION`。
 
 ## 1. `solve_uc` 的两种调用形式
 

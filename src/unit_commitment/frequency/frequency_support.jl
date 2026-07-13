@@ -24,6 +24,7 @@ function wind_frequency_capacity_support(winds)
         return (inertia = 0.0, damping = 0.0, primary = 0.0)
     end
     NW = length(winds.index)
+    NW == 0 && return (inertia = 0.0, damping = 0.0, primary = 0.0)
     return (
         inertia = sum(wind_virtual_inertia_coeff(winds, w) * safe_frequency_coeff(winds.p_max, w) for w in 1:NW),
         damping = sum(wind_virtual_damping_coeff(winds, w) * safe_frequency_coeff(winds.p_max, w) for w in 1:NW),

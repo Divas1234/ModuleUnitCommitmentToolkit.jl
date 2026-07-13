@@ -50,12 +50,7 @@ println("  generators = ", length(collect(get_components(ThermalStandard, sys)))
 println("  branches   = ", length(collect(get_components(ACBranch, sys))))
 println("  loads      = ", length(collect(get_components(PowerLoad, sys))))
 
-data = load_uc_data(
-    input = :powersystems,
-    case_name = CASE_ALIAS,
-    scenario_limit = SCENARIO_LIMIT,
-    horizon = HORIZON,
-)
+data = load_uc_data(input = :powersystems, case_name = CASE_ALIAS, scenario_limit = SCENARIO_LIMIT, horizon = HORIZON)
 println("Unified data dimensions: NB=$(data.NB), NG=$(data.NG), NL=$(data.NL), ND=$(data.ND), NT=$(data.NT)")
 
 if RUN_SOLVE

@@ -578,7 +578,28 @@ function extract_uc_data_from_powersystems(
     centers = _normalize_data_centers(data_centers, data_center_buses, data_center_pmax)
     data_center_data = _data_center_struct(centers, bus_to_index, horizon, base_power)
     config_parameter = config_from_env()
-    renewable_frequency_parameters = zeros(length(collect(get_components(RenewableGen, sys))), 6)
+
+    # Keep thermal and renewable frequency settings in the same public
+    # dictionary. Thermal records use H/D/K/F/T/R; renewable records use the
+    # native wind fields Fcmode/Kw/Rw/Mw/Dw/Tw. This lets a caller configure
+    # all frequency resources through one UCSolveRequest.frequency_parameters
+    # value without introducing a second input channel.
+    renewables = sort(collect(get_components(RenewableGen, sys)), by = get_name)
+    renewable_frequency_parameters = zeros(length(renewables), 6)
+    for (index, renewable) in enumerate(renewables)
+        record = if frequency_parameters isa AbstractDict
+            get(frequency_parameters, get_name(renewable), nothing)
+        else
+            nothing
+        end
+        record === nothing && continue
+        renewable_frequency_parameters[index, 1] = _finite_float(_field_or_default(record, :Fcmode, 0.0), 0.0)
+        renewable_frequency_parameters[index, 2] = _finite_float(_field_or_default(record, :Kw, 0.0), 0.0)
+        renewable_frequency_parameters[index, 3] = _finite_float(_field_or_default(record, :Rw, 1.0), 1.0)
+        renewable_frequency_parameters[index, 4] = _finite_float(_field_or_default(record, :Mw, 0.0), 0.0)
+        renewable_frequency_parameters[index, 5] = _finite_float(_field_or_default(record, :Dw, 0.0), 0.0)
+        renewable_frequency_parameters[index, 6] = _finite_float(_field_or_default(record, :Tw, 0.0), 0.0)
+    end
     return config_parameter,
     units, lines, loads, psses, length(buses), generator_count, branch_count, load_count,
     horizon, storage_count, length(centers), data_center_data, renewable_frequency_parameters, bus_to_index

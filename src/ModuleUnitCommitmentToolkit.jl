@@ -21,6 +21,7 @@ include("solver_interface.jl")
 
 # Public package-level entry points. Algorithm drivers under `tools/` remain the
 # implementation and compatibility layer behind the unified entry point.
-export SUC_scucmodel, load_runtime_config!, runtime_config_entries, UCInputSpec, UCSolveRequest, UCSolveResult, BendersSetup, print_uc_result, solve_uc
+export SUC_scucmodel,
+    load_runtime_config!, runtime_config_entries, UCInputSpec, UCSolveRequest, UCSolveResult, BendersSetup, print_uc_result, solve_uc
 
 end

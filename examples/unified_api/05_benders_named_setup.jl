@@ -21,10 +21,7 @@ const SCENARIO_LIMIT = parse(Int, get(ENV, "UC_SCENARIO_LIMIT", "1"))
 const MAX_ITERATIONS = get(ENV, "BENDERS_MAX_ITERATIONS", "5")
 
 # main 返回 BendersSetup，不再返回匿名位置元组。
-setup = main(
-    input = :excel,
-    scenario_limit = SCENARIO_LIMIT,
-)
+setup = main(input = :excel, scenario_limit = SCENARIO_LIMIT)
 
 # 推荐：通过字段名读取结构，字段顺序改变时不会静默错位。
 master_model = setup.master_model
@@ -51,11 +48,8 @@ println("legacy compatibility values = ", length(legacy_values))
 
 # 低层 Benders 求解仍然需要按算法函数签名传入模型和维度；
 # 新的命名对象解决的是 setup 数据的可读性和兼容迁移问题。
-result = withenv(
-    "BENDERS_MAX_ITERATIONS" => MAX_ITERATIONS,
-    "BENDERS_PARALLEL_SUBPROBLEMS" => "0",
-) do
-    multiple_bender_decomposition_scuc(
+result = withenv("BENDERS_MAX_ITERATIONS" => MAX_ITERATIONS, "BENDERS_PARALLEL_SUBPROBLEMS" => "0") do
+    return multiple_bender_decomposition_scuc(
         master_model,
         sub_model,
         master_struct,
