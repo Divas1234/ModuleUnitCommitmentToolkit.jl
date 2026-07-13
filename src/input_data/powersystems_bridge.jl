@@ -1,8 +1,269 @@
 using PowerSystems
 using PowerSystemCaseBuilder
+using CSV
+using DataFrames
+using Logging
 
 export build_system_from_powersystems,
     extract_uc_data_from_powersystems, generate_wind_scenarios_from_system, load_native_powersystems_case, generate_frequency_parameters
+
+const _POWER_SYSTEM_CASE_CATALOG = (
+    ieee6 = (
+        alias = "ieee6",
+        aliases = ("ieee6", "ieee_6bus", "ieee6bus", "case6", "matpower_case6_sys"),
+        case_name = "matpower_case6_sys",
+        case_category = MatpowerTestSystems,
+        description = "IEEE 6-bus MATPOWER case",
+    ),
+    ieee14 = (
+        alias = "ieee14",
+        aliases = ("ieee14", "ieee_14bus", "ieee14bus", "case14", "matpower_case14_sys"),
+        case_name = "matpower_case14_sys",
+        case_category = MatpowerTestSystems,
+        description = "IEEE 14-bus MATPOWER case",
+    ),
+    ieee24 = (
+        alias = "ieee24",
+        aliases = ("ieee24", "ieee_24bus", "ieee24bus", "case24", "matpower_case24_sys"),
+        case_name = "matpower_case24_sys",
+        case_category = MatpowerTestSystems,
+        description = "IEEE 24-bus MATPOWER case",
+    ),
+    ieee30 = (
+        alias = "ieee30",
+        aliases = ("ieee30", "ieee_30bus", "ieee30bus", "case30", "matpower_case30_sys"),
+        case_name = "matpower_case30_sys",
+        case_category = MatpowerTestSystems,
+        description = "IEEE 30-bus MATPOWER case",
+    ),
+    ieee118 = (
+        alias = "ieee118",
+        aliases = ("ieee118", "ieee_118bus", "ieee118bus", "case118", "118_bus"),
+        case_name = "118_bus",
+        case_category = nothing,
+        description = "118-bus PowerSystemsTestData case with thermal units, loads, and AC branches",
+    ),
+    c_sys5_all_components = (
+        alias = "c_sys5_all_components",
+        aliases = ("c_sys5_all_components",),
+        case_name = "c_sys5_all_components",
+        case_category = PSITestSystems,
+        description = "5-bus case with renewable generation, storage, and multiple load types",
+    ),
+    rts_gmlc = (
+        alias = "rts_gmlc",
+        aliases = ("rts_gmlc", "matpower_rts_gmlc", "matpower_rts_gmlc_sys"),
+        case_name = "matpower_RTS_GMLC_sys",
+        case_category = MatpowerTestSystems,
+        description = "RTS-GMLC MATPOWER case",
+    ),
+    activsg2000 = (
+        alias = "activsg2000",
+        aliases = ("activsg2000", "activsg_2000", "matpower_activsg2000_sys"),
+        case_name = "matpower_ACTIVSg2000_sys",
+        case_category = MatpowerTestSystems,
+        description = "ACTIVSg2000 large MATPOWER case",
+    ),
+    activsg10k = (
+        alias = "activsg10k",
+        aliases = ("activsg10k", "activsg_10k", "matpower_activsg10k_sys"),
+        case_name = "matpower_ACTIVSg10k_sys",
+        case_category = MatpowerTestSystems,
+        description = "ACTIVSg10k very-large MATPOWER case",
+    ),
+)
+
+"""
+    powersystems_case_catalog()
+
+Return the immutable catalog used by the unified PowerSystems input entry point.
+Each entry provides an `alias`, canonical `case_name`, `case_category`, and a
+short description. `ieee118` is loaded from the 118-Bus artifact shipped with
+`PowerSystemCaseBuilder`, because that case is not registered in the package's
+default catalog.
+"""
+powersystems_case_catalog() = _POWER_SYSTEM_CASE_CATALOG
+
+"""
+    list_powersystems_cases()
+
+Return the curated case entries as a vector in display order. The returned
+named tuples are immutable and can be used directly to populate a UI selector
+or a command-line case list.
+"""
+list_powersystems_cases() = collect(values(_POWER_SYSTEM_CASE_CATALOG))
+
+function _normalize_powersystems_case_key(case_name)
+    key = lowercase(strip(string(case_name)))
+    return replace(key, r"[^a-z0-9]+" => "_") |> x -> strip(x, '_')
+end
+
+function _catalog_case(case_name)
+    key = _normalize_powersystems_case_key(case_name)
+    for entry in values(_POWER_SYSTEM_CASE_CATALOG)
+        key in (_normalize_powersystems_case_key(alias) for alias in entry.aliases) && return entry
+    end
+    return nothing
+end
+
+function _build_case_builder_system(case_category::Type{<:SystemCategory}, case_name::AbstractString; kwargs...)
+    # PowerSystemCaseBuilder emits raw-data conformity diagnostics while it
+    # deserializes several MATPOWER cases. Keep those implementation details
+    # out of the unified API output; construction errors still propagate.
+    return with_logger(NullLogger()) do
+        build_system(case_category, case_name; kwargs...)
+    end
+end
+
+function _power_system_case_data_dir()
+    isdefined(PowerSystemCaseBuilder, :DATA_DIR) ||
+        throw(ArgumentError("PowerSystemCaseBuilder does not expose its case-data artifact directory"))
+    data_dir = getproperty(PowerSystemCaseBuilder, :DATA_DIR)
+    case_dir = joinpath(data_dir, "118-Bus")
+    isdir(case_dir) || throw(ArgumentError("The PowerSystemsTestData 118-Bus artifact is unavailable at $case_dir"))
+    return case_dir
+end
+
+function _ieee118_float(value, default::Float64 = 0.0)
+    value === missing && return default
+    value isa AbstractString && isempty(strip(value)) && return default
+    parsed = tryparse(Float64, string(value))
+    return parsed === nothing ? default : parsed
+end
+
+function _ieee118_bus_number(value)
+    parsed = tryparse(Int, string(value))
+    parsed === nothing && throw(ArgumentError("Invalid IEEE 118 bus number: $value"))
+    return parsed
+end
+
+function _ieee118_component_bus(value)
+    digits = match(r"(\d+)$", strip(string(value)))
+    digits === nothing && throw(ArgumentError("Invalid IEEE 118 component bus identifier: $value"))
+    return parse(Int, digits.captures[1])
+end
+
+function _build_ieee118_system()
+    case_dir = _power_system_case_data_dir()
+    base_power = 100.0
+    bus_df = CSV.read(joinpath(case_dir, "Buses.csv"), DataFrame)
+    line_df = CSV.read(joinpath(case_dir, "Lines.csv"), DataFrame)
+    generator_df = CSV.read(joinpath(case_dir, "gen.csv"), DataFrame)
+    participation_df = CSV.read(joinpath(case_dir, "Load", "partfact.csv"), DataFrame)
+
+    bus_by_number = Dict{Int, ACBus}()
+    buses = ACBus[]
+    for row in eachrow(bus_df)
+        number = _ieee118_bus_number(row["Number"])
+        bus = ACBus(
+            name = "bus$(lpad(number, 3, '0'))",
+            available = true,
+            number = number,
+            bustype = number == 69 ? ACBusTypes.REF : ACBusTypes.PQ,
+            angle = _ieee118_float(row["Angle"]),
+            magnitude = _ieee118_float(row["Magnitude "], 1.0),
+            voltage_limits = (
+                min = _ieee118_float(row["Voltage-Min (pu)"], 0.94),
+                max = _ieee118_float(row["Voltage-Max (pu)"], 1.06),
+            ),
+            base_voltage = _ieee118_float(row["Base Voltage kV"], 138.0),
+        )
+        bus_by_number[number] = bus
+        push!(buses, bus)
+    end
+    sort!(buses, by = get_number)
+
+    generators = ThermalStandard[]
+    for row in eachrow(generator_df)
+        strip(String(row["type"])) == "Thermal" || continue
+        bus_number = _ieee118_component_bus(row["bus of connection"])
+        haskey(bus_by_number, bus_number) || throw(ArgumentError("IEEE 118 generator references unknown bus $bus_number"))
+        maximum_power = max(_ieee118_float(row["Max Capacity (MW)"]), 0.0)
+        minimum_power = clamp(_ieee118_float(row["Min Stable Level (MW)"], 0.0), 0.0, maximum_power)
+        ramp_up = max(_ieee118_float(row["Max Ramp Up (MW/min)"], maximum_power), 0.0)
+        ramp_down = max(_ieee118_float(row["Max Ramp Down (MW/min)"], maximum_power), 0.0)
+        generator = ThermalStandard(
+            name = String(row["Generator Name"]),
+            available = true,
+            status = true,
+            bus = bus_by_number[bus_number],
+            active_power = minimum_power / base_power,
+            reactive_power = 0.0,
+            rating = maximum_power / base_power,
+            active_power_limits = (min = minimum_power / base_power, max = maximum_power / base_power),
+            reactive_power_limits = nothing,
+            ramp_limits = (up = ramp_up / base_power, down = ramp_down / base_power),
+            operation_cost = ThermalGenerationCost(nothing),
+            base_power = base_power,
+            time_limits = (
+                up = max(_ieee118_float(row["Min Up Time (h)"], 1.0), 0.0),
+                down = max(_ieee118_float(row["Min Down Time (h)"], 1.0), 0.0),
+            ),
+            prime_mover_type = PrimeMovers.OT,
+            fuel = ThermalFuels.OTHER,
+        )
+        push!(generators, generator)
+    end
+
+    branches = Line[]
+    for (index, row) in enumerate(eachrow(line_df))
+        from_number = _ieee118_component_bus(row["Bus from "])
+        to_number = _ieee118_component_bus(row["Bus to"])
+        haskey(bus_by_number, from_number) && haskey(bus_by_number, to_number) ||
+            throw(ArgumentError("IEEE 118 branch $index references an unknown bus"))
+        rating = max(_ieee118_float(row["Max Flow (MW)"], 0.0), 0.0)
+        push!(
+            branches,
+            Line(
+                name = String(row["Line Name"]),
+                available = true,
+                active_power_flow = 0.0,
+                reactive_power_flow = 0.0,
+                arc = Arc(bus_by_number[from_number], bus_by_number[to_number]),
+                r = _ieee118_float(row["Resistance (p.u.)"]),
+                x = _ieee118_float(row["Reactance (p.u.)"], 0.01),
+                b = (from = 0.0, to = 0.0),
+                rating = rating / base_power,
+                angle_limits = (min = -pi, max = pi),
+            ),
+        )
+    end
+
+    regional_peaks = Dict{String, Float64}()
+    for region in ("R1", "R2", "R3")
+        profile = CSV.read(joinpath(case_dir, "Load", "RT", "Load$(region)RT.csv"), DataFrame)
+        regional_peaks[region] = maximum(_ieee118_float.(profile[:, 2], 0.0))
+    end
+    loads = PowerLoad[]
+    for row in eachrow(participation_df)
+        bus_number = _ieee118_component_bus(row["Bus Name"])
+        haskey(bus_by_number, bus_number) || throw(ArgumentError("IEEE 118 load references unknown bus $bus_number"))
+        region = String(row["Region"])
+        factor = max(_ieee118_float(row["Load Participation Factor"]), 0.0)
+        maximum_power = max(regional_peaks[region] * factor, 0.0)
+        push!(
+            loads,
+            PowerLoad(
+                name = "load$(lpad(bus_number, 3, '0'))",
+                available = true,
+                bus = bus_by_number[bus_number],
+                active_power = maximum_power / base_power,
+                reactive_power = 0.0,
+                base_power = base_power,
+                max_active_power = maximum_power / base_power,
+                max_reactive_power = 0.0,
+            ),
+        )
+    end
+
+    system = System(base_power; runchecks = false)
+    for component in (buses, generators, branches, loads)
+        for item in component
+            add_component!(system, item)
+        end
+    end
+    return system
+end
 
 """
     build_system_from_powersystems(case_name; case_category = MatpowerTestSystems)
@@ -11,11 +272,18 @@ Build a native `PowerSystems.System` from a `PowerSystemCaseBuilder` catalog.
 Use a category such as `MatpowerTestSystems`, `PSISystems`, or `PSYTestSystems`
 to select the catalog. A file path is passed to `PowerSystems.System` directly.
 """
-function build_system_from_powersystems(case_name::AbstractString; case_category::Type{<:SystemCategory} = MatpowerTestSystems, kwargs...)
-    if isfile(case_name)
-        return System(case_name)
+function build_system_from_powersystems(case_name::Union{Symbol, AbstractString}; case_category::Type{<:SystemCategory} = MatpowerTestSystems, kwargs...)
+    catalog_case = _catalog_case(case_name)
+    if catalog_case !== nothing
+        catalog_case.alias == "ieee118" && return _build_ieee118_system()
+        return _build_case_builder_system(catalog_case.case_category, catalog_case.case_name; kwargs...)
     end
-    return build_system(case_category, String(case_name); kwargs...)
+
+    case_path = String(case_name)
+    if isfile(case_path)
+        return System(case_path)
+    end
+    return _build_case_builder_system(case_category, case_path; kwargs...)
 end
 
 """
@@ -30,7 +298,7 @@ optional fields are `p_min`, `idle_power`, `server_energy`, `lambda`, `mu`, and
 `workload`.
 """
 function load_native_powersystems_case(
-    case_name::AbstractString;
+    case_name::Union{Symbol, AbstractString};
     case_category::Type{<:SystemCategory} = MatpowerTestSystems,
     scenario_limit::Int64 = 50,
     frequency_parameters = nothing,
@@ -57,6 +325,15 @@ function _field_or_default(value, name::Symbol, default)
     return default
 end
 
+function _finite_float(value, default::Float64)
+    parsed = try
+        Float64(value)
+    catch
+        default
+    end
+    return isfinite(parsed) ? parsed : default
+end
+
 function _frequency_value(parameters, generator_name::String, index::Int, field::Symbol, default::Float64)
     parameters === nothing && return default
     if parameters isa AbstractDict
@@ -71,7 +348,7 @@ function _frequency_value(parameters, generator_name::String, index::Int, field:
     return throw(ArgumentError("frequency_parameters must be a generator-name dictionary or a legacy matrix"))
 end
 
-function _time_series_or_static(component, horizon::Int64, base_power::Float64)
+function _time_series_or_static(component, horizon::Int64)
     for label in ("max_active_power", "active_power", "scaling_factor_active_power")
         try
             values = Float64.(collect(get_time_series_values(SingleTimeSeries, component, label)))
@@ -80,14 +357,14 @@ function _time_series_or_static(component, horizon::Int64, base_power::Float64)
                 values .*= get_max_active_power(component)
             end
             return if length(values) >= horizon
-                values[1:horizon] ./ base_power
+                values[1:horizon]
             else
-                vcat(values, fill(values[end], horizon - length(values))) ./ base_power
+                vcat(values, fill(values[end], horizon - length(values)))
             end
         catch
         end
     end
-    return fill(Float64(get_max_active_power(component)) / base_power, horizon)
+    return fill(Float64(get_max_active_power(component)), horizon)
 end
 
 function _thermal_cost_coefficients(generator, base_power::Float64)
@@ -96,18 +373,18 @@ function _thermal_cost_coefficients(generator, base_power::Float64)
     c = 0.0
     operation_cost = getproperty(generator, :operation_cost)
     if hasproperty(operation_cost, :fixed)
-        c = Float64(operation_cost.fixed)
+        c = _finite_float(operation_cost.fixed, c)
     end
     if hasproperty(operation_cost, :variable)
         variable_cost = operation_cost.variable
         if hasproperty(variable_cost, :value_curve)
             data = variable_cost.value_curve.function_data
-            a = Float64(_field_or_default(data, :quadratic_term, a))
-            b = Float64(_field_or_default(data, :proportional_term, b))
-            c += Float64(_field_or_default(data, :constant_term, 0.0))
+            a = _finite_float(_field_or_default(data, :quadratic_term, a), a)
+            b = _finite_float(_field_or_default(data, :proportional_term, b), b)
+            c += _finite_float(_field_or_default(data, :constant_term, 0.0), 0.0)
         end
     end
-    return a * base_power^2, b * base_power, c
+    return _finite_float(a * base_power^2, 0.0), _finite_float(b * base_power, 10.0 * base_power), _finite_float(c, 0.0)
 end
 
 function _normalize_data_centers(data_centers, legacy_buses, legacy_pmax)
@@ -166,10 +443,12 @@ end
 """
     extract_uc_data_from_powersystems(sys; frequency_parameters, data_centers, horizon)
 
-Convert a `PowerSystems.System` into the toolkit's UC structures. All power
-quantities supplied through `data_centers` are in MW and are converted with the
-native system base power. The function keeps a contiguous internal bus index so
-arbitrary PowerSystems bus numbers are supported.
+Convert a `PowerSystems.System` into the toolkit's UC structures. Native
+PowerSystems component quantities are already expressed in the system-base
+per-unit convention and are passed through without a second base-power
+division. Power quantities supplied through `data_centers` are in MW and are
+converted with the native system base power. The function keeps a contiguous
+internal bus index so arbitrary PowerSystems bus numbers are supported.
 """
 function extract_uc_data_from_powersystems(
     sys::System;
@@ -221,26 +500,29 @@ function extract_uc_data_from_powersystems(
         ramps = getproperty(generator, :ramp_limits)
         time_limits = getproperty(generator, :time_limits)
         maximum_power = Float64(limits.max)
-        push!(p_max, maximum_power / base_power);
-        push!(p_min, Float64(limits.min) / base_power)
-        push!(ramp_up, Float64(_field_or_default(ramps, :up, maximum_power)) / base_power)
-        push!(ramp_down, Float64(_field_or_default(ramps, :down, maximum_power)) / base_power)
-        push!(startup_ramp, maximum_power / base_power);
-        push!(shutdown_ramp, maximum_power / base_power)
+        # PowerSystems uses SYSTEM_BASE units for component power values. These
+        # quantities are already per-unit on the system base; dividing by
+        # `base_power` here would perform a second, incorrect normalization.
+        push!(p_max, maximum_power);
+        push!(p_min, Float64(limits.min))
+        push!(ramp_up, Float64(_field_or_default(ramps, :up, maximum_power)))
+        push!(ramp_down, Float64(_field_or_default(ramps, :down, maximum_power)))
+        push!(startup_ramp, maximum_power);
+        push!(shutdown_ramp, maximum_power)
         push!(min_up, Float64(_field_or_default(time_limits, :up, 1.0)));
         push!(min_down, Float64(_field_or_default(time_limits, :down, 1.0)))
         push!(initial_status, getproperty(generator, :status) ? 1.0 : 0.0);
         push!(initial_hours, 1.0);
-        push!(initial_power, Float64(getproperty(generator, :active_power)) / base_power)
+        push!(initial_power, Float64(getproperty(generator, :active_power)))
         a, b, c = _thermal_cost_coefficients(generator, base_power)
         push!(cost_a, a);
         push!(cost_b, b);
         push!(cost_c, c)
         operation_cost = getproperty(generator, :operation_cost)
-        startup_cost_value = Float64(_field_or_default(operation_cost, :start_up, 0.0))
+        startup_cost_value = _finite_float(_field_or_default(operation_cost, :start_up, 0.0), 0.0)
         push!(hot_start, startup_cost_value);
         push!(cold_start, startup_cost_value);
-        push!(shutdown_cost, Float64(_field_or_default(operation_cost, :shut_down, 0.0)));
+        push!(shutdown_cost, _finite_float(_field_or_default(operation_cost, :shut_down, 0.0), 0.0));
         push!(cold_time, 1.0)
         name = get_name(generator)
         push!(inertia, _frequency_value(frequency_parameters, name, index, :H, 5.0));
@@ -264,8 +546,8 @@ function extract_uc_data_from_powersystems(
         Int64[bus_index(get_from(get_arc(branch))) for branch in branches],
         Int64[bus_index(get_to(get_arc(branch))) for branch in branches],
         Float64[get_x(branch) for branch in branches],
-        Float64[get_rating(branch) / base_power for branch in branches],
-        Float64[-get_rating(branch) / base_power for branch in branches],
+        Float64[get_rating(branch) for branch in branches],
+        Float64[-get_rating(branch) for branch in branches],
     )
 
     power_loads = sort(collect(get_components(PowerLoad, sys)), by = get_name)
@@ -273,7 +555,7 @@ function extract_uc_data_from_powersystems(
     loads = load(
         collect(Int64(1):Int64(load_count)),
         Int64[bus_index(get_bus(power_load)) for power_load in power_loads],
-        reduce(vcat, [_time_series_or_static(power_load, horizon, base_power)' for power_load in power_loads]; init = zeros(0, horizon)),
+        reduce(vcat, [_time_series_or_static(power_load, horizon)' for power_load in power_loads]; init = zeros(0, horizon)),
     )
 
     storage = sort(collect(get_components(EnergyReservoirStorage, sys)), by = get_name)
@@ -281,13 +563,13 @@ function extract_uc_data_from_powersystems(
     psses = pss(
         collect(Int64(1):Int64(storage_count)),
         Int64[bus_index(get_bus(item)) for item in storage],
-        Float64[get_storage_capacity(item) / base_power for item in storage],
-        Float64[get_storage_level_limits(item).min / base_power for item in storage],
-        Float64[get_input_active_power_limits(item).max / base_power for item in storage],
-        Float64[get_output_active_power_limits(item).max / base_power for item in storage],
-        Float64[get_initial_storage_capacity_level(item) / base_power for item in storage],
-        Float64[get_input_active_power_limits(item).max / base_power for item in storage],
-        Float64[get_output_active_power_limits(item).max / base_power for item in storage],
+        Float64[get_storage_capacity(item) for item in storage],
+        Float64[get_storage_level_limits(item).min for item in storage],
+        Float64[get_input_active_power_limits(item).max for item in storage],
+        Float64[get_output_active_power_limits(item).max for item in storage],
+        Float64[get_initial_storage_capacity_level(item) for item in storage],
+        Float64[get_input_active_power_limits(item).max for item in storage],
+        Float64[get_output_active_power_limits(item).max for item in storage],
         Float64[get_efficiency(item).in for item in storage],
         Float64[get_efficiency(item).out for item in storage],
         zeros(storage_count),
@@ -317,7 +599,7 @@ function generate_wind_scenarios_from_system(
         return wind(Int64[], Int64[], Float64[], 1.0, 1, zeros(1, horizon), Float64[], Float64[], Float64[], Float64[], Float64[], Float64[]), 0
     index = collect(Int64(1):Int64(count))
     locatebus = Int64[get(bus_to_idx, get_number(get_bus(item)), get_number(get_bus(item))) for item in renewables]
-    p_max = Float64[get_rating(item) / base_power for item in renewables]
+    p_max = Float64[get_rating(item) for item in renewables]
     base_profile =
         reshape([clamp(Float64(getproperty(item, :active_power)) / max(Float64(get_rating(item)), eps()), 0.0, 1.0) for item in renewables], :, 1)
     profile = repeat(mean(base_profile; dims = 1), 1, horizon)

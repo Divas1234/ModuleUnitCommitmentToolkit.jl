@@ -134,17 +134,8 @@ withenv(
 
     # 3. Solve using Benders decomposition loop
     res_benders = multiple_bender_decomposition_scuc(
-        scuc_masterproblem,
-        scuc_subproblem,
-        master_model_struct,
-        batch_sub_model_struct_dic,
-        winds,
-        config_param,
-        NG,
-        NT,
-        NW,
-        ND,
-        NL;
+        scuc_masterproblem, scuc_subproblem, master_model_struct, batch_sub_model_struct_dic,
+        winds, config_param, NG, NT, NW, ND, NL;
         jensen_subproblem_struct = jensen_subproblem_struct,
     )
     println("→ Benders Solving Complete. Status: ", res_benders.status)

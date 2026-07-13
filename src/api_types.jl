@@ -19,6 +19,7 @@ struct UCSolveRequest
     input::UCInputSpec
     calibration::Any
     output_dir::Union{Nothing, String}
+    verbosity::Symbol
 end
 
 """Stable public result envelope; algorithm-specific fields live in `details`."""
@@ -74,9 +75,26 @@ struct BendersSetup
 end
 
 const _BENDERS_LEGACY_FIELDS = (
-    :master_model, :sub_model, :master_struct, :sub_struct, :batch_subproblems,
-    :config_param, :units, :lines, :loads, :winds, :psses, :NB, :NG, :NL,
-    :ND, :NS, :NT, :NC, :ND2, :DataCentras,
+    :master_model,
+    :sub_model,
+    :master_struct,
+    :sub_struct,
+    :batch_subproblems,
+    :config_param,
+    :units,
+    :lines,
+    :loads,
+    :winds,
+    :psses,
+    :NB,
+    :NG,
+    :NL,
+    :ND,
+    :NS,
+    :NT,
+    :NC,
+    :ND2,
+    :DataCentras,
 )
 
 function Base.iterate(setup::BendersSetup, state::Int = 1)

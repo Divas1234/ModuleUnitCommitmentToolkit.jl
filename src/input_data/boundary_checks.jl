@@ -43,6 +43,45 @@ function _print_checks(checks::Vector{Tuple{String, Bool}})
     return nothing
 end
 
+function _print_runtime_configuration()
+    _print_section("Runtime Configuration (effective values)")
+    default_config_path = isdefined(@__MODULE__, :DEFAULT_RUNTIME_CONFIG_PATH) ? DEFAULT_RUNTIME_CONFIG_PATH : "config/runtime_config.toml"
+    config_path = get(ENV, "MODULE_UC_CONFIG_FILE", default_config_path)
+    _print_kv("config file", config_path)
+
+    if !isdefined(@__MODULE__, :runtime_config_entries)
+        println("  runtime_config_entries is unavailable; showing current ENV only")
+        return nothing
+    end
+
+    entries = try
+        runtime_config_entries(config_path)
+    catch error
+        println("  unable to read runtime config: ", sprint(showerror, error))
+        Pair{String, String}[]
+    end
+    for entry in sort(entries; by = item -> item.first)
+        key = entry.first
+        configured_value = entry.second
+        effective_value = get(ENV, key, configured_value)
+        _print_kv(key, effective_value)
+    end
+
+    configured_keys = Set(first.(entries))
+    runtime_prefixes = ("BENCHMARK_", "MODEL_", "BENDERS_", "CCG_", "FREQUENCY_")
+    overrides = sort([
+        key for key in keys(ENV) if
+        any(startswith(key, prefix) for prefix in runtime_prefixes) && !(key in configured_keys)
+    ])
+    isempty(overrides) || begin
+        println("  calibration/runtime overrides:")
+        for key in overrides
+            _print_kv("    " * key, ENV[key])
+        end
+    end
+    return nothing
+end
+
 function boundary_env_bool(name::String, default::Bool)
     value = lowercase(strip(get(ENV, name, default ? "1" : "0")))
     return value in ("1", "true", "yes", "y", "on")
@@ -61,13 +100,28 @@ function maybe_print_boundarycondition(
     stroges::pss,
     config_param::config,
     ;
+    data_centers = nothing,
     default_enabled::Bool = true,
 )
     if !boundary_env_bool("PRINT_BOUNDARY_CONDITION", default_enabled)
         return nothing
     end
     show_plots = boundary_env_bool("BOUNDARY_SHOW_PLOTS", false)
-    return boundarycondition(NB, NL, NG, NT, ND, units, loads, lines, winds, stroges, config_param; show_plots = show_plots)
+    return boundarycondition(
+        NB,
+        NL,
+        NG,
+        NT,
+        ND,
+        units,
+        loads,
+        lines,
+        winds,
+        stroges,
+        config_param;
+        data_centers = data_centers,
+        show_plots = show_plots,
+    )
 end
 
 function boundrycondition(
@@ -83,6 +137,7 @@ function boundrycondition(
     stroges::pss,
     config_param::config,
     ;
+    data_centers = nothing,
     show_plots::Bool = true,
 )
     NS = winds.scenarios_nums
@@ -121,6 +176,7 @@ function boundrycondition(
     for field in fieldnames(config)
         _print_kv(String(field), getfield(config_param, field))
     end
+    _print_runtime_configuration()
 
     _print_section("Thermal Units")
     _print_vector("index", units.index)
@@ -139,6 +195,16 @@ function boundrycondition(
     _print_vector("cost a", units.coffi_a)
     _print_vector("cost b", units.coffi_b)
     _print_vector("cost c", units.coffi_c)
+    _print_vector("cold startup cost 1", units.coffi_cold_shutup_1)
+    _print_vector("cold startup cost 2", units.coffi_cold_shutup_2)
+    _print_vector("cold shutdown cost 1", units.coffi_cold_shutdown_1)
+    _print_vector("cold shutdown cost 2", units.coffi_cold_shutdown_2)
+    _print_vector("inertia H", units.Hg)
+    _print_vector("damping D", units.Dg)
+    _print_vector("governor gain K", units.Kg)
+    _print_vector("turbine fraction F", units.Fg)
+    _print_vector("time constant T", units.Tg)
+    _print_vector("droop R", units.Rg)
 
     _print_section("Loads")
     _print_vector("index", loads.index)
@@ -177,6 +243,21 @@ function boundrycondition(
     _print_vector("charge efficiency", stroges.η⁺)
     _print_vector("discharge efficiency", stroges.η⁻)
     _print_vector("self-discharge", stroges.δₛ)
+
+    if data_centers !== nothing
+        _print_section("Data Centers")
+        _print_vector("index", data_centers.index)
+        _print_vector("locatebus", data_centers.locatebus)
+        _print_vector("p_max", data_centers.p_max)
+        _print_vector("p_min", data_centers.p_min)
+        _print_vector("voltage regulation", data_centers.voltage_regulation)
+        _print_vector("idle power", data_centers.idale)
+        _print_vector("server energy constant", data_centers.sv_constant)
+        _print_vector("arrival rate lambda", data_centers.λ)
+        _print_vector("service rate mu", data_centers.μ)
+        task_matrix = data_centers.computational_power_tasks
+        _print_matrix_rows("computational power tasks", task_matrix, size(task_matrix, 1), size(task_matrix, 2))
+    end
 
     if show_plots
         _print_section("Wind Scenario Curves")

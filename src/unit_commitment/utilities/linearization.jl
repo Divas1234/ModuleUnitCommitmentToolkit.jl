@@ -10,7 +10,13 @@ function linearizationfuelcurve(units, NG)
     end
     eachslope = zeros(NG, 3)
     for i in 1:3
-        eachslope[:, i] = (cost[:, i + 1] - cost[:, i]) ./ linearpower_limits
+        # Some public MATPOWER cases contain zero-capacity placeholder units.
+        # Their three linearization segments have zero width, so assign a zero
+        # slope instead of creating NaN/Inf coefficients in the JuMP objective.
+        for g in 1:NG
+            eachslope[g, i] = linearpower_limits[g] > eps(Float64) ?
+                (cost[g, i + 1] - cost[g, i]) / linearpower_limits[g] : 0.0
+        end
     end
     #     println("baselinecost>>\t\t", cost[:,1])
     #     println("eachslope>>\t\t", eachslope)

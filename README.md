@@ -203,6 +203,8 @@ result = solve_uc(
 The runnable example is [examples/unified_solver.jl](examples/unified_solver.jl).
 Detailed input, calibration, result, and compatibility rules are in
 [docs/api_reference.md](docs/api_reference.md).
+The detailed, commented programs are in
+[examples/unified_api/README.md](examples/unified_api/README.md).
 
 ## Runtime Configuration
 

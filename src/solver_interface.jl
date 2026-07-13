@@ -53,9 +53,10 @@ function _calibration_pairs(calibration)
     return result
 end
 
-function _run_with_uc_context(fn::Function, calibration, output_dir)
+function _run_with_uc_context(fn::Function, calibration, output_dir; detailed::Bool = false)
     overrides = _calibration_pairs(calibration)
     output_dir === nothing || push!(overrides, "MODULE_UC_OUTPUT_DIR" => String(output_dir))
+    detailed && push!(overrides, "PRINT_BOUNDARY_CONDITION" => "1")
     isempty(overrides) && return fn()
     return withenv(overrides...) do
         return fn()
@@ -125,6 +126,7 @@ function UCSolveRequest(;
     horizon::Int64 = 24,
     calibration = NamedTuple(),
     output_dir = nothing,
+    verbosity = :detailed,
 )
     return UCSolveRequest(
         _normalize_solver_algorithm(algorithm),
@@ -144,6 +146,7 @@ function UCSolveRequest(;
         ),
         calibration,
         output_dir === nothing ? nothing : String(output_dir),
+        _normalize_uc_verbosity(verbosity),
     )
 end
 
@@ -170,7 +173,7 @@ function _solve_benders_unified(request::UCSolveRequest)
     )
     setup = values
 
-    return _invoke_uc_algorithm(
+    decomposition_result = _invoke_uc_algorithm(
         :multiple_bender_decomposition_scuc,
         setup.master_model,
         setup.sub_model,
@@ -184,6 +187,7 @@ function _solve_benders_unified(request::UCSolveRequest)
         setup.ND,
         setup.NL,
     )
+    return merge(decomposition_result, (data = setup.data,))
 end
 
 function _solve_uc_selected(request::UCSolveRequest)
@@ -252,10 +256,42 @@ end
 
 function solve_uc(request::UCSolveRequest)
     configured_output_dir = request.output_dir === nothing ? uc_output_root() : uc_output_dir(request.output_dir)
-    result = _run_with_uc_context(request.calibration, request.output_dir) do
-        return _solve_uc_selected(request)
+    verbosity = _normalize_uc_verbosity(request.verbosity)
+
+    result = if verbosity === :verbose
+        _run_with_uc_context(request.calibration, request.output_dir; detailed = false) do
+            _solve_uc_selected(request)
+        end
+    elseif verbosity === :detailed
+        redirect_stderr(devnull) do
+            _run_with_uc_context(request.calibration, request.output_dir; detailed = true) do
+                _solve_uc_selected(request)
+            end
+        end
+    else
+        try
+            captured_result = redirect_stdout(devnull) do
+                redirect_stderr(devnull) do
+                    _run_with_uc_context(request.calibration, request.output_dir; detailed = false) do
+                        _solve_uc_selected(request)
+                    end
+                end
+            end
+            captured_result
+        catch error
+            println(stderr, "[UC solve failed] ", sprint(showerror, error))
+            rethrow()
+        end
     end
-    return UCSolveResult(request.algorithm, request.input.source, configured_output_dir, result)
+
+    envelope = UCSolveResult(request.algorithm, request.input.source, configured_output_dir, result)
+    verbosity === :summary && print_uc_result(envelope)
+    if verbosity === :detailed
+        redirect_stderr(devnull) do
+            print_uc_result(envelope; detail = true)
+        end
+    end
+    return envelope
 end
 
 function solve_uc(; kwargs...)

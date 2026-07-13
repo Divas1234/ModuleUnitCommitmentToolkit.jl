@@ -13,6 +13,8 @@ export readxlssheet,
     read_powersystems_case,
     load_uc_data,
     build_system_from_powersystems,
+    powersystems_case_catalog,
+    list_powersystems_cases,
     extract_uc_data_from_powersystems,
     generate_wind_scenarios_from_system,
     load_native_powersystems_case

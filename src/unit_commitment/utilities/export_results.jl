@@ -203,8 +203,8 @@ function compute_uc_cost_summary(
     no_load_cost = ps * c0 * sum(x₀[g, t] * refcost[g, 1] for s in 1:NS, g in 1:NG, t in 1:NT)
     reserve_up_cost = ps * c0 * sum(reserve_price_up * seq_sr⁺[scenario_row(NG, s, g), t] for s in 1:NS, g in 1:NG, t in 1:NT)
     reserve_down_cost = ps * c0 * sum(reserve_price_down * seq_sr⁻[scenario_row(NG, s, g), t] for s in 1:NS, g in 1:NG, t in 1:NT)
-    load_curtailment_cost = ps * load_curtailment_penalty * sum(max(pᵨ[scenario_row(ND, s, d), t], 0.0) for s in 1:NS, d in 1:ND, t in 1:NT)
-    wind_curtailment_cost = ps * wind_curtailment_penalty * sum(max(pᵩ[scenario_row(NW, s, w), t], 0.0) for s in 1:NS, w in 1:NW, t in 1:NT)
+    load_curtailment_cost = ND == 0 ? 0.0 : ps * load_curtailment_penalty * sum(max(pᵨ[scenario_row(ND, s, d), t], 0.0) for s in 1:NS, d in 1:ND, t in 1:NT)
+    wind_curtailment_cost = NW == 0 ? 0.0 : ps * wind_curtailment_penalty * sum(max(pᵩ[scenario_row(NW, s, w), t], 0.0) for s in 1:NS, w in 1:NW, t in 1:NT)
     total_cost = startup_cost + shutdown_cost + variable_fuel_cost + no_load_cost + reserve_up_cost + reserve_down_cost + load_curtailment_cost + wind_curtailment_cost
 
     return (
@@ -284,8 +284,8 @@ function write_power_balance_summary_csv(
     rows = []
     for s in 1:NS, t in 1:NT
         thermal_generation = sum(pg[scenario_row(NG, s, g), t] for g in 1:NG)
-        wind_available = sum(winds.scenarios_curve[s, t] * winds.p_max[w] for w in 1:NW)
-        wind_spill = sum(wind_curtailment[scenario_row(NW, s, w), t] for w in 1:NW)
+        wind_available = NW == 0 ? 0.0 : sum(winds.scenarios_curve[s, t] * winds.p_max[w] for w in 1:NW)
+        wind_spill = NW == 0 ? 0.0 : sum(wind_curtailment[scenario_row(NW, s, w), t] for w in 1:NW)
         load_total = sum(loads.load_curve[d, t] for d in 1:ND)
         load_shed = sum(load_curtailment[scenario_row(ND, s, d), t] for d in 1:ND)
         bess_charge_total = if (config_param.is_ConsiderBESS == 1 && NC > 0 && bess_charge !== nothing)

@@ -27,11 +27,8 @@ result = solve_uc(
     input = input,
     scenario_limit = scenario_limit,
     calibration = calibration,
+    # 示例只展示统一摘要；需要查看内部模型构建和求解日志时改为 :verbose。
+    verbosity = :silent,
 )
 
-println("algorithm = ", result.algorithm)
-println("input = ", result.input)
-println("status = ", result.status)
-println("upper_bound = ", result.upper_bound)
-println("lower_bound = ", result.lower_bound)
-println("gap = ", result.gap)
+print_uc_result(result)

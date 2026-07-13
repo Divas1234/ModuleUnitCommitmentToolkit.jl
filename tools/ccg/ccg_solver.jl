@@ -238,6 +238,7 @@ function load_ccg_data(
         data.winds,
         data.psses,
         data.config_param,
+        data_centers = data.DataCentras,
     )
     return (
         config_param = data.config_param,

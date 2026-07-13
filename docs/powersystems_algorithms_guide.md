@@ -87,6 +87,13 @@ data_centers = [
 ]
 ```
 
+PowerSystems components themselves use the system-base per-unit convention. When constructing a
+component manually, convert MW values by `system_base` before passing them to PowerSystems, for
+example `max_active_power = 50.0 / 100.0` for a 50 MW load on a 100 MVA system base. The bridge
+passes native generator, load, storage, renewable, and branch values through without dividing by
+the base a second time; the data-center extension above remains in MW and is converted by the
+toolkit.
+
 ---
 
 ## 3. Data Loading and Unified Translation
@@ -103,6 +110,69 @@ data = load_uc_data(
     scenario_limit = 3
 )
 ```
+
+### 3.1 Curated case catalog and IEEE aliases
+
+The unified bridge exposes a small, stable catalog so application code does not need to
+remember the version-specific `PowerSystemCaseBuilder` category and case-name combination:
+
+```julia
+using ModuleUnitCommitmentToolkit
+
+for case in list_powersystems_cases()
+    println(case.alias, " -> ", case.case_name, ": ", case.description)
+end
+
+sys6 = build_system_from_powersystems(:ieee6)
+sys30 = build_system_from_powersystems(:ieee30)
+sys118 = build_system_from_powersystems(:ieee118)
+
+data118 = load_uc_data(
+    input = :powersystems,
+    case_name = :ieee118,
+    scenario_limit = 1,
+    horizon = 24,
+)
+```
+
+The currently supported curated aliases are:
+
+| Alias | Canonical case | Typical use |
+|---|---|---|
+| `:ieee6` | `matpower_case6_sys` | smoke tests and fast interface checks |
+| `:ieee14` | `matpower_case14_sys` | small network topology experiments |
+| `:ieee24` | `matpower_case24_sys` | medium network tests |
+| `:ieee30` | `matpower_case30_sys` | IEEE 30-bus algorithm comparisons |
+| `:ieee118` | PowerSystemsTestData `118-Bus` artifact | large topology and scaling tests |
+| `:c_sys5_all_components` | `PSITestSystems` case | renewable/storage/data-center bridge tests |
+| `:rts_gmlc` | `matpower_RTS_GMLC_sys` | realistic RTS-style studies |
+| `:activsg2000` / `:activsg10k` | ACTIVSg MATPOWER cases | large-scale stress tests |
+
+The 118-bus alias is backed by the `PowerSystemsTestData` artifact included by the installed
+`PowerSystemCaseBuilder` version. It is intentionally registered by this toolkit because that
+case is not present in the builder's default public catalog. The adapter normalizes its bus IDs,
+thermal units, AC branches, and regional loads into the same internal structures as the smaller
+MATPOWER cases. If an exact external IEEE-118 MATPOWER file is required, pass its path instead:
+
+```julia
+sys118_external = build_system_from_powersystems("/path/to/case118.m")
+data118_external = load_uc_data(
+    input = :powersystems,
+    sys = sys118_external,
+    scenario_limit = 1,
+    horizon = 24,
+)
+```
+
+The unified builder also keeps `PowerSystemCaseBuilder`'s raw deserialization diagnostics out of
+the application-level output. In particular, rating-range messages from MATPOWER input are not
+printed by `build_system_from_powersystems`; they are diagnostics from the lower-level reader and
+do not change the returned `System`. Construction errors still propagate normally. Call
+`PowerSystemCaseBuilder.build_system(...)` directly when those raw diagnostics are needed.
+
+For larger cases, start with `scenario_limit = 1`, `verbosity = :summary` or `:silent`, and
+frequency control disabled unless the study explicitly requires it. The three algorithms share
+this same case/data entry point; only `algorithm = :benchmark`, `:benders`, or `:ccg` changes.
 
 ---
 
@@ -200,11 +270,15 @@ println("CCG Upper Bound: ", res_ccg.upper_bound)
 
 ## 5. Running the Demo Script
 
-A pre-packaged demonstration script is available in the repository at `examples/powersystems_algorithms_demo.jl`. To execute the benchmark validation comparing all three methods, run:
+A unified public-API demonstration script is available at `examples/unified_api/04_powersystems_native.jl`. To run it with the default CCG route, use:
 
 ```bash
-julia --project=. examples/powersystems_algorithms_demo.jl
+julia --project=. examples/unified_api/04_powersystems_native.jl
 ```
+
+Set `UC_ALGORITHM=benchmark` or `UC_ALGORITHM=benders` to select another algorithm. The
+older low-level comparative program remains available at `examples/powersystems_algorithms_demo.jl`
+for debugging the individual formulation modules.
 
 ---
 

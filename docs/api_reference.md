@@ -2,6 +2,8 @@
 
 本文档以当前源码为准，区分“包级公共接口”和“工具脚本接口”。所有命令默认从项目根目录执行。
 
+可直接运行的完整示例位于 [`examples/unified_api/README.md`](../examples/unified_api/README.md)。
+
 ## 1. 接口边界
 
 ### 包级接口
@@ -71,6 +73,37 @@ result = solve_uc(
 各自的 `status`、边界值、`gap`、`history` 和模型/输出字段。`tools/` 下的实现模块会
 在第一次 `solve_uc` 调用时惰性加载。
 
+### 输出模式
+
+统一入口默认使用 `verbosity=:detailed`。数据加载完成后，终端会先输出完整系统边界参数、
+有效模型 `config` 和 runtime 配置；求解完成后再输出目标值、上下界、gap、模型规模、
+迭代历史、成本分解、算法诊断和输出文件位置。
+
+四种模式如下：
+
+| 模式 | 用途 | 终端行为 |
+|---|---|---|
+| `:detailed` | 默认交互和实验运行 | 边界/配置完整报告 + 详细优化结果 |
+| `:summary` | 快速反馈 | 只输出 Request、Status、Progress、Artifacts 摘要 |
+| `:verbose` | 底层算法排查 | 保留算法原始日志，并输出求解过程 |
+| `:silent` | 批处理、服务层 | 不自动打印，由调用方自行渲染 |
+
+批处理可以使用 `verbosity=:silent`，再显式调用 `print_uc_result(result; detail=true)`：
+
+```julia
+result = solve_uc(
+    algorithm = :ccg,
+    input = :excel,
+    verbosity = :silent,
+)
+
+print_uc_result(result; detail = true)
+```
+
+四种模式不会改变 `UCSolveResult` 的内容，只控制终端输出。算法专属的原始日志仍由
+`:verbose` 保留，统一结果字段始终通过 `result.status`、`result.upper_bound` 等命名属性
+访问。
+
 ## 2. 统一数据加载
 
 ### 2.1 Excel 默认模式
@@ -115,6 +148,54 @@ data = load_uc_data(
 也可以直接调用 `load_native_powersystems_case`。常用的 `case_category` 包括
 `MatpowerTestSystems`、`PSITestSystems` 和 `PSYTestSystems`，具体名称以当前
 `PowerSystemCaseBuilder` 版本为准。
+
+推荐优先使用工具包提供的稳定算例别名。算例目录可通过以下接口查看：
+
+```julia
+catalog = powersystems_case_catalog()
+println(catalog.ieee6.case_name)
+println(catalog.ieee118.description)
+
+for case in list_powersystems_cases()
+    println(case.alias, " => ", case.case_name)
+end
+```
+
+可直接使用的核心别名包括 `:ieee6`、`:ieee14`、`:ieee24`、`:ieee30`、`:ieee118`、
+`:c_sys5_all_components`、`:rts_gmlc`、`:activsg2000` 和 `:activsg10k`。其中前四个
+MATPOWER 算例由 `MatpowerTestSystems` 提供；`:ieee118` 由安装版本中的
+`PowerSystemsTestData/118-Bus` 数据资产构造，统一桥接为 118 总线、热机组、AC 支路和
+区域负荷。对于本地已有的其它 `.m`、`.raw` 或 PowerSystems 可读文件，仍然可以直接把
+文件路径作为 `case_name` 传入。
+
+统一入口会屏蔽 `PowerSystemCaseBuilder` 在读取 MATPOWER 原始数据时产生的底层额定值
+范围提示和反序列化信息，避免这些实现细节与系统边界、配置和优化结果混在一起。该处理
+只影响日志显示，不会修改算例数据；构造失败、参数错误等异常仍会直接抛出。如果需要查看
+底层原始诊断，请直接调用 `PowerSystemCaseBuilder.build_system(...)`，而业务代码建议继续
+使用 `build_system_from_powersystems(...)`。
+
+统一入口示例：
+
+```julia
+data = load_uc_data(
+    input = :powersystems,
+    case_name = :ieee30,       # 也可以写成 "ieee30" 或 "case30"
+    scenario_limit = 1,
+    horizon = 24,
+)
+
+result = solve_uc(
+    algorithm = :benchmark,    # 改成 :benders 或 :ccg 即可复用同一数据入口
+    input = :powersystems,
+    case_name = :ieee118,
+    scenario_limit = 1,
+    output_dir = "output/powersystems/ieee118/benchmark",
+    verbosity = :summary,
+)
+```
+
+118-bus 等大算例建议先使用 `scenario_limit = 1` 做输入桥接和模型可行性检查，再逐步
+提高场景数；算法比较时应为每个算法显式设置独立的 `output_dir`。
 
 ### 2.4 PowerSystems + 项目扩展 CSV
 
@@ -170,8 +251,10 @@ data_centers = [(
 )]
 ```
 
-原生 PowerSystems 桥接接口接收 MW，并按系统 base power 转为内部标幺值；
-`horizon` 必须为正整数，工作负载短于 `horizon` 时会用最后一个值补齐。
+原生 `PowerSystems.System` 中的功率组件已经处于 `SYSTEM_BASE` 标幺体系，桥接时会直接
+沿用这些系统基准值，避免再次除以 `base_power`。只有接口额外接收的数据中心参数仍按
+MW 输入，并在进入模型时转换为标幺值。`horizon` 必须为正整数，工作负载短于
+`horizon` 时会用最后一个值补齐。
 
 ### `load_uc_data` 返回对象
 
@@ -182,7 +265,8 @@ config_param, units, lines, loads, winds, psses, DataCentras,
 NB, NG, NL, ND, NT, NC, ND2, NW, NS, full_scenario_probability
 ```
 
-模型结构中的功率通常为标幺值；原始 MW 输入只在 PowerSystems 桥接入口处转换。
+模型结构中的功率通常为标幺值；PowerSystems 组件使用其已有的系统基准值，数据中心等
+外部 MW 参数只在对应扩展入口处转换。
 `NS` 为场景数，`NW` 为风电机组数，`full_scenario_probability` 为等概率场景的
 `1 / NS`。
 
@@ -268,7 +352,8 @@ result = multiple_bender_decomposition_scuc(
 | `julia --project=. tools/benchmark/run_algorithm_comparison.jl` | 批量比较 benchmark、Benders 和 C&CG |
 | `julia --project=. tools/benders/driver.jl` | 运行 Benders |
 | `julia --project=. tools/ccg/driver.jl` | 运行 C&CG |
-| `julia --project=. examples/powersystems_algorithms_demo.jl` | 运行 PowerSystems 三算法示例 |
+| `julia --project=. examples/unified_api/04_powersystems_native.jl` | 运行统一 PowerSystems 示例 |
+| `julia --project=. examples/powersystems_algorithms_demo.jl` | 运行低层 PowerSystems 三算法调试示例 |
 | `julia --project=. test/runtests.jl` | 运行轻量测试 |
 | `./gui/start.sh` | 启动本地 dashboard |
 

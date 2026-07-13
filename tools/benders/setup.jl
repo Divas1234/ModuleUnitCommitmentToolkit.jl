@@ -85,7 +85,7 @@ function main(;
     scenarios_prob = data.full_scenario_probability
 
     # Print imported system statistics and validate core boundaries when enabled.
-    maybe_print_boundarycondition(NB, NL, NG, NT, ND, units, loads, lines, winds, psses, config_param)
+    maybe_print_boundarycondition(NB, NL, NG, NT, ND, units, loads, lines, winds, psses, config_param; data_centers = DataCentras)
 
     # Linearize generator fuel cost curves
     refcost, eachslope = linearizationfuelcurve(units, NG)

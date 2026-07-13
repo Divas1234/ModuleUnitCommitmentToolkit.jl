@@ -66,9 +66,16 @@ MODULE_UC_CONFIG_VERBOSE=1 julia tools/benders/driver.jl
 | `[dro]` | Wasserstein DRO enable flag, radius, and distance power. |
 | `[test]` | Test environment controls. |
 
+## Unified Detailed Output
+
+The unified `solve_uc` entry point uses `verbosity=:detailed` by default. After input data is
+constructed it prints the complete boundary report, effective model flags, runtime TOML values,
+and calibration overrides before model construction. Use `verbosity=:summary` for a compact
+report, `:verbose` for raw algorithm logs, or `:silent` for batch execution.
+
 ## Disable Boundary Report
 
-The drivers print imported system statistics by default. Disable this when running large benchmark batches:
+Low-level drivers print imported system statistics by default. Disable this when running large benchmark batches:
 
 ```toml
 [boundary]
