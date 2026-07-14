@@ -1,14 +1,14 @@
 """
     04_powersystems_native.jl
 
-演示统一入口接收原生 PowerSystems.System：
+Demonstrate the unified entry point with a native PowerSystems.System:
 
-1. 由 PowerSystemCaseBuilder 构造内置系统；
-2. 通过 data_centers 传入数据中心参数；
-3. 通过 frequency_parameters 传入机组调频参数；
-4. 只切换 algorithm，就可以复用同一套 PowerSystems 数据入口。
+1. Build a built-in system with PowerSystemCaseBuilder.
+2. Pass data center parameters through data_centers.
+3. Pass generator frequency parameters through frequency_parameters.
+4. Reuse the same PowerSystems data entry point by changing only algorithm.
 
-这个示例默认运行 CCG。可设置 UC_ALGORITHM=benchmark 或 benders 运行其他算法。
+This example runs CCG by default. Set UC_ALGORITHM=benchmark or benders to run another algorithm.
 """
 
 using Pkg
@@ -22,14 +22,14 @@ using PowerSystemCaseBuilder
 const ALGORITHM = Symbol(get(ENV, "UC_ALGORITHM", "ccg"))
 const SCENARIO_LIMIT = parse(Int, get(ENV, "UC_SCENARIO_LIMIT", "1"))
 
-# 构造一个 PowerSystems 原生 System。
-# 如果已有 sys 对象，则可以跳过这一步，直接把 sys 传给 solve_uc。
+# Build a native PowerSystems System.
+# If a sys object already exists, skip this step and pass it directly to solve_uc.
 const CASE_NAME = "c_sys5_all_components"
 println("Building PowerSystems case: ", CASE_NAME)
 sys = build_system_from_powersystems(CASE_NAME; case_category = PSITestSystems)
 
-# 调频参数以机组名称为 key。
-# R 对不参与调频的机组也建议给出非零值，以避免频率拟合时出现除零问题。
+# Frequency parameters are keyed by generator name.
+# Use non-zero R values for units without frequency control to avoid fitting division by zero.
 frequency_parameters = Dict(
     "Solitude" => (H = 7.0, D = 0.061, K = 0.9, F = 0.15, T = 8.0, R = 0.06),
     "Park City" => (H = 5.5, D = 0.121, K = 0.95, F = 0.35, T = 7.0, R = 0.06),
@@ -38,7 +38,7 @@ frequency_parameters = Dict(
     "Sundance" => (H = 5.0, D = 0.0, K = 0.0, F = 0.0, T = 0.0, R = 1.0),
 )
 
-# data_centers 中的功率单位是 MW；桥接层会按系统 base power 转换为内部标幺值。
+# Power values in data_centers use MW; the bridge converts them to internal per-unit values.
 data_centers = [
     (
         bus = 3,

@@ -27,7 +27,7 @@ result = solve_uc(
     input = input,
     scenario_limit = scenario_limit,
     calibration = calibration,
-    # 示例只展示统一摘要；需要查看内部模型构建和求解日志时改为 :verbose。
+    # The example prints only the unified summary; use :verbose to inspect internal logs.
     verbosity = :silent,
 )
 

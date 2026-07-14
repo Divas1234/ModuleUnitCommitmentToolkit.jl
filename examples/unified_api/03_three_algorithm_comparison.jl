@@ -1,16 +1,16 @@
 """
     03_three_algorithm_comparison.jl
 
-使用完全相同的 Excel 数据入口，依次选择：
+Use the same Excel data entry point and select, in sequence:
 
-* benchmark：extensive-form 基准模型；
-* benders：Benders 分解；
-* ccg：Column-and-Constraint Generation。
+* benchmark: the extensive-form reference model;
+* benders: Benders decomposition;
+* ccg: Column-and-Constraint Generation.
 
-程序通过 algorithm 指示参数切换内部模块，不直接 include 三个算法脚本。
-为了适合 smoke/demo 运行，每种算法默认只处理一个场景并限制迭代次数。
+The algorithm parameter selects the internal module without directly including algorithm scripts.
+Each algorithm defaults to one scenario and limited iterations for smoke/demo runs.
 
-运行：
+Run:
 
     julia --project=. examples/unified_api/03_three_algorithm_comparison.jl
 """
@@ -24,8 +24,8 @@ using ModuleUnitCommitmentToolkit
 const SCENARIO_LIMIT = parse(Int, get(ENV, "UC_SCENARIO_LIMIT", "1"))
 const OUTPUT_ROOT = joinpath(PROJECT_ROOT, "output", "examples", "three_algorithms")
 
-# 每个算法的 calibration 只传给自己的内部模块。
-# 公共模型参数可以放入每一个 NamedTuple 中，保持三种算法的 formulation 一致。
+# Each algorithm receives only its own calibration values.
+# Shared model parameters can be placed in every NamedTuple to keep formulations aligned.
 const CALIBRATIONS = Dict(
     :benchmark => (
         MODEL_CONSIDER_BESS = false,
@@ -58,8 +58,8 @@ results = Dict{Symbol,Any}()
 for algorithm in (:benchmark, :benders, :ccg)
     println("Running $(algorithm) through the common solve_uc entry...")
 
-    # 每次请求使用独立的输出目录，避免多个算法覆盖调度文件。
-    # 这里先收起算法内部日志，再按统一格式输出结果；需要排查算法过程时改为 :verbose。
+    # Use a separate output directory for each request to avoid overwriting schedules.
+    # Suppress internal logs here and print a unified result; use :verbose for debugging.
     request = UCSolveRequest(
         algorithm = algorithm,
         input = :excel,
@@ -80,5 +80,5 @@ for algorithm in (:benchmark, :benders, :ccg)
     println(rpad(String(result.algorithm), 14), rpad(String(result.status), 22), result.upper_bound)
 end
 
-# 注意：不同算法的 upper_bound 只有在模型开关、数据和收敛条件一致时才适合比较。
-# 本示例只打印结果，不强行断言三者数值相等。
+# Note: upper_bound values are comparable only when model flags, data, and convergence
+# conditions are aligned. This example prints the results without asserting equality.
