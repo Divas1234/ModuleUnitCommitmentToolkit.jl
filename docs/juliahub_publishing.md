@@ -57,7 +57,11 @@ JuliaHub 当前通过 Registrator 创建 General registry 注册请求：
 
 ## GitHub 注册评论方式
 
-如果使用 JuliaRegistrator GitHub App，也可以在包含 `Project.toml` 版本 `1.10.0` 的
+正确的 JuliaRegistrator GitHub App 安装入口为：
+
+<https://github.com/apps/juliateam-registrator/installations/new>
+
+安装 App 后，也可以在包含 `Project.toml` 版本 `1.10.0` 的
 提交或 pull request 中评论：
 
 ```text
