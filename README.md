@@ -357,7 +357,7 @@ For development before registry registration, install directly from the GitHub r
 
 ```julia
 using Pkg
-Pkg.add(url = "https://github.com/Divas1234/module_unitcommitment.git", rev = "revised_ModuleUnitCommitmentTookits")
+Pkg.add(url = "https://github.com/Divas1234/ModuleUnitCommitmentToolkit.jl.git", rev = "revised_ModuleUnitCommitmentTookits")
 ```
 
 Optimization runs require a working Gurobi installation and license. The package itself

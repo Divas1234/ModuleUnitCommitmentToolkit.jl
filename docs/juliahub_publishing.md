@@ -31,9 +31,13 @@ Julia General 的自动合并规则要求公共包仓库 URL 以包名结尾，�
 https://github.com/Divas1234/ModuleUnitCommitmentToolkit.jl
 ```
 
-当前远程仓库仍叫 `module_unitcommitment`。如果目标是公共 General registry，需先把
-GitHub 仓库重命名为 `ModuleUnitCommitmentToolkit.jl`，随后更新本地 remote URL。若不重命名，
-仍可尝试 JuliaHub/General 的手工注册，但可能无法通过自动合并检查。
+GitHub 仓库已重命名为 `ModuleUnitCommitmentToolkit.jl`，远程地址为：
+
+```text
+https://github.com/Divas1234/ModuleUnitCommitmentToolkit.jl.git
+```
+
+该命名符合公共 General registry 对包仓库 URL 的约定。
 
 ## JuliaHub 注册流程
 
