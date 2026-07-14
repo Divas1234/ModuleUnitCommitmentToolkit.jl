@@ -1,0 +1,91 @@
+Set parameter Username
+Set parameter LicenseID to value 2754784
+Academic license - for non-commercial use only - expires 2026-12-14
+Set parameter Username
+Set parameter LicenseID to value 2754784
+Academic license - for non-commercial use only - expires 2026-12-14
+Set parameter Username
+Set parameter LicenseID to value 2754784
+Academic license - for non-commercial use only - expires 2026-12-14
+Set parameter Username
+Set parameter LicenseID to value 2754784
+Academic license - for non-commercial use only - expires 2026-12-14
+Step-1: Pkgs and functions are loaded
+Step-2: imput data are loaded
+Initializing Benders Master Problem construction...
+	 MILP_type objective_function 						 done
+	 constraints: 1) minimum shutup/shutdown time limits			 done
+	 constraints: 2) binary variable logic					 done
+	 constraints: 3) shutup/shutdown cost					 done
+	 constraints: master supply adequacy cuts				 done
+Initializing Benders Subproblem (Recourse) construction...
+	 LP_type subproblem objective_function 					 done
+Objective function has been set.
+	 constraints: 4) loadcurtailments and spoliedwinds			 done
+	 constraints: 5) generatos power limits					 done
+	 constraints: 6) system reserves limits					 done
+	 constraints: 7) power balance constraints				 done
+	 constraints: 8) ramp-up/ramp-down constraints				 done
+	 constraints: 9) piece linearization constraints			 done
+	 constraints: 10) transmissionline limits for basline			 done
+	 constraints: 11) stroges system constraints skipped (NC=0 or variables not defined)
+Initializing Benders Subproblem (Recourse) construction...
+	 LP_type subproblem objective_function 					 done
+Objective function has been set.
+	 constraints: 4) loadcurtailments and spoliedwinds			 done
+	 constraints: 5) generatos power limits					 done
+	 constraints: 6) system reserves limits					 done
+	 constraints: 7) power balance constraints				 done
+	 constraints: 8) ramp-up/ramp-down constraints				 done
+	 constraints: 9) piece linearization constraints			 done
+	 constraints: 10) transmissionline limits for basline			 done
+	 constraints: 11) stroges system constraints skipped (NC=0 or variables not defined)
+Initializing Benders Subproblem (Recourse) construction...
+	 LP_type subproblem objective_function 					 done
+Objective function has been set.
+	 constraints: 4) loadcurtailments and spoliedwinds			 done
+	 constraints: 5) generatos power limits					 done
+	 constraints: 6) system reserves limits					 done
+	 constraints: 7) power balance constraints				 done
+	 constraints: 8) ramp-up/ramp-down constraints				 done
+	 constraints: 9) piece linearization constraints			 done
+	 constraints: 10) transmissionline limits for basline			 done
+	 constraints: 11) stroges system constraints skipped (NC=0 or variables not defined)
+[ Info: Generating batch subproblems for multi-cut scenarios
+[ Info: Batch subproblem dictionary successfully created with 2 independent entries.
+Starting (Strengthen) Benders decomposition algorithm
+iteration start ...
+
+====================================================
+ITER 	 LOWER_bound 	    UPPER_bound   	 GAP
+----------------------------------------------------
+1              260            1.12733e+06    0.999769       
+2              2290           1.12733e+06    0.997969       
+3              2290           1.12733e+06    0.997969       
+4              2290           1.12733e+06    0.997969       
+5              2290           362981         0.993691       
+6              200569         362981         0.447439       
+7              200746         362981         0.446952       
+8              200752         362981         0.446937       
+9              200928         362981         0.446451       
+10             200939         362981         0.446422       
+11             201039         362981         0.446146       
+12             201216         362981         0.445658       
+13             201219         362981         0.44565        
+14             201386         362981         0.44519        
+15             201395         362981         0.445164       
+16             201397         362981         0.445158       
+17             201408         362981         0.445128       
+18             201454         362981         0.445001       
+19             201475         362981         0.444945       
+20             204034         362981         0.437895       
+21             211054         362981         0.418555       
+22             211054         362981         0.418555       
+WARNING: Benders lower bound exceeded upper bound at iteration 23
+  LOWER_bound = 211053.65309007664
+  UPPER_bound = 208519.64665805365
+  Rolled back the last dual cut batch and added conservative integer cuts.
+WARNING: Benders lower bound exceeded upper bound at iteration 24
+  LOWER_bound = 211053.65309007664
+  UPPER_bound = -4.347830463963848e6
+  No previous cut batch is available for rollback; stopping diagnostic run.

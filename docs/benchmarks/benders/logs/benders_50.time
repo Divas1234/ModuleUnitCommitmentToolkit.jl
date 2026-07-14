@@ -1,0 +1,5 @@
+[ Info: Generating batch subproblems for multi-cut scenarios
+[ Info: Batch subproblem dictionary successfully created with 50 independent entries.
+real 22.54
+user 25.49
+sys 0.87

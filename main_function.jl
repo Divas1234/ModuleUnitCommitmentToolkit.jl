@@ -1,16 +1,15 @@
 include("src/environment_config.jl");
-include("src/renewableresource_modules/stochasticsimulation.jl");
-include("src/read_inputdata_modules/readdatas.jl");
-include("src/unitcommitment_model_modules/SUCuccommitmentmodel.jl");
+include("src/renewables/stochastic_simulation.jl");
+include("src/input_data/readers.jl");
+include("src/unit_commitment/unit_commitment_model.jl");
 
 # Destructure directly from function call for clarity
 # Read data from Excel sheet
 UnitsFreqParam, WindsFreqParam, StrogeData, DataGen, GenCost, DataBranch, LoadCurve, DataLoad, datacentra_Data = readxlssheet();
 
 # Form input data for the model
-config_param, units, lines, loads, stroges, NB, NG, NL, ND, NT, NC,
-ND2, DataCentras = forminputdata(
-	DataGen, DataBranch, DataLoad, LoadCurve, GenCost, UnitsFreqParam, StrogeData, datacentra_Data);
+config_param, units, lines, loads, stroges, NB, NG, NL, ND, NT, NC, ND2, DataCentras =
+    forminputdata(DataGen, DataBranch, DataLoad, LoadCurve, GenCost, UnitsFreqParam, StrogeData, datacentra_Data);
 
 # Generate wind scenarios
 winds, NW = genscenario(WindsFreqParam, 1);

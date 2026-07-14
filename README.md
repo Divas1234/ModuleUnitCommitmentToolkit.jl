@@ -1,94 +1,305 @@
-# Datacenter Unit Commitment Model
+# ModuleUnitCommitmentToolkit
 
-## Table of Contents
+`ModuleUnitCommitmentToolkit` is a Julia package for stochastic, network-constrained,
+and security-constrained unit commitment (UC). It provides one public solver entry point
+for Benchmark UC, Benders decomposition, and Column-and-Constraint Generation (CCG),
+along with one data entry point for Excel and PowerSystems inputs.
 
-- [Datacenter Unit Commitment Model](#datacenter-unit-commitment-model)
-  - [Table of Contents](#table-of-contents)
-  - [Description](#description)
-  - [Usage](#usage)
-  - [File Structure](#file-structure)
-  - [Benders Decomposition Implementation](#benders-decomposition-implementation)
-  - [Dependencies](#dependencies)
-  - [License](#license)
+The package is designed for reproducible research workflows: input data, effective model
+configuration, solver results, iteration history, cost breakdowns, and diagnostics are
+written to an explicit output directory in tabular form.
 
-## Description
+## Package status
 
-This project implements a unit commitment model for power systems integrated with datacenters. The model optimizes the commitment and dispatch of generation units, considering the power consumption of datacenters, generation costs, transmission constraints, and renewable energy integration. It aims to provide a cost-effective and reliable power system operation.
+- First public registration target: `v0.1.0`
+- Julia compatibility: `1.10` and later
+- License: MIT
+- Optimization backend: JuMP + Gurobi.jl (external Gurobi license required)
+- Main module: `ModuleUnitCommitmentToolkit`
 
-## Usage
+## Installation
 
-1.  **Prerequisites:**
-    *   [Julia](https://julialang.org/downloads/) (version 1.6 or higher).
-    *   Install required Julia packages: Run `] instantiate` in the Julia REPL within the project directory. This installs all dependencies from `Project.toml`.
-2.  **Environment Activation:**
-    *   Open a Julia REPL in the project directory.
-    *   Activate the project environment: `julia --project=.` or `julia -p auto --project=.`
-3.  **Model Execution:**
-    *   Run the main script: `julia main_function.jl`
-    *   Alternatively, from within the Julia REPL: `include("main_function.jl")`
+After `v0.1.0` is merged into the Julia General Registry, install it with:
 
-## File Structure
+```julia
+using Pkg
+Pkg.add("ModuleUnitCommitmentToolkit")
 
-*   `main_function.jl`: Main script to run the unit commitment model.
-*   `src/environment_config.jl`: Environment configurations.
-*   `src/read_inputdata_modules/_formatteddata.jl`: Formats input data.
-*   `src/read_inputdata_modules/_readdatafromexcel.jl`: Reads data from Excel sheets.
-*   `src/read_inputdata_modules/_showboundrycase.jl`: Shows boundary cases.
-*   `src/read_inputdata_modules/readdatas.jl`: Reads data.
-*   `src/renewableresource_modules/_renewableenergysimulation.jl`: Simulates renewable energy sources.
-*   `src/renewableresource_modules/stochasticsimulation.jl`: Performs stochastic simulations.
-*   `src/unitcommitment_model_modules/SUCuccommitmentmodel.jl`: Implements the SUC-SCUC model.
-*   `src/unitcommitment_model_modules/constraints_lib/_constraint_datacentra.jl`: Defines constraints for datacenters.
-*   `src/unitcommitment_model_modules/constraints_lib/_constraint_frequencydynamic.jl`: Defines frequency dynamic constraints.
-*   `src/unitcommitment_model_modules/constraints_lib/_constraint_generator.jl`: Defines generator constraints.
-*   `src/unitcommitment_model_modules/constraints_lib/_constraint_network.jl`: Defines network constraints.
-*   `src/unitcommitment_model_modules/constraints_lib/_constraint_storage.jl`: Defines storage constraints.
-*   `src/unitcommitment_model_modules/constraints_lib/_constraint_systemwide.jl`: Defines system-wide constraints.
-*   `src/unitcommitment_model_modules/constraints_lib/_constraints_generatefittingparameters.jl`: Generates fitting parameters constraints.
-*   `src/unitcommitment_model_modules/constraints_lib/constraints.jl`: Includes constraint definitions.
-*   `src/unitcommitment_model_modules/objectives_lib/_objective_econimic.jl`: Defines the economic objective.
-*   `src/unitcommitment_model_modules/objectives_lib/objections.jl`: Includes objective definitions.
-*   `src/unitcommitment_model_modules/tests_lib/_validata_input.jl`: Validates input data.
-*   `src/unitcommitment_model_modules/tests_lib/tests.jl`: Includes test functions.
-*   `src/unitcommitment_model_modules/utilitie_modules_lib/_define_decision_variables.jl`: Defines decision variables.
-*   `src/unitcommitment_model_modules/utilitie_modules_lib/_export_res_to_txtfiles.jl`: Exports results to text files.
-*   `src/unitcommitment_model_modules/utilitie_modules_lib/_linearization.jl`: Implements linearization techniques.
-*   `src/unitcommitment_model_modules/utilitie_modules_lib/utilities.jl`: Includes utility functions.
-*   `src/visualization_modules/casesploting.jl`: Plots the cases.
-*   `src/visualization_modules/draw_addditionalpower.jl`: Draws additional power.
-*   `src/visualization_modules/draw_onlineactivepowerbalance.jl`: Draws online active power balance.
+using ModuleUnitCommitmentToolkit
+```
 
-## Benders Decomposition Implementation
+Before General Registry synchronization, install the release tag directly from GitHub:
 
-The Benders decomposition algorithm is implemented in the `tools` directory to solve the stochastic unit commitment problem. The main components are:
+```julia
+using Pkg
+Pkg.add(
+    url = "https://github.com/Divas1234/ModuleUnitCommitmentToolkit.jl.git",
+    rev = "v0.1.0",
+)
+```
 
-*   `benderdecomposition_module.jl`: This file contains the core implementation of the Benders decomposition framework. It includes functions for solving the master problem and subproblems, adding Benders cuts (optimality and feasibility cuts), and checking for convergence. The `bd_framework` function implements the iterative Benders decomposition algorithm.
-*   `debug_bd.jl`: This file is a debugging script that sets up and runs the Benders decomposition algorithm using the functions defined in `benderdecomposition_module.jl`. It calls the `main` function from `mainfunc.jl` to load data and define the master and subproblems, and then calls the `bd_framework` function to execute the Benders decomposition algorithm.
-*   `mainfunc.jl`: This file defines the `main` function, which reads input data, generates wind scenarios, and defines the master and subproblems for the SUC-SCUC model. It also sets up the batch subproblems for the multi-cut Benders decomposition.
-*   `construct_multicuts_lib`: This directory contains files related to constructing multi-cuts for the Benders decomposition algorithm.
-*   `define_master_sub_problems`: This directory contains files related to defining the master and subproblems for the Benders decomposition algorithm.
+For local development:
 
-## Dependencies
+```julia
+using Pkg
+Pkg.develop(path = "/path/to/ModuleUnitCommitmentToolkit.jl")
+```
 
-The project depends on the following Julia packages:
+## Requirements
 
-*   CSV
-*   Clustering
-*   DataFrames
-*   DelimitedFiles
-*   Distributions
-*   Gurobi
-*   JLD
-*   JuMP
-*   LaTeXStrings
-*   MultivariateStats
-*   PlotlyJS
-*   Plots
-*   Revise
-*   StatsPlots
-*   Test
-*   XLSX
+The package can be loaded without solving an optimization problem, but optimization runs
+require:
+
+1. Julia `1.10` or later;
+2. a working Gurobi installation;
+3. a valid Gurobi license visible to Julia. Gurobi is proprietary software;
+   this package does not grant or redistribute a Gurobi license;
+4. the package environment instantiated.
+
+From a checkout, instantiate the environment with:
+
+```bash
+julia --project=. -e 'using Pkg; Pkg.instantiate()'
+```
+
+Check the solver installation with:
+
+```bash
+julia --project=. -e 'using Gurobi; println(Gurobi.Env())'
+```
+
+## Quick start: one unified solver entry point
+
+The recommended interface is `solve_uc`. Select the algorithm and data source with
+indicators; callers do not include or call algorithm implementation files directly.
+
+```julia
+using ModuleUnitCommitmentToolkit
+
+result = solve_uc(
+    algorithm = :benchmark,       # :benchmark, :benders, or :ccg
+    input = :excel,               # :excel or :powersystems
+    scenario_limit = 1,
+    calibration = (
+        MODEL_CONSIDER_BESS = false,
+        MODEL_CONSIDER_FREQUENCY_CONTROL = false,
+        BENCHMARK_UC_USE_DRO = false,
+    ),
+    output_dir = "output/quickstart",
+    verbosity = :detailed,
+)
+
+println("status     = ", result.status)
+println("objective  = ", result.upper_bound)
+println("output_dir = ", result.output_dir)
+```
+
+`solve_uc` performs the following work internally:
+
+1. validates the algorithm and input indicators;
+2. loads and normalizes the selected data source;
+3. applies the request-local calibration values;
+4. dispatches to Benchmark, Benders, or CCG;
+5. returns a named result object with common status, bounds, gap, history, and artifact fields.
+
+## Request object form
+
+For applications that build a request in one place and execute it later, use
+`UCSolveRequest`:
+
+```julia
+using ModuleUnitCommitmentToolkit
+
+request = UCSolveRequest(
+    algorithm = :ccg,
+    input = :excel,
+    scenario_limit = 3,
+    calibration = (
+        CCG_INITIAL_SCENARIOS = 1,
+        CCG_SCENARIOS_PER_ITERATION = 1,
+        CCG_MAX_ITERATIONS = 5,
+    ),
+    output_dir = "output/ccg_demo",
+    verbosity = :summary,
+)
+
+result = solve_uc(request)
+print_uc_result(result; detail = true)
+```
+
+Use `verbosity = :silent` in batch jobs and call `print_uc_result` explicitly when the
+application is ready to render the result.
+
+## PowerSystems example
+
+PowerSystems data uses the same solver entry point. Only `input` and the system-specific
+arguments change:
+
+```julia
+using ModuleUnitCommitmentToolkit
+
+sys = build_system_from_powersystems(:ieee30)
+
+frequency_parameters = generate_frequency_parameters(sys)
+data_centers = [
+    (
+        bus = 10,
+        p_max = 20.0,
+        p_min = 0.0,
+        idle_power = 0.0,
+        server_energy = 0.0,
+        lambda = 0.0,
+        mu = 1.0,
+        workload = fill(0.0, 24),
+    ),
+]
+
+result = solve_uc(
+    algorithm = :benchmark,
+    input = :powersystems,
+    sys = sys,
+    scenario_limit = 1,
+    horizon = 24,
+    frequency_parameters = frequency_parameters,
+    data_centers = data_centers,
+    calibration = (
+        MODEL_CONSIDER_DATA_CENTER = true,
+        MODEL_CONSIDER_FREQUENCY_CONTROL = true,
+        BENCHMARK_UC_USE_DRO = false,
+    ),
+    output_dir = "output/powersystems/ieee30/benchmark",
+    verbosity = :detailed,
+)
+```
+
+The package includes aliases for common test systems, including `:ieee6`, `:ieee14`,
+`:ieee24`, `:ieee30`, `:ieee118`, `:rts_gmlc`, `:activsg2000`, and `:activsg10k` when
+the corresponding PowerSystems test data is available in the installed environment.
+Use `powersystems_case_catalog()` and `list_powersystems_cases()` to inspect the catalog.
+
+For a complete IEEE 30-bus example with wind penetration, frequency disturbance, data-center
+load, input snapshots, and detailed comments, see:
+
+[`examples/unified_api/07_ieee30_frequency_datacenter_uc.jl`](examples/unified_api/07_ieee30_frequency_datacenter_uc.jl)
+
+Run it with:
+
+```bash
+julia --project=. examples/unified_api/07_ieee30_frequency_datacenter_uc.jl
+```
+
+Useful environment variables include `UC_ALGORITHM`, `UC_HORIZON`,
+`UC_SCENARIO_LIMIT`, `UC_WIND_PENETRATION`, and
+`UC_FREQUENCY_CONTINGENCY_FRACTION`.
+
+## Calibration parameters
+
+Calibration values are request-local. They are applied for the current solve and do not
+silently modify the user's global runtime configuration.
+
+Common switches:
+
+| Parameter | Meaning |
+| --- | --- |
+| `MODEL_CONSIDER_DATA_CENTER` | Enable data-center load constraints |
+| `MODEL_CONSIDER_FREQUENCY_CONTROL` | Enable frequency-support constraints |
+| `MODEL_CONSIDER_BESS` | Enable battery constraints |
+| `MODEL_CONSIDER_WIND` | Enable wind-unit constraints |
+| `MODEL_NETWORK_CONSTRAINT` | Enable network constraints |
+| `MODEL_THERMAL_UNIT_CONSTRAINT` | Enable thermal-unit constraints |
+
+Algorithm controls:
+
+| Algorithm | Typical parameters |
+| --- | --- |
+| Benchmark | `BENCHMARK_UC_USE_DRO` |
+| Benders | `BENDERS_MAX_ITERATIONS`, `BENDERS_PARALLEL_SUBPROBLEMS` |
+| CCG | `CCG_INITIAL_SCENARIOS`, `CCG_SCENARIOS_PER_ITERATION`, `CCG_MAX_ITERATIONS`, `CCG_GAP_TOL` |
+
+The complete configuration reference is in
+[`docs/runtime_configuration.md`](docs/runtime_configuration.md).
+
+## Structured outputs
+
+The output root is explicit. Set it per request with `output_dir`, or set the global
+`MODULE_UC_OUTPUT_DIR` environment variable. The solver does not need the caller's
+`pwd()` to locate output files.
+
+Each run contains separate `input/` and `result/` directories. Input tables are written
+before optimization, which makes it possible to audit the exact data and effective config
+used by a run. Result tables include:
+
+- `01_request.csv`
+- `02_status.csv`
+- `03_progress.csv`
+- `04_input_data.csv`
+- `05_effective_config.csv`
+- `06_model_solver.csv`
+- `07_iteration_history.csv`
+- `08_cost_breakdown.csv`
+- `09_algorithm_diagnostics.csv`
+
+The same sections can be printed as DataFrames:
+
+```julia
+print_uc_result(result; detail = true)
+```
+
+The result object exposes the resolved output directory:
+
+```julia
+println(result.output_dir)
+```
+
+## Examples and documentation
+
+- [`examples/unified_api/README.md`](examples/unified_api/README.md): unified API examples;
+- [`examples/unified_api/01_excel_single_solve.jl`](examples/unified_api/01_excel_single_solve.jl): Excel solve;
+- [`examples/unified_api/03_three_algorithm_comparison.jl`](examples/unified_api/03_three_algorithm_comparison.jl): compare all three algorithms;
+- [`examples/unified_api/04_powersystems_native.jl`](examples/unified_api/04_powersystems_native.jl): native PowerSystems input;
+- [`examples/unified_api/07_ieee30_frequency_datacenter_uc.jl`](examples/unified_api/07_ieee30_frequency_datacenter_uc.jl): IEEE 30-bus extended example;
+- [`docs/api_reference.md`](docs/api_reference.md): public API and result fields;
+- [`docs/powersystems_algorithms_guide.md`](docs/powersystems_algorithms_guide.md): PowerSystems and algorithm notes;
+- [`docs/juliahub_publishing.md`](docs/juliahub_publishing.md): package registration workflow.
+
+## Testing
+
+Run the package test suite:
+
+```bash
+julia --project=. -e 'using Pkg; Pkg.test()'
+```
+
+The repository CI includes fast routing/data-entry tests and smoke tests for Benchmark,
+Benders, and CCG. The extended PowerSystems tests may require the corresponding test data
+and a configured Gurobi installation.
+
+## Optional local dashboard
+
+The repository also contains an optional local HTML dashboard for inspecting generated
+experiment artifacts. It is not required for using the Julia package API:
+
+```bash
+./gui/start.sh
+```
+
+The dashboard binds to `127.0.0.1` by default. Do not expose it on a remote interface unless
+authentication, origin restrictions, and request protection have been configured according
+to the repository's security guidance.
+
+## Contributing
+
+Please keep new integrations behind the unified `solve_uc` and `load_uc_data` entry points,
+add or update tests for new routes, and include a runnable example for new public behavior.
+Avoid adding a second package project directory; the root `Project.toml` is canonical.
 
 ## License
 
-This project is licensed under the [MIT License](LICENSE). See the `LICENSE` file for details.
+The project-owned source code is licensed under the MIT License. See
+[`LICENSE`](LICENSE) for the license text.
+
+Third-party packages and solver components remain subject to their respective
+upstream licenses and terms. In particular, Gurobi is proprietary software;
+users must install it separately and provide a valid Gurobi license. This
+package does not redistribute third-party packages, solver binaries, or
+licenses.

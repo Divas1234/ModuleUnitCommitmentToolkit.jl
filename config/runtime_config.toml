@@ -1,0 +1,137 @@
+# Runtime configuration for Benders, CCG, DRO, boundary reporting, and tests.
+#
+# The loader writes these entries into ENV before the algorithm drivers read
+# their settings. Shell environment variables always take precedence, so cluster
+# scripts can override any value here without editing the repository.
+# Keep keys uppercase because the Julia drivers consume them as ENV names.
+
+[boundary]
+# Print a compact data-quality report after Excel/TOML inputs are imported.
+PRINT_BOUNDARY_CONDITION = true
+# Keep plotting disabled for CI, terminal-only runs, and remote batch jobs.
+BOUNDARY_SHOW_PLOTS = false
+
+[common]
+# Force text-mode output paths where plotting or rich display is optional.
+JULIA_SHOW_ASCII = true
+# Legacy global BESS switch retained for backward compatibility.
+CONSIDER_BESS = 0
+
+[model]
+# These fields map one-to-one to the `config` struct in src/input_data.
+# Use 1/0 for model-inclusion flags; use numeric values for penalties/tolerances.
+MODEL_IS_NETWORK_CON = 1
+MODEL_IS_THERMAL_UNIT_CON = 1
+MODEL_IS_WIND_UNIT_CON = 1
+MODEL_IS_SYSTEM_CON = 1
+MODEL_IS_PIECE_LINEAR = 1
+MODEL_NUM_SEGMENTS = 3
+MODEL_ALPHA = 0.005
+MODEL_BETA = 0.005
+MODEL_COAL_PRICE = 1
+MODEL_IS_ACTIVE_LOAD = 1
+MODEL_IS_WIND_INTEGRATION = 1
+MODEL_LOAD_CUTTING_COEFFICIENT = 100000.0
+MODEL_WIND_CUTTING_COEFFICIENT = 100000.0
+MODEL_MAX_ITERATIONS_NUM = 50
+MODEL_CALCULATION_PRECISION = 0.01
+MODEL_CONSIDER_DATA_CENTER = 0
+MODEL_CONSIDER_FREQUENCY_CONTROL = 0
+MODEL_CONSIDER_BESS = 0
+MODEL_CONSIDER_MULTI_CUTS = 1
+
+[benders]
+# Scenario and iteration controls. Defaults are kept small enough for local
+# validity checks; benchmark scripts can override these values for larger runs.
+BENDERS_SCENARIO_LIMIT = 2
+BENDERS_MAX_ITERATIONS = 100
+BENDERS_VERBOSE_CUTS = false
+# Jensen cuts are optional strengthening cuts and should be enabled only after
+# the base multi-cut flow is known to be stable for the target case.
+BENDERS_ENABLE_JENSEN_CUT = false
+# Direct extensive-form solve is a benchmark/debug path, not the decomposition.
+BENDERS_FAST_DIRECT_SOLVE = false
+BENDERS_FAST_MIP_GAP = 1.0e-4
+BENDERS_FAST_NUMERIC_FOCUS = 1
+BENDERS_SHOW_MODEL_SUMMARY = false
+# Kept for compatibility; MODEL_CONSIDER_BESS is the preferred model switch.
+BENDERS_CONSIDER_BESS = 0
+
+[benders.cuts]
+# Cut tolerances should stay above numerical noise but below meaningful cost
+# violations. Tightening them can improve optimality at the expense of runtime.
+BENDERS_CUT_VIOLATION_TOL = 1.0e-5
+BENDERS_JENSEN_CUT_TOL = 1.0e-5
+BENDERS_OPTIMALITY_CUT_MODE = "dual_safe"
+# Empty string means "no explicit cap"; the loader leaves it unset.
+BENDERS_MAX_SCENARIO_CUTS_PER_ITERATION = ""
+BENDERS_PARALLEL_CUT_CANDIDATES = true
+BENDERS_ENABLE_STORAGE_LOGIC_CUTS = true
+BENDERS_MAX_STORAGE_LOGIC_CUTS_PER_ITERATION = 5
+BENDERS_LOGIC_BINARY_TOL = 0.5
+BENDERS_LOGIC_POWER_TOL = 1.0e-7
+
+[benders.subproblems]
+# Parallel subproblems speed up large scenario batches. Keep disabled for the
+# default validity case so logs are deterministic and easier to compare.
+BENDERS_PARALLEL_SUBPROBLEMS = false
+BENDERS_SUBPROBLEM_SOLVER_THREADS = 1
+BENDERS_COLLECT_DUAL_COEFFS = false
+BENDERS_COLLECT_DUAL_DETAILS = false
+
+[ccg]
+# CCG defaults to the two-scenario non-DRO validation case, which should match
+# the extensive-form stochastic UC objective up to solver tolerances.
+CCG_SCENARIO_LIMIT = 2
+CCG_INITIAL_SCENARIOS = 2
+CCG_INITIAL_POLICY = "netload"
+CCG_SCENARIOS_PER_ITERATION = 1
+CCG_MAX_ITERATIONS = 10
+CCG_GAP_TOL = 1.0e-3
+CCG_PARALLEL_RECOURSE = false
+CCG_MASTER_MIP_GAP = 1.0e-4
+CCG_RECOURSE_MIP_GAP = 1.0e-4
+CCG_NUMERIC_FOCUS = 1
+CCG_MASTER_THREADS = 0
+CCG_RECOURSE_THREADS = 1
+
+[dro]
+# Wasserstein DRO is applied in the CCG objective/separation layer. Keep it off
+# by default for finite-scenario algorithm validation; enable it for robustness
+# studies with a larger scenario pool.
+CCG_DRO_ENABLED = false
+# Larger radius produces more conservative worst-case scenario probabilities.
+CCG_DRO_RADIUS = 0.05
+# 1.0 is the L1 trajectory distance; 2.0 approximates Euclidean trajectory shape.
+CCG_WASSERSTEIN_POWER = 1.0
+
+[frequency]
+# Frequency constraints are active only when MODEL_CONSIDER_FREQUENCY_CONTROL = 1.
+# Defaults follow the reference littlecase frequency settings:
+# f_base = 50 Hz, f_nadir/f_qss = 49.5 Hz, RoCoF_max = 4.5 Hz/s, and
+# RoCoF Δp = max(pmax) * 0.25 / 1.25 after imbalance scaling.
+FREQUENCY_BASE_HZ = 50.0
+FREQUENCY_ROCOF_LIMIT_HZ_PER_S = 4.5
+FREQUENCY_QSS_LIMIT_HZ = 0.5
+FREQUENCY_NADIR_LIMIT_HZ = 0.5
+FREQUENCY_CONTINGENCY_FRACTION = 0.25
+FREQUENCY_IMBALANCE_SCALING = 1.25
+FREQUENCY_FCR_THRESHOLD = 0.025
+# The reference nadir fitting samples use a full largest-unit step.
+FREQUENCY_NADIR_FIT_CONTINGENCY_FRACTION = 1.0
+# Empty means derive fitting coefficients from current unit/wind frequency
+# parameters. Methods: least_squares or max_min_affine.
+FREQUENCY_NADIR_FITTING_METHOD = "max_min_affine"
+# Custom cuts use semicolon-separated rows:
+# a_H,a_FgRg,a_RgInv,a_intercept;...
+FREQUENCY_NADIR_FITTING_PARAMETERS = ""
+FREQUENCY_NADIR_MAX_CUTS = 4.0
+FREQUENCY_NADIR_LS_UNDERESTIMATE = true
+FREQUENCY_NADIR_FIT_BIG_M = 100.0
+FREQUENCY_NADIR_COEFFICIENT_BOUND = 10.0
+FREQUENCY_NADIR_COEFFICIENT_REGULARIZATION = 0.001
+# Set > 0 to enforce a hard maximum fitting error for the selected closest cut.
+FREQUENCY_NADIR_FIT_TOLERANCE = 0.0
+
+[test]
+MODULE_UC_TEST_ACTIVATE_LOCAL_PROJECT = false
