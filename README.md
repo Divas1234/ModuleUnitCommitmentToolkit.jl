@@ -1,350 +1,25 @@
-# Module Unit Commitment Toolkit
+# ModuleUnitCommitmentToolkit
 
-Julia toolkit and browser dashboard for stochastic Unit Commitment (UC)
-experiments with data-center load, renewable scenarios, decomposition
-algorithms, and result comparison workflows.
+`ModuleUnitCommitmentToolkit` is a Julia package for stochastic, network-constrained,
+and security-constrained unit commitment (UC). It provides one public solver entry point
+for Benchmark UC, Benders decomposition, and Column-and-Constraint Generation (CCG),
+along with one data entry point for Excel and PowerSystems inputs.
 
-The repository contains three connected layers:
+The package is designed for reproducible research workflows: input data, effective model
+configuration, solver results, iteration history, cost breakdowns, and diagnostics are
+written to an explicit output directory in tabular form.
 
-- A JuMP/Gurobi UC modeling core under `src/`
-- Algorithm drivers for Benchmark UC, Benders decomposition, and CCG under `tools/`
-- A native HTML/CSS/JavaScript dashboard served by a small Python server under `gui/`
+## Package status
 
-## Contents
+- First public registration target: `v0.1.0`
+- Julia compatibility: `1.10` and later
+- License: MIT
+- Optimization backend: JuMP + Gurobi
+- Main module: `ModuleUnitCommitmentToolkit`
 
-- [Features](#features)
-- [Requirements](#requirements)
-- [Quick Start](#quick-start)
-- [Package Installation](#package-installation)
-- [Dashboard](#dashboard)
-- [Command-Line Workflows](#command-line-workflows)
-- [Unified Solver Entry](#unified-solver-entry)
-- [Runtime Configuration](#runtime-configuration)
-- [API and Code Review](#api-and-code-review)
-- [Outputs](#outputs)
-- [Project Layout](#project-layout)
-- [Testing](#testing)
-- [Troubleshooting](#troubleshooting)
-- [License](#license)
+## Installation
 
-## Features
-
-- Stochastic and security-constrained UC model components built with JuMP.
-- Benchmark extensive-form UC runner for baseline comparisons.
-- Benders decomposition workflow with cut, subproblem, and fast benchmark modes.
-- Column-and-Constraint Generation (CCG) workflow with optional Wasserstein DRO.
-- Data-center, wind, network, storage, and frequency-control modeling modules.
-- Runtime configuration through `config/runtime_config.toml`.
-- Local GUI dashboard for:
-  - overview metrics
-  - quality and convergence charts
-  - schedule inspection
-  - benchmark reports and SVG charts
-  - runtime configuration editing
-  - launching Julia tasks from the browser
-
-## Requirements
-
-- Julia with the project environment available. The current development setup is
-  tested with Julia `1.12.x`.
-- Python 3 for the local dashboard server.
-- Gurobi and a valid Gurobi license for optimization runs that use Gurobi.
-- Git submodules and data files required by the selected case.
-
-Install Julia dependencies from the repository root:
-
-```bash
-julia --project=. -e 'using Pkg; Pkg.instantiate()'
-```
-
-If Gurobi is not configured yet, verify that Julia can load it:
-
-```bash
-julia --project=. -e 'using Gurobi; println(Gurobi.Env())'
-```
-
-## Quick Start
-
-Run the dashboard:
-
-```bash
-./gui/start.sh
-```
-
-Then open:
-
-```text
-http://localhost:8080/gui/
-```
-
-The dashboard binds to `127.0.0.1` by default. Remote deployment is disabled unless all
-security settings are provided explicitly:
-
-```bash
-MODULE_UC_GUI_ALLOW_REMOTE=1 \
-MODULE_UC_GUI_HOST=0.0.0.0 \
-MODULE_UC_GUI_TOKEN='replace-with-a-long-random-token' \
-MODULE_UC_GUI_ALLOWED_ORIGINS='https://dashboard.example.com' \
-python3 gui/server.py
-```
-
-Remote API requests use `Authorization: Bearer <token>`. The browser dashboard asks for the
-token once per page session; it is kept in memory only.
-
-Run the lightweight test suite:
-
-```bash
-julia --project=. test/runtests.jl
-```
-
-Run a small Benders or CCG experiment:
-
-```bash
-julia --project=. tools/benders/driver.jl
-julia --project=. tools/ccg/driver.jl
-```
-
-## Dashboard
-
-The GUI is generated from `gui/build_html.py` into `gui/index.html` and served
-by `gui/server.py`.
-
-Start it with:
-
-```bash
-python3 gui/server.py
-```
-
-or use the convenience scripts:
-
-```bash
-./gui/start.sh
-gui/start.bat
-gui/start.ps1
-```
-
-The dashboard exposes these panels:
-
-- `Overview`: run-level summary table and status metrics.
-- `Quality`: Plotly charts for curtailment, gap, runtime, RAM, convergence, and
-  bounds, with quality and iteration tables.
-- `Schedule`: dispatch, commitment, cost, curtailment, power balance, startup,
-  reserve, and report views.
-- `Reports`: benchmark report text and generated SVG chart previews.
-- `Settings`: structured runtime configuration editor.
-- `Run`: browser controls for boundary checks, benchmark runs, CCG, Benders,
-  Benders Fast, and tests.
-
-After changing the dashboard generator, rebuild the static HTML:
-
-```bash
-python3 gui/build_html.py
-```
-
-## Command-Line Workflows
-
-### Benchmark UC
-
-```bash
-julia --project=. tools/benchmark/run_algorithm_comparison.jl
-```
-
-This runner compares Benchmark UC, Benders, and CCG for configured scenario
-counts and writes consolidated output under `output/`.
-
-### Benders
-
-```bash
-julia --project=. tools/benders/driver.jl
-```
-
-Useful one-off override:
-
-```bash
-BENDERS_SCENARIO_LIMIT=5 julia --project=. tools/benders/driver.jl
-```
-
-### CCG
-
-```bash
-julia --project=. tools/ccg/driver.jl
-```
-
-Useful one-off override:
-
-```bash
-CCG_SCENARIO_LIMIT=5 julia --project=. tools/ccg/driver.jl
-```
-
-### Wasserstein DRO Example
-
-```bash
-julia --project=. examples/ccg/run_wasserstein_dro_ccg.jl
-```
-
-See [docs/algorithms/wasserstein_dro_ccg.md](docs/algorithms/wasserstein_dro_ccg.md)
-for the modeling notes.
-
-## Unified Solver Entry
-
-New integrations should use one data/algorithm entry point and select behavior
-with parameters:
-
-```julia
-using ModuleUnitCommitmentToolkit
-
-result = solve_uc(
-    algorithm = :benchmark,  # :benchmark, :benders, or :ccg
-    input = :excel,          # :excel, :powersystems, or :powersystems_csv
-    scenario_limit = 3,
-    calibration = (CCG_MAX_ITERATIONS = 10,),
-)
-```
-
-The runnable example is [examples/unified_solver.jl](examples/unified_solver.jl).
-Detailed input, calibration, result, and compatibility rules are in
-[docs/api_reference.md](docs/api_reference.md).
-The detailed, commented programs are in
-[examples/unified_api/README.md](examples/unified_api/README.md).
-
-## Runtime Configuration
-
-Central runtime settings live in:
-
-```text
-config/runtime_config.toml
-```
-
-The algorithm drivers load this file before reading environment variable
-overrides. Shell variables are still useful for temporary runs:
-
-```bash
-CCG_MAX_ITERATIONS=20 CCG_DRO_ENABLED=1 julia --project=. tools/ccg/driver.jl
-```
-
-Important configuration groups include:
-
-- `boundary`: input and boundary report options.
-- `common`: shared display and compatibility switches.
-- `model`: network, system, wind, thermal, data-center, BESS, and precision flags.
-- `benders`: scenario limits, iteration limits, fast mode, and solver controls.
-- `benders.cuts`: cut violation tolerances and cut selection controls.
-- `benders.subproblems`: parallel subproblem options.
-- `ccg`: master, recourse, scenario, and convergence controls.
-- `dro`: Wasserstein DRO controls for CCG.
-- `frequency`: frequency support and nadir fitting settings.
-- `test`: test harness switches.
-
-See [docs/runtime_configuration.md](docs/runtime_configuration.md) for more
-detail.
-
-## API and Code Review
-
-The public package functions, algorithm script interfaces, input conventions,
-result fields, output paths, and runnable examples are documented in
-[docs/api_reference.md](docs/api_reference.md). The project-wide review findings,
-security boundary, test evidence, and follow-up priorities are recorded in
-[docs/code_review.md](docs/code_review.md).
-
-## Outputs
-
-All unified solver and export functions write below the project `output/` directory by
-default, independent of the caller's current directory. Set `MODULE_UC_OUTPUT_DIR` to
-override the root globally, or pass `output_dir` to `solve_uc` for one request:
-
-```bash
-MODULE_UC_OUTPUT_DIR=/tmp/module-uc-output julia --project=. test/smoke_algorithms.jl
-```
-
-The `solve_uc` result also exposes the resolved `output_dir` so callers can discover the
-location without reconstructing algorithm-specific paths.
-
-Most experiments write to `output/` using timestamped run folders. Common output
-locations include:
-
-- `output/benchmark_uc/`
-- `output/benders/`
-- `output/ccg/`
-- `output/comparison/`
-
-Typical artifacts are:
-
-- `summary.csv`
-- algorithm logs under `logs/`
-- quality metrics
-- iteration history
-- schedule result tables
-- report text and SVG charts
-
-The dashboard reads these artifacts and renders them into the Overview, Quality,
-Schedule, and Reports panels.
-
-## Project Layout
-
-```text
-config/                  Runtime TOML configuration
-data/                    Input data used by model readers
-docs/                    Algorithm, benchmark, runtime, and testing notes
-examples/                Small reproducible examples
-gui/                     Native HTML/CSS/JS dashboard and Python server
-output/                  Generated run artifacts
-ref/                     Reference projects and input cases
-scripts/                 Helper scripts
-src/                     Core Julia model, data, renewable, and visualization code
-test/                    Julia unit and smoke tests
-tools/benchmark/         Benchmark UC and comparison runner
-tools/benders/           Benders decomposition implementation
-tools/ccg/               CCG and Wasserstein DRO implementation
-```
-
-## Testing
-
-Run all tests:
-
-```bash
-julia --project=. test/runtests.jl
-```
-
-Run the lightweight example test entry:
-
-```bash
-julia --project=. examples/testing/run_light_tests.jl
-```
-
-See [docs/testing.md](docs/testing.md) for test scope and conventions.
-
-## Troubleshooting
-
-### Julia is not found from the dashboard
-
-Ensure `julia` is on `PATH`:
-
-```bash
-julia -v
-```
-
-Then restart `gui/server.py`.
-
-### Port 8080 is already in use
-
-Stop the existing server or process using the port:
-
-```bash
-lsof -i :8080
-```
-
-### Gurobi cannot start
-
-Confirm that Gurobi is installed, licensed, and visible to Julia:
-
-```bash
-julia --project=. -e 'using Gurobi; println(Gurobi.Env())'
-```
-
-## Package Installation
-
-After the package is registered in the Julia General registry and synchronized to
-JuliaHub, install the released package from any Julia environment:
+After `v0.1.0` is merged into the Julia General Registry, install it with:
 
 ```julia
 using Pkg
@@ -353,28 +28,270 @@ Pkg.add("ModuleUnitCommitmentToolkit")
 using ModuleUnitCommitmentToolkit
 ```
 
-For development before registry registration, install directly from the GitHub repository:
+Before General Registry synchronization, install the release tag directly from GitHub:
 
 ```julia
 using Pkg
-Pkg.add(url = "https://github.com/Divas1234/ModuleUnitCommitmentToolkit.jl.git", rev = "revised_ModuleUnitCommitmentTookits")
+Pkg.add(
+    url = "https://github.com/Divas1234/ModuleUnitCommitmentToolkit.jl.git",
+    rev = "v0.1.0",
+)
 ```
 
-Optimization runs require a working Gurobi installation and license. The package itself
-provides the unified `solve_uc` entry point for Benchmark UC, Benders, and CCG; callers do
-not need to include algorithm implementation files manually.
+For local development:
 
-### Dashboard data looks stale
+```julia
+using Pkg
+Pkg.develop(path = "/path/to/ModuleUnitCommitmentToolkit.jl")
+```
 
-Rebuild the generated dashboard after changing the generator or refreshing data
-schemas:
+## Requirements
+
+The package can be loaded without solving an optimization problem, but optimization runs
+require:
+
+1. Julia `1.10` or later;
+2. a working Gurobi installation;
+3. a valid Gurobi license visible to Julia;
+4. the package environment instantiated.
+
+From a checkout, instantiate the environment with:
 
 ```bash
-python3 gui/build_html.py
+julia --project=. -e 'using Pkg; Pkg.instantiate()'
 ```
 
-Then reload `http://localhost:8080/gui/`.
+Check the solver installation with:
+
+```bash
+julia --project=. -e 'using Gurobi; println(Gurobi.Env())'
+```
+
+## Quick start: one unified solver entry point
+
+The recommended interface is `solve_uc`. Select the algorithm and data source with
+indicators; callers do not include or call algorithm implementation files directly.
+
+```julia
+using ModuleUnitCommitmentToolkit
+
+result = solve_uc(
+    algorithm = :benchmark,       # :benchmark, :benders, or :ccg
+    input = :excel,               # :excel or :powersystems
+    scenario_limit = 1,
+    calibration = (
+        MODEL_CONSIDER_BESS = false,
+        MODEL_CONSIDER_FREQUENCY_CONTROL = false,
+        BENCHMARK_UC_USE_DRO = false,
+    ),
+    output_dir = "output/quickstart",
+    verbosity = :detailed,
+)
+
+println("status     = ", result.status)
+println("objective  = ", result.upper_bound)
+println("output_dir = ", result.output_dir)
+```
+
+`solve_uc` performs the following work internally:
+
+1. validates the algorithm and input indicators;
+2. loads and normalizes the selected data source;
+3. applies the request-local calibration values;
+4. dispatches to Benchmark, Benders, or CCG;
+5. returns a named result object with common status, bounds, gap, history, and artifact fields.
+
+## Request object form
+
+For applications that build a request in one place and execute it later, use
+`UCSolveRequest`:
+
+```julia
+using ModuleUnitCommitmentToolkit
+
+request = UCSolveRequest(
+    algorithm = :ccg,
+    input = :excel,
+    scenario_limit = 3,
+    calibration = (
+        CCG_INITIAL_SCENARIOS = 1,
+        CCG_SCENARIOS_PER_ITERATION = 1,
+        CCG_MAX_ITERATIONS = 5,
+    ),
+    output_dir = "output/ccg_demo",
+    verbosity = :summary,
+)
+
+result = solve_uc(request)
+print_uc_result(result; detail = true)
+```
+
+Use `verbosity = :silent` in batch jobs and call `print_uc_result` explicitly when the
+application is ready to render the result.
+
+## PowerSystems example
+
+PowerSystems data uses the same solver entry point. Only `input` and the system-specific
+arguments change:
+
+```julia
+using ModuleUnitCommitmentToolkit
+
+sys = build_system_from_powersystems(:ieee30)
+
+frequency_parameters = generate_frequency_parameters(sys)
+data_centers = [
+    (
+        bus = 10,
+        p_max = 20.0,
+        p_min = 0.0,
+        idle_power = 0.0,
+        server_energy = 0.0,
+        lambda = 0.0,
+        mu = 1.0,
+        workload = fill(0.0, 24),
+    ),
+]
+
+result = solve_uc(
+    algorithm = :benchmark,
+    input = :powersystems,
+    sys = sys,
+    scenario_limit = 1,
+    horizon = 24,
+    frequency_parameters = frequency_parameters,
+    data_centers = data_centers,
+    calibration = (
+        MODEL_CONSIDER_DATA_CENTER = true,
+        MODEL_CONSIDER_FREQUENCY_CONTROL = true,
+        BENCHMARK_UC_USE_DRO = false,
+    ),
+    output_dir = "output/powersystems/ieee30/benchmark",
+    verbosity = :detailed,
+)
+```
+
+The package includes aliases for common test systems, including `:ieee6`, `:ieee14`,
+`:ieee24`, `:ieee30`, `:ieee118`, `:rts_gmlc`, `:activsg2000`, and `:activsg10k` when
+the corresponding PowerSystems test data is available in the installed environment.
+Use `powersystems_case_catalog()` and `list_powersystems_cases()` to inspect the catalog.
+
+For a complete IEEE 30-bus example with wind penetration, frequency disturbance, data-center
+load, input snapshots, and detailed comments, see:
+
+[`examples/unified_api/07_ieee30_frequency_datacenter_uc.jl`](examples/unified_api/07_ieee30_frequency_datacenter_uc.jl)
+
+Run it with:
+
+```bash
+julia --project=. examples/unified_api/07_ieee30_frequency_datacenter_uc.jl
+```
+
+Useful environment variables include `UC_ALGORITHM`, `UC_HORIZON`,
+`UC_SCENARIO_LIMIT`, `UC_WIND_PENETRATION`, and
+`UC_FREQUENCY_CONTINGENCY_FRACTION`.
+
+## Calibration parameters
+
+Calibration values are request-local. They are applied for the current solve and do not
+silently modify the user's global runtime configuration.
+
+Common switches:
+
+| Parameter | Meaning |
+| --- | --- |
+| `MODEL_CONSIDER_DATA_CENTER` | Enable data-center load constraints |
+| `MODEL_CONSIDER_FREQUENCY_CONTROL` | Enable frequency-support constraints |
+| `MODEL_CONSIDER_BESS` | Enable battery constraints |
+| `MODEL_CONSIDER_WIND` | Enable wind-unit constraints |
+| `MODEL_NETWORK_CONSTRAINT` | Enable network constraints |
+| `MODEL_THERMAL_UNIT_CONSTRAINT` | Enable thermal-unit constraints |
+
+Algorithm controls:
+
+| Algorithm | Typical parameters |
+| --- | --- |
+| Benchmark | `BENCHMARK_UC_USE_DRO` |
+| Benders | `BENDERS_MAX_ITERATIONS`, `BENDERS_PARALLEL_SUBPROBLEMS` |
+| CCG | `CCG_INITIAL_SCENARIOS`, `CCG_SCENARIOS_PER_ITERATION`, `CCG_MAX_ITERATIONS`, `CCG_GAP_TOL` |
+
+The complete configuration reference is in
+[`docs/runtime_configuration.md`](docs/runtime_configuration.md).
+
+## Structured outputs
+
+The output root is explicit. Set it per request with `output_dir`, or set the global
+`MODULE_UC_OUTPUT_DIR` environment variable. The solver does not need the caller's
+`pwd()` to locate output files.
+
+Each run contains separate `input/` and `result/` directories. Input tables are written
+before optimization, which makes it possible to audit the exact data and effective config
+used by a run. Result tables include:
+
+- `01_request.csv`
+- `02_status.csv`
+- `03_progress.csv`
+- `04_input_data.csv`
+- `05_effective_config.csv`
+- `06_model_solver.csv`
+- `07_iteration_history.csv`
+- `08_cost_breakdown.csv`
+- `09_algorithm_diagnostics.csv`
+
+The same sections can be printed as DataFrames:
+
+```julia
+print_uc_result(result; detail = true)
+```
+
+The result object exposes the resolved output directory:
+
+```julia
+println(result.output_dir)
+```
+
+## Examples and documentation
+
+- [`examples/unified_api/README.md`](examples/unified_api/README.md): unified API examples;
+- [`examples/unified_api/01_excel_single_solve.jl`](examples/unified_api/01_excel_single_solve.jl): Excel solve;
+- [`examples/unified_api/03_three_algorithm_comparison.jl`](examples/unified_api/03_three_algorithm_comparison.jl): compare all three algorithms;
+- [`examples/unified_api/04_powersystems_native.jl`](examples/unified_api/04_powersystems_native.jl): native PowerSystems input;
+- [`examples/unified_api/07_ieee30_frequency_datacenter_uc.jl`](examples/unified_api/07_ieee30_frequency_datacenter_uc.jl): IEEE 30-bus extended example;
+- [`docs/api_reference.md`](docs/api_reference.md): public API and result fields;
+- [`docs/powersystems_algorithms_guide.md`](docs/powersystems_algorithms_guide.md): PowerSystems and algorithm notes;
+- [`docs/juliahub_publishing.md`](docs/juliahub_publishing.md): package registration workflow.
+
+## Testing
+
+Run the package test suite:
+
+```bash
+julia --project=. -e 'using Pkg; Pkg.test()'
+```
+
+The repository CI includes fast routing/data-entry tests and smoke tests for Benchmark,
+Benders, and CCG. The extended PowerSystems tests may require the corresponding test data
+and a configured Gurobi installation.
+
+## Optional local dashboard
+
+The repository also contains an optional local HTML dashboard for inspecting generated
+experiment artifacts. It is not required for using the Julia package API:
+
+```bash
+./gui/start.sh
+```
+
+The dashboard binds to `127.0.0.1` by default. Do not expose it on a remote interface unless
+authentication, origin restrictions, and request protection have been configured according
+to the repository's security guidance.
+
+## Contributing
+
+Please keep new integrations behind the unified `solve_uc` and `load_uc_data` entry points,
+add or update tests for new routes, and include a runnable example for new public behavior.
+Avoid adding a second package project directory; the root `Project.toml` is canonical.
 
 ## License
 
-This project is licensed under the MIT License. See [LICENSE](LICENSE).
+This project is licensed under the MIT License. See [`LICENSE`](LICENSE).

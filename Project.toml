@@ -1,6 +1,6 @@
 name = "ModuleUnitCommitmentToolkit"
-uuid = "a1b2c3d4-e5f6-7890-abcd-ef1234567890"
-version = "1.10.0"
+uuid = "ac5da903-c047-492f-9e2d-d451e318368d"
+version = "0.1.0"
 authors = ["YipingYUAN"]
 description = "Unified stochastic and security-constrained unit commitment toolkit for Julia."
 
