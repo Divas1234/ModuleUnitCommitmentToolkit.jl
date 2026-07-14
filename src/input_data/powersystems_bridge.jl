@@ -499,7 +499,14 @@ function extract_uc_data_from_powersystems(
         limits = get_active_power_limits(generator)
         ramps = getproperty(generator, :ramp_limits)
         time_limits = getproperty(generator, :time_limits)
-        maximum_power = Float64(limits.max)
+        active_limit_max = Float64(limits.max)
+        native_rating = max(Float64(get_rating(generator)), 0.0)
+        # Some MATPOWER generator rows are parsed by PowerSystems with a zero
+        # active-power upper limit even though their generator rating is
+        # positive. Keep those units available to UC by falling back to the
+        # native rating only for the zero-limit case; preserve an explicitly
+        # smaller positive active-power limit.
+        maximum_power = active_limit_max > 0.0 ? active_limit_max : native_rating
         # PowerSystems uses SYSTEM_BASE units for component power values. These
         # quantities are already per-unit on the system base; dividing by
         # `base_power` here would perform a second, incorrect normalization.

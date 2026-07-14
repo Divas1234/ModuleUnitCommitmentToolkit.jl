@@ -38,10 +38,11 @@ using ModuleUnitCommitmentToolkit
     @test occursin("UNIFIED UC SOLVE RESULT", rendered)
     @test occursin("hidden_messages", rendered)
 
+    detailed_output_dir = mktempdir()
     detailed_result = UCSolveResult(
         :ccg,
         :excel,
-        "/tmp/output",
+        detailed_output_dir,
         (
             status = "converged",
             upper_bound = 12.0,
@@ -61,8 +62,13 @@ using ModuleUnitCommitmentToolkit
     end
     @test occursin("[Input data]", detailed_rendered)
     @test occursin("[Optimization details]", detailed_rendered)
+    @test occursin("DataFrame", detailed_rendered)
     @test occursin("[Iteration history]", detailed_rendered)
     @test occursin("startup_cost", detailed_rendered)
+    @test isfile(joinpath(detailed_output_dir, "result", "01_request.csv"))
+    @test isfile(joinpath(detailed_output_dir, "result", "04_input_data.csv"))
+    @test isfile(joinpath(detailed_output_dir, "result", "07_iteration_history.csv"))
+    @test isfile(joinpath(detailed_output_dir, "result", "08_cost_breakdown.csv"))
 
     setup = BendersSetup(
         ntuple(_ -> nothing, 11)...,

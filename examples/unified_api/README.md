@@ -75,9 +75,36 @@ julia --project=. examples/unified_api/04_powersystems_native.jl
 
 `07_ieee30_frequency_datacenter_uc.jl` 是一个更完整的业务侧示例：它固定读取 `:ieee30`
 算例，打印 30 个母线、6 台常规机组、1 台风电、41 条线路和 21 个负荷的系统边界，为
-常规机组配置 `H/D/K/F/T/R`，为风电配置 `Fcmode/Kw/Rw/Mw/Dw/Tw`，并把一个 20 MW
-数据中心挂载到 5 号母线。随后程序通过 `load_uc_data` 打印统一数据维度和有效 config，
-再用 `UCSolveRequest` 统一调用 `benchmark`、`benders` 或 `ccg`。
+常规机组配置 `H/D/K/F/T/R`，为按渗透率计算容量的风电配置 `Fcmode/Kw/Rw/Mw/Dw/Tw`，
+并把一个 20 MW 数据中心挂载到 5 号母线。默认风电渗透率和故障扰动幅度均为 5%，可通过
+`UC_WIND_PENETRATION` 与 `UC_FREQUENCY_CONTINGENCY_FRACTION` 调整。随后程序通过
+`load_uc_data` 打印统一数据维度和有效 config，再用 `UCSolveRequest` 统一调用
+`benchmark`、`benders` 或 `ccg`。
+
+示例中的输入不再只依赖长文本日志：每张输入表都会先转换为 `DataFrame`，在终端以表格
+形式打印，并在求解前写入显式输出根目录：
+
+```text
+output/examples/powersystems/ieee30/<algorithm>/<run_id>/
+├── input/
+│   ├── 01_buses.csv
+│   ├── 02_thermal_generators.csv
+│   ├── 03_wind_generators.csv
+│   ├── 04_branches.csv
+│   ├── 05_loads.csv
+│   ├── 06_thermal_frequency_parameters.csv
+│   ├── 07_wind_frequency_parameters.csv
+│   ├── 08_data_centers.csv
+│   ├── 09_model_dimensions.csv
+│   ├── 10_effective_config.csv
+│   ├── 11_unified_wind_parameters.csv
+│   └── 12_wind_availability.csv
+└── benchmark_uc/<run_id>/scheduling/   # 或 benders/、ccg/
+```
+
+其中 `02_thermal_generators.csv` 特别同时保留 PowerSystems 原始 `source_p_max_pu`、
+机组 `rating_pu` 和桥接后的 `uc_p_max_pu`，便于检查零上限回退逻辑；`10_effective_config.csv`
+是 `load_uc_data` 实际得到的模型配置，不是仅由调用方声明的配置草稿。
 
 建议先用 4 小时窗口验证接口和模型链路：
 
@@ -93,9 +120,13 @@ UC_HORIZON=4 UC_RUN_SOLVE=0 \
   julia --project=. examples/unified_api/07_ieee30_frequency_datacenter_uc.jl
 ```
 
+该命令虽然跳过优化，但仍会完成全部输入 DataFrame 的终端展示和 CSV 快照写入；命令结束
+后直接打开最新的 `output/examples/powersystems/ieee30/benchmark/<run_id>/input/` 即可核对。
+
 `PowerSystems` 原生功率字段已经是 `SYSTEM_BASE` 标幺值；示例中的数据中心参数仍按 MW
-填写，由统一桥接层转换为模型内部标幺值。示例设置的 5% 事故容量是便于教学 smoke test
-的标定值，正式研究应依据实际 N-1 事故重新设定 `FREQUENCY_CONTINGENCY_FRACTION`。
+填写，由统一桥接层转换为模型内部标幺值。5% 事故容量和 5% 风电渗透率是便于教学
+smoke test 且能产生多机组开停机组合的标定值，正式研究应依据实际 N-1 事故和新能源
+规划比例重新设定这两个参数。
 
 ## 1. `solve_uc` 的两种调用形式
 
@@ -182,6 +213,10 @@ print_uc_result(result; detail = true)
 
 `verbosity` 只控制输出，不改变 `UCSolveResult`。算法专属字段仍通过
 `result.details` 或 `hasproperty(result, :field_name)` 访问。
+
+调用 `print_uc_result(result; detail=true)` 时，结果各层会以 DataFrame 形式展示，并写入
+`result.output_dir/result/`：请求、状态、进度、输入维度、有效配置、模型求解信息、迭代历史、
+成本分解和算法诊断分别保存为编号 CSV，便于直接使用 DataFrames/CSV 做后处理。
 
 ## 3. 结果对象
 

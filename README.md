@@ -15,6 +15,7 @@ The repository contains three connected layers:
 - [Features](#features)
 - [Requirements](#requirements)
 - [Quick Start](#quick-start)
+- [Package Installation](#package-installation)
 - [Dashboard](#dashboard)
 - [Command-Line Workflows](#command-line-workflows)
 - [Unified Solver Entry](#unified-solver-entry)
@@ -339,6 +340,29 @@ Confirm that Gurobi is installed, licensed, and visible to Julia:
 ```bash
 julia --project=. -e 'using Gurobi; println(Gurobi.Env())'
 ```
+
+## Package Installation
+
+After the package is registered in the Julia General registry and synchronized to
+JuliaHub, install the released package from any Julia environment:
+
+```julia
+using Pkg
+Pkg.add("ModuleUnitCommitmentToolkit")
+
+using ModuleUnitCommitmentToolkit
+```
+
+For development before registry registration, install directly from the GitHub repository:
+
+```julia
+using Pkg
+Pkg.add(url = "https://github.com/Divas1234/module_unitcommitment.git", rev = "revised_ModuleUnitCommitmentTookits")
+```
+
+Optimization runs require a working Gurobi installation and license. The package itself
+provides the unified `solve_uc` entry point for Benchmark UC, Benders, and CCG; callers do
+not need to include algorithm implementation files manually.
 
 ### Dashboard data looks stale
 

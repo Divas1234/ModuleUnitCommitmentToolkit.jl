@@ -92,7 +92,9 @@ component manually, convert MW values by `system_base` before passing them to Po
 example `max_active_power = 50.0 / 100.0` for a 50 MW load on a 100 MVA system base. The bridge
 passes native generator, load, storage, renewable, and branch values through without dividing by
 the base a second time; the data-center extension above remains in MW and is converted by the
-toolkit.
+toolkit. For MATPOWER cases where a generator has `active_power_limits.max == 0` but a
+positive native rating, the bridge uses that rating as the UC `p_max`; an explicitly positive
+active-power limit remains unchanged.
 
 ---
 

@@ -100,6 +100,12 @@ result = solve_uc(
 print_uc_result(result; detail = true)
 ```
 
+`print_uc_result` 的每个分层部分都会在终端渲染为 `DataFrame`，并同步写入
+`result.output_dir/result/`。文件包括 `01_request.csv`、`02_status.csv`、`03_progress.csv`、
+`04_input_data.csv`、`05_effective_config.csv`、`06_model_solver.csv`、
+`07_iteration_history.csv`、`08_cost_breakdown.csv` 和算法可用时生成的
+`09_algorithm_diagnostics.csv`。因此终端结果与可供后处理的 CSV 使用同一套字段。
+
 四种模式不会改变 `UCSolveResult` 的内容，只控制终端输出。算法专属的原始日志仍由
 `:verbose` 保留，统一结果字段始终通过 `result.status`、`result.upper_bound` 等命名属性
 访问。

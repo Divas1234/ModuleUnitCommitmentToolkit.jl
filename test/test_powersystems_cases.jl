@@ -41,6 +41,14 @@
     @test data118.NG > data30.NG
     @test data118.NL > data30.NL
 
+    # MATPOWER IEEE30 contains four generator rows with zero active-power
+    # limits but positive generator ratings. The native bridge must retain
+    # those units as dispatchable UC resources instead of making them
+    # permanently unavailable.
+    native_generators30 = sort(collect(get_components(ThermalStandard, system30)), by = get_name)
+    @test all(data30.units.p_max .> 0.0)
+    @test data30.units.p_max[3:6] == Float64[get_rating(generator) for generator in native_generators30[3:6]]
+
     # A native PowerSystems renewable component must flow through the same
     # frequency_parameters dictionary as thermal units, while preserving the
     # wind-specific Fcmode/Kw/Rw/Mw/Dw/Tw fields.
@@ -81,7 +89,12 @@
     # not divide these values by the system base a second time.
     native_generators6 = sort(collect(get_components(ThermalStandard, system6)), by = get_name)
     native_lines6 = sort(collect(get_components(Line, system6)), by = get_name)
-    @test data6.units.p_max == Float64[get_active_power_limits(generator).max for generator in native_generators6]
+    expected_pmax6 = Float64[
+        get_active_power_limits(generator).max > 0.0 ?
+        get_active_power_limits(generator).max : get_rating(generator)
+        for generator in native_generators6
+    ]
+    @test data6.units.p_max == expected_pmax6
     @test data6.lines.p_max == Float64[get_rating(line) for line in native_lines6]
     @test maximum(data6.units.p_max) > 1.0
 

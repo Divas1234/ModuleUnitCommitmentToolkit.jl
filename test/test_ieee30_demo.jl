@@ -8,5 +8,13 @@
         @test occursin("MODEL_CONSIDER_DATA_CENTER", source)
         @test occursin("generate_frequency_parameters", source)
         @test occursin("data_centers", source)
+        @test occursin("UC_FREQUENCY_CONTINGENCY_FRACTION", source)
+        @test occursin("UC_WIND_PENETRATION", source)
+        @test occursin("thermal_capacity_pu", source)
+        @test occursin("using DataFrames", source)
+        @test occursin("using CSV", source)
+        @test occursin("show_and_write_dataframe", source)
+        @test occursin("INPUT_OUTPUT_DIR", source)
+        @test occursin("CSV.write", source)
     end
 end
