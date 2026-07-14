@@ -1,5 +1,4 @@
-using Revise,
-    JuMP,
+using JuMP,
     MathOptInterface,
     Gurobi,
     Test,
@@ -9,11 +8,9 @@ using Revise,
     JLD2,
     DataFrames,
     Clustering,
-    StatsPlots,
     Distributions,
     CSV,
     Random,
-    DataFrames,
     MultivariateStats,
     DataStructures
 

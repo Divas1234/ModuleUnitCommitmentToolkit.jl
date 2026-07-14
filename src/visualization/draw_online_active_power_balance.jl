@@ -1,3 +1,5 @@
+using Plots
+
 function draw_powerbalance(
     bench_x₀,
     bench_p₀,

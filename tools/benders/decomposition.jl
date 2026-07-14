@@ -8,6 +8,7 @@ include("models/construct_models.jl")
 include("cuts/construct_cuts.jl")
 
 using Printf
+using DataStructures
 
 """
 `multiple_bender_decomposition_scuc(...)`

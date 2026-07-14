@@ -1,3 +1,7 @@
+using Clustering
+using Distributions
+using Gurobi
+using JuMP
 using MultivariateStats
 
 function generatefreq_fittingparameters(units, winds, NG, NW, NN, flag_method_type, μ, σ)

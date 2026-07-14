@@ -3,6 +3,8 @@ using Dates
 const UC_PROJECT_ROOT = normpath(joinpath(@__DIR__, "..", "..", ".."))
 const DEFAULT_UC_OUTPUT_DIR = joinpath(UC_PROJECT_ROOT, "output")
 
+using DelimitedFiles
+
 """
 	exported_scheduling_cost(...)
 

@@ -1,4 +1,6 @@
 """
+using DataStructures
+
 `get_batch_scuc_subproblems_for_scenario(...)`
 
 Generates a collection of scenario-specific subproblems by cloning a base subproblem

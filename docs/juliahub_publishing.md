@@ -24,6 +24,9 @@ version = 0.1.0
 3. 确认 `src/ModuleUnitCommitmentToolkit.jl` 与包名完全一致。
 4. 确认顶层存在 OSI-approved license；本项目使用 MIT License。
 5. 将当前提交推送到 GitHub，并创建 `v0.1.0` tag。
+6. 发布前复核 [`THIRD_PARTY_NOTICES.md`](../THIRD_PARTY_NOTICES.md)，尤其是
+   Gurobi 外部许可证、PowerSystems BSD-3-Clause 声明，以及 `ref/`、`data/`
+   算例和数据的来源授权。
 
 Julia General 的自动合并规则要求公共包仓库 URL 以包名结尾，即：
 

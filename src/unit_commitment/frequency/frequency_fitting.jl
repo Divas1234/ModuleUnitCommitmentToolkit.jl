@@ -1,3 +1,7 @@
+using Gurobi
+using JuMP
+using MathOptInterface
+
 function frequency_nadir_fitting_parameters(units, winds, contingency::Float64)
     parameter_text = strip(get(ENV, "FREQUENCY_NADIR_FITTING_PARAMETERS", ""))
     if !isempty(parameter_text)

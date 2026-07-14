@@ -1,3 +1,5 @@
+using Plots
+
 function calculate_sum_additionalpower(units, winds, Sampling_Statue, bess, δf_positor)
     current_Rc = 0.5
     Sampling_Statue = [1, 1, 0]

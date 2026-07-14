@@ -14,7 +14,7 @@ written to an explicit output directory in tabular form.
 - First public registration target: `v0.1.0`
 - Julia compatibility: `1.10` and later
 - License: MIT
-- Optimization backend: JuMP + Gurobi
+- Optimization backend: JuMP + Gurobi.jl (external Gurobi license required)
 - Main module: `ModuleUnitCommitmentToolkit`
 
 ## Installation
@@ -52,7 +52,8 @@ require:
 
 1. Julia `1.10` or later;
 2. a working Gurobi installation;
-3. a valid Gurobi license visible to Julia;
+3. a valid Gurobi license visible to Julia. Gurobi is proprietary software;
+   this package does not grant or redistribute a Gurobi license;
 4. the package environment instantiated.
 
 From a checkout, instantiate the environment with:
@@ -294,4 +295,7 @@ Avoid adding a second package project directory; the root `Project.toml` is cano
 
 ## License
 
-This project is licensed under the MIT License. See [`LICENSE`](LICENSE).
+The project-owned source code is licensed under the MIT License. See
+[`LICENSE`](LICENSE). Third-party dependency, solver, binary-artifact, and
+case/data licensing boundaries are documented in
+[`THIRD_PARTY_NOTICES.md`](THIRD_PARTY_NOTICES.md).
