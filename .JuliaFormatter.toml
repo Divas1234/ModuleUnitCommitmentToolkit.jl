@@ -1,6 +1,6 @@
-# default：函数调用换行时用块缩进，不会像 YAS 那样与开括号对齐造成“极右缩进”
+# default: Use block indentation for wrapped calls instead of YAS-style alignment.
 style = "default"
-# 这个项目里部分约束函数的参数列表较长；提高 margin，避免函数签名被拆成一参一行
+# Some constraint functions have long argument lists; increase the margin to keep signatures readable.
 margin = 150
 indent = 4
 normalize_line_endings = "unix"
@@ -10,5 +10,5 @@ short_to_long_function_def = false
 always_use_return = true
 whitespace_ops_in_indices = true
 whitespace_typedefs = true
-# 超长 a ? b : c 改为 if/else，避免三元里嵌套多行调用时一参一行、难以阅读
+# Convert long a ? b : c expressions to if/else to keep nested calls readable.
 conditional_to_if = true

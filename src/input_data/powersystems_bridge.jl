@@ -692,15 +692,16 @@ Generate a complete frequency parameters dictionary for all conventional generat
 in the given PowerSystems `System`. The default parameters are assigned based on the 
 generator's fuel type and name prefix to ensure realistic physical behavior.
 
-Chinese description:
-根据 PowerSystems 系统对象自动为所有常规机组生成调频参数字典。默认参数根据机组燃料类型和
-名称特征匹配，符合真实物理特性，同时支持用户自定义覆盖。
+Description:
+Automatically generate frequency parameters for all conventional generators in a PowerSystems
+system. Defaults are matched by fuel type and name patterns to reflect physical behavior, while
+user-defined overrides remain supported.
 """
 function generate_frequency_parameters(sys::System; overrides::Dict = Dict())
     frequency_parameters = Dict{String, NamedTuple}()
 
     # Define templates for typical generator technologies
-    # 定义各类发电技术的典型调频参数模板
+    # Define typical frequency parameter templates for each generation technology.
     templates = Dict(
         :coal => (H = 6.0, D = 0.08, K = 0.95, F = 0.30, T = 7.0, R = 0.05),
         :gas => (H = 4.0, D = 0.05, K = 0.90, F = 0.15, T = 5.0, R = 0.04),
@@ -713,14 +714,14 @@ function generate_frequency_parameters(sys::System; overrides::Dict = Dict())
         name = get_name(generator)
 
         # Check user overrides first
-        # 优先使用用户自定义的机组覆盖
+        # Apply user-defined generator overrides first.
         if haskey(overrides, name)
             frequency_parameters[name] = overrides[name]
             continue
         end
 
         # Determine fuel type if available in PowerSystems
-        # 从 PowerSystems 机组信息获取燃料类型或类型名称
+        # Read the fuel type or type name from the PowerSystems generator when available.
         fuel = :default
         if hasproperty(generator, :fuel)
             try
@@ -740,7 +741,7 @@ function generate_frequency_parameters(sys::System; overrides::Dict = Dict())
         end
 
         # Secondary check based on name heuristic if fuel property wasn't conclusive
-        # 若燃料属性不明确，根据名称特征进行启发式匹配
+        # If the fuel property is inconclusive, use a name-based heuristic.
         if fuel == :default
             lower_name = lowercase(name)
             if occursin("solitude", lower_name) || occursin("coal", lower_name) || occursin("steam", lower_name)
@@ -758,7 +759,7 @@ function generate_frequency_parameters(sys::System; overrides::Dict = Dict())
         end
 
         # Assign matching template
-        # 赋予匹配的参数模板
+        # Assign the matching parameter template.
         template = get(templates, fuel, templates[:default])
         frequency_parameters[name] = template
     end

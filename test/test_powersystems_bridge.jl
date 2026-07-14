@@ -110,14 +110,14 @@
     @test size(data.DataCentras.computational_power_tasks) == (1, 4)
 
     # Test automatic frequency parameter generation
-    # 测试调频参数的自动生成
+    # Test automatic frequency parameter generation.
     freq_gen = generate_frequency_parameters(system)
     @test haskey(freq_gen, "thermal-1")
-    @test freq_gen["thermal-1"].H == 6.0      # Coal template default | 煤炭模板默认值
-    @test freq_gen["thermal-1"].R == 0.05     # Coal template droop | 煤炭模板调差率
+    @test freq_gen["thermal-1"].H == 6.0      # Coal template default.
+    @test freq_gen["thermal-1"].R == 0.05     # Coal template droop.
 
     # Test name-based overrides
-    # 测试基于名称的参数覆盖
+    # Test name-based parameter overrides.
     freq_override = generate_frequency_parameters(system; overrides = Dict("thermal-1" => (H = 9.9, D = 1.0, K = 2.0, F = 3.0, T = 4.0, R = 5.0)))
     @test freq_override["thermal-1"].H == 9.9
     @test freq_override["thermal-1"].R == 5.0

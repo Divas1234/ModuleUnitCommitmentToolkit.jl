@@ -1,25 +1,25 @@
 """
     06_powersystems_case_catalog.jl
 
-统一 PowerSystems 算例入口示例。
+Unified PowerSystems case catalog example.
 
-这个程序演示四件事：
+This program demonstrates four tasks:
 
-1. 打印工具包维护的稳定算例目录；
-2. 使用 `:ieee6`、`:ieee30`、`:ieee118` 别名构造原生 PowerSystems.System；
-3. 通过统一 `load_uc_data` 入口验证不同规模算例已经转换为相同的数据类型；
-4. 可选地用一个算法求解当前选择的算例。
+1. Print the stable case catalog maintained by the toolkit.
+2. Build native PowerSystems.System objects using `:ieee6`, `:ieee30`, or `:ieee118` aliases.
+3. Verify that cases of different sizes convert to the same data type through `load_uc_data`.
+4. Optionally solve the selected case with one algorithm.
 
-默认只做“构造 + 数据桥接”，避免运行示例时误启动大规模优化。设置
-`UC_RUN_SOLVE=1` 后才会调用 `solve_uc`。
+By default, only construction and data bridging run to avoid starting a large optimization.
+Set `UC_RUN_SOLVE=1` to call `solve_uc`.
 
-环境变量：
+Environment variables:
 
-- `UC_CASE=ieee6|ieee30|ieee118`，默认 `ieee6`；
-- `UC_ALGORITHM=benchmark|benders|ccg`，默认 `benchmark`；
-- `UC_RUN_SOLVE=0|1`，默认 `0`；
-- `UC_SCENARIO_LIMIT`，默认 `1`；
-- `UC_HORIZON`，默认 `24`。
+- `UC_CASE=ieee6|ieee30|ieee118`, default `ieee6`;
+- `UC_ALGORITHM=benchmark|benders|ccg`, default `benchmark`;
+- `UC_RUN_SOLVE=0|1`, default `0`;
+- `UC_SCENARIO_LIMIT`, default `1`;
+- `UC_HORIZON`, default `24`.
 """
 
 using Pkg
