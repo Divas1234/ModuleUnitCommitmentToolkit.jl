@@ -296,6 +296,10 @@ Avoid adding a second package project directory; the root `Project.toml` is cano
 ## License
 
 The project-owned source code is licensed under the MIT License. See
-[`LICENSE`](LICENSE). Third-party dependency, solver, binary-artifact, and
-case/data licensing boundaries are documented in
-[`THIRD_PARTY_NOTICES.md`](THIRD_PARTY_NOTICES.md).
+[`LICENSE`](LICENSE) for the license text.
+
+Third-party packages and solver components remain subject to their respective
+upstream licenses and terms. In particular, Gurobi is proprietary software;
+users must install it separately and provide a valid Gurobi license. This
+package does not redistribute third-party packages, solver binaries, or
+licenses.
