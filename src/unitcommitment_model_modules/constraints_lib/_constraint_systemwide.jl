@@ -1,7 +1,7 @@
 using JuMP
 
-export add_curtailment_constraints!, add_reserve_constraints!,
-	   add_power_balance_constraints!, add_frequency_constraints!
+export add_curtailment_constraints!,
+	   add_reserve_constraints!, add_power_balance_constraints!, add_frequency_constraints!
 
 # Helper function for curtailment limits
 function add_curtailment_constraints!(scuc::Model, NT, ND, NW, NS, loads, winds)
@@ -18,8 +18,7 @@ function add_curtailment_constraints!(scuc::Model, NT, ND, NW, NS, loads, winds)
 
 	winds_curt_constr = @constraint(scuc,
 		winds_curt_constr_for_eachscenario[s = 1:NS, t = 1:NT],
-		Δpw[(1 + (s - 1) * NW):(s * NW), t] .<=
-		winds.scenarios_curve[s, t] * wind_pmax[:, 1])
+		Δpw[(1 + (s - 1) * NW):(s * NW), t] .<= winds.scenarios_curve[s, t] * wind_pmax[:, 1])
 	loads_curt_const = @constraint(scuc,
 		[s = 1:NS, t = 1:NT],
 		Δpd[(1 + (s - 1) * ND):(s * ND), t] .<= load_curve[:, t])
@@ -28,7 +27,18 @@ function add_curtailment_constraints!(scuc::Model, NT, ND, NW, NS, loads, winds)
 end
 
 # Helper function for system reserve limits
-function add_reserve_constraints!(scuc::Model, NT, NG, NC, NS, units, loads, winds, config_param)
+function add_reserve_constraints!(
+		scuc::Model,
+		NT,
+		NG,
+		NC,
+		NS,
+		units,
+		loads,
+		winds,
+		config_param,
+		hydros = nothing,
+)
 	# Check if variables exist
 	if isempty(scuc[:sr⁺])
 		return println("\t constraints: 6) Reserves skipped (sr⁺ not defined)")
@@ -39,6 +49,8 @@ function add_reserve_constraints!(scuc::Model, NT, NG, NC, NS, units, loads, win
 	sr⁻ = scuc[:sr⁻]
 	pc⁺ = check_var_exists(scuc, "pc⁺") ? scuc[:pc⁺] : nothing # Storage might not exist
 	pc⁻ = check_var_exists(scuc, "pc⁻") ? scuc[:pc⁻] : nothing # Storage might not exist
+	ph = check_var_exists(scuc, "ph") ? scuc[:ph] : nothing
+	tem_NH = ph !== nothing ? size(ph, 1) : 0
 
 	wind_pmax = winds.p_max
 	alpha_res = config_param.is_Alpha
@@ -54,6 +66,11 @@ function add_reserve_constraints!(scuc::Model, NT, NG, NC, NS, units, loads, win
 	sys_upreserve_constr = @constraint(scuc,
 		[s = 1:NS, t = 1:NT, i = 1:NG],
 		sum(sr⁺[(1 + (s - 1) * NG):(s * NG), t]) +
+		(
+			ph !== nothing ?
+			sum.(hydros.p_max, hydros.reservoircurve[t, 1] * ones(tem_NH, 1)) -
+			sum(ph[(tem_NH * (s - 1) + 1):(s * tem_NH), t]) : 0.0
+		) +
 		(NC > 0 && pc⁻ !== nothing ? sum(pc⁻[(NC * (s - 1) + 1):(s * NC), t]) : 0.0) >=
 		0.5 * unit_pmax[i, 1] * x[i, t]) # max constraints reformulation
 	#  Original formulation used 0.5, keeping it
@@ -64,15 +81,27 @@ function add_reserve_constraints!(scuc::Model, NT, NG, NC, NS, units, loads, win
 	sys_down_reserve_constr = @constraint(scuc,
 		[s = 1:NS, t = 1:NT],
 		sum(sr⁻[(1 + (s - 1) * NG):(s * NG), t]) +
-		(NC > 0 && pc⁺ !== nothing ? sum(pc⁺[(NC * (s - 1) + 1):(s * NC), t]) :
-		 0.0) >=
+		(ph !== nothing ? sum(ph[(tem_NH * (s - 1) + 1):(s * tem_NH), t] - hydros.p_min) : 0.0) +
+		(NC > 0 && pc⁺ !== nothing ? sum(pc⁺[(NC * (s - 1) + 1):(s * NC), t]) : 0.0) >=
 		1.0 * (alpha_res * forcast_reserve[s, t] + beta_res * sum(load_curve[:, t])))
 	println("\t constraints: 6) system reserves limits\t\t\t\t\t done")
 	return scuc, sys_upreserve_constr, sys_down_reserve_constr
 end
 
 # Helper function for power balance constraints
-function add_power_balance_constraints!(scuc::Model, NT, NG, ND, NC, NW, NS, loads, winds, config_param, ND2 = nothing) # Added ND2
+function add_power_balance_constraints!(
+		scuc::Model,
+		NT,
+		NG,
+		ND,
+		NC,
+		NW,
+		NS,
+		loads,
+		winds,
+		config_param,
+		ND2 = nothing,
+) # Added ND2
 	# Check if variables exist
 	if isempty(scuc[:pg₀])
 		return println("\t constraints: 7) Power balance skipped (pg₀ not defined)")
@@ -83,6 +112,8 @@ function add_power_balance_constraints!(scuc::Model, NT, NG, ND, NC, NW, NS, loa
 	Δpw = scuc[:Δpw]
 	pc⁺ = check_var_exists(scuc, "pc⁺") ? scuc[:pc⁺] : nothing # Storage might not exist
 	pc⁻ = check_var_exists(scuc, "pc⁻") ? scuc[:pc⁻] : nothing # Storage might not exist
+	ph = check_var_exists(scuc, "ph") ? scuc[:ph] : nothing
+	tem_NH = ph !== nothing ? size(ph, 1) : 0
 	# pc⁺ = scuc[:pc⁺]
 	# pc⁻ = scuc[:pc⁻]
 
@@ -91,31 +122,49 @@ function add_power_balance_constraints!(scuc::Model, NT, NG, ND, NC, NW, NS, loa
 
 	# Base power balance without data centers
 	if config_param.is_ConsiderBESS == 0
-		common_balance = @expression(scuc, [s = 1:NS, t = 1:NT],
-			sum(pg₀[(1 + (s - 1) * NG):(s * NG), t]) +
-			sum(winds.scenarios_curve[s, t] * wind_pmax[w, 1] - Δpw[(s - 1) * NW + w, t]
-			for w in 1:NW) -
-			sum(load_curve[d, t] - Δpd[(s - 1) * ND + d, t] for d in 1:ND)) # Net Load
+		common_balance = @expression(scuc,
+			[s = 1:NS, t = 1:NT],
+			sum(pg₀[(1 + (s - 1) * NG):(s * NG), t]) + sum(
+				winds.scenarios_curve[s, t] * wind_pmax[w, 1] - Δpw[(s - 1) * NW + w, t] for
+			w ∈ 1:NW
+			) - sum(load_curve[d, t] - Δpd[(s - 1) * ND + d, t] for d ∈ 1:ND)) # Net Load
 	else
-		common_balance = @expression(scuc, [s = 1:NS, t = 1:NT],
-			sum(pg₀[(1 + (s - 1) * NG):(s * NG), t]) +
-			sum(winds.scenarios_curve[s, t] * wind_pmax[w, 1] - Δpw[(s - 1) * NW + w, t] for w in 1:NW) -
-			sum(load_curve[d, t] - Δpd[(s - 1) * ND + d, t] for d in 1:ND) +
-			(NC > 0 && pc⁻ !== nothing ? sum(pc⁻[((s - 1) * NC + 1):(s * NC), t]) :
-			 0.0) -
+		common_balance = @expression(scuc,
+			[s = 1:NS, t = 1:NT],
+			sum(pg₀[(1 + (s - 1) * NG):(s * NG), t]) + sum(
+				winds.scenarios_curve[s, t] * wind_pmax[w, 1] - Δpw[(s - 1) * NW + w, t] for
+			w ∈ 1:NW
+			) - sum(load_curve[d, t] - Δpd[(s - 1) * ND + d, t] for d ∈ 1:ND) +
+			(NC > 0 && pc⁻ !== nothing ? sum(pc⁻[((s - 1) * NC + 1):(s * NC), t]) : 0.0) -
 			(NC > 0 && pc⁺ !== nothing ? sum(pc⁺[((s - 1) * NC + 1):(s * NC), t]) : 0.0))
+	end
+
+	if config_param.is_HydroUnitCon == 1 && ph !== nothing
+		common_balance = @expression(scuc,
+			[s = 1:NS, t = 1:NT],
+			common_balance[s, t] + sum(ph[(tem_NH * (s - 1) + 1):(s * tem_NH), t]))
 	end
 
 	sys_balance_constr = []
 	if config_param.is_ConsiderDataCentra == 1 && ND2 > 0 && !isempty(scuc[:dc_p])
 		dc_p = scuc[:dc_p]
 		# Add data center load if considered
-		push!(sys_balance_constr, @constraint(scuc, [s = 1:NS, t = 1:NT], common_balance[s, t] - sum(dc_p[((s - 1) * ND2 + 1):(s * ND2), t]) == 0))
+		push!(
+			sys_balance_constr,
+			@constraint(scuc,
+				[s = 1:NS, t = 1:NT],
+				common_balance[s, t] - sum(dc_p[((s - 1) * ND2 + 1):(s * ND2), t]) == 0)
+		)
 	else
 		# Constraint without data center load
-		push!(sys_balance_constr, @constraint(scuc, [s = 1:NS, t = 1:NT], common_balance[s, t] == 0))
+		push!(
+			sys_balance_constr,
+			@constraint(scuc, [s = 1:NS, t = 1:NT], common_balance[s, t] == 0)
+		)
 		if config_param.is_ConsiderDataCentra == 1 && (ND2 == 0 || dc_p === nothing)
-			println("Warning: is_ConsiderDataCentra is true, but ND2 is 0 or dc_p missing. Data center load ignored.")
+			println(
+				"Warning: is_ConsiderDataCentra is true, but ND2 is 0 or dc_p missing. Data center load ignored.",
+			)
 		end
 	end
 	println("\t constraints: 7) power balance constraints\t\t\t\t done")

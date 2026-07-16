@@ -50,7 +50,7 @@ Raises:
 function generate_inertia_damping_figure(
     droop_setting::Float64;
     damping_values::AbstractVector{Float64} = DEFAULT_DAMPING_RANGE,
-    flag_converter::Int = 0 # Parameterized flag_converter
+    flag_converter::Int = 0, # Parameterized flag_converter
 )
     # --- Input Validation ---
     if isempty(damping_values)
@@ -65,7 +65,8 @@ function generate_inertia_damping_figure(
 
     # Simplified and safer dictionary access using get with default values
     vsm_params = get(get(controller_configs, "VSM", Dict()), "control_parameters", Dict())
-    droop_params = get(get(controller_configs, "Droop", Dict()), "control_parameters", Dict())
+    droop_params =
+        get(get(controller_configs, "Droop", Dict()), "control_parameters", Dict())
 
     # --- Parameter Retrieval ---
     # Descriptive function name, clearer variable names
@@ -76,7 +77,6 @@ function generate_inertia_damping_figure(
     initial_inertia, factor_coeff, time_const, _, rocof_limit, nadir_limit, power_dev =
         get_parmeters(flag_converter) # Keeping original name if rename isn't possible yet
 
-
     # Use the provided droop setting directly
     droop = droop_setting
 
@@ -86,15 +86,27 @@ function generate_inertia_damping_figure(
     # TODO: Replace placeholder with actual function call if available
     # inertia_bounds, extreme_inertia, _, _, _ = calculate_inertia_boundaries(
     inertia_bounds, extreme_inertia, _, _, _ = calculate_inertia_parameters( # Keeping original name
-        initial_inertia, factor_coeff, time_const, droop, power_dev,
-        damping_values, vsm_params, droop_params, flag_converter
+        initial_inertia,
+        factor_coeff,
+        time_const,
+        droop,
+        power_dev,
+        damping_values,
+        vsm_params,
+        droop_params,
+        flag_converter,
     )
 
     # Descriptive function name
     # TODO: Replace placeholder with actual function call if available
     # min_inertia_limit, max_inertia_limit = estimate_inertia_stability_limits(
     min_inertia_limit, max_inertia_limit = estimate_inertia_limits( # Keeping original name
-        rocof_limit, power_dev, damping_values, factor_coeff, time_const, droop,
+        rocof_limit,
+        power_dev,
+        damping_values,
+        factor_coeff,
+        time_const,
+        droop,
     ) # Note: nadir_limit is still unused here, as per original code. Verify if intended.
 
     # Descriptive function name, clearer variable names
@@ -105,7 +117,8 @@ function generate_inertia_damping_figure(
 
     # Calculate the fitted inertia curve using the quadratic model (vectorized)
     # Using @. macro for broadcasting is concise
-    fitted_inertia = @. fit_coeffs[1] + fit_coeffs[2] * damping_values + fit_coeffs[3] * damping_values^2
+    fitted_inertia =
+        @. fit_coeffs[1] + fit_coeffs[2] * damping_values + fit_coeffs[3] * damping_values^2
 
     # Calculate the lower bound for the fill area (vectorized)
     # Takes the maximum of the fitted curve and the minimum inertia limit at each point
@@ -117,57 +130,71 @@ function generate_inertia_damping_figure(
 
     # Initial plot setup
     p = Plots.plot(
-        damping_values, inertia_bounds[:, 1], # Upper bound
+        damping_values,
+        inertia_bounds[:, 1], # Upper bound
         framestyle = :box,
         ylims = (0, maximum(inertia_bounds[:, 1]) * 1.05), # Add slight padding to ylims
         xlabel = "Damping (p.u.)", # Clearer labels
         ylabel = "Inertia (p.u.)",
         lw = 3,
         label = "Upper Inertia Bound",
-        legend = :topright # Adjust legend position if needed
+        legend = :topright, # Adjust legend position if needed
     )
 
     # Add lower inertia bound
-    Plots.plot!(p, damping_values, inertia_bounds[:, 2], # Lower bound
+    Plots.plot!(
+        p,
+        damping_values,
+        inertia_bounds[:, 2], # Lower bound
         lw = 3,
         label = "Lower Inertia Bound",
-        color = :forestgreen
+        color = :forestgreen,
     )
 
     # Add fitted inertia curve
-    Plots.plot!(p, damping_values, fitted_inertia,
+    Plots.plot!(
+        p,
+        damping_values,
+        fitted_inertia,
         lw = 3,
         label = "Fitted Inertia Boundary",
         linestyle = :dash, # Differentiate fitted curve
-        color = :purple
+        color = :purple,
     )
 
     # Add constant stability limits
     # Check if min_inertia_limit is scalar or vector before plotting
     if isa(min_inertia_limit, Number)
-         Plots.hline!(p, [min_inertia_limit], # Use the calculated limit directly
+        Plots.hline!(
+            p,
+            [min_inertia_limit], # Use the calculated limit directly
             lw = 3,
             label = "Min Stability Inertia",
             linestyle = :dot,
-            color = :red
+            color = :red,
         )
     else # Assuming it's a vector matching damping_values
-        Plots.plot!(p, damping_values, min_inertia_limit,
+        Plots.plot!(
+            p,
+            damping_values,
+            min_inertia_limit,
             lw = 3,
             label = "Min Stability Inertia",
             linestyle = :dot,
-            color = :red
+            color = :red,
         )
     end
 
     # Plot the calculated max limit vector (assuming it's a vector)
-    Plots.plot!(p, damping_values, max_inertia_limit,
+    Plots.plot!(
+        p,
+        damping_values,
+        max_inertia_limit,
         lw = 3,
         label = "Max Stability Inertia (RoCoF)",
         linestyle = :dot,
-        color = :orange
+        color = :orange,
     )
-
 
     # Add fill area representing the feasible region (optional, uncomment if needed)
     # Plots.plot!(p, damping_values, inertia_bounds[:, 1], # Fill between upper bound and the calculated lower fill bound
@@ -179,17 +206,21 @@ function generate_inertia_damping_figure(
     # )
 
     # Add vertical lines for default damping range bindings
-    Plots.vline!(p, [DEFAULT_DAMPING_MIN],
+    Plots.vline!(
+        p,
+        [DEFAULT_DAMPING_MIN],
         lw = 2, # Slightly thinner for visual distinction
         label = "Default Min Damping",
         linestyle = :dashdot,
-        color = :grey
+        color = :grey,
     )
-    Plots.vline!(p, [DEFAULT_DAMPING_MAX],
+    Plots.vline!(
+        p,
+        [DEFAULT_DAMPING_MAX],
         lw = 2,
         label = "Default Max Damping",
         linestyle = :dashdot,
-        color = :grey
+        color = :grey,
     )
 
     # Add title
@@ -203,7 +234,6 @@ function generate_inertia_damping_figure(
     #                                   DEFAULT_DAMPING_MIN, DEFAULT_DAMPING_MAX, droop)
     # # Potentially plot vertices:
     # Plots.scatter!(p, vertices[:, 1], vertices[:, 2], label="Region Vertices", markersize=5, color=:black)
-
 
     return p # Return the plot object
 end
