@@ -1,0 +1,7 @@
+{
+    "terminal.integrated.fontLigatures.enabled": true,
+    "terminal.integrated.fontFamily": "FiraCode Nerd Font Mono, MesloLGM Nerd Font",
+    "julia-format.flag": "style=SciMLStyle()",
+    "julia.environmentPath": "/Users/yuanyiping/Documents/GitHub/module_unitcommitment/src/unitcommitment_model_modules/constraints_lib/frequencydynamics/.Pkg",
+    "julia-format.inop": ""
+}
