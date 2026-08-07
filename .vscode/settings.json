@@ -134,7 +134,7 @@
                     "scope": "function",
                     "settings": {
                         "foreground": "#0a0ae5",
-                        "fontStyle": "bold"
+                        "fontStyle": "bold underline"
                     }
                 },
                 {
@@ -237,9 +237,11 @@
             ]
         },
         "textMateRules": [],
-        "comments": ""
+        // "comments": "<comments>"
     },
-    "editor.fontFamily": "Julia Mono, Droid Sans Mono, Maple Mono, Fira Code, Hack, DejaVu Code, mononoki, Inconsolata, Geist Mono, JetBrains Mono, Menlo, Monaco, 'Courier New', monospace",
+    "[julia]": {
+        "editor.wordWrap": "off"
+    },
     "workbench.tree.indent": 18,
     "material-icon-theme.hidesExplorerArrows": true,
     "workbench.tree.renderIndentGuides": "onHover",
@@ -265,11 +267,11 @@
     "todo-tree.highlights.useColourScheme": true,
     "vim.highlightedyank.enable": true,
     "editor.formatOnPaste": false,
-    "editor.formatOnSave": true,
+    "editor.formatOnSave": false,
     "editor.formatOnType": false,
     "terminal.integrated.fontLigatures.enabled": true,
-    "terminal.integrated.fontFamily": "Fira Code, Hack Nerd Font, MesloLGS NF, Geist Mono, Maple Mono, Hack Nerd Font",
-    "terminal.integrated.fontSize": 14,
+    "terminal.integrated.fontFamily": "Geist Mono, Maple Mono, Fira Code, Hack Nerd Font, MesloLGS NF, Hack Nerd Font",
+    "terminal.integrated.fontSize": 12,
     "git.terminalGitEditor": true,
     "terminal.integrated.suggest.enabled": true,
     "terminal.integrated.smoothScrolling": true,
@@ -280,7 +282,7 @@
     "editor.mouseWheelZoom": true,
     "terminal.integrated.defaultProfile.windows": "PowerShell",
     "terminalAllInOne.terminalTheme": "Atelier Cave",
-    "julia.executablePath": "/Applications/Julia-1.11.app/Contents/Resources/julia/bin/julia",
+    "julia.executablePath": "",
     "julia.execution.inlineResultsForCellEvaluation": true,
     "julia.execution.codeInREPL": true,
     "vim.autoSwitchInputMethod.enable": true,
@@ -333,5 +335,25 @@
     "search.showLineNumbers": true,
     "editor.wordWrap": "on",
     "editor.fontLigatures": true,
-    "files.autoSave": "onFocusChange"
+    "files.autoSave": "onFocusChange",
+    "Codegeex.RepoIndex": true,
+    "bookmarks.keepBookmarksOnLineDelete": true,
+    "commentAnchors.tagHighlights.enabled": false,
+    "commentAnchors.tags.sortAlphabetically": true,
+    "errorLens.gutterIconsEnabled": true,
+    "errorLens.statusBarIconsEnabled": true,
+    "julia-format.inop": "= ∈",
+    "juliaFormatter.overwriteFlags": true,
+    "julia-format.flag": "style=SciMLStyle(), indent=4, margin=256, always_for_in=true, for_in_replacement=\"∈\", whitespace_typedefs=true, import_to_using=true, whitespace_ops_in_indices=true, remove_extra_newlines=true, short_to_long_function_def=false, format_docstrings=true, trailing_comma=false, separate_kwargs_with_semicolon=true, whitespace_in_kwargs=true, align_struct_field=true, align_assignment=true, align_conditional=true, align_pair_arrow=true, normalize_line_endings=\"unix\", align_matrix=true, indent_submodule=true, surround_whereop_typeparameters=false, yas_style_nesting=false",
+    "editor.fontFamily": "JetBrains Mono, Hack, JuliaMono, Victor Mono, Menlo, Monaco, 'Courier New', monospace",
+    "files.exclude": {
+        "**/.git": true,
+        "**/.svn": true,
+        "**/.hg": true,
+        "**/.DS_Store": true,
+        "**/Thumbs.db": true
+    },
+    "hide-files.files": [],
+    "editor.allowVariableFontsInAccessibilityMode": true,
+    "better-todo-tree.highlights.useColourScheme": true
 }

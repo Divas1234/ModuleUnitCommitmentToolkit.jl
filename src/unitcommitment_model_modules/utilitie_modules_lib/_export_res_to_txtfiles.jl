@@ -88,7 +88,7 @@ function exported_scheduling_cost(
     if Sys.iswindows()
         output_dir = "D:/GithubClonefiles/module_unitcommitment/output/"
     elseif Sys.isapple()
-        output_dir = "/Users/yuanyiping/Documents/GitHub/module_unitcommitment/output/"
+        output_dir = joinpath(pwd(), "output") * "/"
     end
 
     if interval_scheduling_id != 0
@@ -127,7 +127,7 @@ function exported_scheduling_cost(
             writedlm(io, ["list 4: forced load curtailments"])
             writedlm(io, pᵨ[1:ND, 1:NT], '\t')
             writedlm(io, [" "])
-            if config_param.is_HydroUnitCon == 1
+            if config_param.is_HydroUnitCon == 1 && ph !== nothing
                 writedlm(io, ["list 12: hydros output"])
                 writedlm(io, ph[1:NH, 1:NT], '\t')
                 writedlm(io, [" "])

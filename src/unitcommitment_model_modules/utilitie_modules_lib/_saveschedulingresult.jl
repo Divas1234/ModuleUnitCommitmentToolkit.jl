@@ -113,7 +113,7 @@ function savebalance_result(
     for i = 1:tem_NW
         details_windunits_wasted_output[i, :] = bench_pᵩ[i, :]
         details_windunits_output[i, :] =
-            (winds.p_max[i]) .* winds.scenarios_curve[1, :] - bench_pᵩ[i, :]
+            (winds.p_max[i]) .* winds.scenarios_curve[1, 1:tem_NT] - bench_pᵩ[i, :]
     end
 
     # Plots.plot(windunits_output)
@@ -244,7 +244,7 @@ function creat_outputfilepath(pcm_scheduling_intervels_id, flag)
             filepath = "D:/GithubClonefiles/module_unitcommitment/output/"
         end
     else
-        filepath = "/Users/yuanyiping/Documents/GitHub/module_unitcommitment/output/details_schedule_results/"
+        filepath = joinpath(pwd(), "output", "details_schedule_results") * "/"
         mkpath(dirname(filepath))
     end
 

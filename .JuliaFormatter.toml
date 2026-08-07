@@ -1,14 +1,24 @@
-# default: Use block indentation for wrapped calls instead of YAS-style alignment.
-style = "default"
-# Some constraint functions have long argument lists; increase the margin to keep signatures readable.
-margin = 150
+style = "sciml"
 indent = 4
-normalize_line_endings = "unix"
+margin = 256
 always_for_in = true
+for_in_replacement = "∈"
+whitespace_typedefs = true
+import_to_using = true
+whitespace_ops_in_indices = true
 remove_extra_newlines = true
 short_to_long_function_def = false
-always_use_return = true
-whitespace_ops_in_indices = true
-whitespace_typedefs = true
-# Convert long a ? b : c expressions to if/else to keep nested calls readable.
-conditional_to_if = true
+format_docstrings = true
+trailing_comma = false
+separate_kwargs_with_semicolon = true
+whitespace_in_kwargs = true
+align_struct_field = true
+align_assignment = true
+align_conditional = true
+align_pair_arrow = true
+normalize_line_endings = "unix"
+align_matrix = true
+indent_submodule = true
+surround_whereop_typeparameters = false
+yas_style_nesting = false
+join_lines_based_on_source = false
