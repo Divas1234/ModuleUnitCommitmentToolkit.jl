@@ -1,0 +1,23 @@
+================================================================================
+ADAPTIVE OVERLAP WINDOW STATISTICAL REPORT
+================================================================================
+Total Scheduling Intervals : 7
+Execution Window Per Set   : 24 hours
+Decay Factor (alpha)       : 0.25
+Decay Threshold (epsilon)  : 0.05
+Slow-Start Generators      : 1 units (dwell req: 4h)
+Steady-State Decay Window  : 11 hours
+Average Overlap Window     : 9.43 hours
+Max Overlap Window         : 11 hours
+Min Overlap Window         : 0 hours
+--------------------------------------------------------------------------------
+PER-INTERVAL OVERLAP WINDOW BREAKDOWN:
+--------------------------------------------------------------------------------
+Interval 1 | Start Hour   1 | Exec: 24h | Steady: 11h | UnitDwell:  4h | Ramp:  true ( 8h) | Final Overlap: 11h | Total Solved: 35h
+Interval 2 | Start Hour  25 | Exec: 24h | Steady: 11h | UnitDwell:  4h | Ramp:  true ( 9h) | Final Overlap: 11h | Total Solved: 35h
+Interval 3 | Start Hour  49 | Exec: 24h | Steady: 11h | UnitDwell:  4h | Ramp:  true ( 9h) | Final Overlap: 11h | Total Solved: 35h
+Interval 4 | Start Hour  73 | Exec: 24h | Steady: 11h | UnitDwell:  4h | Ramp:  true ( 9h) | Final Overlap: 11h | Total Solved: 35h
+Interval 5 | Start Hour  97 | Exec: 24h | Steady: 11h | UnitDwell:  4h | Ramp:  true ( 9h) | Final Overlap: 11h | Total Solved: 35h
+Interval 6 | Start Hour 121 | Exec: 24h | Steady: 11h | UnitDwell:  4h | Ramp:  true ( 8h) | Final Overlap: 11h | Total Solved: 35h
+Interval 7 | Start Hour 145 | Exec: 24h | Steady: 11h | UnitDwell:  4h | Ramp: false ( 0h) | Final Overlap:  0h | Total Solved: 24h
+================================================================================
