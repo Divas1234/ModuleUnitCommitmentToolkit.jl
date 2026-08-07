@@ -98,6 +98,7 @@ println("="^80)
 pre_scheduling_results = Dict{String, Array{Float64}}()
 
 for interval_scheduling_id ∈ 1:patch_scheduling_ids_numssets
+    global pre_scheduling_results
     println("\n" * "-"^80)
     println("Processing scheduling interval $interval_scheduling_id of $patch_scheduling_ids_numssets...",)
     println("-"^80)
