@@ -282,7 +282,7 @@
     "editor.mouseWheelZoom": true,
     "terminal.integrated.defaultProfile.windows": "PowerShell",
     "terminalAllInOne.terminalTheme": "Atelier Cave",
-    "julia.executablePath": "/Applications/Julia-1.12.app/Contents/Resources/julia/bin/julia",
+    "julia.executablePath": "",
     "julia.execution.inlineResultsForCellEvaluation": true,
     "julia.execution.codeInREPL": true,
     "vim.autoSwitchInputMethod.enable": true,
@@ -345,5 +345,15 @@
     "julia-format.inop": "= ∈",
     "juliaFormatter.overwriteFlags": true,
     "julia-format.flag": "style=SciMLStyle(), indent=4, margin=256, always_for_in=true, for_in_replacement=\"∈\", whitespace_typedefs=true, import_to_using=true, whitespace_ops_in_indices=true, remove_extra_newlines=true, short_to_long_function_def=false, format_docstrings=true, trailing_comma=false, separate_kwargs_with_semicolon=true, whitespace_in_kwargs=true, align_struct_field=true, align_assignment=true, align_conditional=true, align_pair_arrow=true, normalize_line_endings=\"unix\", align_matrix=true, indent_submodule=true, surround_whereop_typeparameters=false, yas_style_nesting=false",
-    "editor.fontFamily": "JuliaMono, Victor Mono, Iosevka Nerd Font, Menlo, Monaco, 'Courier New', monospace"
+    "editor.fontFamily": "JetBrains Mono, Hack, JuliaMono, Victor Mono, Menlo, Monaco, 'Courier New', monospace",
+    "files.exclude": {
+        "**/.git": true,
+        "**/.svn": true,
+        "**/.hg": true,
+        "**/.DS_Store": true,
+        "**/Thumbs.db": true
+    },
+    "hide-files.files": [],
+    "editor.allowVariableFontsInAccessibilityMode": true,
+    "better-todo-tree.highlights.useColourScheme": true
 }
