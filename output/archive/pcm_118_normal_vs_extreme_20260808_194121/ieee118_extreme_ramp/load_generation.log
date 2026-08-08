@@ -1,0 +1,9 @@
+
+Updating Excel load curve at: D:\GithubClonefiles\module_unitcommitment\data\data_118.xlsx...
+  ✓ Successfully updated sheet 'load_curve' in data_118.xlsx!
+  ✓ Hours: 168; min=1313.11; max=8591.78; max ramp=3111.9600000000005
+
+================================================================================
+✓ Stochastic 118-Bus Load Curve with Strong Ramp Events Generated (168 Hours)
+================================================================================
+

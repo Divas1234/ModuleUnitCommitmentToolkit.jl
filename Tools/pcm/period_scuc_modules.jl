@@ -1,3 +1,6 @@
+if !isdefined(@__MODULE__, :_PERIOD_SCUC_MODULES_INCLUDED)
+const _PERIOD_SCUC_MODULES_INCLUDED = true
+
 using JuMP, Test, DelimitedFiles
 
 #---------------------------------------------------------------------------------------------------
@@ -121,6 +124,12 @@ function each_period_scucmodel_modules(NT::Int64, NB::Int64, NG::Int64, ND::Int6
     if get(task_local_storage(), :is_sampling_running, false)
         set_silent(scuc)
     end
+    if HAS_GUROBI
+        set_optimizer_attribute(scuc, "MIPGap", 0.015)
+    else
+        set_optimizer_attribute(scuc, "tm_lim", 4000)
+        set_optimizer_attribute(scuc, "mip_gap", 0.015)
+    end
     # --- Define Variables ---
     # Define decision variables for the optimization model
     # define_decision_variables!(scuc, NT, NG, ND, NC, ND2, NS, NW, config_param)
@@ -165,3 +174,5 @@ function each_period_scucmodel_modules(NT::Int64, NB::Int64, NG::Int64, ND::Int6
         return nothing
     end
 end # end SUC_scucmodel function
+
+end # end guard _PERIOD_SCUC_MODULES_INCLUDED

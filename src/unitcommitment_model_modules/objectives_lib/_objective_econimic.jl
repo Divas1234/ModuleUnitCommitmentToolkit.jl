@@ -76,10 +76,10 @@ function set_objective_lowcarbon!(
 
 	startup_shutdown = sum(su₀[i, t] + sd₀[i, t] for i in 1:NG, t in 1:NT)
 
+	piecewise_sum = K > 0 ? sum(pgₖ[i + (s - 1) * NG, t, k] * eachslope[k, i] for s in 1:NS, i in 1:NG, t in 1:NT, k in 1:K) : 0.0
 	fuel_piecewise = c₀ * (
 		sum(refcost[i] * x[i, t] for i in 1:NG, t in 1:NT) +
-		pₛ * sum(pgₖ[i + (s - 1) * NG, t, k] * eachslope[k, i]
-		for s in 1:NS, i in 1:NG, t in 1:NT, k in 1:K) +
+		pₛ * piecewise_sum +
 		pₛ * sum(ρ⁺ * sr⁺[i + (s - 1) * NG, t] + ρ⁻ * sr⁻[i + (s - 1) * NG, t]
 		for s in 1:NS, i in 1:NG, t in 1:NT)
 	)
@@ -87,13 +87,13 @@ function set_objective_lowcarbon!(
 	load_penalty = pₛ * load_curtailment_penalty *
 				   sum(Δpd[d + (s - 1) * ND, t] for s in 1:NS, d in 1:ND, t in 1:NT)
 
-	wind_penalty = pₛ * wind_curtailment_penalty *
-				   sum(Δpw[w + (s - 1) * NW, t] for s in 1:NS, w in 1:NW, t in 1:NT)
+	wind_penalty = (NW > 0) ? pₛ * wind_curtailment_penalty *
+				   sum(Δpw[w + (s - 1) * NW, t] for s in 1:NS, w in 1:NW, t in 1:NT) : 0.0
 
 	# Carbon emission cost
-	carbon_cost = pₛ * carbon_price * sum(
+	carbon_cost = (K > 0) ? pₛ * carbon_price * sum(
 		emission_factors[i] * sum(pgₖ[i + (s - 1) * NG, t, k] for k in 1:K)
-	for s in 1:NS, i in 1:NG, t in 1:NT)
+	for s in 1:NS, i in 1:NG, t in 1:NT) : 0.0
 
 	@objective(scuc, Min,
 		startup_shutdown +
@@ -189,6 +189,8 @@ function set_objective_economic!(
 	load_curtailment_penalty = config_param.is_LoadsCuttingCoefficient * 1e10
 	wind_curtailment_penalty = config_param.is_WindsCuttingCoefficient * 1e0
 	K = size(eachslope, 1)
+	
+	println("DEBUG set_objective_economic!: NT=$NT, NG=$NG, ND=$ND, NW=$NW, NS=$NS, K=$K, size(refcost)=$(size(refcost)), size(eachslope)=$(size(eachslope))")
 
 	x = scuc[:x]
 	su₀ = scuc[:su₀]
@@ -201,12 +203,12 @@ function set_objective_economic!(
 
 	startup_shutdown = sum(su₀[i, t] + sd₀[i, t] for i in 1:NG, t in 1:NT)
 
+	piecewise_sum = K > 0 ? sum(pgₖ[i + (s - 1) * NG, t, k] * eachslope[k, i] for s in 1:NS, i in 1:NG, t in 1:NT, k in 1:K) : 0.0
 	fuel_piecewise = c₀ * (
 	# Reference (min output) cost: first-stage only
 		sum(refcost[i] * x[i, t] for i in 1:NG, t in 1:NT) +
 		# Piecewise linear segment costs (second-stage)
-		pₛ * sum(pgₖ[i + (s - 1) * NG, t, k] * eachslope[k, i]
-		for s in 1:NS, i in 1:NG, t in 1:NT, k in 1:K) +
+		pₛ * piecewise_sum +
 		# Reserve costs
 		pₛ * sum(ρ⁺ * sr⁺[i + (s - 1) * NG, t] + ρ⁻ * sr⁻[i + (s - 1) * NG, t]
 		for s in 1:NS, i in 1:NG, t in 1:NT)
@@ -215,8 +217,8 @@ function set_objective_economic!(
 	load_penalty = pₛ * load_curtailment_penalty *
 				   sum(Δpd[d + (s - 1) * ND, t] for s in 1:NS, d in 1:ND, t in 1:NT)
 
-	wind_penalty = pₛ * wind_curtailment_penalty *
-				   sum(Δpw[w + (s - 1) * NW, t] for s in 1:NS, w in 1:NW, t in 1:NT)
+	wind_penalty = (NW > 0) ? pₛ * wind_curtailment_penalty *
+				   sum(Δpw[w + (s - 1) * NW, t] for s in 1:NS, w in 1:NW, t in 1:NT) : 0.0
 
 	@objective(scuc, Min,
 		startup_shutdown +

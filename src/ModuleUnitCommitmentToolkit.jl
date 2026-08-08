@@ -26,8 +26,8 @@ export SUC_scucmodel,
 
 # Include PCM tools in a submodule to enable LSP indexing and definition navigation (gd)
 module SequentialPCM
-    include("../Tools/sequentialproduction_mincost/period_scuc_modules.jl")
-    include("../Tools/sequentialproduction_mincost/adaptive_period_scuc_modules.jl")
+    include("../Tools/pcm/period_scuc_modules.jl")
+    include("../Tools/pcm/adaptive_period_scuc_modules.jl")
 end
 
 export SequentialPCM

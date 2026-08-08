@@ -1,0 +1,44 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1160" height="660" viewBox="0 0 1160 660">
+<rect width="100%" height="100%" fill="#ffffff"/>
+<text x="580.0" y="32" text-anchor="middle" font-family="Arial" font-size="22" font-weight="700">Average overlap comparison</text>
+<text x="22" y="287.0" transform="rotate(-90 22 287.0)" text-anchor="middle" font-family="Arial" font-size="14">Avg overlap (h)</text>
+<rect x="895" y="48" width="14" height="14" fill="#2f6f73"/><text x="916" y="60" font-family="Arial" font-size="13">普通 118</text>
+<rect x="1000" y="48" width="14" height="14" fill="#c45a3d"/><text x="1021" y="60" font-family="Arial" font-size="13">极端爬坡</text>
+<line x1="92" y1="510.0" x2="1110" y2="510.0" stroke="#d8dee3" stroke-width="1"/>
+<text x="82" y="514.0" text-anchor="end" font-family="Arial" font-size="12" fill="#37474f">-0.43</text>
+<line x1="92" y1="420.8" x2="1110" y2="420.8" stroke="#d8dee3" stroke-width="1"/>
+<text x="82" y="424.8" text-anchor="end" font-family="Arial" font-size="12" fill="#37474f">0.83</text>
+<line x1="92" y1="331.59999999999997" x2="1110" y2="331.59999999999997" stroke="#d8dee3" stroke-width="1"/>
+<text x="82" y="335.59999999999997" text-anchor="end" font-family="Arial" font-size="12" fill="#37474f">2.08</text>
+<line x1="92" y1="242.4" x2="1110" y2="242.4" stroke="#d8dee3" stroke-width="1"/>
+<text x="82" y="246.4" text-anchor="end" font-family="Arial" font-size="12" fill="#37474f">3.34</text>
+<line x1="92" y1="153.20000000000005" x2="1110" y2="153.20000000000005" stroke="#d8dee3" stroke-width="1"/>
+<text x="82" y="157.20000000000005" text-anchor="end" font-family="Arial" font-size="12" fill="#37474f">4.60</text>
+<line x1="92" y1="64.0" x2="1110" y2="64.0" stroke="#d8dee3" stroke-width="1"/>
+<text x="82" y="68.0" text-anchor="end" font-family="Arial" font-size="12" fill="#37474f">5.86</text>
+<line x1="92" y1="479.2413793103448" x2="1110" y2="479.2413793103448" stroke="#455a64" stroke-width="1"/>
+<rect x="110.0" y="479.2413793103448" width="49.5" height="1.0" rx="3" fill="#2f6f73"/>
+<rect x="167.5" y="479.2413793103448" width="49.5" height="1.0" rx="3" fill="#c45a3d"/>
+<text x="163.5" y="572" text-anchor="end" transform="rotate(-35 163.5 572)" font-family="Arial" font-size="12" fill="#263238">NoOverlap</text>
+<rect x="235.0" y="155.46642468239568" width="49.5" height="323.7749546279491" rx="3" fill="#2f6f73"/>
+<rect x="292.5" y="195.9382940108893" width="49.5" height="283.3030852994555" rx="3" fill="#c45a3d"/>
+<text x="288.5" y="572" text-anchor="end" transform="rotate(-35 288.5 572)" font-family="Arial" font-size="12" fill="#263238">SteadyOnly</text>
+<rect x="360.0" y="165.58439201451904" width="49.5" height="313.6569872958258" rx="3" fill="#2f6f73"/>
+<rect x="417.5" y="226.29219600725952" width="49.5" height="252.9491833030853" rx="3" fill="#c45a3d"/>
+<text x="413.5" y="572" text-anchor="end" transform="rotate(-35 413.5 572)" font-family="Arial" font-size="12" fill="#263238">UnitOnly</text>
+<rect x="485.0" y="287.0" width="49.5" height="192.24137931034483" rx="3" fill="#2f6f73"/>
+<rect x="542.5" y="236.41016333938296" width="49.5" height="242.83121597096186" rx="3" fill="#c45a3d"/>
+<text x="538.5" y="572" text-anchor="end" transform="rotate(-35 538.5 572)" font-family="Arial" font-size="12" fill="#263238">RampOnly</text>
+<rect x="610.0" y="94.75862068965517" width="49.5" height="384.48275862068965" rx="3" fill="#2f6f73"/>
+<rect x="667.5" y="114.99455535390197" width="49.5" height="364.2468239564429" rx="3" fill="#c45a3d"/>
+<text x="663.5" y="572" text-anchor="end" transform="rotate(-35 663.5 572)" font-family="Arial" font-size="12" fill="#263238">Steady+Unit</text>
+<rect x="735.0" y="155.46642468239568" width="49.5" height="323.7749546279491" rx="3" fill="#2f6f73"/>
+<rect x="792.5" y="165.58439201451904" width="49.5" height="313.6569872958258" rx="3" fill="#c45a3d"/>
+<text x="788.5" y="572" text-anchor="end" transform="rotate(-35 788.5 572)" font-family="Arial" font-size="12" fill="#263238">Steady+Ramp</text>
+<rect x="860.0" y="145.34845735027224" width="49.5" height="333.8929219600726" rx="3" fill="#2f6f73"/>
+<rect x="917.5" y="185.82032667876587" width="49.5" height="293.42105263157896" rx="3" fill="#c45a3d"/>
+<text x="913.5" y="572" text-anchor="end" transform="rotate(-35 913.5 572)" font-family="Arial" font-size="12" fill="#263238">Unit+Ramp</text>
+<rect x="985.0" y="94.75862068965517" width="49.5" height="384.48275862068965" rx="3" fill="#2f6f73"/>
+<rect x="1042.5" y="125.11252268602541" width="49.5" height="354.1288566243194" rx="3" fill="#c45a3d"/>
+<text x="1038.5" y="572" text-anchor="end" transform="rotate(-35 1038.5 572)" font-family="Arial" font-size="12" fill="#263238">Steady+Unit+Ramp</text>
+</svg>
