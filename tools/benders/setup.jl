@@ -3,15 +3,15 @@
 # and one-off terminal overrides reproducible.
 const BENDERS_PROJECT_ROOT = normpath(joinpath(@__DIR__, "..", ".."))
 if !isdefined(@__MODULE__, :load_runtime_config!)
-    include(joinpath(BENDERS_PROJECT_ROOT, "src", "runtime_config.jl"))
+    include("../../src/runtime_config.jl")
 end
-isdefined(@__MODULE__, :BendersSetup) || include(joinpath(BENDERS_PROJECT_ROOT, "src", "api_types.jl"))
+isdefined(@__MODULE__, :BendersSetup) || include("../../src/api_types.jl")
 load_runtime_config!()
 
 # Load environment configurations, simulation modules, and data readers
-isdefined(@__MODULE__, :gr) || include(joinpath(BENDERS_PROJECT_ROOT, "src", "environment_config.jl"))
-isdefined(@__MODULE__, :wind) || include(joinpath(BENDERS_PROJECT_ROOT, "src", "renewables", "renewables.jl"))
-isdefined(@__MODULE__, :load_uc_data) || include(joinpath(BENDERS_PROJECT_ROOT, "src", "input_data", "readers.jl"))
+isdefined(@__MODULE__, :gr) || include("../../src/environment_config.jl")
+isdefined(@__MODULE__, :wind) || include("../../src/renewables/renewables.jl")
+isdefined(@__MODULE__, :load_uc_data) || include("../../src/input_data/readers.jl")
 # The model stack is loaded by the formulation includes below; paths are rooted
 # from this file rather than from the caller's current directory.
 

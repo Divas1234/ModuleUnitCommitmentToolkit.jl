@@ -1,15 +1,14 @@
-using JuMP, Gurobi, Test, DelimitedFiles
+using JuMP, Test, DelimitedFiles
 
 #---------------------------------------------------------------------------------------------------
 # Module Dependencies and Includes
 #---------------------------------------------------------------------------------------------------
 
-# Include necessary model components
-include(joinpath(pwd(), "src", "environment_config.jl"));
-include(joinpath(pwd(), "src/unitcommitment_model_modules", "constraints_lib", "constraints.jl"),);
-include(joinpath(pwd(), "src/unitcommitment_model_modules", "objectives_lib", "objections.jl"),);
-include(joinpath(pwd(), "src/unitcommitment_model_modules", "utilitie_modules_lib", "utilities.jl"),);
-include(joinpath(pwd(), "src/unitcommitment_model_modules", "tests_lib", "tests.jl"));
+include("../../src/environment_config.jl");
+include("../../src/unitcommitment_model_modules/constraints_lib/constraints.jl");
+include("../../src/unitcommitment_model_modules/objectives_lib/objections.jl");
+include("../../src/unitcommitment_model_modules/utilitie_modules_lib/utilities.jl");
+include("../../src/unitcommitment_model_modules/tests_lib/tests.jl");
 #---------------------------------------------------------------------------------------------------
 
 """
@@ -67,9 +66,29 @@ end
 
 function get_generators_upoff_durations(units, shutup_states, shutdown_states, NG)
     res_up, res_down = zeros(NG, 1), zeros(NG, 1)
+    NT_window = size(shutup_states, 2)
     for i ∈ 1:NG
-        res_up[i, 1] = min(units.min_shutup_time[i, 1], findlast(x -> x > 0.5, shutup_states[i, :]))
-        res_down[i, 1] = min(units.min_shutdown_time[i, 1], findlast(x -> x > 0.5, shutdown_states[i, :]))
+        last_u = findlast(x -> x > 0.5, shutup_states[i, :])
+        last_v = findlast(x -> x > 0.5, shutdown_states[i, :])
+        
+        if last_u === nothing && last_v === nothing
+            # No startup/shutdown in this window: state didn't change
+            if units.x_0[i] > 0.5
+                res_up[i, 1] = max(0, units.t_0[i] - NT_window)
+                res_down[i, 1] = 0
+            else
+                res_up[i, 1] = 0
+                res_down[i, 1] = max(0, units.t_1[i] - NT_window)
+            end
+        elseif last_u !== nothing && (last_v === nothing || last_u > last_v)
+            # Last event was a startup
+            res_up[i, 1] = max(0, units.min_shutup_time[i, 1] - (NT_window - last_u + 1))
+            res_down[i, 1] = 0
+        else
+            # Last event was a shutdown
+            res_up[i, 1] = 0
+            res_down[i, 1] = max(0, units.min_shutdown_time[i, 1] - (NT_window - last_v + 1))
+        end
     end
     res_up = convert(Matrix{Int64}, res_up)
     res_down = convert(Matrix{Int64}, res_down)
@@ -98,8 +117,10 @@ function each_period_scucmodel_modules(NT::Int64, NB::Int64, NG::Int64, ND::Int6
 
     # --- Model Creation ---
     Δp_contingency = define_contingency_size(units, NG)
-    scuc = Model(Gurobi.Optimizer)
-    # set_silent(scuc)
+    scuc = Model(HAS_GUROBI ? Gurobi.Optimizer : GLPK.Optimizer)
+    if get(task_local_storage(), :is_sampling_running, false)
+        set_silent(scuc)
+    end
     # --- Define Variables ---
     # Define decision variables for the optimization model
     # define_decision_variables!(scuc, NT, NG, ND, NC, ND2, NS, NW, config_param)

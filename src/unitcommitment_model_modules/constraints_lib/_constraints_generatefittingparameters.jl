@@ -42,8 +42,10 @@ function generate_fitting_parameters(
 	new_res = sortslices(res; dims = 1, lt = (x, y) -> isless(x[1], y[1]))
 	R = kmeans(transpose(new_res), 10; maxiter = 200, display = :iter)
 
-	PWL_model = Model(Gurobi.Optimizer)
-	set_optimizer_attribute(PWL_model, "OutputFlag", 0)
+	PWL_model = Model(HAS_GUROBI ? Gurobi.Optimizer : GLPK.Optimizer)
+	if HAS_GUROBI
+		set_optimizer_attribute(PWL_model, "OutputFlag", 0)
+	end
 	set_silent(PWL_model)
 	coeffi_num = Int32(4)
 	dataset = transpose(R.centers)

@@ -6,7 +6,7 @@ using XLSX
 using CSV
 using DataFrames
 using Dates
-include(joinpath(@__DIR__, "..", "ccg", "ccg_solver.jl"))
+include("../ccg/ccg_solver.jl")
 
 const PSY = PowerSystems
 
@@ -245,7 +245,7 @@ df_dc_wl =
 CSV.write(joinpath(case_dir, "data_center_workloads.csv"), df_dc_wl)
 
 # 4. Include benchmark UC tools
-include(joinpath(@__DIR__, "benchmark_uc.jl"))
+include("benchmark_uc.jl")
 
 # 5. Run both solving methods and compare!
 # 5a. Original benchmark from Excel data

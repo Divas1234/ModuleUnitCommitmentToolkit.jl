@@ -6,9 +6,11 @@
 # 2. output/details_schedule_results/adaptive_pcm_simulation_results/overlap_window_summary.txt
 # ============================================================================
 
+using Pkg
+Pkg.activate("d:/GithubClonefiles/module_unitcommitment/pkg")
 using Printf, Statistics, CSV, DataFrames
-include(joinpath(pwd(), "src", "renewableresource_modules", "stochasticsimulation.jl"))
-include(joinpath(pwd(), "src", "read_inputdata_modules", "readdatas.jl"))
+include("../../src/renewableresource_modules/stochasticsimulation.jl")
+include("../../src/read_inputdata_modules/readdatas.jl")
 include("adaptive_period_scuc_modules.jl")
 
 function export_overlap_statistics()
@@ -27,10 +29,11 @@ function export_overlap_statistics()
     exec_NT = 24
     N_sets = 7
     alpha = 0.25
-    epsilon = 0.05
+    epsilon = 0.10
     min_overlap = 2
     max_overlap = 12
     slow_threshold = 4.0
+    steady_state_mode = "regression"
 
     slow_units, fast_units, T_unit_req = classify_generator_speed(units; slow_threshold = slow_threshold)
     T_steady_req = calculate_boundary_sensitivity_decay(alpha, epsilon)
@@ -51,7 +54,8 @@ function export_overlap_statistics()
     for k in 1:N_sets
         start_time = (k - 1) * exec_NT + 1
         T_overlap, is_ramp, T_steady, T_unit, T_ramp = compute_adaptive_overlap_window(
-            loads, winds, units, start_time, exec_NT, alpha, epsilon, min_overlap, max_overlap
+            loads, winds, units, start_time, exec_NT, alpha, epsilon, min_overlap, max_overlap,
+            nothing, k, steady_state_mode
         )
         total_NT = exec_NT + T_overlap
         raw_max = max(T_steady, T_unit, T_ramp)

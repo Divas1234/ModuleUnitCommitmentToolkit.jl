@@ -64,6 +64,31 @@
 					"label": ""
 				}
 			]
+		},
+		{
+			"path": "tools/sequentialproduction_mincost/adaptive_period_scuc_modules.jl",
+			"bookmarks": [
+				{
+					"line": 244,
+					"column": 49,
+					"label": ""
+				},
+				{
+					"line": 525,
+					"column": 0,
+					"label": ""
+				}
+			]
+		},
+		{
+			"path": "tools/sequentialproduction_mincost/adaptive_pcm_mainfunc.jl",
+			"bookmarks": [
+				{
+					"line": 95,
+					"column": 59,
+					"label": ""
+				}
+			]
 		}
 	]
 }

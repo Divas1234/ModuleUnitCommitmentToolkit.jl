@@ -27,8 +27,8 @@
 # ============================================================================
 # Step 1: Include required modules
 # ============================================================================
-include(joinpath(pwd(), "src", "renewableresource_modules", "stochasticsimulation.jl"))
-include(joinpath(pwd(), "src", "read_inputdata_modules", "readdatas.jl"))
+include("../../src/renewableresource_modules/stochasticsimulation.jl")
+include("../../src/read_inputdata_modules/readdatas.jl")
 include("period_scuc_modules.jl")
 
 # ============================================================================

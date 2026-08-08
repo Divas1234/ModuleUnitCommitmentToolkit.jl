@@ -11,9 +11,11 @@
 # 6. Window size statistics
 # ============================================================================
 
+using Pkg
+Pkg.activate("d:/GithubClonefiles/module_unitcommitment/pkg")
 using Printf, Statistics
-include(joinpath(pwd(), "src", "renewableresource_modules", "stochasticsimulation.jl"))
-include(joinpath(pwd(), "src", "read_inputdata_modules", "readdatas.jl"))
+include("../../src/renewableresource_modules/stochasticsimulation.jl")
+include("../../src/read_inputdata_modules/readdatas.jl")
 include("period_scuc_modules.jl")
 include("adaptive_period_scuc_modules.jl")
 
@@ -24,9 +26,7 @@ println("="^80)
 # 1. Read and format input data
 println("\n[1/3] Loading Input Data...")
 UnitsFreqParam, WindsFreqParam, StrogeData, DataGen, GenCost, DataBranch, LoadCurve, DataLoad, Datacentra_Data, HydroData, HydroCurve = readxlssheet()
-config_param, units, lines, loads, stroges, NB, NG, NL, ND, NT, NC, ND2, NH, DataCentras, hydros = forminputdata(
-    DataGen, DataBranch, DataLoad, LoadCurve, GenCost, UnitsFreqParam, StrogeData, Datacentra_Data, HydroData, HydroCurve
-)
+config_param, units, lines, loads, stroges, NB, NG, NL, ND, NT, NC, ND2, NH, DataCentras, hydros = forminputdata(DataGen, DataBranch, DataLoad, LoadCurve, GenCost, UnitsFreqParam, StrogeData, Datacentra_Data, HydroData, HydroCurve)
 winds, NW = genscenario(WindsFreqParam, 0)
 scenarios_prob = 1.0 / winds.scenarios_nums
 
@@ -45,15 +45,10 @@ pre_results_std = Dict{String, Array{Float64}}()
 
 t_start_std = time()
 
-for k in 1:N_sets
+for k ∈ 1:N_sets
     global pre_results_std
-    mini_units, mini_loads, mini_winds = update_boundary_conditions(
-        k, NG, exec_NT, units, loads, winds, pre_results_std
-    )
-    res_std = each_period_scucmodel_modules(
-        exec_NT, NB, NG, ND, NC, ND2, mini_units, mini_loads, mini_winds, lines,
-        DataCentras, config_param, stroges, scenarios_prob, NL, k, hydros, NH
-    )
+    mini_units, mini_loads, mini_winds = update_boundary_conditions(k, NG, exec_NT, units, loads, winds, pre_results_std)
+    res_std = each_period_scucmodel_modules(exec_NT, NB, NG, ND, NC, ND2, mini_units, mini_loads, mini_winds, lines, DataCentras, config_param, stroges, scenarios_prob, NL, k, hydros, NH)
     if res_std === nothing
         error("Standard PCM failed at interval $k")
     end
@@ -64,7 +59,7 @@ for k in 1:N_sets
 end
 
 time_std = time() - t_start_std
-std_costs_matrix[end, :] = sum(std_costs_matrix[1:N_sets, :], dims = 1)
+std_costs_matrix[end, :] = sum(std_costs_matrix[1:N_sets, :]; dims = 1)
 
 # ------------------------------------------------------------------------
 # 3. Run Adaptive Overlapping Window PCM
@@ -74,51 +69,49 @@ println("[3/3] Running Adaptive Overlapping Window PCM...")
 println("-"^80)
 
 alpha = 0.25
-epsilon = 0.05
+epsilon = 0.10
 min_overlap = 2
 max_overlap = 12
 slow_unit_threshold = 4.0
+steady_state_mode = "ml_prediction"
 
 adapt_costs_matrix = zeros(N_sets + 1, 7)
+
+# Calibrate accuracy loss mapping model on-the-fly
+trained_models = TrainedLossModels(steady_state_mode == "ml_prediction" ? "decay" : steady_state_mode)
+if steady_state_mode != "decay" && steady_state_mode != "ml_prediction"
+    trained_models = sample_and_train_loss_models(loads, winds, units, lines, DataCentras, config_param, stroges, scenarios_prob, hydros, exec_NT, min_overlap, max_overlap, NB, NG, ND, NC, ND2, NL, NH)
+end
+
 pre_results_adapt = nothing
 overlap_history = Int64[]
 
 t_start_adapt = time()
 
-for k in 1:N_sets
+for k ∈ 1:N_sets
     global pre_results_adapt
     start_time = (k - 1) * exec_NT + 1
 
-    T_overlap, is_ramp, T_steady, T_unit, T_ramp = compute_adaptive_overlap_window(
-        loads, winds, units, start_time, exec_NT, alpha, epsilon, min_overlap, max_overlap
-    )
+    T_overlap, is_ramp, T_steady, T_unit, T_ramp = compute_adaptive_overlap_window(loads, winds, units, start_time, exec_NT, alpha, epsilon, min_overlap, max_overlap, pre_results_adapt, k, steady_state_mode, trained_models)
     push!(overlap_history, T_overlap)
     total_NT = exec_NT + T_overlap
 
-    mini_units, mini_loads, mini_winds = update_adaptive_boundary_conditions(
-        k, NG, exec_NT, total_NT, start_time, units, loads, winds, pre_results_adapt
-    )
+    mini_units, mini_loads, mini_winds = update_adaptive_boundary_conditions(k, NG, exec_NT, total_NT, start_time, units, loads, winds, pre_results_adapt)
 
-    res_adapt = each_period_scucmodel_modules(
-        total_NT, NB, NG, ND, NC, ND2, mini_units, mini_loads, mini_winds, lines,
-        DataCentras, config_param, stroges, scenarios_prob, NL, k, hydros, NH
-    )
+    res_adapt = each_period_scucmodel_modules(total_NT, NB, NG, ND, NC, ND2, mini_units, mini_loads, mini_winds, lines, DataCentras, config_param, stroges, scenarios_prob, NL, k, hydros, NH)
     if res_adapt === nothing
         error("Adaptive PCM failed at interval $k")
     end
 
     committed_res = truncate_and_commit_results(res_adapt, exec_NT)
-    committed_cost = compute_committed_cost(
-        committed_res, exec_NT, mini_units, mini_loads, mini_winds, lines,
-        DataCentras, config_param, k, hydros, scenarios_prob
-    )
+    committed_cost = compute_committed_cost(committed_res, exec_NT, mini_units, mini_loads, mini_winds, lines, DataCentras, config_param, k, hydros, scenarios_prob)
     adapt_costs_matrix[k, :] = committed_cost
 
     pre_results_adapt = res_adapt
 end
 
 time_adapt = time() - t_start_adapt
-adapt_costs_matrix[end, :] = sum(adapt_costs_matrix[1:N_sets, :], dims = 1)
+adapt_costs_matrix[end, :] = sum(adapt_costs_matrix[1:N_sets, :]; dims = 1)
 
 # ------------------------------------------------------------------------
 # 4. Synthesize & Print Comparison Metrics

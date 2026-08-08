@@ -15,9 +15,8 @@ const _UC_ALGORITHM_MODULES_READY = Ref(false)
 
 function _ensure_uc_algorithm_modules!()
     if !_UC_ALGORITHM_MODULES_READY[]
-        project_root = normpath(joinpath(@__DIR__, ".."))
-        include(joinpath(project_root, "tools", "ccg", "ccg_solver.jl"))
-        include(joinpath(project_root, "tools", "benchmark", "benchmark_uc.jl"))
+        include("../tools/ccg/ccg_solver.jl")
+        include("../tools/benchmark/benchmark_uc.jl")
         _UC_ALGORITHM_MODULES_READY[] = true
     end
     return nothing

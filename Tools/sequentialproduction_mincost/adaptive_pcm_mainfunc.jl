@@ -7,8 +7,10 @@
 # 3. Steady State: Boundary sensitivity decay factor matching
 # ============================================================================
 
-include(joinpath(pwd(), "src", "renewableresource_modules", "stochasticsimulation.jl"))
-include(joinpath(pwd(), "src", "read_inputdata_modules", "readdatas.jl"))
+using Pkg
+Pkg.activate("d:/GithubClonefiles/module_unitcommitment/pkg")
+include("../../src/renewableresource_modules/stochasticsimulation.jl")
+include("../../src/read_inputdata_modules/readdatas.jl")
 include("adaptive_period_scuc_modules.jl")
 
 # ============================================================================
@@ -51,10 +53,11 @@ patch_scheduling_ids_numssets = 7    # Total number of scheduling intervals
 
 # Boundary sensitivity decay factor & threshold parameters
 alpha = 0.25                         # Sensitivity decay factor (alpha in (0, 1))
-epsilon = 0.05                       # Boundary influence decay threshold
+epsilon = 0.10                       # Boundary influence decay threshold
 min_overlap = 2                      # Minimum overlap window size (hours)
 max_overlap = 12                     # Maximum overlap window size (hours)
 slow_unit_threshold = 4.0            # Dwell time threshold (hours) for slow-start units
+steady_state_mode = "ml_prediction" # Mode for steady-state overlap selection: "decay", "regression", "neural_network", or "ml_prediction"
 
 # Classify unit speeds
 slow_units, fast_units, T_unit_req = classify_generator_speed(units; slow_threshold = slow_unit_threshold)
@@ -64,13 +67,22 @@ println("  Execution window per interval: $exec_NT hours")
 println("  Total scheduling intervals: $patch_scheduling_ids_numssets")
 println("  Slow-start units detected: $(length(slow_units)) / $NG (dwell req: $(T_unit_req)h)")
 println("  Fast-start units detected: $(length(fast_units)) / $NG")
-println("  Boundary sensitivity decay factor (alpha): $alpha (steady-state req: $(T_steady_req)h)")
+println("  Steady-state overlap mode: $steady_state_mode (epsilon: $epsilon)")
 println("  Adaptive overlap window range: [$min_overlap, $max_overlap] hours")
 
 # ============================================================================
 # Step 5: Initialize cost tracking matrix
 # ============================================================================
 total_scheduled_cost = zeros(patch_scheduling_ids_numssets + 1, 7)
+
+# Calibrate accuracy loss mapping model on-the-fly
+trained_models = TrainedLossModels(steady_state_mode == "ml_prediction" ? "decay" : steady_state_mode)
+if steady_state_mode != "decay" && steady_state_mode != "ml_prediction"
+    trained_models = sample_and_train_loss_models(
+        loads, winds, units, lines, DataCentras, config_param, stroges, scenarios_prob, hydros,
+        exec_NT, min_overlap, max_overlap, NB, NG, ND, NC, ND2, NL, NH
+    )
+end
 
 # ============================================================================
 # Step 6: Sequential optimization loop with adaptive overlapping windows
@@ -81,7 +93,7 @@ println("="^80)
 
 pre_scheduling_results = nothing
 
-for interval_scheduling_id in 1:patch_scheduling_ids_numssets
+for interval_scheduling_id ∈ 1:patch_scheduling_ids_numssets
     global pre_scheduling_results
 
     start_time = (interval_scheduling_id - 1) * exec_NT + 1
@@ -93,7 +105,8 @@ for interval_scheduling_id in 1:patch_scheduling_ids_numssets
     # Step 6.1: Calculate adaptive overlap window length
     # ------------------------------------------------------------------------
     T_overlap, is_ramp, T_steady, T_unit, T_ramp = compute_adaptive_overlap_window(
-        loads, winds, units, start_time, exec_NT, alpha, epsilon, min_overlap, max_overlap
+        loads, winds, units, start_time, exec_NT, alpha, epsilon, min_overlap, max_overlap,
+        pre_scheduling_results, interval_scheduling_id, steady_state_mode, trained_models
     )
     total_NT = exec_NT + T_overlap
 
@@ -107,18 +120,13 @@ for interval_scheduling_id in 1:patch_scheduling_ids_numssets
     # Step 6.2: Update boundary conditions for current interval
     # ------------------------------------------------------------------------
     println("  Updating boundary conditions based on prior committed window...")
-    mini_units, mini_loads, mini_winds = update_adaptive_boundary_conditions(
-        interval_scheduling_id, NG, exec_NT, total_NT, start_time, units, loads, winds, pre_scheduling_results
-    )
+    mini_units, mini_loads, mini_winds = update_adaptive_boundary_conditions(interval_scheduling_id, NG, exec_NT, total_NT, start_time, units, loads, winds, pre_scheduling_results)
 
     # ------------------------------------------------------------------------
     # Step 6.3: Solve SCUC optimization model for total horizon (total_NT)
     # ------------------------------------------------------------------------
     println("  Solving SCUC optimization model (horizon = $total_NT hours)...")
-    full_scheduling_results = each_period_scucmodel_modules(
-        total_NT, NB, NG, ND, NC, ND2, mini_units, mini_loads, mini_winds, lines,
-        DataCentras, config_param, stroges, scenarios_prob, NL, interval_scheduling_id, hydros, NH
-    )
+    full_scheduling_results = each_period_scucmodel_modules(total_NT, NB, NG, ND, NC, ND2, mini_units, mini_loads, mini_winds, lines, DataCentras, config_param, stroges, scenarios_prob, NL, interval_scheduling_id, hydros, NH)
 
     if full_scheduling_results === nothing
         error("Optimization failed for interval $interval_scheduling_id. Stopping execution.")
@@ -130,10 +138,7 @@ for interval_scheduling_id in 1:patch_scheduling_ids_numssets
     committed_results = truncate_and_commit_results(full_scheduling_results, exec_NT)
 
     # Calculate scheduling costs strictly for the committed execution window (1:exec_NT)
-    committed_cost = compute_committed_cost(
-        committed_results, exec_NT, mini_units, mini_loads, mini_winds, lines,
-        DataCentras, config_param, interval_scheduling_id, hydros, scenarios_prob
-    )
+    committed_cost = compute_committed_cost(committed_results, exec_NT, mini_units, mini_loads, mini_winds, lines, DataCentras, config_param, interval_scheduling_id, hydros, scenarios_prob)
     total_scheduled_cost[interval_scheduling_id, :] = committed_cost
     println("  ✓ Interval $interval_scheduling_id optimization completed successfully (committed 24h cost computed).")
 
@@ -143,9 +148,7 @@ for interval_scheduling_id in 1:patch_scheduling_ids_numssets
     println("  Saving committed detailed results for interval $interval_scheduling_id...")
     committed_winds = deepcopy(mini_winds)
     committed_winds.scenarios_curve = mini_winds.scenarios_curve[:, 1:exec_NT]
-    save_powerbalance_scheduled_results(
-        mini_units, committed_winds, config_param, committed_results, interval_scheduling_id
-    )
+    save_powerbalance_scheduled_results(mini_units, committed_winds, config_param, committed_results, interval_scheduling_id)
 
     # Update state for next interval using full solution (state extracted at exec_NT)
     pre_scheduling_results = full_scheduling_results
@@ -159,7 +162,7 @@ println("\n" * "="^80)
 println("Step 6: Aggregating total scheduling costs...")
 println("="^80)
 
-total_scheduled_cost[end, :] = sum(total_scheduled_cost[1:(end - 1), :], dims = 1)
+total_scheduled_cost[end, :] = sum(total_scheduled_cost[1:(end - 1), :]; dims = 1)
 
 outdir = creat_outputfilepath(-1, 1)
 outdir_adaptive = replace(outdir, "pcm_simulation_results" => "adaptive_pcm_simulation_results")

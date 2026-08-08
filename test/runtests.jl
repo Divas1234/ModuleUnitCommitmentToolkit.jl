@@ -15,23 +15,23 @@ using Distributions
 
 const MOI = MathOptInterface
 
-include(joinpath(PROJECT_ROOT, "src", "renewables", "renewables.jl"))
-include(joinpath(PROJECT_ROOT, "src", "input_data", "readers.jl"))
-include(joinpath(PROJECT_ROOT, "src", "unit_commitment", "constraints", "constraints.jl"))
-include(joinpath(PROJECT_ROOT, "src", "unit_commitment", "utilities", "linearization.jl"))
-include(joinpath(PROJECT_ROOT, "src", "unit_commitment", "utilities", "decision_variables.jl"))
-include(joinpath(PROJECT_ROOT, "tools", "benders", "models", "scuc_model.jl"))
-include(joinpath(PROJECT_ROOT, "tools", "benders", "models", "batch_subproblems.jl"))
+include("../src/renewables/renewables.jl")
+include("../src/input_data/readers.jl")
+include("../src/unit_commitment/constraints/constraints.jl")
+include("../src/unit_commitment/utilities/linearization.jl")
+include("../src/unit_commitment/utilities/decision_variables.jl")
+include("../tools/benders/models/scuc_model.jl")
+include("../tools/benders/models/batch_subproblems.jl")
 
 function ccg_env_bool(name::String, default::Bool)
     value = lowercase(strip(get(ENV, name, default ? "1" : "0")))
     return value in ("1", "true", "yes", "y", "on")
 end
 
-include(joinpath(PROJECT_ROOT, "tools", "ccg", "dro_uncertainty.jl"))
-include(joinpath(PROJECT_ROOT, "tools", "ccg", "ccg_helpers.jl"))
-include(joinpath(PROJECT_ROOT, "src", "api_types.jl"))
-include(joinpath(PROJECT_ROOT, "src", "solver_interface.jl"))
+include("../tools/ccg/dro_uncertainty.jl")
+include("../tools/ccg/ccg_helpers.jl")
+include("../src/api_types.jl")
+include("../src/solver_interface.jl")
 
 @testset "module_unitcommitment" begin
     include("test_runtime_config.jl")

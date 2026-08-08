@@ -1,4 +1,4 @@
-using JuMP, Gurobi # Add Gurobi here if not implicitly loaded via JuMP
+using JuMP
 
 export solve_and_extract_results
 
