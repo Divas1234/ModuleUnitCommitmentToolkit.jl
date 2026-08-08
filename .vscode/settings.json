@@ -359,7 +359,6 @@
     "hide-files.files": [],
     "editor.allowVariableFontsInAccessibilityMode": true,
     "better-todo-tree.highlights.useColourScheme": true,
-    "julia.environmentPath": "C:\\Users\\15703\\.julia\\environments\\v1.12",
     "json.schemaDownload.trustedDomains": {
         "https://raw.githubusercontent.com/": true
     },
