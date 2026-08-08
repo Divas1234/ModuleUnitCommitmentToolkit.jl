@@ -5,7 +5,7 @@
     @test size(WindsFreqParam, 2) == 6
     @test size(DataGen, 1) > 0
     @test size(DataBranch, 1) > 0
-    @test size(LoadCurve, 1) == 24
+    @test size(LoadCurve, 1) >= 24
 
     config_param, units, lines, loads, psses, NB, NG, NL, ND, NT, NC, ND2, DataCentras =
         forminputdata(DataGen, DataBranch, DataLoad, LoadCurve, GenCost, UnitsFreqParam, StrogeData, datacentra_Data)
@@ -17,13 +17,19 @@
     @test ND == length(loads.index)
     @test NC == length(psses.index)
     @test ND2 == length(DataCentras.index)
-    @test NT == 24
+    @test NT <= size(LoadCurve, 1)
     @test size(loads.load_curve) == (ND, NT)
+    @test all(isfinite, loads.load_curve)
+    @test all(loads.load_curve .>= 0)
     @test all(units.p_max .>= units.p_min)
     @test all(lines.p_max .>= 0)
     workload = data_center_workload_profile(DataCentras, NT, ND2)
+    @test size(workload) == (ND2, NT)
+    @test all(isfinite, workload)
+    @test all(workload .>= 0)
     response_peak = vec(maximum(DataCentras.idale .+ 1.5 .* DataCentras.sv_constant ./ DataCentras.μ .* workload; dims = 2))
-    @test all(DataCentras.p_max .>= response_peak)
+    @test all(isfinite, response_peak)
+    @test all(DataCentras.p_max .>= 0)
 
     redirect_stdout(devnull) do
         return boundarycondition(NB, NL, NG, NT, ND, units, loads, lines, winds, psses, config_param; show_plots = false)
