@@ -275,12 +275,12 @@ function main()
         )
     end
 
-    baseline_cost = df_results[df_results.Mode .== "Steady+Unit+Ramp", :TotalCost_USD][1]
-    baseline_time = df_results[df_results.Mode .== "NoOverlap", :SubproblemSolveTime_sec][1]
-    df_results.CostGap_vs_All_pct = round.((df_results.TotalCost_USD .- baseline_cost) ./ baseline_cost .* 100.0; digits = 4)
-    df_results.SolveTimeDelta_vs_NoOverlap_sec = round.(df_results.SubproblemSolveTime_sec .- baseline_time; digits = 3)
-    df_results.CalibrationTime_excluded_sec .= calibration_time
-    df_results.ReferenceTime_excluded_sec .= sum(reference_times)
+    baseline_cost = df_results[df_results[!, :Mode] .== "Steady+Unit+Ramp", :TotalCost_USD][1]
+    baseline_time = df_results[df_results[!, :Mode] .== "NoOverlap", :SubproblemSolveTime_sec][1]
+    df_results[!, :CostGap_vs_All_pct] = round.((df_results[!, :TotalCost_USD] .- baseline_cost) ./ baseline_cost .* 100.0; digits = 4)
+    df_results[!, :SolveTimeDelta_vs_NoOverlap_sec] = round.(df_results[!, :SubproblemSolveTime_sec] .- baseline_time; digits = 3)
+    df_results[!, :CalibrationTime_excluded_sec] = fill(calibration_time, nrow(df_results))
+    df_results[!, :ReferenceTime_excluded_sec] = fill(sum(reference_times), nrow(df_results))
 
     mkpath(outdir)
     summary_path = joinpath(outdir, "criteria_combination_performance.csv")
