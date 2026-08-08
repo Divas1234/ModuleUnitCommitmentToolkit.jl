@@ -7,7 +7,7 @@
 
 using DataStructures
 
-include(joinpath(@__DIR__, "..", "benders", "setup.jl"))
+include("../benders/setup.jl")
 include("dro_uncertainty.jl")
 include("ccg_helpers.jl")
 

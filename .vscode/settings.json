@@ -263,7 +263,7 @@
     "guides.stack.style": "dotted",
     "guides.normal.width": 0.25,
     "guides.stack.width": 0.5,
-    "editor.fontSize": 14,
+    "editor.fontSize": 15,
     "todo-tree.highlights.useColourScheme": true,
     "vim.highlightedyank.enable": true,
     "editor.formatOnPaste": false,
@@ -295,6 +295,9 @@
     "vim.smartRelativeLine": true,
     "vim.targets.enable": true,
     "vim.useSystemClipboard": true,
+    "vim.handleKeys": {
+        "<C-b>": false
+    },
     "powershell.buttons.showPanelMovementButtons": true,
     "powershell.codeFormatting.autoCorrectAliases": true,
     "powershell.codeFormatting.avoidSemicolonsAsLineTerminators": true,
@@ -345,7 +348,7 @@
     "julia-format.inop": "= ∈",
     "juliaFormatter.overwriteFlags": true,
     "julia-format.flag": "style=SciMLStyle(), indent=4, margin=256, always_for_in=true, for_in_replacement=\"∈\", whitespace_typedefs=true, import_to_using=true, whitespace_ops_in_indices=true, remove_extra_newlines=true, short_to_long_function_def=false, format_docstrings=true, trailing_comma=false, separate_kwargs_with_semicolon=true, whitespace_in_kwargs=true, align_struct_field=true, align_assignment=true, align_conditional=true, align_pair_arrow=true, normalize_line_endings=\"unix\", align_matrix=true, indent_submodule=true, surround_whereop_typeparameters=false, yas_style_nesting=false",
-    "editor.fontFamily": "JetBrains Mono, Hack, JuliaMono, Victor Mono, Menlo, Monaco, 'Courier New', monospace",
+    "editor.fontFamily": "MonoLisa, Input, JuliaMono, JetBrains Mono, Hack, Victor Mono, Menlo, Monaco, 'Courier New', monospace",
     "files.exclude": {
         "**/.git": true,
         "**/.svn": true,
@@ -355,5 +358,16 @@
     },
     "hide-files.files": [],
     "editor.allowVariableFontsInAccessibilityMode": true,
-    "better-todo-tree.highlights.useColourScheme": true
+    "better-todo-tree.highlights.useColourScheme": true,
+    "julia.environmentPath": "C:\\Users\\15703\\.julia\\environments\\v1.12",
+    "json.schemaDownload.trustedDomains": {
+        "https://raw.githubusercontent.com/": true
+    },
+    "julia.cellDelimiters": [
+        "^[ \\t]?#[ \\t]#+",
+        "^##(?!#)",
+        "^#([ \\t]?)%%",
+        "^##([ \\t]?)-",
+        "^##([ \\t]?)\\+"
+    ]
 }

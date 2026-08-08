@@ -16,14 +16,14 @@
 
 using Pkg
 
-# Activate the current project environment (if pkg directory exists and is valid)
-# Otherwise, use the default project environment
-if isdir("pkg") && isfile(joinpath("pkg", "Project.toml"))
-	try
-		Pkg.activate("pkg")
-	catch
-		# If activation fails, continue with current environment
-		nothing
+# Use active project environment if specified, otherwise activate current directory
+if !isfile(Base.active_project())
+	if isdir("pkg") && isfile(joinpath("pkg", "Project.toml"))
+		try
+			Pkg.activate("pkg")
+		catch
+			nothing
+		end
 	end
 end
 
@@ -69,9 +69,26 @@ end
 # ============================================================================
 # Package Imports
 # ============================================================================
-using Revise
+try
+	using Revise
+catch
+	# Revise is optional for interactive REPL development
+end
 using JuMP
-using Gurobi
+const HAS_GUROBI = try
+    import Gurobi
+    # Test if Gurobi can load its library
+    Gurobi.Env()
+    true
+catch
+    false
+end
+
+if HAS_GUROBI
+    using Gurobi
+else
+    using GLPK
+end
 using Test
 using DelimitedFiles
 using LaTeXStrings

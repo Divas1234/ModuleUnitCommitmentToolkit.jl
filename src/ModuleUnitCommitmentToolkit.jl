@@ -24,4 +24,13 @@ include("solver_interface.jl")
 export SUC_scucmodel,
     load_runtime_config!, runtime_config_entries, UCInputSpec, UCSolveRequest, UCSolveResult, BendersSetup, print_uc_result, solve_uc
 
+# Include PCM tools in a submodule to enable LSP indexing and definition navigation (gd)
+module SequentialPCM
+    include("../Tools/sequentialproduction_mincost/period_scuc_modules.jl")
+    include("../Tools/sequentialproduction_mincost/adaptive_period_scuc_modules.jl")
 end
+
+export SequentialPCM
+
+end
+
