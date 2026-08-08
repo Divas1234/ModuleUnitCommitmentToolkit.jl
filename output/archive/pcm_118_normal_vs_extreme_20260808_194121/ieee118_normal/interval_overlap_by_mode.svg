@@ -1,0 +1,98 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1160" height="560" viewBox="0 0 1160 560">
+<rect width="100%" height="100%" fill="#ffffff"/>
+<text x="580.0" y="30" text-anchor="middle" font-family="Arial" font-size="22" font-weight="700">ieee118_normal interval overlap by mode</text>
+<text x="22" y="274.0" transform="rotate(-90 22 274.0)" text-anchor="middle" font-family="Arial" font-size="14">Overlap (h)</text>
+<line x1="82" y1="490.0" x2="1118" y2="490.0" stroke="#d8dee3" stroke-width="1"/>
+<text x="72" y="494.0" text-anchor="end" font-family="Arial" font-size="12" fill="#37474f">-0.56</text>
+<line x1="82" y1="403.59999999999997" x2="1118" y2="403.59999999999997" stroke="#d8dee3" stroke-width="1"/>
+<text x="72" y="407.59999999999997" text-anchor="end" font-family="Arial" font-size="12" fill="#37474f">1.06</text>
+<line x1="82" y1="317.19999999999993" x2="1118" y2="317.19999999999993" stroke="#d8dee3" stroke-width="1"/>
+<text x="72" y="321.19999999999993" text-anchor="end" font-family="Arial" font-size="12" fill="#37474f">2.69</text>
+<line x1="82" y1="230.79999999999993" x2="1118" y2="230.79999999999993" stroke="#d8dee3" stroke-width="1"/>
+<text x="72" y="234.79999999999993" text-anchor="end" font-family="Arial" font-size="12" fill="#37474f">4.31</text>
+<line x1="82" y1="144.40000000000003" x2="1118" y2="144.40000000000003" stroke="#d8dee3" stroke-width="1"/>
+<text x="72" y="148.40000000000003" text-anchor="end" font-family="Arial" font-size="12" fill="#37474f">5.94</text>
+<line x1="82" y1="58.0" x2="1118" y2="58.0" stroke="#d8dee3" stroke-width="1"/>
+<text x="72" y="62.0" text-anchor="end" font-family="Arial" font-size="12" fill="#37474f">7.56</text>
+<line x1="82" y1="490" x2="1118" y2="490" stroke="#455a64"/>
+<polyline points="82.0,460.2068965517241 254.66666666666666,460.2068965517241 427.3333333333333,460.2068965517241 600.0,460.2068965517241 772.6666666666666,460.2068965517241 945.3333333333334,460.2068965517241 1118.0,460.2068965517241" fill="none" stroke="#263238" stroke-width="2.5"/>
+<circle cx="82.0" cy="460.2068965517241" r="3" fill="#263238"/>
+<circle cx="254.66666666666666" cy="460.2068965517241" r="3" fill="#263238"/>
+<circle cx="427.3333333333333" cy="460.2068965517241" r="3" fill="#263238"/>
+<circle cx="600.0" cy="460.2068965517241" r="3" fill="#263238"/>
+<circle cx="772.6666666666666" cy="460.2068965517241" r="3" fill="#263238"/>
+<circle cx="945.3333333333334" cy="460.2068965517241" r="3" fill="#263238"/>
+<circle cx="1118.0" cy="460.2068965517241" r="3" fill="#263238"/>
+<line x1="890" y1="50" x2="908" y2="50" stroke="#263238" stroke-width="3"/><text x="914" y="54" font-family="Arial" font-size="12">NoOverlap</text>
+<polyline points="82.0,247.39901477832512 254.66666666666666,247.39901477832512 427.3333333333333,87.79310344827589 600.0,140.99507389162562 772.6666666666666,140.99507389162562 945.3333333333334,194.19704433497537 1118.0,460.2068965517241" fill="none" stroke="#2f6f73" stroke-width="2.5"/>
+<circle cx="82.0" cy="247.39901477832512" r="3" fill="#2f6f73"/>
+<circle cx="254.66666666666666" cy="247.39901477832512" r="3" fill="#2f6f73"/>
+<circle cx="427.3333333333333" cy="87.79310344827589" r="3" fill="#2f6f73"/>
+<circle cx="600.0" cy="140.99507389162562" r="3" fill="#2f6f73"/>
+<circle cx="772.6666666666666" cy="140.99507389162562" r="3" fill="#2f6f73"/>
+<circle cx="945.3333333333334" cy="194.19704433497537" r="3" fill="#2f6f73"/>
+<circle cx="1118.0" cy="460.2068965517241" r="3" fill="#2f6f73"/>
+<line x1="1010" y1="50" x2="1028" y2="50" stroke="#2f6f73" stroke-width="3"/><text x="1034" y="54" font-family="Arial" font-size="12">SteadyOnly</text>
+<polyline points="82.0,353.8029556650246 254.66666666666666,87.79310344827589 427.3333333333333,194.19704433497537 600.0,87.79310344827589 772.6666666666666,247.39901477832512 945.3333333333334,140.99507389162562 1118.0,460.2068965517241" fill="none" stroke="#466a9f" stroke-width="2.5"/>
+<circle cx="82.0" cy="353.8029556650246" r="3" fill="#466a9f"/>
+<circle cx="254.66666666666666" cy="87.79310344827589" r="3" fill="#466a9f"/>
+<circle cx="427.3333333333333" cy="194.19704433497537" r="3" fill="#466a9f"/>
+<circle cx="600.0" cy="87.79310344827589" r="3" fill="#466a9f"/>
+<circle cx="772.6666666666666" cy="247.39901477832512" r="3" fill="#466a9f"/>
+<circle cx="945.3333333333334" cy="140.99507389162562" r="3" fill="#466a9f"/>
+<circle cx="1118.0" cy="460.2068965517241" r="3" fill="#466a9f"/>
+<line x1="890" y1="68" x2="908" y2="68" stroke="#466a9f" stroke-width="3"/><text x="914" y="72" font-family="Arial" font-size="12">UnitOnly</text>
+<polyline points="82.0,300.6009852216749 254.66666666666666,300.6009852216749 427.3333333333333,247.39901477832512 600.0,300.6009852216749 772.6666666666666,300.6009852216749 945.3333333333334,300.6009852216749 1118.0,460.2068965517241" fill="none" stroke="#c45a3d" stroke-width="2.5"/>
+<circle cx="82.0" cy="300.6009852216749" r="3" fill="#c45a3d"/>
+<circle cx="254.66666666666666" cy="300.6009852216749" r="3" fill="#c45a3d"/>
+<circle cx="427.3333333333333" cy="247.39901477832512" r="3" fill="#c45a3d"/>
+<circle cx="600.0" cy="300.6009852216749" r="3" fill="#c45a3d"/>
+<circle cx="772.6666666666666" cy="300.6009852216749" r="3" fill="#c45a3d"/>
+<circle cx="945.3333333333334" cy="300.6009852216749" r="3" fill="#c45a3d"/>
+<circle cx="1118.0" cy="460.2068965517241" r="3" fill="#c45a3d"/>
+<line x1="1010" y1="68" x2="1028" y2="68" stroke="#c45a3d" stroke-width="3"/><text x="1034" y="72" font-family="Arial" font-size="12">RampOnly</text>
+<polyline points="82.0,247.39901477832512 254.66666666666666,87.79310344827589 427.3333333333333,87.79310344827589 600.0,87.79310344827589 772.6666666666666,87.79310344827589 945.3333333333334,140.99507389162562 1118.0,460.2068965517241" fill="none" stroke="#7a5aa6" stroke-width="2.5"/>
+<circle cx="82.0" cy="247.39901477832512" r="3" fill="#7a5aa6"/>
+<circle cx="254.66666666666666" cy="87.79310344827589" r="3" fill="#7a5aa6"/>
+<circle cx="427.3333333333333" cy="87.79310344827589" r="3" fill="#7a5aa6"/>
+<circle cx="600.0" cy="87.79310344827589" r="3" fill="#7a5aa6"/>
+<circle cx="772.6666666666666" cy="87.79310344827589" r="3" fill="#7a5aa6"/>
+<circle cx="945.3333333333334" cy="140.99507389162562" r="3" fill="#7a5aa6"/>
+<circle cx="1118.0" cy="460.2068965517241" r="3" fill="#7a5aa6"/>
+<line x1="890" y1="86" x2="908" y2="86" stroke="#7a5aa6" stroke-width="3"/><text x="914" y="90" font-family="Arial" font-size="12">Steady+Unit</text>
+<polyline points="82.0,247.39901477832512 254.66666666666666,247.39901477832512 427.3333333333333,87.79310344827589 600.0,140.99507389162562 772.6666666666666,140.99507389162562 945.3333333333334,194.19704433497537 1118.0,460.2068965517241" fill="none" stroke="#9f6b30" stroke-width="2.5"/>
+<circle cx="82.0" cy="247.39901477832512" r="3" fill="#9f6b30"/>
+<circle cx="254.66666666666666" cy="247.39901477832512" r="3" fill="#9f6b30"/>
+<circle cx="427.3333333333333" cy="87.79310344827589" r="3" fill="#9f6b30"/>
+<circle cx="600.0" cy="140.99507389162562" r="3" fill="#9f6b30"/>
+<circle cx="772.6666666666666" cy="140.99507389162562" r="3" fill="#9f6b30"/>
+<circle cx="945.3333333333334" cy="194.19704433497537" r="3" fill="#9f6b30"/>
+<circle cx="1118.0" cy="460.2068965517241" r="3" fill="#9f6b30"/>
+<line x1="1010" y1="86" x2="1028" y2="86" stroke="#9f6b30" stroke-width="3"/><text x="1034" y="90" font-family="Arial" font-size="12">Steady+Ramp</text>
+<polyline points="82.0,300.6009852216749 254.66666666666666,87.79310344827589 427.3333333333333,140.99507389162562 600.0,87.79310344827589 772.6666666666666,247.39901477832512 945.3333333333334,140.99507389162562 1118.0,460.2068965517241" fill="none" stroke="#4b8063" stroke-width="2.5"/>
+<circle cx="82.0" cy="300.6009852216749" r="3" fill="#4b8063"/>
+<circle cx="254.66666666666666" cy="87.79310344827589" r="3" fill="#4b8063"/>
+<circle cx="427.3333333333333" cy="140.99507389162562" r="3" fill="#4b8063"/>
+<circle cx="600.0" cy="87.79310344827589" r="3" fill="#4b8063"/>
+<circle cx="772.6666666666666" cy="247.39901477832512" r="3" fill="#4b8063"/>
+<circle cx="945.3333333333334" cy="140.99507389162562" r="3" fill="#4b8063"/>
+<circle cx="1118.0" cy="460.2068965517241" r="3" fill="#4b8063"/>
+<line x1="890" y1="104" x2="908" y2="104" stroke="#4b8063" stroke-width="3"/><text x="914" y="108" font-family="Arial" font-size="12">Unit+Ramp</text>
+<polyline points="82.0,247.39901477832512 254.66666666666666,87.79310344827589 427.3333333333333,87.79310344827589 600.0,87.79310344827589 772.6666666666666,87.79310344827589 945.3333333333334,140.99507389162562 1118.0,460.2068965517241" fill="none" stroke="#8c4f7d" stroke-width="2.5"/>
+<circle cx="82.0" cy="247.39901477832512" r="3" fill="#8c4f7d"/>
+<circle cx="254.66666666666666" cy="87.79310344827589" r="3" fill="#8c4f7d"/>
+<circle cx="427.3333333333333" cy="87.79310344827589" r="3" fill="#8c4f7d"/>
+<circle cx="600.0" cy="87.79310344827589" r="3" fill="#8c4f7d"/>
+<circle cx="772.6666666666666" cy="87.79310344827589" r="3" fill="#8c4f7d"/>
+<circle cx="945.3333333333334" cy="140.99507389162562" r="3" fill="#8c4f7d"/>
+<circle cx="1118.0" cy="460.2068965517241" r="3" fill="#8c4f7d"/>
+<line x1="1010" y1="104" x2="1028" y2="104" stroke="#8c4f7d" stroke-width="3"/><text x="1034" y="108" font-family="Arial" font-size="12">Steady+Unit+Ramp</text>
+<text x="82.0" y="526" text-anchor="middle" font-family="Arial" font-size="12" fill="#263238">1</text>
+<text x="254.66666666666666" y="526" text-anchor="middle" font-family="Arial" font-size="12" fill="#263238">2</text>
+<text x="427.3333333333333" y="526" text-anchor="middle" font-family="Arial" font-size="12" fill="#263238">3</text>
+<text x="600.0" y="526" text-anchor="middle" font-family="Arial" font-size="12" fill="#263238">4</text>
+<text x="772.6666666666666" y="526" text-anchor="middle" font-family="Arial" font-size="12" fill="#263238">5</text>
+<text x="945.3333333333334" y="526" text-anchor="middle" font-family="Arial" font-size="12" fill="#263238">6</text>
+<text x="1118.0" y="526" text-anchor="middle" font-family="Arial" font-size="12" fill="#263238">7</text>
+<text x="600.0" y="550" text-anchor="middle" font-family="Arial" font-size="13">Hour / Interval</text>
+</svg>

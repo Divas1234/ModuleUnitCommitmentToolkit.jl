@@ -15,12 +15,12 @@ include("adaptive_period_scuc_modules.jl")
 
 function run_offline_dataset_generation()
     println("="^80)
-    println("OFFLINE DATASET GENERATION FOR ADAPTIVE OVERLAP WINDOWS")
+    println("OFFLINE DATASET GENERATION FOR IEEE 118-BUS SYSTEM")
     println("="^80)
 
-    # 1. Read base case data
-    println("Loading base case data...")
-    ENV["MODULE_UC_DATA_FILE"] = "d:/GithubClonefiles/module_unitcommitment/data/data.xlsx"
+    # 1. Read base case data from data_118.xlsx
+    println("Loading base case data from data_118.xlsx...")
+    ENV["MODULE_UC_DATA_FILE"] = "d:/GithubClonefiles/module_unitcommitment/data/data_118.xlsx"
     UnitsFreqParam, WindsFreqParam, StrogeData, DataGen, GenCost, DataBranch, LoadCurve, DataLoad, Datacentra_Data, HydroData, HydroCurve = readxlssheet()
     
     # Declare variables as global so the legacy solve_and_extract_results can access them
@@ -29,32 +29,49 @@ function run_offline_dataset_generation()
     config_param, units, lines, loads, stroges, NB, NG, NL, ND, NT, NC, ND2, NH, DataCentras, hydros = forminputdata(
         DataGen, DataBranch, DataLoad, LoadCurve, GenCost, UnitsFreqParam, StrogeData, Datacentra_Data, HydroData, HydroCurve
     )
+    config_param.is_NetWorkCon = 0
     
     # Store base curves
     base_winds, NW = genscenario(WindsFreqParam, 0)
+    base_winds.scenarios_nums = 1
+    base_winds.scenarios_curve = base_winds.scenarios_curve[1:1, :]
+    
+    required_horizon = 24 * 7
+    repeat_to_horizon(curve) = repeat(Matrix{Float64}(curve), 1, cld(required_horizon, size(curve, 2)))[:, 1:required_horizon]
+
+    # Preserve native multi-day uncertainty when the workbook already contains a
+    # 168-hour curve. Repeat only for legacy 24-hour profiles.
+    if size(loads.load_curve, 2) < required_horizon
+        loads.load_curve = repeat_to_horizon(loads.load_curve)
+    end
+    if size(base_winds.scenarios_curve, 2) < required_horizon
+        base_winds.scenarios_curve = repeat_to_horizon(base_winds.scenarios_curve)
+    end
+    
     global winds = base_winds
     base_loads = deepcopy(loads)
-    global scenarios_prob = 1.0 / base_winds.scenarios_nums
+    global scenarios_prob = 1.0
 
     exec_NT = 24
     N_sets = 7
-    T_max = 12
+    T_max = 6
     min_overlap = 2
 
     # Scenarios for scaling data to create historical variety
-    load_scales = [0.90, 1.00, 1.10]
-    wind_scales = [0.80, 1.00, 1.20]
+    load_scales = [0.97, 1.03]
+    wind_scales = [0.95, 1.05]
 
-    # Initialize empty DataFrame for training data
+    # Initialize empty DataFrame with system-independent and boundary-state
+    # features. X_delta_norm and X_switch_ratio quantify how much the inherited
+    # rolling-boundary commitment differs from the base initial commitment.
     df_dataset = DataFrame(
-        # Features
-        x0_1 = Float64[], x0_2 = Float64[], x0_3 = Float64[],
-        t0_1 = Float64[], t0_2 = Float64[], t0_3 = Float64[],
-        t1_1 = Float64[], t1_2 = Float64[], t1_3 = Float64[],
+        U_norm = Float64[],
+        T_dwell_rem = Float64[],
         L_norm = Float64[],
         sigma_load = Float64[],
         R_wind_max = Float64[],
-        # Target
+        X_delta_norm = Float64[],
+        X_switch_ratio = Float64[],
         To_star = Int64[]
     )
 
@@ -128,14 +145,46 @@ function run_offline_dataset_generation()
                 curr_units = baseline_states[k]
                 init_units = baseline_units_states[k]
 
-                # Extract features for interval k
+                # Extract system-independent features for interval k
                 x_0_curr = init_units.x_0
                 t_0_curr = init_units.t_0
                 t_1_curr = init_units.t_1
 
+                # U_norm: online capacity ratio
+                U_norm = sum(x_0_curr .* units.p_max) / total_capacity
+                
+                # T_dwell_rem: remaining boundary restriction at this interval.
+                # Online units contribute their remaining minimum online time;
+                # offline units contribute their remaining minimum offline time.
+                online_remaining = [x_0_curr[i] > 0.5 ? max(0.0, t_0_curr[i]) : 0.0 for i in 1:NG]
+                offline_remaining = [x_0_curr[i] <= 0.5 ? max(0.0, t_1_curr[i]) : 0.0 for i in 1:NG]
+                T_dwell_rem = max(0.0, maximum(online_remaining), maximum(offline_remaining))
+
                 # Truncate overlap range for current interval
                 max_possible_overlap = size(loads.load_curve, 2) - (start_time + exec_NT - 1)
                 T_max_interval = min(T_max, max_possible_overlap)
+
+                # Local reference: solve the same interval while ignoring the
+                # inherited boundary state from the previous rolling window.
+                # The first-period commitment is used as the local economic
+                # benchmark for boundary-deviation features.
+                x_ref_curr = nothing
+                try
+                    ref_units, ref_loads, ref_winds = update_adaptive_boundary_conditions(
+                        1, NG, exec_NT, exec_NT + T_max_interval, start_time, units, loads, winds, nothing
+                    )
+                    ref_res = each_period_scucmodel_modules(
+                        exec_NT + T_max_interval, NB, NG, ND, NC, ND2, ref_units, ref_loads, ref_winds, lines,
+                        DataCentras, config_param, stroges, scenarios_prob, NL, k, hydros, NH
+                    )
+                    if ref_res !== nothing && haskey(ref_res, "x₀")
+                        x_ref_curr = Float64.(ref_res["x₀"][:, 1] .> 0.5)
+                    end
+                catch e
+                    println("  Warning: Local no-boundary reference solve failed at interval $k. Falling back to initial state.")
+                end
+
+                X_delta_norm, X_switch_ratio = commitment_boundary_deviation(units, x_0_curr, x_ref_curr)
 
                 # Lookahead window calculation
                 end_horizon = min(size(loads.load_curve, 2), start_time + exec_NT + T_max_interval - 1)
@@ -191,7 +240,12 @@ function run_offline_dataset_generation()
                             DataCentras, config_param, k, hydros, scenarios_prob
                         )
                         C_To = sum(committed_cost_To)
-                        loss = abs(C_To - C_max) / C_max
+                        cost_loss = abs(C_To - C_max) / C_max
+                        state_loss, switch_loss = commitment_boundary_deviation(
+                            units, committed_res_To["x₀"][:, exec_NT],
+                            committed_res_max["x₀"][:, exec_NT]
+                        )
+                        loss = cost_loss + 0.50 * state_loss + 0.25 * switch_loss
 
                         if loss <= 0.005 # 0.5% threshold
                             T_o_star = To
@@ -207,10 +261,8 @@ function run_offline_dataset_generation()
 
                 # Record sample
                 push!(df_dataset, (
-                    x_0_curr[1], x_0_curr[2], x_0_curr[3],
-                    t_0_curr[1], t_0_curr[2], t_0_curr[3],
-                    t_1_curr[1], t_1_curr[2], t_1_curr[3],
-                    L_norm, sigma_load, R_wind_max,
+                    U_norm, T_dwell_rem, L_norm, sigma_load, R_wind_max,
+                    X_delta_norm, X_switch_ratio,
                     T_o_star
                 ))
             end

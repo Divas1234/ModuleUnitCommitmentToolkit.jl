@@ -32,20 +32,21 @@ A tuple containing:
 function readxlssheet()
 	println("Step-1: Loading packages and functions...")
 
-	# Construct data file path relative to project root
+	# Construct data file path relative to project root.
+	# MODULE_UC_DATA_FILE remains the explicit override; otherwise default to the
+	# 118-bus case used by the PCM scripts in this repository.
 	project_root = dirname(dirname(@__DIR__))  # Go up from src/read_inputdata_modules/
-	data_file = joinpath(project_root, "data", "data.xlsx")
-
-	# Fallback to absolute paths if relative path doesn't work
-	if !isfile(data_file)
-		if Sys.isapple()
-			data_file = "/Users/yuanyiping/Documents/GitHub/module_unitcommitment/data/data.xlsx"
-		elseif Sys.iswindows()
-			data_file = "D:/GithubClonefiles/datacentra_unitcommitment/data/data.xlsx"
-		else
-			# Try current working directory
-			data_file = joinpath(pwd(), "data", "data.xlsx")
-		end
+	data_file = if haskey(ENV, "MODULE_UC_DATA_FILE")
+		ENV["MODULE_UC_DATA_FILE"]
+	else
+		candidates = [
+			joinpath(project_root, "data", "data_118.xlsx"),
+			joinpath(project_root, "data", "data.xlsx"),
+			joinpath(pwd(), "data", "data_118.xlsx"),
+			joinpath(pwd(), "data", "data.xlsx"),
+		]
+		found_idx = findfirst(isfile, candidates)
+		found_idx === nothing ? candidates[1] : candidates[found_idx]
 	end
 
 	# Check if file exists
@@ -85,8 +86,17 @@ function readxlssheet()
 
 	# Generator unit data
 	gendata = df["units_data"]
-	gendata_range = "A2:N$(size(gendata[:], 1))"
-	gendata = convert(Array{Float64, 2}, gendata[gendata_range])
+	num_cols = size(gendata[:], 2)
+	if num_cols >= 14
+		gendata_range = "A2:N$(size(gendata[:], 1))"
+		gendata = convert(Array{Float64, 2}, gendata[gendata_range])
+	else
+		col_char = num_cols == 13 ? "M" : (num_cols == 12 ? "L" : "K")
+		gendata_range = "A2:$(col_char)$(size(gendata[:], 1))"
+		raw_data = convert(Array{Float64, 2}, gendata[gendata_range])
+		padding = zeros(size(raw_data, 1), 14 - num_cols)
+		gendata = hcat(raw_data, padding)
+	end
 
 	# Generator cost data
 	gencost = df["units_cost"]

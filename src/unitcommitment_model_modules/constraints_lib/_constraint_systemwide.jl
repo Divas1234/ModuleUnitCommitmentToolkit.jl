@@ -124,16 +124,14 @@ function add_power_balance_constraints!(
 	if config_param.is_ConsiderBESS == 0
 		common_balance = @expression(scuc,
 			[s = 1:NS, t = 1:NT],
-			sum(pg₀[(1 + (s - 1) * NG):(s * NG), t]) + sum(
-				winds.scenarios_curve[s, t] * wind_pmax[w, 1] - Δpw[(s - 1) * NW + w, t] for
-			w ∈ 1:NW
+			sum(pg₀[(1 + (s - 1) * NG):(s * NG), t]) + (
+				NW > 0 ? sum(winds.scenarios_curve[s, t] * wind_pmax[w, 1] - Δpw[(s - 1) * NW + w, t] for w ∈ 1:NW) : 0.0
 			) - sum(load_curve[d, t] - Δpd[(s - 1) * ND + d, t] for d ∈ 1:ND)) # Net Load
 	else
 		common_balance = @expression(scuc,
 			[s = 1:NS, t = 1:NT],
-			sum(pg₀[(1 + (s - 1) * NG):(s * NG), t]) + sum(
-				winds.scenarios_curve[s, t] * wind_pmax[w, 1] - Δpw[(s - 1) * NW + w, t] for
-			w ∈ 1:NW
+			sum(pg₀[(1 + (s - 1) * NG):(s * NG), t]) + (
+				NW > 0 ? sum(winds.scenarios_curve[s, t] * wind_pmax[w, 1] - Δpw[(s - 1) * NW + w, t] for w ∈ 1:NW) : 0.0
 			) - sum(load_curve[d, t] - Δpd[(s - 1) * ND + d, t] for d ∈ 1:ND) +
 			(NC > 0 && pc⁻ !== nothing ? sum(pc⁻[((s - 1) * NC + 1):(s * NC), t]) : 0.0) -
 			(NC > 0 && pc⁺ !== nothing ? sum(pc⁺[((s - 1) * NC + 1):(s * NC), t]) : 0.0))

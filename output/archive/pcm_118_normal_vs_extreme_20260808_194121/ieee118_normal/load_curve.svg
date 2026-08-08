@@ -1,0 +1,357 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1160" height="560" viewBox="0 0 1160 560">
+<rect width="100%" height="100%" fill="#ffffff"/>
+<text x="580.0" y="30" text-anchor="middle" font-family="Arial" font-size="22" font-weight="700">ieee118_normal load curve</text>
+<text x="22" y="274.0" transform="rotate(-90 22 274.0)" text-anchor="middle" font-family="Arial" font-size="14">Load</text>
+<line x1="82" y1="490.0" x2="1118" y2="490.0" stroke="#d8dee3" stroke-width="1"/>
+<text x="72" y="494.0" text-anchor="end" font-family="Arial" font-size="12" fill="#37474f">859.03</text>
+<line x1="82" y1="403.6" x2="1118" y2="403.6" stroke="#d8dee3" stroke-width="1"/>
+<text x="72" y="407.6" text-anchor="end" font-family="Arial" font-size="12" fill="#37474f">2274.16</text>
+<line x1="82" y1="317.2" x2="1118" y2="317.2" stroke="#d8dee3" stroke-width="1"/>
+<text x="72" y="321.2" text-anchor="end" font-family="Arial" font-size="12" fill="#37474f">3689.29</text>
+<line x1="82" y1="230.8" x2="1118" y2="230.8" stroke="#d8dee3" stroke-width="1"/>
+<text x="72" y="234.8" text-anchor="end" font-family="Arial" font-size="12" fill="#37474f">5104.43</text>
+<line x1="82" y1="144.4" x2="1118" y2="144.4" stroke="#d8dee3" stroke-width="1"/>
+<text x="72" y="148.4" text-anchor="end" font-family="Arial" font-size="12" fill="#37474f">6519.56</text>
+<line x1="82" y1="58.0" x2="1118" y2="58.0" stroke="#d8dee3" stroke-width="1"/>
+<text x="72" y="62.0" text-anchor="end" font-family="Arial" font-size="12" fill="#37474f">7934.69</text>
+<line x1="82" y1="490" x2="1118" y2="490" stroke="#455a64"/>
+<polyline points="82.0,325.5281192461133 88.20359281437126,348.30386909927165 94.40718562874251,378.5600094521324 100.61077844311377,437.53677088697975 106.81437125748504,455.7218370829995 113.01796407185628,399.0724710599108 119.22155688622755,360.5690963885731 125.42514970059881,316.10802905513157 131.62874251497007,269.2163842992843 137.83233532934133,259.29198439945884 144.03592814371257,214.59402582263797 150.23952095808386,243.4446928707065 156.4431137724551,274.5617008863635 162.64670658682635,292.0171664745524 168.85029940119762,271.51813684449144 175.05389221556885,249.40177498836854 181.25748502994014,261.6175481778923 187.46107784431138,242.45500033071158 193.66467065868264,231.21365607014025 199.8682634730539,239.49813359956082 206.07185628742513,227.16452533278908 212.2754491017964,219.29521802372417 218.4790419161677,258.9274893677643 224.68263473053892,270.9088134916754 230.88622754491018,321.72015356323345 237.08982035928142,336.64247026281106 243.2934131736527,366.9437909043576 249.49700598802394,431.8831293568423 255.7005988023952,450.36553069596977 261.90419161676647,399.5132841468178 268.1077844311377,346.3946966300773 274.311377245509,281.0542304793961 280.5149700598803,244.96616961942163 286.71856287425146,226.60709825751744 292.92215568862275,193.30739386278464 299.125748502994,204.3899965685141 305.3293413173653,228.15543896166741 311.5329341317365,246.52550012352216 317.7365269461078,253.8288327351317 323.9401197604791,230.04751618649416 330.14371257485027,240.23445019625046 336.34730538922156,233.68452942569812 342.5508982035928,195.0895730881055 348.754491017964,157.54597427911943 354.9580838323354,185.54310019769198 361.1616766467066,202.63040748753608 367.36526946107784,238.43151245991177 373.5688622754491,252.48319278562596 379.77245508982037,350.1397762354621 385.9760479041916,359.74852465892894 392.17964071856284,383.00843625435505 398.3832335329341,439.52653522247846 404.5868263473054,458.32825130461475 410.79041916167665,410.4902626641333 416.9940119760479,367.77840515616083 423.1976047904191,331.9968376059195 429.4011976047904,294.7579004733415 435.6047904191617,281.727050454149 441.80838323353294,255.4968401498547 448.0119760479042,265.6233302598827 454.21556886227546,300.85479726815277 460.4191616766467,317.60935783727064 466.62275449101793,300.5708941027625 472.8263473053892,283.21006290303706 479.0299401197605,274.4420341757904 485.23353293413174,284.61981001892116 491.437125748503,252.8397507395785 497.64071856287427,237.2037075876541 503.8443113772455,229.08285596860892 510.04790419161674,242.61252079667003 516.251497005988,268.2279128481729 522.4550898203593,284.6796433742078 528.6586826347306,294.98441246121206 534.8622754491018,334.97568393697145 541.065868263473,361.52887225092473 547.2694610778443,430.90503716123965 553.4730538922156,450.24952725204685 559.6766467065868,410.51407389735954 565.8802395209582,374.5817018700185 572.0838323353294,331.244036309304 578.2874251497005,283.6240120345093 584.4910179640718,280.42964351553746 590.6946107784431,297.22266838448246 596.8982035928143,295.0369192831982 603.1017964071856,306.6696225308989 609.3053892215569,315.5475492576514 615.508982035928,291.65389253174123 621.7125748502993,249.87922074177754 627.9161676646708,221.31673067019122 634.1197604790419,202.58278502108354 640.3233532934132,201.80373031347494 646.5269461077844,164.2564682378387 652.7305389221557,183.67971856162512 658.9341317365269,175.70539760858782 665.1377245508982,200.19983006513039 671.3413173652696,228.8117742364944 677.5449101796407,322.0822064171612 683.748502994012,333.058574390035 689.9520958083832,362.0875204150798 696.1556886227545,429.47941588987135 702.3592814371257,447.8586352183516 708.562874251497,402.63194515501885 714.7664670658683,353.65529113076786 720.9700598802395,311.7560682746975 727.1736526946108,276.88848575368036 733.377245508982,269.58210041986234 739.5808383233533,261.705466577497 745.7844311377246,257.46218270768543 751.9880239520958,282.58059158364483 758.1916167664671,297.28677555086085 764.3952095808382,278.3244862805576 770.5988023952096,251.27980969103626 776.8023952095808,239.76188879837503 783.0059880239521,252.04360078760234 789.2095808383234,238.695267658726 795.4131736526946,185.37703210954976 801.6167664670659,181.92196111397226 807.820359281437,208.42325315038102 814.0239520958085,250.42199475044842 820.2275449101796,264.74536735271886 826.4311377245509,302.98010246970875 832.6347305389222,323.1225741458172 838.8383233532934,350.6453070331893 845.0419161676647,424.1591316249018 851.2455089820359,447.67425079695835 857.4491017964071,391.9083425810088 863.6526946107784,343.4317244545096 869.8562874251497,298.4455889012066 876.059880239521,273.6141359128459 882.2634730538922,250.04589937436154 888.4670658682635,235.53631071737271 894.6706586826347,236.4435797577382 900.874251497006,247.12627585415447 907.0778443113772,274.14469903268275 913.2814371257485,233.78649034746195 919.4850299401198,152.66406092329015 925.688622754491,157.5502480902113 931.8922155688623,131.86403288347134 938.0958083832335,106.60947259701292 944.2994011976048,87.79310344827584 950.5029940119759,87.79310344827584 956.7065868263473,87.79310344827584 962.9101796407186,140.72547491029803 969.1137724550898,190.37372782041848 975.3173652694611,352.64422953531346 981.5209580838323,370.39825135549347 987.7245508982036,391.2813134393834 993.9281437125749,448.14437001706693 1000.131736526946,460.2068965517241 1006.3353293413174,409.946267566579 1012.5389221556886,365.76910339852776 1018.7425149700599,322.81485974720067 1024.9461077844312,294.8464294173879 1031.1497005988024,269.9069100628465 1037.3532934131736,251.59362953406975 1043.556886227545,267.33285469664133 1049.7604790419164,291.2478804780111 1055.9640718562873,307.71060080399656 1062.1676646706587,291.65267144285787 1068.37125748503,267.9501151271996 1074.574850299401,271.66772023270784 1080.7784431137725,287.13525311872314 1086.9820359281437,265.6581312930596 1093.1856287425148,237.16035893229343 1099.3892215568862,239.08052120143836 1105.5928143712576,256.264294513071 1111.7964071856286,279.32761079826986 1118.0,304.81539906145747" fill="none" stroke="#2f6f73" stroke-width="2.5"/>
+<circle cx="82.0" cy="325.5281192461133" r="3" fill="#2f6f73"/>
+<circle cx="88.20359281437126" cy="348.30386909927165" r="3" fill="#2f6f73"/>
+<circle cx="94.40718562874251" cy="378.5600094521324" r="3" fill="#2f6f73"/>
+<circle cx="100.61077844311377" cy="437.53677088697975" r="3" fill="#2f6f73"/>
+<circle cx="106.81437125748504" cy="455.7218370829995" r="3" fill="#2f6f73"/>
+<circle cx="113.01796407185628" cy="399.0724710599108" r="3" fill="#2f6f73"/>
+<circle cx="119.22155688622755" cy="360.5690963885731" r="3" fill="#2f6f73"/>
+<circle cx="125.42514970059881" cy="316.10802905513157" r="3" fill="#2f6f73"/>
+<circle cx="131.62874251497007" cy="269.2163842992843" r="3" fill="#2f6f73"/>
+<circle cx="137.83233532934133" cy="259.29198439945884" r="3" fill="#2f6f73"/>
+<circle cx="144.03592814371257" cy="214.59402582263797" r="3" fill="#2f6f73"/>
+<circle cx="150.23952095808386" cy="243.4446928707065" r="3" fill="#2f6f73"/>
+<circle cx="156.4431137724551" cy="274.5617008863635" r="3" fill="#2f6f73"/>
+<circle cx="162.64670658682635" cy="292.0171664745524" r="3" fill="#2f6f73"/>
+<circle cx="168.85029940119762" cy="271.51813684449144" r="3" fill="#2f6f73"/>
+<circle cx="175.05389221556885" cy="249.40177498836854" r="3" fill="#2f6f73"/>
+<circle cx="181.25748502994014" cy="261.6175481778923" r="3" fill="#2f6f73"/>
+<circle cx="187.46107784431138" cy="242.45500033071158" r="3" fill="#2f6f73"/>
+<circle cx="193.66467065868264" cy="231.21365607014025" r="3" fill="#2f6f73"/>
+<circle cx="199.8682634730539" cy="239.49813359956082" r="3" fill="#2f6f73"/>
+<circle cx="206.07185628742513" cy="227.16452533278908" r="3" fill="#2f6f73"/>
+<circle cx="212.2754491017964" cy="219.29521802372417" r="3" fill="#2f6f73"/>
+<circle cx="218.4790419161677" cy="258.9274893677643" r="3" fill="#2f6f73"/>
+<circle cx="224.68263473053892" cy="270.9088134916754" r="3" fill="#2f6f73"/>
+<circle cx="230.88622754491018" cy="321.72015356323345" r="3" fill="#2f6f73"/>
+<circle cx="237.08982035928142" cy="336.64247026281106" r="3" fill="#2f6f73"/>
+<circle cx="243.2934131736527" cy="366.9437909043576" r="3" fill="#2f6f73"/>
+<circle cx="249.49700598802394" cy="431.8831293568423" r="3" fill="#2f6f73"/>
+<circle cx="255.7005988023952" cy="450.36553069596977" r="3" fill="#2f6f73"/>
+<circle cx="261.90419161676647" cy="399.5132841468178" r="3" fill="#2f6f73"/>
+<circle cx="268.1077844311377" cy="346.3946966300773" r="3" fill="#2f6f73"/>
+<circle cx="274.311377245509" cy="281.0542304793961" r="3" fill="#2f6f73"/>
+<circle cx="280.5149700598803" cy="244.96616961942163" r="3" fill="#2f6f73"/>
+<circle cx="286.71856287425146" cy="226.60709825751744" r="3" fill="#2f6f73"/>
+<circle cx="292.92215568862275" cy="193.30739386278464" r="3" fill="#2f6f73"/>
+<circle cx="299.125748502994" cy="204.3899965685141" r="3" fill="#2f6f73"/>
+<circle cx="305.3293413173653" cy="228.15543896166741" r="3" fill="#2f6f73"/>
+<circle cx="311.5329341317365" cy="246.52550012352216" r="3" fill="#2f6f73"/>
+<circle cx="317.7365269461078" cy="253.8288327351317" r="3" fill="#2f6f73"/>
+<circle cx="323.9401197604791" cy="230.04751618649416" r="3" fill="#2f6f73"/>
+<circle cx="330.14371257485027" cy="240.23445019625046" r="3" fill="#2f6f73"/>
+<circle cx="336.34730538922156" cy="233.68452942569812" r="3" fill="#2f6f73"/>
+<circle cx="342.5508982035928" cy="195.0895730881055" r="3" fill="#2f6f73"/>
+<circle cx="348.754491017964" cy="157.54597427911943" r="3" fill="#2f6f73"/>
+<circle cx="354.9580838323354" cy="185.54310019769198" r="3" fill="#2f6f73"/>
+<circle cx="361.1616766467066" cy="202.63040748753608" r="3" fill="#2f6f73"/>
+<circle cx="367.36526946107784" cy="238.43151245991177" r="3" fill="#2f6f73"/>
+<circle cx="373.5688622754491" cy="252.48319278562596" r="3" fill="#2f6f73"/>
+<circle cx="379.77245508982037" cy="350.1397762354621" r="3" fill="#2f6f73"/>
+<circle cx="385.9760479041916" cy="359.74852465892894" r="3" fill="#2f6f73"/>
+<circle cx="392.17964071856284" cy="383.00843625435505" r="3" fill="#2f6f73"/>
+<circle cx="398.3832335329341" cy="439.52653522247846" r="3" fill="#2f6f73"/>
+<circle cx="404.5868263473054" cy="458.32825130461475" r="3" fill="#2f6f73"/>
+<circle cx="410.79041916167665" cy="410.4902626641333" r="3" fill="#2f6f73"/>
+<circle cx="416.9940119760479" cy="367.77840515616083" r="3" fill="#2f6f73"/>
+<circle cx="423.1976047904191" cy="331.9968376059195" r="3" fill="#2f6f73"/>
+<circle cx="429.4011976047904" cy="294.7579004733415" r="3" fill="#2f6f73"/>
+<circle cx="435.6047904191617" cy="281.727050454149" r="3" fill="#2f6f73"/>
+<circle cx="441.80838323353294" cy="255.4968401498547" r="3" fill="#2f6f73"/>
+<circle cx="448.0119760479042" cy="265.6233302598827" r="3" fill="#2f6f73"/>
+<circle cx="454.21556886227546" cy="300.85479726815277" r="3" fill="#2f6f73"/>
+<circle cx="460.4191616766467" cy="317.60935783727064" r="3" fill="#2f6f73"/>
+<circle cx="466.62275449101793" cy="300.5708941027625" r="3" fill="#2f6f73"/>
+<circle cx="472.8263473053892" cy="283.21006290303706" r="3" fill="#2f6f73"/>
+<circle cx="479.0299401197605" cy="274.4420341757904" r="3" fill="#2f6f73"/>
+<circle cx="485.23353293413174" cy="284.61981001892116" r="3" fill="#2f6f73"/>
+<circle cx="491.437125748503" cy="252.8397507395785" r="3" fill="#2f6f73"/>
+<circle cx="497.64071856287427" cy="237.2037075876541" r="3" fill="#2f6f73"/>
+<circle cx="503.8443113772455" cy="229.08285596860892" r="3" fill="#2f6f73"/>
+<circle cx="510.04790419161674" cy="242.61252079667003" r="3" fill="#2f6f73"/>
+<circle cx="516.251497005988" cy="268.2279128481729" r="3" fill="#2f6f73"/>
+<circle cx="522.4550898203593" cy="284.6796433742078" r="3" fill="#2f6f73"/>
+<circle cx="528.6586826347306" cy="294.98441246121206" r="3" fill="#2f6f73"/>
+<circle cx="534.8622754491018" cy="334.97568393697145" r="3" fill="#2f6f73"/>
+<circle cx="541.065868263473" cy="361.52887225092473" r="3" fill="#2f6f73"/>
+<circle cx="547.2694610778443" cy="430.90503716123965" r="3" fill="#2f6f73"/>
+<circle cx="553.4730538922156" cy="450.24952725204685" r="3" fill="#2f6f73"/>
+<circle cx="559.6766467065868" cy="410.51407389735954" r="3" fill="#2f6f73"/>
+<circle cx="565.8802395209582" cy="374.5817018700185" r="3" fill="#2f6f73"/>
+<circle cx="572.0838323353294" cy="331.244036309304" r="3" fill="#2f6f73"/>
+<circle cx="578.2874251497005" cy="283.6240120345093" r="3" fill="#2f6f73"/>
+<circle cx="584.4910179640718" cy="280.42964351553746" r="3" fill="#2f6f73"/>
+<circle cx="590.6946107784431" cy="297.22266838448246" r="3" fill="#2f6f73"/>
+<circle cx="596.8982035928143" cy="295.0369192831982" r="3" fill="#2f6f73"/>
+<circle cx="603.1017964071856" cy="306.6696225308989" r="3" fill="#2f6f73"/>
+<circle cx="609.3053892215569" cy="315.5475492576514" r="3" fill="#2f6f73"/>
+<circle cx="615.508982035928" cy="291.65389253174123" r="3" fill="#2f6f73"/>
+<circle cx="621.7125748502993" cy="249.87922074177754" r="3" fill="#2f6f73"/>
+<circle cx="627.9161676646708" cy="221.31673067019122" r="3" fill="#2f6f73"/>
+<circle cx="634.1197604790419" cy="202.58278502108354" r="3" fill="#2f6f73"/>
+<circle cx="640.3233532934132" cy="201.80373031347494" r="3" fill="#2f6f73"/>
+<circle cx="646.5269461077844" cy="164.2564682378387" r="3" fill="#2f6f73"/>
+<circle cx="652.7305389221557" cy="183.67971856162512" r="3" fill="#2f6f73"/>
+<circle cx="658.9341317365269" cy="175.70539760858782" r="3" fill="#2f6f73"/>
+<circle cx="665.1377245508982" cy="200.19983006513039" r="3" fill="#2f6f73"/>
+<circle cx="671.3413173652696" cy="228.8117742364944" r="3" fill="#2f6f73"/>
+<circle cx="677.5449101796407" cy="322.0822064171612" r="3" fill="#2f6f73"/>
+<circle cx="683.748502994012" cy="333.058574390035" r="3" fill="#2f6f73"/>
+<circle cx="689.9520958083832" cy="362.0875204150798" r="3" fill="#2f6f73"/>
+<circle cx="696.1556886227545" cy="429.47941588987135" r="3" fill="#2f6f73"/>
+<circle cx="702.3592814371257" cy="447.8586352183516" r="3" fill="#2f6f73"/>
+<circle cx="708.562874251497" cy="402.63194515501885" r="3" fill="#2f6f73"/>
+<circle cx="714.7664670658683" cy="353.65529113076786" r="3" fill="#2f6f73"/>
+<circle cx="720.9700598802395" cy="311.7560682746975" r="3" fill="#2f6f73"/>
+<circle cx="727.1736526946108" cy="276.88848575368036" r="3" fill="#2f6f73"/>
+<circle cx="733.377245508982" cy="269.58210041986234" r="3" fill="#2f6f73"/>
+<circle cx="739.5808383233533" cy="261.705466577497" r="3" fill="#2f6f73"/>
+<circle cx="745.7844311377246" cy="257.46218270768543" r="3" fill="#2f6f73"/>
+<circle cx="751.9880239520958" cy="282.58059158364483" r="3" fill="#2f6f73"/>
+<circle cx="758.1916167664671" cy="297.28677555086085" r="3" fill="#2f6f73"/>
+<circle cx="764.3952095808382" cy="278.3244862805576" r="3" fill="#2f6f73"/>
+<circle cx="770.5988023952096" cy="251.27980969103626" r="3" fill="#2f6f73"/>
+<circle cx="776.8023952095808" cy="239.76188879837503" r="3" fill="#2f6f73"/>
+<circle cx="783.0059880239521" cy="252.04360078760234" r="3" fill="#2f6f73"/>
+<circle cx="789.2095808383234" cy="238.695267658726" r="3" fill="#2f6f73"/>
+<circle cx="795.4131736526946" cy="185.37703210954976" r="3" fill="#2f6f73"/>
+<circle cx="801.6167664670659" cy="181.92196111397226" r="3" fill="#2f6f73"/>
+<circle cx="807.820359281437" cy="208.42325315038102" r="3" fill="#2f6f73"/>
+<circle cx="814.0239520958085" cy="250.42199475044842" r="3" fill="#2f6f73"/>
+<circle cx="820.2275449101796" cy="264.74536735271886" r="3" fill="#2f6f73"/>
+<circle cx="826.4311377245509" cy="302.98010246970875" r="3" fill="#2f6f73"/>
+<circle cx="832.6347305389222" cy="323.1225741458172" r="3" fill="#2f6f73"/>
+<circle cx="838.8383233532934" cy="350.6453070331893" r="3" fill="#2f6f73"/>
+<circle cx="845.0419161676647" cy="424.1591316249018" r="3" fill="#2f6f73"/>
+<circle cx="851.2455089820359" cy="447.67425079695835" r="3" fill="#2f6f73"/>
+<circle cx="857.4491017964071" cy="391.9083425810088" r="3" fill="#2f6f73"/>
+<circle cx="863.6526946107784" cy="343.4317244545096" r="3" fill="#2f6f73"/>
+<circle cx="869.8562874251497" cy="298.4455889012066" r="3" fill="#2f6f73"/>
+<circle cx="876.059880239521" cy="273.6141359128459" r="3" fill="#2f6f73"/>
+<circle cx="882.2634730538922" cy="250.04589937436154" r="3" fill="#2f6f73"/>
+<circle cx="888.4670658682635" cy="235.53631071737271" r="3" fill="#2f6f73"/>
+<circle cx="894.6706586826347" cy="236.4435797577382" r="3" fill="#2f6f73"/>
+<circle cx="900.874251497006" cy="247.12627585415447" r="3" fill="#2f6f73"/>
+<circle cx="907.0778443113772" cy="274.14469903268275" r="3" fill="#2f6f73"/>
+<circle cx="913.2814371257485" cy="233.78649034746195" r="3" fill="#2f6f73"/>
+<circle cx="919.4850299401198" cy="152.66406092329015" r="3" fill="#2f6f73"/>
+<circle cx="925.688622754491" cy="157.5502480902113" r="3" fill="#2f6f73"/>
+<circle cx="931.8922155688623" cy="131.86403288347134" r="3" fill="#2f6f73"/>
+<circle cx="938.0958083832335" cy="106.60947259701292" r="3" fill="#2f6f73"/>
+<circle cx="944.2994011976048" cy="87.79310344827584" r="3" fill="#2f6f73"/>
+<circle cx="950.5029940119759" cy="87.79310344827584" r="3" fill="#2f6f73"/>
+<circle cx="956.7065868263473" cy="87.79310344827584" r="3" fill="#2f6f73"/>
+<circle cx="962.9101796407186" cy="140.72547491029803" r="3" fill="#2f6f73"/>
+<circle cx="969.1137724550898" cy="190.37372782041848" r="3" fill="#2f6f73"/>
+<circle cx="975.3173652694611" cy="352.64422953531346" r="3" fill="#2f6f73"/>
+<circle cx="981.5209580838323" cy="370.39825135549347" r="3" fill="#2f6f73"/>
+<circle cx="987.7245508982036" cy="391.2813134393834" r="3" fill="#2f6f73"/>
+<circle cx="993.9281437125749" cy="448.14437001706693" r="3" fill="#2f6f73"/>
+<circle cx="1000.131736526946" cy="460.2068965517241" r="3" fill="#2f6f73"/>
+<circle cx="1006.3353293413174" cy="409.946267566579" r="3" fill="#2f6f73"/>
+<circle cx="1012.5389221556886" cy="365.76910339852776" r="3" fill="#2f6f73"/>
+<circle cx="1018.7425149700599" cy="322.81485974720067" r="3" fill="#2f6f73"/>
+<circle cx="1024.9461077844312" cy="294.8464294173879" r="3" fill="#2f6f73"/>
+<circle cx="1031.1497005988024" cy="269.9069100628465" r="3" fill="#2f6f73"/>
+<circle cx="1037.3532934131736" cy="251.59362953406975" r="3" fill="#2f6f73"/>
+<circle cx="1043.556886227545" cy="267.33285469664133" r="3" fill="#2f6f73"/>
+<circle cx="1049.7604790419164" cy="291.2478804780111" r="3" fill="#2f6f73"/>
+<circle cx="1055.9640718562873" cy="307.71060080399656" r="3" fill="#2f6f73"/>
+<circle cx="1062.1676646706587" cy="291.65267144285787" r="3" fill="#2f6f73"/>
+<circle cx="1068.37125748503" cy="267.9501151271996" r="3" fill="#2f6f73"/>
+<circle cx="1074.574850299401" cy="271.66772023270784" r="3" fill="#2f6f73"/>
+<circle cx="1080.7784431137725" cy="287.13525311872314" r="3" fill="#2f6f73"/>
+<circle cx="1086.9820359281437" cy="265.6581312930596" r="3" fill="#2f6f73"/>
+<circle cx="1093.1856287425148" cy="237.16035893229343" r="3" fill="#2f6f73"/>
+<circle cx="1099.3892215568862" cy="239.08052120143836" r="3" fill="#2f6f73"/>
+<circle cx="1105.5928143712576" cy="256.264294513071" r="3" fill="#2f6f73"/>
+<circle cx="1111.7964071856286" cy="279.32761079826986" r="3" fill="#2f6f73"/>
+<circle cx="1118.0" cy="304.81539906145747" r="3" fill="#2f6f73"/>
+<line x1="890" y1="50" x2="908" y2="50" stroke="#2f6f73" stroke-width="3"/><text x="914" y="54" font-family="Arial" font-size="12">Load</text>
+<text x="82.0" y="526" text-anchor="middle" font-family="Arial" font-size="12" fill="#263238">1</text>
+<text x="88.20359281437126" y="526" text-anchor="middle" font-family="Arial" font-size="12" fill="#263238">2</text>
+<text x="94.40718562874251" y="526" text-anchor="middle" font-family="Arial" font-size="12" fill="#263238">3</text>
+<text x="100.61077844311377" y="526" text-anchor="middle" font-family="Arial" font-size="12" fill="#263238">4</text>
+<text x="106.81437125748504" y="526" text-anchor="middle" font-family="Arial" font-size="12" fill="#263238">5</text>
+<text x="113.01796407185628" y="526" text-anchor="middle" font-family="Arial" font-size="12" fill="#263238">6</text>
+<text x="119.22155688622755" y="526" text-anchor="middle" font-family="Arial" font-size="12" fill="#263238">7</text>
+<text x="125.42514970059881" y="526" text-anchor="middle" font-family="Arial" font-size="12" fill="#263238">8</text>
+<text x="131.62874251497007" y="526" text-anchor="middle" font-family="Arial" font-size="12" fill="#263238">9</text>
+<text x="137.83233532934133" y="526" text-anchor="middle" font-family="Arial" font-size="12" fill="#263238">10</text>
+<text x="144.03592814371257" y="526" text-anchor="middle" font-family="Arial" font-size="12" fill="#263238">11</text>
+<text x="150.23952095808386" y="526" text-anchor="middle" font-family="Arial" font-size="12" fill="#263238">12</text>
+<text x="156.4431137724551" y="526" text-anchor="middle" font-family="Arial" font-size="12" fill="#263238">13</text>
+<text x="162.64670658682635" y="526" text-anchor="middle" font-family="Arial" font-size="12" fill="#263238">14</text>
+<text x="168.85029940119762" y="526" text-anchor="middle" font-family="Arial" font-size="12" fill="#263238">15</text>
+<text x="175.05389221556885" y="526" text-anchor="middle" font-family="Arial" font-size="12" fill="#263238">16</text>
+<text x="181.25748502994014" y="526" text-anchor="middle" font-family="Arial" font-size="12" fill="#263238">17</text>
+<text x="187.46107784431138" y="526" text-anchor="middle" font-family="Arial" font-size="12" fill="#263238">18</text>
+<text x="193.66467065868264" y="526" text-anchor="middle" font-family="Arial" font-size="12" fill="#263238">19</text>
+<text x="199.8682634730539" y="526" text-anchor="middle" font-family="Arial" font-size="12" fill="#263238">20</text>
+<text x="206.07185628742513" y="526" text-anchor="middle" font-family="Arial" font-size="12" fill="#263238">21</text>
+<text x="212.2754491017964" y="526" text-anchor="middle" font-family="Arial" font-size="12" fill="#263238">22</text>
+<text x="218.4790419161677" y="526" text-anchor="middle" font-family="Arial" font-size="12" fill="#263238">23</text>
+<text x="224.68263473053892" y="526" text-anchor="middle" font-family="Arial" font-size="12" fill="#263238">24</text>
+<text x="230.88622754491018" y="526" text-anchor="middle" font-family="Arial" font-size="12" fill="#263238">25</text>
+<text x="237.08982035928142" y="526" text-anchor="middle" font-family="Arial" font-size="12" fill="#263238">26</text>
+<text x="243.2934131736527" y="526" text-anchor="middle" font-family="Arial" font-size="12" fill="#263238">27</text>
+<text x="249.49700598802394" y="526" text-anchor="middle" font-family="Arial" font-size="12" fill="#263238">28</text>
+<text x="255.7005988023952" y="526" text-anchor="middle" font-family="Arial" font-size="12" fill="#263238">29</text>
+<text x="261.90419161676647" y="526" text-anchor="middle" font-family="Arial" font-size="12" fill="#263238">30</text>
+<text x="268.1077844311377" y="526" text-anchor="middle" font-family="Arial" font-size="12" fill="#263238">31</text>
+<text x="274.311377245509" y="526" text-anchor="middle" font-family="Arial" font-size="12" fill="#263238">32</text>
+<text x="280.5149700598803" y="526" text-anchor="middle" font-family="Arial" font-size="12" fill="#263238">33</text>
+<text x="286.71856287425146" y="526" text-anchor="middle" font-family="Arial" font-size="12" fill="#263238">34</text>
+<text x="292.92215568862275" y="526" text-anchor="middle" font-family="Arial" font-size="12" fill="#263238">35</text>
+<text x="299.125748502994" y="526" text-anchor="middle" font-family="Arial" font-size="12" fill="#263238">36</text>
+<text x="305.3293413173653" y="526" text-anchor="middle" font-family="Arial" font-size="12" fill="#263238">37</text>
+<text x="311.5329341317365" y="526" text-anchor="middle" font-family="Arial" font-size="12" fill="#263238">38</text>
+<text x="317.7365269461078" y="526" text-anchor="middle" font-family="Arial" font-size="12" fill="#263238">39</text>
+<text x="323.9401197604791" y="526" text-anchor="middle" font-family="Arial" font-size="12" fill="#263238">40</text>
+<text x="330.14371257485027" y="526" text-anchor="middle" font-family="Arial" font-size="12" fill="#263238">41</text>
+<text x="336.34730538922156" y="526" text-anchor="middle" font-family="Arial" font-size="12" fill="#263238">42</text>
+<text x="342.5508982035928" y="526" text-anchor="middle" font-family="Arial" font-size="12" fill="#263238">43</text>
+<text x="348.754491017964" y="526" text-anchor="middle" font-family="Arial" font-size="12" fill="#263238">44</text>
+<text x="354.9580838323354" y="526" text-anchor="middle" font-family="Arial" font-size="12" fill="#263238">45</text>
+<text x="361.1616766467066" y="526" text-anchor="middle" font-family="Arial" font-size="12" fill="#263238">46</text>
+<text x="367.36526946107784" y="526" text-anchor="middle" font-family="Arial" font-size="12" fill="#263238">47</text>
+<text x="373.5688622754491" y="526" text-anchor="middle" font-family="Arial" font-size="12" fill="#263238">48</text>
+<text x="379.77245508982037" y="526" text-anchor="middle" font-family="Arial" font-size="12" fill="#263238">49</text>
+<text x="385.9760479041916" y="526" text-anchor="middle" font-family="Arial" font-size="12" fill="#263238">50</text>
+<text x="392.17964071856284" y="526" text-anchor="middle" font-family="Arial" font-size="12" fill="#263238">51</text>
+<text x="398.3832335329341" y="526" text-anchor="middle" font-family="Arial" font-size="12" fill="#263238">52</text>
+<text x="404.5868263473054" y="526" text-anchor="middle" font-family="Arial" font-size="12" fill="#263238">53</text>
+<text x="410.79041916167665" y="526" text-anchor="middle" font-family="Arial" font-size="12" fill="#263238">54</text>
+<text x="416.9940119760479" y="526" text-anchor="middle" font-family="Arial" font-size="12" fill="#263238">55</text>
+<text x="423.1976047904191" y="526" text-anchor="middle" font-family="Arial" font-size="12" fill="#263238">56</text>
+<text x="429.4011976047904" y="526" text-anchor="middle" font-family="Arial" font-size="12" fill="#263238">57</text>
+<text x="435.6047904191617" y="526" text-anchor="middle" font-family="Arial" font-size="12" fill="#263238">58</text>
+<text x="441.80838323353294" y="526" text-anchor="middle" font-family="Arial" font-size="12" fill="#263238">59</text>
+<text x="448.0119760479042" y="526" text-anchor="middle" font-family="Arial" font-size="12" fill="#263238">60</text>
+<text x="454.21556886227546" y="526" text-anchor="middle" font-family="Arial" font-size="12" fill="#263238">61</text>
+<text x="460.4191616766467" y="526" text-anchor="middle" font-family="Arial" font-size="12" fill="#263238">62</text>
+<text x="466.62275449101793" y="526" text-anchor="middle" font-family="Arial" font-size="12" fill="#263238">63</text>
+<text x="472.8263473053892" y="526" text-anchor="middle" font-family="Arial" font-size="12" fill="#263238">64</text>
+<text x="479.0299401197605" y="526" text-anchor="middle" font-family="Arial" font-size="12" fill="#263238">65</text>
+<text x="485.23353293413174" y="526" text-anchor="middle" font-family="Arial" font-size="12" fill="#263238">66</text>
+<text x="491.437125748503" y="526" text-anchor="middle" font-family="Arial" font-size="12" fill="#263238">67</text>
+<text x="497.64071856287427" y="526" text-anchor="middle" font-family="Arial" font-size="12" fill="#263238">68</text>
+<text x="503.8443113772455" y="526" text-anchor="middle" font-family="Arial" font-size="12" fill="#263238">69</text>
+<text x="510.04790419161674" y="526" text-anchor="middle" font-family="Arial" font-size="12" fill="#263238">70</text>
+<text x="516.251497005988" y="526" text-anchor="middle" font-family="Arial" font-size="12" fill="#263238">71</text>
+<text x="522.4550898203593" y="526" text-anchor="middle" font-family="Arial" font-size="12" fill="#263238">72</text>
+<text x="528.6586826347306" y="526" text-anchor="middle" font-family="Arial" font-size="12" fill="#263238">73</text>
+<text x="534.8622754491018" y="526" text-anchor="middle" font-family="Arial" font-size="12" fill="#263238">74</text>
+<text x="541.065868263473" y="526" text-anchor="middle" font-family="Arial" font-size="12" fill="#263238">75</text>
+<text x="547.2694610778443" y="526" text-anchor="middle" font-family="Arial" font-size="12" fill="#263238">76</text>
+<text x="553.4730538922156" y="526" text-anchor="middle" font-family="Arial" font-size="12" fill="#263238">77</text>
+<text x="559.6766467065868" y="526" text-anchor="middle" font-family="Arial" font-size="12" fill="#263238">78</text>
+<text x="565.8802395209582" y="526" text-anchor="middle" font-family="Arial" font-size="12" fill="#263238">79</text>
+<text x="572.0838323353294" y="526" text-anchor="middle" font-family="Arial" font-size="12" fill="#263238">80</text>
+<text x="578.2874251497005" y="526" text-anchor="middle" font-family="Arial" font-size="12" fill="#263238">81</text>
+<text x="584.4910179640718" y="526" text-anchor="middle" font-family="Arial" font-size="12" fill="#263238">82</text>
+<text x="590.6946107784431" y="526" text-anchor="middle" font-family="Arial" font-size="12" fill="#263238">83</text>
+<text x="596.8982035928143" y="526" text-anchor="middle" font-family="Arial" font-size="12" fill="#263238">84</text>
+<text x="603.1017964071856" y="526" text-anchor="middle" font-family="Arial" font-size="12" fill="#263238">85</text>
+<text x="609.3053892215569" y="526" text-anchor="middle" font-family="Arial" font-size="12" fill="#263238">86</text>
+<text x="615.508982035928" y="526" text-anchor="middle" font-family="Arial" font-size="12" fill="#263238">87</text>
+<text x="621.7125748502993" y="526" text-anchor="middle" font-family="Arial" font-size="12" fill="#263238">88</text>
+<text x="627.9161676646708" y="526" text-anchor="middle" font-family="Arial" font-size="12" fill="#263238">89</text>
+<text x="634.1197604790419" y="526" text-anchor="middle" font-family="Arial" font-size="12" fill="#263238">90</text>
+<text x="640.3233532934132" y="526" text-anchor="middle" font-family="Arial" font-size="12" fill="#263238">91</text>
+<text x="646.5269461077844" y="526" text-anchor="middle" font-family="Arial" font-size="12" fill="#263238">92</text>
+<text x="652.7305389221557" y="526" text-anchor="middle" font-family="Arial" font-size="12" fill="#263238">93</text>
+<text x="658.9341317365269" y="526" text-anchor="middle" font-family="Arial" font-size="12" fill="#263238">94</text>
+<text x="665.1377245508982" y="526" text-anchor="middle" font-family="Arial" font-size="12" fill="#263238">95</text>
+<text x="671.3413173652696" y="526" text-anchor="middle" font-family="Arial" font-size="12" fill="#263238">96</text>
+<text x="677.5449101796407" y="526" text-anchor="middle" font-family="Arial" font-size="12" fill="#263238">97</text>
+<text x="683.748502994012" y="526" text-anchor="middle" font-family="Arial" font-size="12" fill="#263238">98</text>
+<text x="689.9520958083832" y="526" text-anchor="middle" font-family="Arial" font-size="12" fill="#263238">99</text>
+<text x="696.1556886227545" y="526" text-anchor="middle" font-family="Arial" font-size="12" fill="#263238">100</text>
+<text x="702.3592814371257" y="526" text-anchor="middle" font-family="Arial" font-size="12" fill="#263238">101</text>
+<text x="708.562874251497" y="526" text-anchor="middle" font-family="Arial" font-size="12" fill="#263238">102</text>
+<text x="714.7664670658683" y="526" text-anchor="middle" font-family="Arial" font-size="12" fill="#263238">103</text>
+<text x="720.9700598802395" y="526" text-anchor="middle" font-family="Arial" font-size="12" fill="#263238">104</text>
+<text x="727.1736526946108" y="526" text-anchor="middle" font-family="Arial" font-size="12" fill="#263238">105</text>
+<text x="733.377245508982" y="526" text-anchor="middle" font-family="Arial" font-size="12" fill="#263238">106</text>
+<text x="739.5808383233533" y="526" text-anchor="middle" font-family="Arial" font-size="12" fill="#263238">107</text>
+<text x="745.7844311377246" y="526" text-anchor="middle" font-family="Arial" font-size="12" fill="#263238">108</text>
+<text x="751.9880239520958" y="526" text-anchor="middle" font-family="Arial" font-size="12" fill="#263238">109</text>
+<text x="758.1916167664671" y="526" text-anchor="middle" font-family="Arial" font-size="12" fill="#263238">110</text>
+<text x="764.3952095808382" y="526" text-anchor="middle" font-family="Arial" font-size="12" fill="#263238">111</text>
+<text x="770.5988023952096" y="526" text-anchor="middle" font-family="Arial" font-size="12" fill="#263238">112</text>
+<text x="776.8023952095808" y="526" text-anchor="middle" font-family="Arial" font-size="12" fill="#263238">113</text>
+<text x="783.0059880239521" y="526" text-anchor="middle" font-family="Arial" font-size="12" fill="#263238">114</text>
+<text x="789.2095808383234" y="526" text-anchor="middle" font-family="Arial" font-size="12" fill="#263238">115</text>
+<text x="795.4131736526946" y="526" text-anchor="middle" font-family="Arial" font-size="12" fill="#263238">116</text>
+<text x="801.6167664670659" y="526" text-anchor="middle" font-family="Arial" font-size="12" fill="#263238">117</text>
+<text x="807.820359281437" y="526" text-anchor="middle" font-family="Arial" font-size="12" fill="#263238">118</text>
+<text x="814.0239520958085" y="526" text-anchor="middle" font-family="Arial" font-size="12" fill="#263238">119</text>
+<text x="820.2275449101796" y="526" text-anchor="middle" font-family="Arial" font-size="12" fill="#263238">120</text>
+<text x="826.4311377245509" y="526" text-anchor="middle" font-family="Arial" font-size="12" fill="#263238">121</text>
+<text x="832.6347305389222" y="526" text-anchor="middle" font-family="Arial" font-size="12" fill="#263238">122</text>
+<text x="838.8383233532934" y="526" text-anchor="middle" font-family="Arial" font-size="12" fill="#263238">123</text>
+<text x="845.0419161676647" y="526" text-anchor="middle" font-family="Arial" font-size="12" fill="#263238">124</text>
+<text x="851.2455089820359" y="526" text-anchor="middle" font-family="Arial" font-size="12" fill="#263238">125</text>
+<text x="857.4491017964071" y="526" text-anchor="middle" font-family="Arial" font-size="12" fill="#263238">126</text>
+<text x="863.6526946107784" y="526" text-anchor="middle" font-family="Arial" font-size="12" fill="#263238">127</text>
+<text x="869.8562874251497" y="526" text-anchor="middle" font-family="Arial" font-size="12" fill="#263238">128</text>
+<text x="876.059880239521" y="526" text-anchor="middle" font-family="Arial" font-size="12" fill="#263238">129</text>
+<text x="882.2634730538922" y="526" text-anchor="middle" font-family="Arial" font-size="12" fill="#263238">130</text>
+<text x="888.4670658682635" y="526" text-anchor="middle" font-family="Arial" font-size="12" fill="#263238">131</text>
+<text x="894.6706586826347" y="526" text-anchor="middle" font-family="Arial" font-size="12" fill="#263238">132</text>
+<text x="900.874251497006" y="526" text-anchor="middle" font-family="Arial" font-size="12" fill="#263238">133</text>
+<text x="907.0778443113772" y="526" text-anchor="middle" font-family="Arial" font-size="12" fill="#263238">134</text>
+<text x="913.2814371257485" y="526" text-anchor="middle" font-family="Arial" font-size="12" fill="#263238">135</text>
+<text x="919.4850299401198" y="526" text-anchor="middle" font-family="Arial" font-size="12" fill="#263238">136</text>
+<text x="925.688622754491" y="526" text-anchor="middle" font-family="Arial" font-size="12" fill="#263238">137</text>
+<text x="931.8922155688623" y="526" text-anchor="middle" font-family="Arial" font-size="12" fill="#263238">138</text>
+<text x="938.0958083832335" y="526" text-anchor="middle" font-family="Arial" font-size="12" fill="#263238">139</text>
+<text x="944.2994011976048" y="526" text-anchor="middle" font-family="Arial" font-size="12" fill="#263238">140</text>
+<text x="950.5029940119759" y="526" text-anchor="middle" font-family="Arial" font-size="12" fill="#263238">141</text>
+<text x="956.7065868263473" y="526" text-anchor="middle" font-family="Arial" font-size="12" fill="#263238">142</text>
+<text x="962.9101796407186" y="526" text-anchor="middle" font-family="Arial" font-size="12" fill="#263238">143</text>
+<text x="969.1137724550898" y="526" text-anchor="middle" font-family="Arial" font-size="12" fill="#263238">144</text>
+<text x="975.3173652694611" y="526" text-anchor="middle" font-family="Arial" font-size="12" fill="#263238">145</text>
+<text x="981.5209580838323" y="526" text-anchor="middle" font-family="Arial" font-size="12" fill="#263238">146</text>
+<text x="987.7245508982036" y="526" text-anchor="middle" font-family="Arial" font-size="12" fill="#263238">147</text>
+<text x="993.9281437125749" y="526" text-anchor="middle" font-family="Arial" font-size="12" fill="#263238">148</text>
+<text x="1000.131736526946" y="526" text-anchor="middle" font-family="Arial" font-size="12" fill="#263238">149</text>
+<text x="1006.3353293413174" y="526" text-anchor="middle" font-family="Arial" font-size="12" fill="#263238">150</text>
+<text x="1012.5389221556886" y="526" text-anchor="middle" font-family="Arial" font-size="12" fill="#263238">151</text>
+<text x="1018.7425149700599" y="526" text-anchor="middle" font-family="Arial" font-size="12" fill="#263238">152</text>
+<text x="1024.9461077844312" y="526" text-anchor="middle" font-family="Arial" font-size="12" fill="#263238">153</text>
+<text x="1031.1497005988024" y="526" text-anchor="middle" font-family="Arial" font-size="12" fill="#263238">154</text>
+<text x="1037.3532934131736" y="526" text-anchor="middle" font-family="Arial" font-size="12" fill="#263238">155</text>
+<text x="1043.556886227545" y="526" text-anchor="middle" font-family="Arial" font-size="12" fill="#263238">156</text>
+<text x="1049.7604790419164" y="526" text-anchor="middle" font-family="Arial" font-size="12" fill="#263238">157</text>
+<text x="1055.9640718562873" y="526" text-anchor="middle" font-family="Arial" font-size="12" fill="#263238">158</text>
+<text x="1062.1676646706587" y="526" text-anchor="middle" font-family="Arial" font-size="12" fill="#263238">159</text>
+<text x="1068.37125748503" y="526" text-anchor="middle" font-family="Arial" font-size="12" fill="#263238">160</text>
+<text x="1074.574850299401" y="526" text-anchor="middle" font-family="Arial" font-size="12" fill="#263238">161</text>
+<text x="1080.7784431137725" y="526" text-anchor="middle" font-family="Arial" font-size="12" fill="#263238">162</text>
+<text x="1086.9820359281437" y="526" text-anchor="middle" font-family="Arial" font-size="12" fill="#263238">163</text>
+<text x="1093.1856287425148" y="526" text-anchor="middle" font-family="Arial" font-size="12" fill="#263238">164</text>
+<text x="1099.3892215568862" y="526" text-anchor="middle" font-family="Arial" font-size="12" fill="#263238">165</text>
+<text x="1105.5928143712576" y="526" text-anchor="middle" font-family="Arial" font-size="12" fill="#263238">166</text>
+<text x="1111.7964071856286" y="526" text-anchor="middle" font-family="Arial" font-size="12" fill="#263238">167</text>
+<text x="1118.0" y="526" text-anchor="middle" font-family="Arial" font-size="12" fill="#263238">168</text>
+<text x="600.0" y="550" text-anchor="middle" font-family="Arial" font-size="13">Hour / Interval</text>
+</svg>

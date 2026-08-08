@@ -112,16 +112,28 @@ function train_model(csv_path::String; max_depth::Int = 3, min_samples::Int = 5)
     
     df = CSV.read(csv_path, DataFrame)
     
+    # System-independent features. The last two columns describe how much the
+    # inherited rolling-boundary commitment differs from the base initial state.
     feature_names = [
-        "x0_1", "x0_2", "x0_3",
-        "t0_1", "t0_2", "t0_3",
-        "t1_1", "t1_2", "t1_3",
-        "L_norm", "sigma_load", "R_wind_max"
+        "U_norm", "T_dwell_rem", "L_norm", "sigma_load", "R_wind_max",
+        "X_delta_norm", "X_switch_ratio"
     ]
     
+    missing_cols = setdiff([feature_names; ["To_star"]], names(df))
+    if !isempty(missing_cols)
+        error("Training dataset is missing required columns: $(join(missing_cols, ", "))")
+    end
+
     # Extract X (features) and Y (target optimal overlap)
     X = Matrix{Float64}(df[:, feature_names])
     Y = Vector{Float64}(df.To_star)
+
+    finite_rows = [all(isfinite, X[i, :]) && isfinite(Y[i]) for i in 1:size(X, 1)]
+    X = X[finite_rows, :]
+    Y = Y[finite_rows]
+    if length(Y) < min_samples
+        error("Training dataset has only $(length(Y)) valid rows; at least $min_samples are required.")
+    end
     
     # Fit the CART tree
     tree = fit_tree(X, Y, 0, max_depth=max_depth, min_samples=min_samples)
@@ -141,21 +153,21 @@ function train_model(csv_path::String; max_depth::Int = 3, min_samples::Int = 5)
     return tree
 end
 
-# Pre-trained fallback model structure based on typical power system rules
-# Splitting rule: If L_norm <= 0.18, To = 6 (low net load). Else if R_wind_max > 0.05, To = 10 (rampy). Else To = 8.
+# Pre-trained fallback model structure based on typical 118-bus power system rules
+# Features: [U_norm = 1, T_dwell_rem = 2, L_norm = 3, sigma_load = 4,
+# R_wind_max = 5, X_delta_norm = 6, X_switch_ratio = 7]
 function get_fallback_tree()::DecisionNode
-    # Features indices: L_norm = 10, R_wind_max = 12
-    # Node 1: split on L_norm <= 0.18
+    # Split on L_norm <= 0.18
     #   Left: prediction 6.0
     #   Right: split on R_wind_max <= 0.05
     #     Right-Left: prediction 8.0
     #     Right-Right: prediction 10.0
     right_right = DecisionNode(10.0)
     right_left = DecisionNode(8.0)
-    right_node = DecisionNode(12, 0.05, 0.0, right_left, right_right)
+    right_node = DecisionNode(5, 0.05, 0.0, right_left, right_right)
     left_node = DecisionNode(6.0)
     
-    return DecisionNode(10, 0.18, 0.0, left_node, right_node)
+    return DecisionNode(3, 0.18, 0.0, left_node, right_node)
 end
 
 # Loader helper
@@ -168,7 +180,7 @@ function load_trained_model_or_fallback(csv_path::String = "d:/GithubClonefiles/
         try
             return train_model(csv_path)
         catch e
-            println("  Warning: Failed to train decision tree from dataset. Falling back to default heuristic.")
+            println("  Warning: Failed to train decision tree from dataset ($(e)). Falling back to default heuristic.")
         end
     else
         println("  Info: Offline training dataset CSV not found. Loading pre-trained fallback decision model.")
@@ -182,6 +194,10 @@ end
 function predict_overlap(features::Vector{Float64}; min_overlap::Int = 2, max_overlap::Int = 12)::Int
     model = load_trained_model_or_fallback()
     pred_val = predict_tree(model, features)
+    if !isfinite(pred_val)
+        println("  Warning: Decision tree predicted $(pred_val). Falling back to midpoint overlap.")
+        pred_val = (min_overlap + max_overlap) / 2
+    end
     pred_int = clamp(Int(round(pred_val)), min_overlap, max_overlap)
     return pred_int
 end

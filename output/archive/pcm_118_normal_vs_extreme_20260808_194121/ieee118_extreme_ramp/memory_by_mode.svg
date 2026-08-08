@@ -1,0 +1,42 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1120" height="620" viewBox="0 0 1120 620">
+<rect width="100%" height="100%" fill="#ffffff"/>
+<text x="560.0" y="30" text-anchor="middle" font-family="Arial" font-size="22" font-weight="700">ieee118_extreme_ramp allocated memory</text>
+<text x="22" y="266.5" transform="rotate(-90 22 266.5)" text-anchor="middle" font-family="Arial" font-size="14">Allocated memory (MB)</text>
+<line x1="92" y1="475.0" x2="1084" y2="475.0" stroke="#455a64" stroke-width="1"/>
+<line x1="92" y1="475.0" x2="1084" y2="475.0" stroke="#d8dee3" stroke-width="1"/>
+<text x="82" y="479.0" text-anchor="end" font-family="Arial" font-size="12" fill="#37474f">0.00</text>
+<line x1="92" y1="391.6" x2="1084" y2="391.6" stroke="#d8dee3" stroke-width="1"/>
+<text x="82" y="395.6" text-anchor="end" font-family="Arial" font-size="12" fill="#37474f">2875.26</text>
+<line x1="92" y1="308.20000000000005" x2="1084" y2="308.20000000000005" stroke="#d8dee3" stroke-width="1"/>
+<text x="82" y="312.20000000000005" text-anchor="end" font-family="Arial" font-size="12" fill="#37474f">5750.52</text>
+<line x1="92" y1="224.79999999999998" x2="1084" y2="224.79999999999998" stroke="#d8dee3" stroke-width="1"/>
+<text x="82" y="228.79999999999998" text-anchor="end" font-family="Arial" font-size="12" fill="#37474f">8625.78</text>
+<line x1="92" y1="141.39999999999998" x2="1084" y2="141.39999999999998" stroke="#d8dee3" stroke-width="1"/>
+<text x="82" y="145.39999999999998" text-anchor="end" font-family="Arial" font-size="12" fill="#37474f">11501.04</text>
+<line x1="92" y1="58.0" x2="1084" y2="58.0" stroke="#d8dee3" stroke-width="1"/>
+<text x="82" y="62.0" text-anchor="end" font-family="Arial" font-size="12" fill="#37474f">14376.30</text>
+<rect x="104.0" y="198.70159810679888" width="110.5" height="276.2984018932011" rx="3" fill="#9f6b30"/>
+<text x="159.25" y="192.70159810679888" text-anchor="middle" font-family="Arial" font-size="12" fill="#263238">9525.54</text>
+<text x="159.25" y="536" text-anchor="end" transform="rotate(-35 159.25 536)" font-family="Arial" font-size="12" fill="#263238">NoOverlap</text>
+<rect x="226.5" y="100.05401893557374" width="110.5" height="374.9459810644263" rx="3" fill="#9f6b30"/>
+<text x="281.75" y="94.05401893557374" text-anchor="middle" font-family="Arial" font-size="12" fill="#263238">12926.46</text>
+<text x="281.75" y="536" text-anchor="end" transform="rotate(-35 281.75 536)" font-family="Arial" font-size="12" fill="#263238">SteadyOnly</text>
+<rect x="349.0" y="111.29125031383899" width="110.5" height="363.708749686161" rx="3" fill="#9f6b30"/>
+<text x="404.25" y="105.29125031383899" text-anchor="middle" font-family="Arial" font-size="12" fill="#263238">12539.05</text>
+<text x="404.25" y="536" text-anchor="end" transform="rotate(-35 404.25 536)" font-family="Arial" font-size="12" fill="#263238">UnitOnly</text>
+<rect x="471.5" y="115.45696470003824" width="110.5" height="359.54303529996173" rx="3" fill="#9f6b30"/>
+<text x="526.75" y="109.45696470003824" text-anchor="middle" font-family="Arial" font-size="12" fill="#263238">12395.44</text>
+<text x="526.75" y="536" text-anchor="end" transform="rotate(-35 526.75 536)" font-family="Arial" font-size="12" fill="#263238">RampOnly</text>
+<rect x="594.0" y="68.42234060050362" width="110.5" height="406.5776593994964" rx="3" fill="#9f6b30"/>
+<text x="649.25" y="62.42234060050362" text-anchor="middle" font-family="Arial" font-size="12" fill="#263238">14016.98</text>
+<text x="649.25" y="536" text-anchor="end" transform="rotate(-35 649.25 536)" font-family="Arial" font-size="12" fill="#263238">Steady+Unit</text>
+<rect x="716.5" y="88.23357813029693" width="110.5" height="386.7664218697031" rx="3" fill="#9f6b30"/>
+<text x="771.75" y="82.23357813029693" text-anchor="middle" font-family="Arial" font-size="12" fill="#263238">13333.98</text>
+<text x="771.75" y="536" text-anchor="end" transform="rotate(-35 771.75 536)" font-family="Arial" font-size="12" fill="#263238">Steady+Ramp</text>
+<rect x="839.0" y="96.16364109149191" width="110.5" height="378.8363589085081" rx="3" fill="#9f6b30"/>
+<text x="894.25" y="90.16364109149191" text-anchor="middle" font-family="Arial" font-size="12" fill="#263238">13060.59</text>
+<text x="894.25" y="536" text-anchor="end" transform="rotate(-35 894.25 536)" font-family="Arial" font-size="12" fill="#263238">Unit+Ramp</text>
+<rect x="961.5" y="72.67585289950642" width="110.5" height="402.3241471004936" rx="3" fill="#9f6b30"/>
+<text x="1016.75" y="66.67585289950642" text-anchor="middle" font-family="Arial" font-size="12" fill="#263238">13870.34</text>
+<text x="1016.75" y="536" text-anchor="end" transform="rotate(-35 1016.75 536)" font-family="Arial" font-size="12" fill="#263238">Steady+Unit+Ramp</text>
+</svg>
