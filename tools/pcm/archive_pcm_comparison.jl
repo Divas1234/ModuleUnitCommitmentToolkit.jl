@@ -215,7 +215,8 @@ function summarize_scenario(dir::String)
     perf = ordered!(CSV.read(joinpath(dir, "criteria_combination_performance.csv"), DataFrame))
     intervals = CSV.read(joinpath(dir, "criteria_combination_intervals.csv"), DataFrame)
 
-    load_xlsx = joinpath(dir, "input_data_118.xlsx")
+    input_xlsx_files = filter(f -> startswith(basename(f), "input_data") && endswith(lowercase(f), ".xlsx"), readdir(dir; join = true))
+    load_xlsx = isempty(input_xlsx_files) ? joinpath(dir, "input_data_118.xlsx") : first(sort(input_xlsx_files))
     if isfile(load_xlsx)
         load_df = read_load_curve_xlsx(load_xlsx)
         CSV.write(joinpath(dir, "load_curve_168h.csv"), load_df)
@@ -315,7 +316,7 @@ function write_cross_report(batch_dir::String, scenario_frames::Vector{DataFrame
     end
 
     open(joinpath(batch_dir, "detailed_comparison_report.md"), "w") do io
-        println(io, "# Ordinary IEEE-118 vs Extreme-Ramp Overlap Criteria Comparison")
+        println(io, "# Overlap Criteria Combination Comparison")
         println(io)
         println(io, "- Archive batch: `$batch_dir`")
         println(io, "- Generated: `$(Dates.format(now(), "yyyy-mm-dd HH:MM:SS"))`")
