@@ -137,7 +137,7 @@ withenv("MODEL_CONSIDER_BESS" => "0", "MODEL_CONSIDER_FREQUENCY_CONTROL" => "0",
         horizon = 24,
     )
     val_extensive = res_extensive.upper_bound
-    println("→ Extensive Form Objective: $val_extensive")
+    println("-> Extensive Form Objective: $val_extensive")
 
     # --------------------------------------------------------------------------
     # Method B: Benders Decomposition
@@ -169,7 +169,7 @@ withenv("MODEL_CONSIDER_BESS" => "0", "MODEL_CONSIDER_FREQUENCY_CONTROL" => "0",
         winds, config_param, NG, NT, length(winds.index), ND, NL,
     )
     val_benders = res_benders.upper_bound
-    println("→ Benders Upper Bound: $val_benders")
+    println("-> Benders Upper Bound: $val_benders")
 
     # --------------------------------------------------------------------------
     # Method C: Column-and-Constraint Generation (C&CG)
@@ -189,7 +189,7 @@ withenv("MODEL_CONSIDER_BESS" => "0", "MODEL_CONSIDER_FREQUENCY_CONTROL" => "0",
         horizon = 24,
     )
     val_ccg = res_ccg.upper_bound
-    println("→ CCG Upper Bound: $val_ccg")
+    println("-> CCG Upper Bound: $val_ccg")
 
     # --------------------------------------------------------------------------
     # Comparison Summary
@@ -206,10 +206,10 @@ withenv("MODEL_CONSIDER_BESS" => "0", "MODEL_CONSIDER_FREQUENCY_CONTROL" => "0",
     # Check whether the objective values match within numerical tolerance.
     if abs(val_extensive - val_benders) < 1e-2 && abs(val_extensive - val_ccg) < 1e-2
         println("SUCCESS: All three solving methods converge to the identical optimal objective!")
-        println("成功：三种求解方法均收敛于完全相同的最优目标函数值！")
+        println("SUCCESS: all three solving methods converged to the same optimal objective.")
     else
         println("WARNING: Objective variance detected between methods.")
-        println("警告：检测到不同求解方法之间存在目标函数值偏差。")
+        println("WARNING: objective differences were detected between methods.")
     end
     return println("=======================================================")
 end

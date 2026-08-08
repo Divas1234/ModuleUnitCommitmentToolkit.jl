@@ -146,8 +146,8 @@ function write_grouped_bar_svg(path::String, title::String, labels::Vector{Strin
         println(io, """<rect width="100%" height="100%" fill="#ffffff"/>""")
         println(io, """<text x="$(width/2)" y="32" text-anchor="middle" font-family="Arial" font-size="22" font-weight="700">$(svg_escape(title))</text>""")
         println(io, """<text x="22" y="$(top + plot_h/2)" transform="rotate(-90 22 $(top + plot_h/2))" text-anchor="middle" font-family="Arial" font-size="14">$(svg_escape(ylabel))</text>""")
-        println(io, """<rect x="$(width-265)" y="48" width="14" height="14" fill="$(colors[1])"/><text x="$(width-244)" y="60" font-family="Arial" font-size="13">普通 118</text>""")
-        println(io, """<rect x="$(width-160)" y="48" width="14" height="14" fill="$(colors[2])"/><text x="$(width-139)" y="60" font-family="Arial" font-size="13">极端爬坡</text>""")
+        println(io, """<rect x="$(width-265)" y="48" width="14" height="14" fill="$(colors[1])"/><text x="$(width-244)" y="60" font-family="Arial" font-size="13">Normal IEEE-118</text>""")
+        println(io, """<rect x="$(width-160)" y="48" width="14" height="14" fill="$(colors[2])"/><text x="$(width-139)" y="60" font-family="Arial" font-size="13">Extreme ramp</text>""")
         for i in 0:5
             yv = lo + (hi - lo) * i / 5
             y = scale_y(yv)

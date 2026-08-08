@@ -51,11 +51,11 @@ The toolkit provides a modular helper function `generate_frequency_parameters` w
 
 ```julia
 # Automatically generate baseline parameters for all units in a large system
-# 自动为大规模系统中的所有发电机组生成调频参数字典
+# Automatically generate frequency-parameter dictionaries for all generators in a large system
 frequency_params = generate_frequency_parameters(sys)
 
 # Optional: Apply specific manual overrides for key generators
-# 用户可提供特定关键机组的自定义参数覆盖
+# Users can provide custom parameter overrides for selected key units
 custom_overrides = Dict(
     "Gen-Coal-1" => (H = 6.5, D = 0.08, K = 0.95, F = 0.3, T = 7.0, R = 0.05),
     "Gen-Nuclear-3" => (H = 8.0, D = 0.10, K = 0.0, F = 0.0, T = 0.0, R = 1.0)
@@ -300,7 +300,7 @@ The behavior of the algorithms, penalties, and solvers is controlled through the
 
 ## 7. Runnable Example Code
 
-A complete, runnable example script containing detailed bilingual (English/Chinese) comments is located at [docs/powersystems_example.jl](file:///Users/yuanyiping/Documents/GitHub/02%20Ongoing/module_unitcommitment-revised_ModuleUnitCommitmentTookits/docs/powersystems_example.jl). You can run it directly from the terminal:
+A complete, runnable example script containing detailed English comments is located at [docs/powersystems_example.jl](file:///Users/yuanyiping/Documents/GitHub/02%20Ongoing/module_unitcommitment-revised_ModuleUnitCommitmentTookits/docs/powersystems_example.jl). You can run it directly from the terminal:
 
 ```bash
 julia --project=. docs/powersystems_example.jl

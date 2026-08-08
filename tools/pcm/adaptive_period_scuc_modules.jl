@@ -82,12 +82,12 @@ if !isdefined(@__MODULE__, :_ADAPTIVE_PERIOD_SCUC_MODULES_INCLUDED)
 
 	Detect net-load ramping and multi-scenario uncertainty events in the lookahead horizon and calculate required adaptive ramp/uncertainty overlap window.
 
-	# Net Load Perspective (净负荷视角):
+	# Net Load Perspective:
 
 	Net Load for scenario s at time t:
 	P_net(s, t) = sum_d P_load,d(t) - sum_w P_wind_max,w * scenarios_curve(s, t)
 
-	Both net-load ramp rate variations (|P_net(s, t+1) - P_net(s, t)|) and multi-scenario net-load volatility/uncertainty (std_s(P_net(s, t))) are evaluated to determine the lookahead overlap window (交叠窗).
+	Both net-load ramp rate variations (|P_net(s, t+1) - P_net(s, t)|) and multi-scenario net-load volatility/uncertainty (std_s(P_net(s, t))) are evaluated to determine the lookahead overlap window.
 
 	# Returns
 
@@ -819,7 +819,7 @@ if !isdefined(@__MODULE__, :_ADAPTIVE_PERIOD_SCUC_MODULES_INCLUDED)
 		T_dwell_rem = max(0.0, maximum(online_remaining), maximum(offline_remaining))
 		T_unit = Int64(ceil(T_dwell_rem))
 
-		#STUB:  3. Net Load ramping & uncertainty event detection (净负荷视角)
+		#STUB:  3. Net-load ramping and uncertainty event detection
 		is_ramp, T_ramp = detect_ramp_events_and_overlap(loads, winds, start_time, exec_NT, max_overlap)
 
 		# Composite overlap calculation

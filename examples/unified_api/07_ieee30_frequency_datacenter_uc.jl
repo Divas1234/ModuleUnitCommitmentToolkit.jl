@@ -119,7 +119,7 @@ mkpath(INPUT_OUTPUT_DIR)
 ALGORITHM in (:benchmark, :benders, :ccg) ||
     throw(ArgumentError("UC_ALGORITHM must be benchmark, benders, or ccg"))
 
-print_section("1. 选择算例和统一入口")
+print_section("1. Select Case and Unified Entry Point")
 case_entry = getproperty(powersystems_case_catalog(), CASE_NAME)
 println("case alias       : ", CASE_NAME)
 println("canonical case   : ", case_entry.case_name)
@@ -168,7 +168,7 @@ wind_generators = sort(collect(get_components(RenewableGen, sys)), by = get_name
 branches = sort(collect(get_components(ACBranch, sys)), by = get_name)
 power_loads = sort(collect(get_components(PowerLoad, sys)), by = get_name)
 
-print_section("2. PowerSystems 系统边界")
+print_section("2. PowerSystems System Boundary")
 println("system base power: ", system_base, " MVA")
 println("buses            : ", length(buses))
 println("thermal units    : ", length(thermal_generators))
@@ -254,7 +254,7 @@ load_df = DataFrame(
 )
 show_and_write_dataframe(load_df, "05_loads", INPUT_OUTPUT_DIR)
 
-print_section("3. 频率参数配置")
+print_section("3. Frequency Parameter Configuration")
 
 # Generate the complete parameter dictionary first, then apply one physically interpretable
 # parameter set to all conventional units. This avoids dependence on complete MATPOWER fuel fields
@@ -323,7 +323,7 @@ for generator in wind_generators
 end
 show_and_write_dataframe(wind_frequency_df, "07_wind_frequency_parameters", INPUT_OUTPUT_DIR)
 
-print_section("4. 数据中心挂载")
+print_section("4. Data Center Attachment")
 
 # Data center bus values use native PowerSystems bus numbers rather than internal contiguous indices.
 # p_max, p_min, idle_power, and server_energy use MW; the bridge converts them to pu.
@@ -400,7 +400,7 @@ data = withenv(calibration_env_pairs(CALIBRATION)...) do
     load_uc_data(request.input)
 end
 
-print_section("5. 统一 UC 数据和有效配置")
+print_section("5. Unified UC Data and Effective Configuration")
 dimensions_df = DataFrame(
     parameter = [
         "system_base_MVA", "NB", "NG", "NL", "ND", "NT", "ND2", "NW", "NS",
@@ -444,7 +444,7 @@ show_and_write_dataframe(wind_availability_df, "12_wind_availability", INPUT_OUT
 println("\ninput snapshots saved before solve: ", INPUT_OUTPUT_DIR)
 
 if RUN_SOLVE
-    print_section("6. 开始统一 UC 求解")
+    print_section("6. Start Unified UC Solve")
     println("algorithm: ", request.algorithm)
     println("output_dir: ", request.output_dir)
     println("frequency control: enabled")
@@ -461,5 +461,5 @@ if RUN_SOLVE
     # detail=true prints status, bounds, gap, model size, iteration history, cost breakdown, and diagnostics.
     print_uc_result(result; detail = true)
 else
-    println("\nUC_RUN_SOLVE=0: 已完成算例构造和数据桥接，未启动优化。")
+    println("\nUC_RUN_SOLVE=0: case construction and data bridging completed; optimization was not started.")
 end

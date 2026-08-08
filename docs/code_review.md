@@ -1,101 +1,53 @@
-# 项目代码 Review
+# Project Code Review
 
-审查日期：2026-07-13
+Review date: 2026-07-13
 
-审查范围：`src/`、`tools/`、`gui/`、`examples/`、`docs/`、`test/` 及项目入口文件。
+Scope: `src/`, `tools/`, `gui/`, `examples/`, `docs/`, `test/`, and the package entry files.
 
-## 结论摘要
+## Executive Summary
 
-当前数据管线和基础模块测试结果稳定。项目原先的公共接口分成包级函数、脚本级函数
-和旧式位置元组三层；本次已增加统一数据入口和统一算法入口，剩余重点是 GUI 安全边界、
-输出路径解耦、位置元组兼容层治理以及算法级集成测试。此次也修正文档中会直接误导调用者
-的三个示例问题，并将 GUI 默认监听地址限制为本机回环地址。
+The data pipeline and lightweight module tests are stable. The previous public interface was split across package functions, script-level functions, and legacy positional tuples. The current implementation adds a unified data entry point and unified algorithm entry point. Remaining engineering priorities are GUI security boundaries, output-path decoupling, cleanup of legacy tuple compatibility, and broader algorithm-level integration tests.
 
-## 发现的问题
+## Findings
 
-### P1：GUI 接口曾默认监听所有网卡，且提供配置写入与任务启动能力
+### P1: GUI endpoints previously listened on all network interfaces
 
-`gui/server.py` 提供 `/api/config` 写入运行配置、`/api/run` 启动 Julia 任务和
-`/api/run/cancel` 终止任务，但原先绑定 `0.0.0.0:8080`，也没有认证、CSRF 防护或
-请求来源限制。若机器处于共享网络，其他主机可能调用这些本地管理接口。
+`gui/server.py` exposes `/api/config`, `/api/run`, and `/api/run/cancel`. These endpoints can write runtime configuration, start Julia tasks, and stop running tasks. Binding the server to `0.0.0.0:8080` without authentication, CSRF protection, or origin restrictions would allow other hosts on a shared network to trigger local management actions.
 
-本次已将默认监听改为 `127.0.0.1:8080`。远程绑定现在必须同时显式设置
-`MODULE_UC_GUI_ALLOW_REMOTE=1`、Bearer token 和允许来源列表；服务还会校验请求体大小、
-任务参数、来源、认证头和 API/运行频率，并返回基础安全响应头。若部署在公网，仍建议在
-反向代理层补充 TLS、审计日志和更细粒度的账号权限控制。
+The default bind address is now `127.0.0.1:8080`. Remote binding requires `MODULE_UC_GUI_ALLOW_REMOTE=1`, a bearer token, and an allow-list of origins. The service also validates request size, task parameters, origin, authentication headers, and API/run rate limits, and returns baseline security headers. Public deployments should still add TLS, audit logging, and finer-grained account permissions at the reverse-proxy or service layer.
 
-### P1：算法入口曾经没有纳入同一个包级 API（已处理）
+### P1: Algorithm entry points were not exposed through one package API
 
-`ModuleUnitCommitmentToolkit` 主要暴露数据读取、桥接和基础模型函数；benchmark、
-Benders、CCG 入口仍需手工 `include("tools/...")`。这会造成：
+`ModuleUnitCommitmentToolkit` originally exposed data reading, bridging, and model utilities, while Benchmark, Benders, and CCG entry points required manual `include("tools/...")` calls. This made algorithms hard to discover from `using ModuleUnitCommitmentToolkit`, made scripts sensitive to include order and current working directory, and prevented a common input/result contract.
 
-- 使用 `using ModuleUnitCommitmentToolkit` 的用户无法直接发现三种算法；
-- 脚本依赖 include 顺序和当前工作目录；
-- 算法接口没有统一的输入与结果类型。
+The package now provides `ModuleUnitCommitmentToolkit.solve_uc`. It uses `algorithm` to select `benchmark`, `benders`, or `ccg`, uses `input` to select Excel, native PowerSystems, or PowerSystems CSV data, and centralizes runtime calibration. Algorithm implementations remain lazily loaded so importing the package does not start solvers or create output side effects. Lower-level `tools/` functions remain as compatibility layers.
 
-本次新增 `ModuleUnitCommitmentToolkit.solve_uc` 统一入口，使用 `algorithm` 指示参数选择
-`benchmark`、`benders` 或 `ccg`，使用 `input` 指示 Excel、PowerSystems 原生系统或
-PowerSystems CSV 扩展数据，并用 `calibration` 集中设置运行期标定参数。算法实现仍按需
-惰性加载，避免仅导入包时启动求解器或产生输出副作用；旧的 `tools/` 函数保留为兼容层。
+### P1: Benders setup returned a long positional tuple
 
-### P1：Benders `main` 返回位置元组，维护成本和错位风险高
+`tools/benders/setup.jl` previously returned 20 positional values, so callers had to remember the exact order of fields such as `NB`, `NG`, `NL`, `ND`, `NS`, `NT`, `NC`, and `ND2`. Any field insertion or deletion could silently shift values.
 
-`tools/benders/setup.jl:33` 的 `main` 返回 20 个位置值，调用方需要手工记住
-`NB, NG, NL, ND, NS, NT, NC, ND2` 的顺序；Benders、benchmark 和示例文件各自
-重复解构。任何字段增删都会造成静默错位，且 Julia 不会给出字段名提示。
+`BendersSetup` now provides named-field access while preserving a read-only compatibility iterator for legacy 20-element destructuring. New code should use `UCSolveRequest` and `UCSolveResult`. The compatibility iterator can be removed after downstream callers migrate.
 
-当前已由 `BendersSetup` 提供命名字段访问，并保留只读兼容迭代器支持旧的 20 项解构。
-新增算法调用应使用 `UCSolveRequest`/`UCSolveResult`；后续可在迁移完成后移除兼容迭代器。
+### P2: PowerSystems examples did not match real signatures
 
-### P2：原有 PowerSystems 指南的可复制示例与真实签名不一致
+The review found and corrected several misleading examples: an extensive-form example missed a closing parenthesis, a CCG example passed an unsupported positional `data` argument and unsupported `initial_scenarios` keyword, and a Benders example passed `winds.scenarios_nums` where `NW` was expected.
 
-审查时发现并已修正：
+The corrections are in `docs/powersystems_algorithms_guide.md` and related unified API examples.
 
-- Extensive-form 示例缺少 `solve_benchmark_uc_powersystems` 的闭合括号；
-- CCG 示例传入了不存在的 `data` 位置参数和 `initial_scenarios` 关键字；
-- Benders 示例把 `winds.scenarios_nums`（场景数）传给了 `NW`（风机数）。
+### P2: Output paths depended on `pwd()`
 
-修正位置：[`powersystems_algorithms_guide.md`](powersystems_algorithms_guide.md) 和
-[`powersystems_example.jl`](powersystems_example.jl)。
+Some export utilities previously used the current working directory as the output base. Results could therefore move when library functions were called from notebooks, services, or CI jobs.
 
-### P2：输出目录依赖 `pwd()`，库函数从任意目录调用时结果位置不稳定（已处理）
+The default output root is now the project-level `output/` directory. Callers can override it with `MODULE_UC_OUTPUT_DIR`, the unified-entry `output_dir` keyword, or export-function arguments. Benchmark and CCG scheduling outputs now share this output-root resolver. Benders currently returns in-memory results through the unified result object and does not automatically export the same scheduling files.
 
-原有 `src/unit_commitment/utilities/export_results.jl` 的一个导出函数默认输出目录以当前
-工作目录为基准。现在默认输出根目录为项目根目录下的 `output/`，也可通过
-`MODULE_UC_OUTPUT_DIR`、统一入口的 `output_dir` 或导出函数参数显式覆盖；算法运行目录和
-调度导出均复用这套解析逻辑。
+### P2: Algorithm and GUI integration tests remain thin
 
-调用层应显式设置 `MODULE_UC_OUTPUT_DIR`，或直接使用统一入口的 `output_dir` 关键字参数。
-benchmark 和 CCG 的文件输出已通过同一套输出根目录解析函数统一；Benders 当前以
-内存结果为主，统一结果对象会返回配置的 `output_dir`，但暂不自动导出调度文件。
+Lightweight tests cover data reading, PowerSystems bridging, model utilities, DRO helpers, unified-entry routing, and calibration behavior. CI includes smoke tests for Benchmark, Benders, CCG, and GUI request validation. Broader tests should continue to cover objective comparisons, task locking, cancellation, timeout behavior, and malformed GUI/API inputs.
 
-### P2：算法级和 GUI 级集成测试不足
+## Recommended Next Steps
 
-当前轻量测试覆盖数据读取、PowerSystems 桥接、模型工具、DRO 辅助逻辑、统一入口的
-路由/标定行为；CI 已加入一场景 benchmark/Benders/CCG smoke test 和 GUI 请求校验测试。
-完整算法质量比较、任务互斥、取消和超时行为仍应持续扩展。建议补充：
-
-1. Benders 结果与 extensive-form 目标值的容差比较；
-2. CCG 最大迭代和无可行解分支；
-3. GUI API 的任务并发、取消和超时行为。
-
-## 已执行验证
-
-```text
-Julia 1.12.6
-test/runtests.jl: 236 passed, 236 total
-test/fast_interface.jl: 12 passed, 12 total
-test/smoke_algorithms.jl: 7 passed, 7 total
-test/test_gui_security.py: 4 passed, 4 total
-项目下 222 个 Julia 文件：语法解析通过
-```
-
-还应注意：项目 `Project.toml` 与当前 Manifest 存在依赖版本漂移提示，正式发布前应
-重新 resolve/instantiate 并锁定可复现环境；这不是本次文档接口修正的阻断项。
-
-## 建议优先级
-
-1. 已完成：统一命名输入/结果类型，Benders 位置元组进入兼容迁移期。
-2. 已完成：三算法 smoke test 纳入 CI，并保留路由和数据入口快速测试。
-3. 已完成：输出根目录显式化，库函数默认不再依赖调用者 `pwd()`。
-4. 已完成基础防护：GUI 默认仅本机监听；远程部署必须先配置认证和来源限制。
+1. Add tolerance-based objective comparisons between Benders and extensive-form results.
+2. Add CCG tests for maximum-iteration handling and infeasible recourse cases.
+3. Add GUI tests for concurrent run rejection, cancellation, invalid tokens, and oversized payloads.
+4. Complete migration away from positional Benders setup destructuring.
+5. Keep documentation examples aligned with the public `solve_uc` interface.
