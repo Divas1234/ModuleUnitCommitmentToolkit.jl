@@ -5,17 +5,26 @@ if !isdefined(@__MODULE__, :_TRUE_CLUSTERED_PCM_MASTER_INCLUDED)
     using Statistics
     import MathOptInterface as MOI
 
+    _clustered_pcm_up_ramp_limit(previous_online, startups, ramp_up, startup_ramp) =
+        ramp_up * previous_online + startup_ramp * startups
+    _clustered_pcm_down_ramp_limit(current_online, shutdowns, ramp_down, shutdown_ramp) =
+        ramp_down * current_online + shutdown_ramp * shutdowns
+
     """
     建立运行特性可互换的火电机组等价类。
 
     默认容差有意设置得很严格。仅归一化比例相似并不能保持 UC 可行域；
-    绝对容量、启停爬坡、成本或滚动窗口初始状态不同，都不应直接聚合。
+    绝对容量、启停爬坡、成本或初始开停状态不同，都不应直接聚合；窗口边界的
+    剩余驻留时间不扩展主问题，而在求解后通过单机解群可行性校核。
     无网络约束时允许跨母线聚类；网络约束启用时必须保持同母线注入。
     """
     function build_similar_pcm_clusters(units; ratio_tol = 1e-6, ramp_tol = 1e-6, cost_tol = 1e-6, require_same_bus::Bool = false)
         groups=Vector{Vector{Int}}()
+        startup_cost(i) = hasproperty(units, :coffi_cold_shutup_1) ? units.coffi_cold_shutup_1[i] : 0.0
+        shutdown_cost(i) = hasproperty(units, :coffi_cold_shutdown_1) ? units.coffi_cold_shutdown_1[i] : 0.0
         feature(i) = (units.p_min[i]/max(units.p_max[i], eps()), units.ramp_up[i]/max(units.p_max[i], eps()),
-            units.ramp_down[i]/max(units.p_max[i], eps()), units.coffi_b[i])
+            units.ramp_down[i]/max(units.p_max[i], eps()), units.coffi_a[i], units.coffi_b[i], units.coffi_c[i],
+            startup_cost(i), shutdown_cost(i))
         for i ∈ eachindex(units.index)
             placed=false
             fi=feature(i)
@@ -29,7 +38,7 @@ if !isdefined(@__MODULE__, :_TRUE_CLUSTERED_PCM_MASTER_INCLUDED)
                            round(Int, units.min_shutdown_time[i])==round(Int, units.min_shutdown_time[j]) &&
                            abs(fi[1]-fj[1])<=ratio_tol &&
                            max(abs(fi[2]-fj[2]), abs(fi[3]-fj[3]))<=ramp_tol &&
-                           abs(fi[4]-fj[4])<=cost_tol*max(1.0, abs(fj[4])) &&
+                           all(abs(fi[k]-fj[k])<=cost_tol*max(1.0, abs(fj[k])) for k ∈ 4:length(fi)) &&
                            close(units.p_min[i], units.p_min[j], ratio_tol) &&
                            close(units.p_max[i], units.p_max[j], ratio_tol) &&
                            close(units.ramp_up[i], units.ramp_up[j], ramp_tol) &&
@@ -61,30 +70,22 @@ if !isdefined(@__MODULE__, :_TRUE_CLUSTERED_PCM_MASTER_INCLUDED)
         NS=winds.scenarios_nums
         NS==1||return (feasible = false, stage = :unsupported_scenarios, message = "true clustered master currently requires one PCM scenario")
         n=[length(c.unit_indices) for c ∈ clusters]
-        pmin=[minimum(units.p_min[c.unit_indices]) for c ∈ clusters]
-        pmax=[maximum(units.p_max[c.unit_indices]) for c ∈ clusters]
+        coeffs=clustered_pcm_cost_coefficients(units, clusters)
+        pmin=coeffs.pmin
+        pmax=coeffs.pmax
         ru=[minimum(units.ramp_up[c.unit_indices]) for c ∈ clusters]
         rd=[minimum(units.ramp_down[c.unit_indices]) for c ∈ clusters]
         sr=[minimum(units.shut_up[c.unit_indices]) for c ∈ clusters]
         dr=[minimum(units.shut_down[c.unit_indices]) for c ∈ clusters]
-        a=[mean(units.coffi_a[c.unit_indices]) for c ∈ clusters]
-        b=[mean(units.coffi_b[c.unit_indices]) for c ∈ clusters]
-        fixed=[mean(units.coffi_c[c.unit_indices]) for c ∈ clusters]
         block=(pmax .- pmin) ./ 3
-        refcost=a .* pmin .^ 2 .+ b .* pmin .+ fixed
-        slopes=zeros(3, C)
-        for g ∈ 1:C, k ∈ 1:3
-
-            lo=pmin[g]+(k-1)*block[g]
-            hi=lo+block[g]
-            slopes[k, g]=block[g]>tolerance ? (a[g]*hi^2+b[g]*hi+fixed[g]-(a[g]*lo^2+b[g]*lo+fixed[g]))/block[g] : b[g]
-        end
-        suc=[mean(units.coffi_cold_shutup_1[c.unit_indices]) for c ∈ clusters]
-        sdc=[mean(units.coffi_cold_shutdown_1[c.unit_indices]) for c ∈ clusters]
+        refcost=coeffs.refcost
+        slopes=coeffs.eachslope
+        suc=coeffs.startup
+        sdc=coeffs.shutdown
         U0=[count(i->units.x_0[i]>0.5, c.unit_indices) for c ∈ clusters]
         m=Model(optimizer)
         set_silent(m)
-        HAS_GUROBI&&set_optimizer_attribute(m, "MIPGap", 0.015)
+        pcm_solver_name() == "gurobi" && set_optimizer_attribute(m, "MIPGap", 0.015)
         # Integer counts replace per-unit binaries. For a cluster of n identical
         # units, U/Y/Z record how many are online/starting/stopping at each hour.
         @variable(m, 0<=U[g = 1:C, t = 1:NT]<=n[g], Int)
@@ -108,8 +109,10 @@ if !isdefined(@__MODULE__, :_TRUE_CLUSTERED_PCM_MASTER_INCLUDED)
             end
             @constraint(m, P[g, t]+R[g, t]<=pmax[g]*U[g, t])
             @constraint(m, P[g, t]-Rdown[g, t]>=pmin[g]*U[g, t])
-            @constraint(m, P[g, t]-(t==1 ? sum(units.p_0[clusters[g].unit_indices]) : P[g, t - 1])<=ru[g]*prev+sr[g]*Y[g, t])
-            @constraint(m, (t==1 ? sum(units.p_0[clusters[g].unit_indices]) : P[g, t - 1])-P[g, t]<=rd[g]*U[g, t]+dr[g]*Z[g, t])
+            @constraint(m, P[g, t]-(t==1 ? sum(units.p_0[clusters[g].unit_indices]) : P[g, t - 1])<=
+                _clustered_pcm_up_ramp_limit(prev, Y[g, t], ru[g], sr[g]))
+            @constraint(m, (t==1 ? sum(units.p_0[clusters[g].unit_indices]) : P[g, t - 1])-P[g, t]<=
+                _clustered_pcm_down_ramp_limit(U[g, t], Z[g, t], rd[g], dr[g]))
             L=clusters[g].min_up
             D=clusters[g].min_down
             @constraint(m, sum(Y[g, k] for k ∈ max(1, t - L + 1):t)<=U[g, t])
@@ -158,8 +161,8 @@ if !isdefined(@__MODULE__, :_TRUE_CLUSTERED_PCM_MASTER_INCLUDED)
                 @constraint(m, flow<=lines.p_max[l]-network_margin)
             end
         end
-        @objective(m, Min,
-            sum(refcost[g]*U[g, t]+sum(slopes[k, g]*Q[g, t, k] for k ∈ 1:3)+suc[g]*Y[g, t]+sdc[g]*Z[g, t] for g ∈ 1:C, t ∈ 1:NT)+sum(R)+sum(Rdown)+1e6*sum(wc))
+        @objective(m, Min, clustered_pcm_economic_expression(config_param, coeffs, U, Y, Z, Q, R, Rdown, ls, wc;
+            scenarios_prob = 1.0))
         optimize!(m)
         termination_status(m) in (MOI.OPTIMAL, MOI.TIME_LIMIT)||return (
             feasible = false, stage = :cluster_master, message = string(termination_status(m)))
@@ -243,8 +246,8 @@ if !isdefined(@__MODULE__, :_TRUE_CLUSTERED_PCM_MASTER_INCLUDED)
         end
         su=y .* units.coffi_cold_shutup_1
         sd=z .* units.coffi_cold_shutdown_1
-        prod=sum(units.coffi_a[i]*p[i, t]^2+units.coffi_b[i]*p[i, t]+units.coffi_c[i]*x[i, t] for i ∈ 1:NG, t ∈ 1:NT)
-        costs=reshape([sum(su), sum(sd), prod, sum(r), sum(JuMP.value.(Rdown)), sum(JuMP.value.(ls)), sum(JuMP.value.(wc))], 1, 7)
+        costs=physical_pcm_economic_cost(config_param, units, x, y, z, p, r, JuMP.value.(Rdown),
+            JuMP.value.(ls), JuMP.value.(wc))
         rdphys=zeros(NG, NT)
         for g ∈ 1:C, t ∈ 1:NT
 

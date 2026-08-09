@@ -2,6 +2,7 @@
 if !isdefined(@__MODULE__, :_PCM_OVERLAP_CORE_INCLUDED)
     const _PCM_OVERLAP_CORE_INCLUDED = true
     include("pcm_dependencies.jl")
+    include("training_data_cache.jl")
     include("overlap_predictor.jl")
     using .OverlapPredictor
     using LinearAlgebra, Statistics

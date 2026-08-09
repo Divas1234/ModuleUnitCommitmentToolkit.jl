@@ -38,4 +38,8 @@ include("../tools/pcm/clustered_pcm/clustered_pcm.jl")
     include("test_clustered_disaggregation.jl")
     include("test_clustered_pcm_adapter.jl")
     include("test_clustered_pcm_master.jl")
+    include("test_clustered_pcm_costs.jl")
+    include("test_three_method_benchmark.jl")
+    include("test_two_scale_benchmark.jl")
+    include("test_overlap_training_cache.jl")
 end

@@ -16,4 +16,9 @@
     copperplate = build_similar_pcm_clusters(units)
     copperplate_memberships = [sort(c.unit_indices) for c ∈ copperplate]
     @test [1, 2, 4] in copperplate_memberships # network-free PCM may cluster identical cross-bus units
+
+    @test _clustered_pcm_up_ramp_limit(2, 0, 10.0, 30.0) == 20.0
+    @test _clustered_pcm_up_ramp_limit(0, 2, 10.0, 30.0) == 60.0
+    @test _clustered_pcm_down_ramp_limit(2, 0, 10.0, 30.0) == 20.0
+    @test _clustered_pcm_down_ramp_limit(0, 2, 10.0, 30.0) == 60.0
 end

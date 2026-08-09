@@ -1,3 +1,3 @@
 function check_var_exists(model::Model, name::String)
-    return any(v -> v == name, all_variables(model))
+    return haskey(JuMP.object_dictionary(model), Symbol(name))
 end

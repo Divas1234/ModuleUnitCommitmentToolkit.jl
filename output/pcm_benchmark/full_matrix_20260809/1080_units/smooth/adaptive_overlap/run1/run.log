@@ -1,0 +1,533 @@
+Set parameter Username
+Set parameter LicenseID to value 2754784
+Academic license - for non-commercial use only - expires 2026-12-14
+Set parameter Username
+Set parameter LicenseID to value 2754784
+Academic license - for non-commercial use only - expires 2026-12-14
+Set parameter MIPGap to value 0.015
+Set parameter MIPGap to value 0.015
+Gurobi Optimizer version 13.0.2 build v13.0.2rc1 (mac64[arm] - Darwin 27.0.0 26A5388g)
+
+CPU model: Apple M3
+Thread count: 8 physical cores, 8 logical processors, using up to 8 threads
+
+Non-default parameters:
+MIPGap  0.015
+
+Optimize a model with 699940 rows, 432216 columns and 44315236 nonzeros (Min)
+Model fingerprint: 0x0762c9f5
+Model has 315036 linear objective coefficients
+Variable types: 315432 continuous, 116784 integer (116784 binary)
+Coefficient statistics:
+  Matrix range     [3e-02, 4e+02]
+  Objective range  [1e+00, 1e+15]
+  Bounds range     [0e+00, 0e+00]
+  RHS range        [1e-01, 1e+03]
+Warning: Model contains large objective coefficients
+         Consider reformulating model or setting NumericFocus parameter
+         to avoid numerical issues.
+
+Presolve removed 296616 rows and 162976 columns (presolve time = 5s)...
+Presolve removed 306675 rows and 166970 columns
+Presolve time: 9.60s
+Presolved: 393265 rows, 265246 columns, 1824266 nonzeros
+Variable types: 155686 continuous, 109560 integer (109560 binary)
+Deterministic concurrent LP optimizer: primal simplex, dual simplex, and barrier
+Showing barrier log only...
+
+Root barrier log...
+
+Ordering time: 0.14s
+
+Barrier statistics:
+ AA' NZ     : 1.685e+06
+ Factor NZ  : 3.018e+06 (roughly 100 MB of memory)
+ Factor Ops : 1.210e+08 (less than 1 second per iteration)
+ Threads    : 5
+
+                  Objective                Residual
+Iter       Primal          Dual         Primal    Dual     Compl     Time
+   0   2.14125105e+19 -4.00424588e+14  8.82e+02 1.60e+16  1.23e+11    12s
+   1   4.25794815e+19 -5.61912632e+14  8.82e+02 1.60e+16  1.24e+11    12s
+   2   2.29310154e+19 -8.81593776e+14  8.82e+02 1.60e+16  1.26e+11    12s
+   3   1.39473958e+19 -1.67152080e+15  8.82e+02 1.60e+16  1.32e+11    12s
+   4   5.89292198e+20 -4.21400293e+14  6.25e+04 1.60e+16  8.61e+12    12s
+   5   1.15240881e+21 -8.28144446e+15  6.25e+04 1.60e+16  1.02e+13    12s
+   6   6.21471538e+20 -3.18621704e+17  6.25e+04 1.60e+16  8.59e+13    12s
+   7   5.13405340e+20 -2.77071847e+18  6.24e+04 1.54e+16  5.64e+14    12s
+   8   4.32339556e+20 -1.98676754e+19  5.25e+04 1.07e+16  3.70e+15    12s
+   9   3.34555424e+20 -1.72448865e+19  4.31e+04 6.16e+15  3.14e+15    12s
+  10   3.99418858e+19 -1.47136090e+19  5.16e+03 1.86e+14  4.73e+14    12s
+  11   5.22583873e+18 -7.14193205e+18  2.91e+02 7.23e+12  6.42e+13    12s
+  12   9.98537445e+17 -3.20641005e+17  3.26e+01 2.93e+11  6.27e+12    12s
+  13   2.18017048e+17 -1.93229995e+16  6.93e+00 1.13e+10  1.13e+12    12s
+  14   9.08018176e+16 -1.12182696e+16  2.88e+00 5.36e+09  4.86e+11    12s
+  15   2.18365569e+16 -4.26824397e+15  6.91e-01 1.38e+09  1.24e+11    12s
+  16   1.20596148e+13 -2.80169633e+14  3.84e-04 7.39e+07  1.37e+09    12s
+  17   2.80302475e+10 -8.50790042e+11  8.88e-07 2.24e+05  4.11e+06    12s
+  18   1.03095808e+10 -3.73751252e+11  3.25e-07 9.80e+04  1.80e+06    12s
+  19   9.52212035e+09 -1.16163753e+11  3.00e-07 2.96e+04  5.88e+05    12s
+  20   7.20679942e+09 -7.20786440e+10  2.26e-07 1.78e+04  3.71e+05    12s
+  21   5.66279009e+09 -6.32795631e+10  1.78e-07 1.56e+04  3.23e+05    12s
+  22   4.37426404e+09 -4.48697802e+10  1.37e-07 1.10e+04  2.30e+05    12s
+  23   2.75649786e+09 -3.62293316e+10  8.52e-08 8.89e+03  1.82e+05    12s
+  24   1.65975317e+09 -1.87934861e+10  5.05e-08 4.61e+03  9.57e+04    12s
+  25   1.08029050e+09 -1.23137537e+10  3.20e-08 2.90e+03  6.27e+04    12s
+  26   6.73655104e+08 -9.20763468e+09  1.91e-08 2.14e+03  4.62e+04    13s
+  27   5.19749487e+08 -7.16661297e+09  1.43e-08 1.63e+03  3.60e+04    13s
+  28   4.21792312e+08 -1.65236829e+09  1.12e-08 2.88e+02  9.71e+03    13s
+  29   1.87726319e+08 -8.37775235e+08  3.73e-09 1.44e+02  4.80e+03    13s
+  30   1.33945637e+08 -4.30655304e+08  2.02e-09 7.60e+01  2.64e+03    13s
+  31   1.07379966e+08 -1.96054421e+08  1.19e-09 4.00e+01  1.42e+03    13s
+  32   8.99833746e+07 -1.45724045e+08  6.64e-10 3.20e+01  1.10e+03    13s
+  33   8.61261976e+07 -4.05730511e+07  5.63e-10 1.80e+01  5.93e+02    13s
+  34   7.82696162e+07 -9.10828944e+06  3.65e-10 1.20e+01  4.09e+02    13s
+  35   7.57698187e+07  1.31105725e+07  3.12e-10 8.00e+00  2.94e+02    13s
+  36   7.04504337e+07  2.87799468e+07  2.19e-10 8.00e+00  1.95e+02    13s
+  37   6.13839509e+07  4.00058532e+07  7.13e-11 4.00e+00  1.00e+02    13s
+  38   5.86666155e+07  4.60872904e+07  4.30e-11 4.00e+00  5.89e+01    13s
+  39   5.72467959e+07  4.73532106e+07  3.08e-11 4.00e+00  4.63e+01    13s
+  40   5.58412342e+07  4.91341040e+07  2.02e-11 4.00e+00  3.14e+01    13s
+  41   5.48589205e+07  5.05723961e+07  1.29e-11 2.00e+00  2.01e+01    13s
+  42   5.42925230e+07  5.12532416e+07  9.01e-12 2.00e+00  1.42e+01    13s
+  43   5.39901475e+07  5.22194172e+07  7.03e-12 4.00e+00  8.30e+00    13s
+  44   5.37119110e+07  5.23471162e+07  5.27e-12 2.00e+00  6.40e+00    13s
+  45   5.35356576e+07  5.25184426e+07  4.16e-12 2.00e+00  4.77e+00    13s
+  46   5.32338761e+07  5.25960018e+07  2.29e-12 2.00e+00  2.99e+00    13s
+  47   5.31793671e+07  5.27027253e+07  1.94e-12 2.00e+00  2.23e+00    13s
+  48   5.30948216e+07  5.27548037e+07  1.44e-12 2.00e+00  1.59e+00    13s
+  49   5.30397290e+07  5.27954113e+07  1.22e-12 2.00e+00  1.15e+00    13s
+  50   5.29614838e+07  5.28136573e+07  1.19e-12 2.00e+00  6.93e-01    13s
+  51   5.29113322e+07  5.28290334e+07  1.80e-12 2.00e+00  3.86e-01    13s
+  52   5.28968839e+07  5.28374292e+07  2.17e-12 2.00e+00  2.79e-01    13s
+  53   5.28822862e+07  5.28468351e+07  3.72e-12 2.00e+00  1.66e-01    14s
+  54   5.28689126e+07  5.28503608e+07  2.25e-12 2.00e+00  8.70e-02    14s
+  55   5.28631463e+07  5.28521266e+07  2.54e-12 2.00e+00  5.17e-02    14s
+  56   5.28557028e+07  5.28528569e+07  1.66e-11 2.00e+00  1.34e-02    14s
+  57   5.28540877e+07  5.28531900e+07  3.67e-11 2.00e+00  4.21e-03    14s
+  58   5.28536402e+07  5.28533689e+07  1.52e-11 2.00e+00  1.27e-03    14s
+  59   5.28535369e+07  5.28533746e+07  4.03e-09 2.00e+00  7.63e-04    14s
+  60   5.28534733e+07  5.28533760e+07  2.28e-09 2.00e+00  4.57e-04    14s
+  61   5.28534382e+07  5.28533769e+07  1.42e-09 2.00e+00  2.88e-04    14s
+  62   5.28534170e+07  5.28533780e+07  9.08e-10 2.00e+00  1.84e-04    14s
+  63   5.28534147e+07  5.28533782e+07  9.90e-08 2.00e+00  1.72e-04    14s
+  64   5.28534024e+07  5.28533785e+07  6.22e-08 2.00e+00  1.13e-04    14s
+  65   5.28533955e+07  5.28533787e+07  4.10e-08 2.00e+00  7.94e-05    14s
+  66   5.28533949e+07  5.28533788e+07  3.93e-08 2.00e+00  7.59e-05    14s
+  67   5.28533928e+07  5.28533790e+07  3.37e-08 2.00e+00  6.50e-05    14s
+  68   5.28533829e+07  5.28533791e+07  1.53e-08 2.00e+00  1.79e-05    14s
+  69   5.28533825e+07  5.28533791e+07  4.66e-08 2.00e+00  1.61e-05    14s
+  70   5.28533823e+07  5.28533792e+07  4.22e-08 2.00e+00  1.44e-05    14s
+  71   5.28533821e+07  5.28533792e+07  3.98e-08 2.00e+00  1.36e-05    14s
+  72   5.28533817e+07  5.28533794e+07  3.39e-08 2.00e+00  1.14e-05    14s
+  73   5.28533810e+07  5.28533794e+07  2.15e-08 2.00e+00  7.86e-06    15s
+  74   5.28533804e+07  5.28533795e+07  1.10e-08 2.00e+00  4.70e-06    15s
+  75   5.28533803e+07  5.28533795e+07  9.35e-09 2.00e+00  4.12e-06    15s
+  76   5.28533801e+07  5.28533796e+07  6.09e-09 2.00e+00  2.91e-06    15s
+
+Barrier solved model in 76 iterations and 14.78 seconds (28.84 work units)
+Optimal objective 5.28533801e+07
+
+
+Root crossover log...
+
+   65908 DPushes remaining with DInf 2.5581917e-02                15s
+   15683 DPushes remaining with DInf 0.0000000e+00                15s
+       0 DPushes remaining with DInf 0.0000000e+00                15s
+
+     405 PPushes remaining with PInf 0.0000000e+00                15s
+       0 PPushes remaining with PInf 0.0000000e+00                15s
+
+  Push phase complete: Pinf 0.0000000e+00, Dinf 8.4981951e+05     15s
+
+
+Root simplex log...
+
+Iteration    Objective       Primal Inf.    Dual Inf.      Time
+   44555    5.2853380e+07   0.000000e+00   8.498195e+05     15s
+   45600    5.2853380e+07   0.000000e+00   0.000000e+00     15s
+Crossover time: 0.70 seconds (0.53 work units)
+Concurrent spin time: 0.66s (can be avoided by choosing Method=3)
+
+Solved with barrier
+
+Use crossover to convert LP symmetric solution to basic solution...
+
+Root crossover log...
+
+    2214 DPushes remaining with DInf 0.0000000e+00                16s
+       0 DPushes remaining with DInf 0.0000000e+00                17s
+
+     516 PPushes remaining with PInf 0.0000000e+00                17s
+       0 PPushes remaining with PInf 0.0000000e+00                17s
+
+  Push phase complete: Pinf 0.0000000e+00, Dinf 5.1526075e-09     17s
+
+
+Root simplex log...
+
+Iteration    Objective       Primal Inf.    Dual Inf.      Time
+   47536    5.2853380e+07   0.000000e+00   0.000000e+00     17s
+Crossover time: 0.45 seconds (0.59 work units)
+
+Root relaxation: objective 5.285338e+07, 47536 iterations, 5.90 seconds (7.61 work units)
+
+    Nodes    |    Current Node    |     Objective Bounds      |     Work
+ Expl Unexpl |  Obj  Depth IntInf | Incumbent    BestBd   Gap | It/Node Time
+
+     0     0 5.2853e+07    0 1968          - 5.2853e+07      -     -   17s
+H    0     0                    2.903751e+16 5.2853e+07   100%     -   17s
+H    0     0                    5.370724e+07 5.2853e+07  1.59%     -   18s
+H    0     0                    5.330295e+07 5.2853e+07  0.84%     -   18s
+
+Explored 1 nodes (47903 simplex iterations) in 18.99 seconds (34.22 work units)
+Thread count was 8 (of 8 available processors)
+
+Solution count 3: 5.33029e+07 5.37072e+07 2.90375e+16 
+
+Optimal solution found (tolerance 1.50e-02)
+Best objective 5.330294529412e+07, best bound 5.285337961718e+07, gap 0.8434%
+
+User-callback calls 3171, time in user-callback 0.00 sec
+Set parameter Username
+Set parameter LicenseID to value 2754784
+Academic license - for non-commercial use only - expires 2026-12-14
+Set parameter MIPGap to value 0.015
+Set parameter MIPGap to value 0.015
+Gurobi Optimizer version 13.0.2 build v13.0.2rc1 (mac64[arm] - Darwin 27.0.0 26A5388g)
+
+CPU model: Apple M3
+Thread count: 8 physical cores, 8 logical processors, using up to 8 threads
+
+Non-default parameters:
+MIPGap  0.015
+
+Optimize a model with 660786 rows, 408204 columns and 41850214 nonzeros (Min)
+Model fingerprint: 0xb6fcf764
+Model has 297534 linear objective coefficients
+Variable types: 297908 continuous, 110296 integer (110296 binary)
+Coefficient statistics:
+  Matrix range     [3e-02, 4e+02]
+  Objective range  [1e+00, 1e+15]
+  Bounds range     [0e+00, 0e+00]
+  RHS range        [1e-01, 1e+03]
+Warning: Model contains large objective coefficients
+         Consider reformulating model or setting NumericFocus parameter
+         to avoid numerical issues.
+
+Presolve removed 283624 rows and 154658 columns (presolve time = 5s)...
+Presolve removed 290052 rows and 158098 columns
+Presolve time: 8.90s
+Presolved: 370734 rows, 250106 columns, 1719138 nonzeros
+Variable types: 147026 continuous, 103080 integer (103080 binary)
+Deterministic concurrent LP optimizer: primal simplex, dual simplex, and barrier
+Showing barrier log only...
+
+Root barrier log...
+
+Ordering time: 0.13s
+
+Barrier statistics:
+ AA' NZ     : 1.642e+06
+ Factor NZ  : 2.906e+06 (roughly 90 MB of memory)
+ Factor Ops : 1.158e+08 (less than 1 second per iteration)
+ Threads    : 5
+
+                  Objective                Residual
+Iter       Primal          Dual         Primal    Dual     Compl     Time
+   0   1.94121445e+19 -3.91994290e+14  8.39e+02 1.60e+16  1.14e+11    11s
+   1   3.89980899e+19 -5.36385636e+14  8.39e+02 1.60e+16  1.15e+11    11s
+   2   2.42928233e+19 -7.76448345e+14  8.39e+02 1.60e+16  1.17e+11    11s
+   3   1.18150847e+19 -1.63127048e+15  8.39e+02 1.60e+16  1.23e+11    11s
+   4   5.56319421e+20 -4.13054448e+14  6.43e+04 1.60e+16  8.61e+12    11s
+   5   1.08733751e+21 -8.53923482e+15  6.43e+04 1.60e+16  1.03e+13    11s
+   6   5.63145112e+20 -2.95211038e+17  6.43e+04 1.60e+16  8.29e+13    11s
+   7   4.65690605e+20 -3.56073784e+18  6.42e+04 1.51e+16  7.43e+14    11s
+   8   3.63125016e+20 -1.17632992e+19  4.68e+04 9.74e+15  2.28e+15    11s
+   9   1.53823240e+20 -1.04771657e+19  2.04e+04 4.29e+14  1.39e+15    11s
+  10   8.35862071e+18 -8.11484939e+18  5.52e+02 9.36e+12  9.31e+13    11s
+  11   1.96676571e+18 -4.51878959e+17  8.41e+01 4.24e+11  1.20e+13    11s
+  12   3.21261822e+17 -1.49651840e+16  1.32e+01 7.47e+09  1.67e+12    11s
+  13   9.63567102e+16 -7.95361317e+15  3.97e+00 2.61e+09  5.18e+11    11s
+  14   1.42963311e+16 -3.17289845e+15  5.85e-01 6.42e+08  8.59e+10    12s
+  15   6.49353480e+13 -3.46998713e+14  2.07e-03 5.23e+07  2.00e+09    12s
+  16   7.07386347e+10 -7.61181591e+11  2.26e-06 1.15e+05  4.04e+06    12s
+  17   9.77944657e+09 -1.95483863e+11  3.09e-07 2.84e+04  9.97e+05    12s
+  18   9.65820956e+09 -1.90954494e+11  3.05e-07 2.78e+04  9.74e+05    12s
+  19   9.40492203e+09 -1.80438080e+11  2.97e-07 2.62e+04  9.22e+05    12s
+  20   9.16933389e+09 -1.59802261e+11  2.90e-07 2.32e+04  8.20e+05    12s
+  21   8.13785882e+09 -1.48865104e+11  2.57e-07 2.16e+04  7.62e+05    12s
+  22   7.66983027e+09 -1.41969098e+11  2.42e-07 2.06e+04  7.27e+05    12s
+  23   7.25071316e+09 -1.08887664e+11  2.29e-07 1.57e+04  5.64e+05    12s
+  24   6.56818653e+09 -7.81931647e+10  2.07e-07 1.12e+04  4.12e+05    12s
+  25   6.18156498e+09 -6.66036672e+10  1.95e-07 9.56e+03  3.53e+05    12s
+  26   5.89704039e+09 -5.89160693e+10  1.85e-07 8.44e+03  3.15e+05    12s
+  27   5.22360627e+09 -4.06301495e+10  1.64e-07 5.80e+03  2.23e+05    12s
+  28   4.13485307e+09 -3.02867624e+10  1.29e-07 4.32e+03  1.67e+05    12s
+  29   2.44662046e+09 -2.61084872e+10  7.53e-08 3.72e+03  1.39e+05    12s
+  30   1.98047561e+09 -1.87943266e+10  6.05e-08 2.68e+03  1.01e+05    12s
+  31   1.45884429e+09 -1.22447855e+10  4.39e-08 1.75e+03  6.66e+04    12s
+  32   1.09326588e+09 -1.03609968e+10  3.23e-08 1.47e+03  5.56e+04    12s
+  33   6.75325540e+08 -6.53423270e+09  1.91e-08 9.08e+02  3.50e+04    12s
+  34   3.66189367e+08 -4.57359188e+09  9.43e-09 6.10e+02  2.40e+04    12s
+  35   2.23681041e+08 -2.57029453e+09  4.96e-09 3.32e+02  1.36e+04    12s
+  36   7.82883836e+07 -1.09174301e+09  6.95e-10 1.40e+02  5.68e+03    12s
+  37   6.94469351e+07 -5.91080504e+08  1.93e-10 7.60e+01  3.21e+03    12s
+  38   6.78992118e+07 -2.59085589e+08  1.17e-10 3.60e+01  1.59e+03    12s
+  39   6.64143775e+07 -1.67090743e+08  6.95e-11 2.60e+01  1.13e+03    12s
+  40   6.52930718e+07 -8.31787797e+07  4.64e-11 1.60e+01  7.21e+02    12s
+  41   6.43601046e+07 -5.16105758e+07  3.58e-11 1.20e+01  5.63e+02    12s
+  42   6.32877332e+07 -4.41356556e+07  2.73e-11 1.20e+01  5.22e+02    12s
+  43   6.18657828e+07 -2.81617188e+07  1.86e-11 1.00e+01  4.37e+02    12s
+  44   6.02234528e+07  1.28819198e+07  1.18e-11 6.00e+00  2.30e+02    12s
+  45   5.64970095e+07  2.70962269e+07  3.32e-12 6.00e+00  1.43e+02    13s
+  46   5.42542439e+07  3.54839486e+07  2.49e-12 4.00e+00  9.12e+01    13s
+  47   5.27436181e+07  4.06598586e+07  3.23e-12 4.00e+00  5.87e+01    13s
+  48   5.19456540e+07  4.35937598e+07  2.32e-12 4.00e+00  4.06e+01    13s
+  49   5.10672455e+07  4.53438913e+07  1.62e-12 2.00e+00  2.78e+01    13s
+  50   5.03610917e+07  4.66721909e+07  1.27e-12 4.00e+00  1.79e+01    13s
+  51   4.99994388e+07  4.75676626e+07  1.00e-12 4.00e+00  1.18e+01    13s
+  52   4.97781202e+07  4.81525448e+07  6.85e-13 2.00e+00  7.90e+00    13s
+  53   4.96072035e+07  4.85010344e+07  6.43e-13 4.00e+00  5.38e+00    13s
+  54   4.95276501e+07  4.86379884e+07  5.71e-13 4.00e+00  4.32e+00    13s
+  55   4.94463903e+07  4.86874122e+07  4.45e-13 4.00e+00  3.69e+00    13s
+  56   4.94228039e+07  4.87420772e+07  4.09e-13 2.00e+00  3.31e+00    13s
+  57   4.93424978e+07  4.88498201e+07  2.76e-13 4.00e+00  2.39e+00    13s
+  58   4.92541045e+07  4.89520943e+07  3.91e-13 2.00e+00  1.47e+00    13s
+  59   4.92104606e+07  4.90521990e+07  3.59e-13 2.00e+00  7.69e-01    13s
+  60   4.91912114e+07  4.90830373e+07  1.02e-12 2.00e+00  5.26e-01    13s
+  61   4.91878162e+07  4.90851463e+07  1.01e-12 2.00e+00  4.99e-01    14s
+  62   4.91772025e+07  4.91018798e+07  6.96e-13 2.00e+00  3.66e-01    14s
+  63   4.91655612e+07  4.91151923e+07  1.50e-12 2.00e+00  2.45e-01    14s
+  64   4.91584580e+07  4.91260075e+07  1.49e-12 2.00e+00  1.58e-01    14s
+  65   4.91520003e+07  4.91347914e+07  2.25e-12 2.00e+00  8.37e-02    14s
+  66   4.91503140e+07  4.91405595e+07  3.30e-12 2.00e+00  4.74e-02    14s
+  67   4.91482213e+07  4.91426656e+07  1.59e-11 2.00e+00  2.70e-02    14s
+  68   4.91471490e+07  4.91441429e+07  1.15e-11 2.00e+00  1.46e-02    14s
+  69   4.91468616e+07  4.91446514e+07  1.07e-11 2.00e+00  1.08e-02    14s
+  70   4.91459599e+07  4.91449627e+07  2.90e-11 2.00e+00  4.85e-03    14s
+  71   4.91455419e+07  4.91454918e+07  2.43e-10 2.00e+00  2.44e-04    14s
+  72   4.91455158e+07  4.91455054e+07  1.35e-10 2.00e+00  5.09e-05    14s
+  73   4.91455158e+07  4.91455054e+07  1.92e-08 2.00e+00  5.08e-05    14s
+  74   4.91455122e+07  4.91455073e+07  1.38e-08 2.00e+00  2.44e-05    15s
+  75   4.91455110e+07  4.91455088e+07  6.44e-09 2.00e+00  1.10e-05    15s
+  76   4.91455110e+07  4.91455089e+07  1.06e-08 2.00e+00  1.08e-05    15s
+  77   4.91455110e+07  4.91455089e+07  1.34e-08 2.00e+00  1.06e-05    15s
+  78   4.91455110e+07  4.91455089e+07  1.31e-08 2.00e+00  1.03e-05    15s
+
+Barrier solved model in 78 iterations and 14.86 seconds (27.23 work units)
+Optimal objective 4.91455110e+07
+
+
+Root crossover log...
+
+   63904 DPushes remaining with DInf 0.0000000e+00                15s
+   22780 DPushes remaining with DInf 0.0000000e+00                15s
+       0 DPushes remaining with DInf 0.0000000e+00                15s
+
+    1381 PPushes remaining with PInf 6.3421437e-05                15s
+       0 PPushes remaining with PInf 0.0000000e+00                15s
+
+  Push phase complete: Pinf 0.0000000e+00, Dinf 9.8412395e+05     15s
+
+
+Root simplex log...
+
+Iteration    Objective       Primal Inf.    Dual Inf.      Time
+   44768    4.9145510e+07   0.000000e+00   9.841239e+05     15s
+   45988    4.9145510e+07   0.000000e+00   0.000000e+00     16s
+Crossover time: 0.67 seconds (0.54 work units)
+Concurrent spin time: 0.44s
+
+Solved with dual simplex
+
+Root simplex log...
+
+Iteration    Objective       Primal Inf.    Dual Inf.      Time
+   51445    4.9145510e+07   0.000000e+00   0.000000e+00     16s
+
+Use crossover to convert LP symmetric solution to basic solution...
+
+Root crossover log...
+
+   26233 DPushes remaining with DInf 0.0000000e+00                16s
+       0 DPushes remaining with DInf 0.0000000e+00                16s
+
+     523 PPushes remaining with PInf 0.0000000e+00                16s
+       0 PPushes remaining with PInf 0.0000000e+00                16s
+
+  Push phase complete: Pinf 0.0000000e+00, Dinf 4.1158967e-09     16s
+
+
+Root simplex log...
+
+Iteration    Objective       Primal Inf.    Dual Inf.      Time
+   56372    4.9145510e+07   0.000000e+00   0.000000e+00     16s
+Crossover time: 0.48 seconds (0.65 work units)
+
+Root relaxation: objective 4.914551e+07, 56372 iterations, 6.41 seconds (6.65 work units)
+
+    Nodes    |    Current Node    |     Objective Bounds      |     Work
+ Expl Unexpl |  Obj  Depth IntInf | Incumbent    BestBd   Gap | It/Node Time
+
+     0     0 4.9146e+07    0 2172          - 4.9146e+07      -     -   17s
+H    0     0                    4.987012e+07 4.9146e+07  1.45%     -   17s
+
+Explored 1 nodes (56621 simplex iterations) in 17.77 seconds (30.28 work units)
+Thread count was 8 (of 8 available processors)
+
+Solution count 1: 4.98701e+07 
+
+Optimal solution found (tolerance 1.50e-02)
+Best objective 4.987012038442e+07, best bound 4.914550990040e+07, gap 1.4530%
+
+User-callback calls 2862, time in user-callback 0.00 sec
+	→ The renewable energy scenarios module loaded.
+	→ Input data module loaded and ready for UC modeling.
+	→ The [JULIA] environment_config has been loaded.
+	→ Constraint modules included and functions exported.
+	→ Objective functions module loaded and exported.
+	→ Utility functions module loaded and exported.
+	→ all boundary conditions validated.
+
+================================================================================
+EXPORTING ADAPTIVE OVERLAP WINDOW STATISTICS
+================================================================================
+
+Reading project input data...
+Step-1: Loading packages and functions...
+  Reading data from: /Users/yuanyiping/Documents/GitHub/02 Ongoing/module_unitcommitment/data/data_118_clustered_pcm_10x.xlsx
+  Reading frequency parameters...
+  Reading energy storage system data...
+  Reading generator, network, and load data...
+  Reading data center data...
+  Reading hydroelectric power data...
+  ✓ All data successfully loaded from Excel file.
+Step-2: imput data are loaded
+  PCM load profile: smooth
+  PCM random seed: 20260809
+  Training case signature: 3ca83ca2ad495182415bd5587c76e2e8968d260f06661098c70e4909d92d2732
+  Training cache: HIT (4 samples; no retraining required)
+  Load curve horizon used for statistics: 168 h
+  Wind scenario horizon used for statistics: 168 h
+  Steady-state overlap mode: ml_prediction
+  Calibration / training time excluded from subproblem solve times: 0.00 s
+Step-3: Creating dispatching model (Refactored & Modularized)
+	 Variables defined.
+DEBUG set_objective_economic!: NT=36, NG=1080, ND=91, NW=20, NS=1, K=3, size(refcost)=(1080,), size(eachslope)=(3, 1080)
+objective_function
+	MILP economic objective set
+subject to.
+	 constraints: 1) minimum shutup/shutdown time limits			 done
+	 constraints: 2) binary variable logic					 done
+	 constraints: 3) shutup/shutdown cost					 done
+	 constraints: 4) loadcurtailments and spoliedwinds			 done
+	 constraints: 5) generatos power limits					 done
+	 constraints: 6) system reserves limits					 done
+	 constraints: 7) power balance constraints				 done
+	 constraints: 8) ramp-up/ramp-down constraints				 done
+	 constraints: 9) piece linearization constraints			 done
+	 constraints: 10) transmissionline limits skipped (is_NetWorkCon != 1 or Gsdf missing or NL=0)
+	 constraints: 11) stroges system constraints skipped (NC=0 or variables not defined)
+	 constraints: 12) data centra constraints skipped (is_ConsiderDataCentra != 1)
+	 constraints: 13) frequency control constraints skipped (is_ConsiderFrequencyControl != 1)
+	 constraints: 14) hydro power limits					 done
++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+Step-4: starting Gurobi solver
+Step-5: Gurobi solver finished
++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+assert_is_solved_and_feasible(scuc) = nothing
+solution_summary(scuc) = solution_summary(; result = 1, verbose = false)
+├ solver_name          : Gurobi
+├ Termination
+│ ├ termination_status : OPTIMAL
+│ ├ result_count       : 3
+│ ├ raw_status         : Model was solved to optimality (subject to tolerances), and an optimal solution is available.
+│ └ objective_bound    : 5.28534e+07
+├ Solution (result = 1)
+│ ├ primal_status        : FEASIBLE_POINT
+│ ├ dual_status          : NO_SOLUTION
+│ ├ objective_value      : 5.33029e+07
+│ └ relative_gap         : 8.43416e-03
+└ Work counters
+  ├ solve_time (sec)   : 1.90251e+01
+  ├ simplex_iterations : 47903
+  ├ barrier_iterations : 76
+  └ node_count         : 1
+
+
+Termination Status: OPTIMAL
+Acceptable solution found (Status: OPTIMAL).
+Step-6: record datas
+PART1: [unit-commitment] calculation result has been saved to: /Users/yuanyiping/Documents/GitHub/02 Ongoing/module_unitcommitment/output/pcm_benchmark/full_matrix_20260809/1080_units/smooth/adaptive_overlap/run1/output/details_schedule_results/pcm_simulation_results/intervels_[1]/res_schedule_commitment_result.txt
+  Training cache hit: /Users/yuanyiping/Documents/GitHub/02 Ongoing/module_unitcommitment/output/pcm_training_cache/overlap_training_cache/3ca83ca2ad495182415bd5587c76e2e8968d260f06661098c70e4909d92d2732/offline_training_dataset.csv
+Training Decision Tree on: /Users/yuanyiping/Documents/GitHub/02 Ongoing/module_unitcommitment/output/pcm_training_cache/overlap_training_cache/3ca83ca2ad495182415bd5587c76e2e8968d260f06661098c70e4909d92d2732/offline_training_dataset.csv
+  Warning: Failed to train decision tree from dataset (ErrorException("Training dataset has only 4 valid rows; at least 5 are required.")). Falling back to default heuristic.
+[AdaptiveOverlap][RampCriterion] start=1 no ramp/uncertainty event in lookahead; T_ramp=0
+[AdaptiveOverlap] interval=1 start=1 mode=ml_prediction
+  boundary criterion: U_norm=0.4072, T_dwell_rem=0.0, X_delta_norm=0.0139, X_switch_ratio=0.037
+  steady-state criterion: L_norm=0.4861, sigma_load=169.839, R_wind_max=0.0734, T_ml=10
+  physical criteria: T_unit=0, ramp_event=false, T_ramp=0
+  final criterion: max(T_ml=10, T_unit=0, T_ramp=0)=10; clamped_final=10, solved_horizon=34
+Step-3: Creating dispatching model (Refactored & Modularized)
+	 Variables defined.
+DEBUG set_objective_economic!: NT=34, NG=1080, ND=91, NW=20, NS=1, K=3, size(refcost)=(1080,), size(eachslope)=(3, 1080)
+objective_function
+	MILP economic objective set
+subject to.
+	 constraints: 1) minimum shutup/shutdown time limits			 done
+	 constraints: 2) binary variable logic					 done
+	 constraints: 3) shutup/shutdown cost					 done
+	 constraints: 4) loadcurtailments and spoliedwinds			 done
+	 constraints: 5) generatos power limits					 done
+	 constraints: 6) system reserves limits					 done
+	 constraints: 7) power balance constraints				 done
+	 constraints: 8) ramp-up/ramp-down constraints				 done
+	 constraints: 9) piece linearization constraints			 done
+	 constraints: 10) transmissionline limits skipped (is_NetWorkCon != 1 or Gsdf missing or NL=0)
+	 constraints: 11) stroges system constraints skipped (NC=0 or variables not defined)
+	 constraints: 12) data centra constraints skipped (is_ConsiderDataCentra != 1)
+	 constraints: 13) frequency control constraints skipped (is_ConsiderFrequencyControl != 1)
+	 constraints: 14) hydro power limits					 done
++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+Step-4: starting Gurobi solver
+Step-5: Gurobi solver finished
++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+assert_is_solved_and_feasible(scuc) = nothing
+solution_summary(scuc) = solution_summary(; result = 1, verbose = false)
+├ solver_name          : Gurobi
+├ Termination
+│ ├ termination_status : OPTIMAL
+│ ├ result_count       : 1
+│ ├ raw_status         : Model was solved to optimality (subject to tolerances), and an optimal solution is available.
+│ └ objective_bound    : 4.91455e+07
+├ Solution (result = 1)
+│ ├ primal_status        : FEASIBLE_POINT
+│ ├ dual_status          : NO_SOLUTION
+│ ├ objective_value      : 4.98701e+07
+│ └ relative_gap         : 1.45300e-02
+└ Work counters
+  ├ solve_time (sec)   : 1.78016e+01
+  ├ simplex_iterations : 56621
+  ├ barrier_iterations : 0
+  └ node_count         : 1
+
+
+Termination Status: OPTIMAL
+Acceptable solution found (Status: OPTIMAL).
+Step-6: record datas
+PART1: [unit-commitment] calculation result has been saved to: /Users/yuanyiping/Documents/GitHub/02 Ongoing/module_unitcommitment/output/pcm_benchmark/full_matrix_20260809/1080_units/smooth/adaptive_overlap/run1/output/details_schedule_results/pcm_simulation_results/intervels_[1]/res_schedule_commitment_result.txt
+PART1: [unit-commitment] calculation result has been saved to: /Users/yuanyiping/Documents/GitHub/02 Ongoing/module_unitcommitment/output/pcm_benchmark/full_matrix_20260809/1080_units/smooth/adaptive_overlap/run1/output/details_schedule_results/pcm_simulation_results/intervels_[1]/res_schedule_commitment_result.txt
+  ✓ Per-interval overlap statistics exported to CSV: /Users/yuanyiping/Documents/GitHub/02 Ongoing/module_unitcommitment/output/pcm_benchmark/full_matrix_20260809/1080_units/smooth/adaptive_overlap/run1/output/details_schedule_results/adaptive_pcm_simulation_results/overlap_window_statistics.csv
+  ✓ Human-readable summary report exported to TXT: /Users/yuanyiping/Documents/GitHub/02 Ongoing/module_unitcommitment/output/pcm_benchmark/full_matrix_20260809/1080_units/smooth/adaptive_overlap/run1/output/details_schedule_results/adaptive_pcm_simulation_results/overlap_window_summary.txt
+================================================================================
+
+
+Per-Interval Overlap Summary Dataframe:
+1×13 DataFrame
+ Row │ Interval_ID  Start_Hour  Execution_Window_h  Steady_State_Overlap_h  Unit_Dwell_Overlap_h  Ramp_Event_Detected  Ramp_Overlap_h  Raw_Max_Overlap_h  Limiting_Factor  Final_Adaptive_Overlap_h  Total_Solved_Horizon_h  Subproblem_SolveTime_sec  Optimization_Status
+     │ Int64        Int64       Int64               Int64                   Int64                 Bool                 Int64           Int64              String           Int64                     Int64                   Float64                   String
+─────┼─────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+   1 │           1           1                  24                      10                     0                false               0                 10  steady                                 10                      34                   96.2167  OK

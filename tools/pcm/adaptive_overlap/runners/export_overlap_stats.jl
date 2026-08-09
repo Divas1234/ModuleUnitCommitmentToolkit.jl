@@ -53,8 +53,9 @@ function export_overlap_statistics()
     global config_param, units, lines, loads, stroges, NB, NG, NL, ND, NT, NC, ND2, NH, DataCentras, hydros, scenarios_prob, winds
     config_param, units, lines, loads, stroges, NB, NG, NL, ND, NT, NC, ND2, NH, DataCentras, hydros = forminputdata(
         DataGen, DataBranch, DataLoad, LoadCurve, GenCost, UnitsFreqParam, StrogeData, Datacentra_Data, HydroData, HydroCurve)
-    apply_pcm_load_profile!(loads, get(ENV, "PCM_LOAD_PROFILE", "baseline"))
-    println("  PCM load profile: $(get(ENV, "PCM_LOAD_PROFILE", "baseline"))")
+    load_profile = lowercase(get(ENV, "PCM_LOAD_PROFILE", "baseline"))
+    apply_pcm_load_profile!(loads, load_profile)
+    println("  PCM load profile: $load_profile")
     config_param.is_NetWorkCon = parse(Int, get(ENV, "PCM_NETWORK_CONSTRAINTS", "0"))
     random_seed = parse(Int, get(ENV, "PCM_RANDOM_SEED", "20260809"))
     Random.seed!(random_seed)
@@ -70,6 +71,7 @@ function export_overlap_statistics()
     epsilon = 0.10
     min_overlap = 2
     max_overlap = 12
+    training_mode = lowercase(strip(get(ENV, "PCM_TRAINING_MODE", "sweep")))
     slow_threshold = 4.0
     # regression/neural_network 会执行离线标定；ml_prediction 使用已保存数据集
     # 或内置回退树，不把标定过程混入在线滚动求解。
@@ -82,6 +84,29 @@ function export_overlap_statistics()
         winds.scenarios_curve = repeat_time_series_to_horizon(winds.scenarios_curve, required_horizon)
     end
     scenarios_prob = 1.0
+
+    cache_root = joinpath(ADAPTIVE_PCM_PROJECT_ROOT, "output", "pcm_training_cache")
+    solver_name = try
+        pcm_solver_name()
+    catch
+        get(ENV, "PCM_SOLVER", "unknown")
+    end
+    training_metadata = AdaptiveOverlapTrainingCache.build_case_metadata(
+        input_file = abspath(get(ENV, "MODULE_UC_DATA_FILE", "")), load_profile = load_profile, solver = solver_name,
+        network_constraints = string(config_param.is_NetWorkCon), window_hours = exec_NT, intervals = N_sets,
+        min_overlap = min_overlap, max_overlap = max_overlap,
+        dimensions = Dict("NB" => NB, "NG" => NG, "ND" => ND, "NL" => NL, "NW" => NW, "NH" => NH),
+        load_curve = loads.load_curve, wind_curve = winds.scenarios_curve, training_mode = training_mode)
+    cached_training_data = AdaptiveOverlapTrainingCache.load_cached_dataset(cache_root;
+        expected_metadata = training_metadata, min_samples = 4)
+    training_signature = get(training_metadata, "signature", "")
+    println("  Training case signature: $training_signature")
+    if cached_training_data === nothing
+        println("  Training cache: MISS (a compatible case dataset will be needed before ML overlap prediction)")
+    else
+        println("  Training cache: HIT ($(nrow(cached_training_data)) samples; no retraining required)")
+    end
+    OverlapPredictor.configure_training_cache!(cache_root, training_metadata)
 
     println("  Load curve horizon used for statistics: $(size(loads.load_curve, 2)) h")
     println("  Wind scenario horizon used for statistics: $(size(winds.scenarios_curve, 2)) h")

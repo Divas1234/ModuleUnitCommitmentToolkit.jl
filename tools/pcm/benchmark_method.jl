@@ -24,11 +24,17 @@ virtual_units=isdefined(@__MODULE__, :units) && isdefined(@__MODULE__, :build_si
 integer_variables=physical_units === missing || virtual_units === missing ? missing :
                   3 * WINDOW_HOURS * (METHOD in ("clustered_pcm", "clustered", "cluster") ? virtual_units : physical_units)
 total_cost=isdefined(@__MODULE__, :total_scheduled_cost) ? sum(total_scheduled_cost[end, :]) : missing
+solver=try
+    isdefined(@__MODULE__, :pcm_solver_name) ? pcm_solver_name() : get(ENV, "PCM_SOLVER", "unknown")
+catch
+    get(ENV, "PCM_SOLVER", "unknown")
+end
 cluster_attempts=isdefined(@__MODULE__, :PCM_CLUSTER_ATTEMPTS) ? PCM_CLUSTER_ATTEMPTS[] : 0
 cluster_successes=isdefined(@__MODULE__, :PCM_CLUSTER_SUCCESSES) ? PCM_CLUSTER_SUCCESSES[] : 0
 cluster_fallbacks=isdefined(@__MODULE__, :PCM_CLUSTER_FALLBACKS) ? PCM_CLUSTER_FALLBACKS[] : 0
 
 row=DataFrame(; timestamp = [string(now())], method = [METHOD], load_profile = [PROFILE], status = [status],
+    solver = [solver],
     wall_time_sec = [timed === nothing ? missing : timed.time], allocated_mb = [timed === nothing ? missing : timed.bytes/1024^2],
     gc_time_sec = [timed === nothing ? missing : timed.gctime], peak_rss_mb = [Sys.maxrss()/1024^2], input_file = [INPUT_FILE],
     window_hours = [WINDOW_HOURS], intervals = [INTERVALS], physical_units = [physical_units], virtual_units = [virtual_units],

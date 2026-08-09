@@ -121,7 +121,7 @@ if !isdefined(@__MODULE__, :_PERIOD_SCUC_MODULES_INCLUDED)
         if clustered_enabled
             PCM_CLUSTER_ATTEMPTS[] += 1
             clustered_result=solve_true_clustered_pcm_window(NT, NB, NG, ND, units, loads, winds, lines, config_param, NL, hydros,
-                NH; optimizer = (HAS_GUROBI ? Gurobi.Optimizer : GLPK.Optimizer))
+                NH; optimizer = pcm_optimizer())
             if clustered_result.feasible
                 PCM_CLUSTER_SUCCESSES[] += 1
                 println("  ✓ True clustered UC completed ($(length(clustered_result.clusters)) virtual units)")
@@ -146,11 +146,11 @@ if !isdefined(@__MODULE__, :_PERIOD_SCUC_MODULES_INCLUDED)
 
         # --- Model Creation ---
         Δp_contingency = define_contingency_size(units, NG)
-        scuc = Model(HAS_GUROBI ? Gurobi.Optimizer : GLPK.Optimizer)
+        scuc = Model(pcm_optimizer())
         if get(task_local_storage(), :is_sampling_running, false)
             set_silent(scuc)
         end
-        if HAS_GUROBI
+        if pcm_solver_name() == "gurobi"
             set_optimizer_attribute(scuc, "MIPGap", 0.015)
         else
             set_optimizer_attribute(scuc, "tm_lim", 4000)
@@ -171,7 +171,7 @@ if !isdefined(@__MODULE__, :_PERIOD_SCUC_MODULES_INCLUDED)
         add_unit_operation_constraints!(scuc, NT, NG, units, onoffinit)
         add_curtailment_constraints!(scuc, NT, ND, NW, NS, loads, winds)
         add_generator_power_constraints!(scuc, NT, NG, NS, units)
-        add_reserve_constraints!(scuc, NT, NG, NC, NS, units, loads, winds, config_param)
+        add_reserve_constraints!(scuc, NT, NG, NC, NS, units, loads, winds, config_param, hydros)
         add_power_balance_constraints!(scuc, NT, NG, ND, NC, NW, NS, loads, winds, config_param, ND2)
         add_ramp_constraints!(scuc, NT, NG, NS, units, onoffinit)
         add_pwl_constraints!(scuc, NT, NG, NS, units)
@@ -197,7 +197,7 @@ if !isdefined(@__MODULE__, :_PERIOD_SCUC_MODULES_INCLUDED)
                 if clustered_enabled
                     cluster_strict=lowercase(get(ENV, "PCM_CLUSTER_STRICT", "false")) in ("1", "true", "yes", "on")
                     clustered=apply_clustered_pcm_optimization!(
-                        results, units, loads, winds, lines, config_param, NB, NL; optimizer = (HAS_GUROBI ? Gurobi.Optimizer : GLPK.Optimizer),
+                        results, units, loads, winds, lines, config_param, NB, NL; optimizer = pcm_optimizer(),
                         strict = cluster_strict, stroges = stroges, data_centers = DataCentras, hydros = hydros)
                     clustered.feasible||error("Clustered PCM disaggregation failed at $(clustered.stage): $(clustered.feedback)")
                     if !clustered.network_feasible && config_param.is_NetWorkCon==1 && NL>0

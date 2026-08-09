@@ -1,0 +1,172 @@
+Set parameter Username
+Set parameter LicenseID to value 2754784
+Academic license - for non-commercial use only - expires 2026-12-14
+Set parameter Username
+Set parameter LicenseID to value 2754784
+Academic license - for non-commercial use only - expires 2026-12-14
+Set parameter MIPGap to value 0.015
+Set parameter MIPGap to value 0.015
+Gurobi Optimizer version 13.0.2 build v13.0.2rc1 (mac64[arm] - Darwin 27.0.0 26A5388g)
+
+CPU model: Apple M3
+Thread count: 8 physical cores, 8 logical processors, using up to 8 threads
+
+Non-default parameters:
+MIPGap  0.015
+
+Optimize a model with 49468 rows, 31536 columns and 438940 nonzeros (Min)
+Model fingerprint: 0xbaa3026e
+Model has 23400 linear objective coefficients
+Variable types: 23664 continuous, 7872 integer (7872 binary)
+Coefficient statistics:
+  Matrix range     [3e-02, 4e+02]
+  Objective range  [1e+00, 1e+15]
+  Bounds range     [0e+00, 0e+00]
+  RHS range        [2e-02, 2e+02]
+Warning: Model contains large objective coefficients
+         Consider reformulating model or setting NumericFocus parameter
+         to avoid numerical issues.
+
+Presolve removed 23916 rows and 13874 columns
+Presolve time: 0.24s
+Presolved: 25552 rows, 17662 columns, 96844 nonzeros
+Variable types: 10594 continuous, 7068 integer (7068 binary)
+Found heuristic solution: objective 1.368490e+07
+
+Root relaxation: objective 1.576914e+06, 9780 iterations, 0.24 seconds (0.52 work units)
+
+    Nodes    |    Current Node    |     Objective Bounds      |     Work
+ Expl Unexpl |  Obj  Depth IntInf | Incumbent    BestBd   Gap | It/Node Time
+
+     0     0 1576913.85    0  433 1.3685e+07 1576913.85  88.5%     -    0s
+H    0     0                    1734625.8092 1576913.85  9.09%     -    0s
+H    0     0                    1623232.1520 1576913.85  2.85%     -    0s
+H    0     0                    1622575.7493 1576913.85  2.81%     -    0s
+H    0     0                    1621186.0277 1576913.85  2.73%     -    0s
+H    0     0                    1595939.6908 1576913.85  1.19%     -    0s
+
+Explored 1 nodes (9809 simplex iterations) in 0.71 seconds (1.69 work units)
+Thread count was 8 (of 8 available processors)
+
+Solution count 6: 1.59594e+06 1.62119e+06 1.62258e+06 ... 1.36849e+07
+
+Optimal solution found (tolerance 1.50e-02)
+Best objective 1.595939690774e+06, best bound 1.576913851859e+06, gap 1.1921%
+
+User-callback calls 313, time in user-callback 0.00 sec
+	→ The renewable energy scenarios module loaded.
+	→ Input data module loaded and ready for UC modeling.
+	→ The [JULIA] environment_config has been loaded.
+	→ Constraint modules included and functions exported.
+	→ Objective functions module loaded and exported.
+	→ Utility functions module loaded and exported.
+	→ all boundary conditions validated.
+  PCM random seed: 20260809
+
+================================================================================
+Step 1: Reading input data from Excel file...
+================================================================================
+Step-1: Loading packages and functions...
+  Reading data from: /Users/yuanyiping/Documents/GitHub/02 Ongoing/module_unitcommitment/data/data_118_clustered_pcm.xlsx
+  Reading frequency parameters...
+  Reading energy storage system data...
+  Reading generator, network, and load data...
+  Reading data center data...
+  Reading hydroelectric power data...
+  ✓ All data successfully loaded from Excel file.
+
+================================================================================
+Step 2: Formatting input data for optimization model...
+================================================================================
+Step-2: imput data are loaded
+  PCM load profile: smooth
+  PCM network constraints: disabled
+
+================================================================================
+Step 3: Generating wind power scenarios...
+================================================================================
+
+================================================================================
+Step 4: Configuring sequential scheduling parameters...
+================================================================================
+  Scheduling intervals: 1
+  Time periods per interval: 24
+  Total planning horizon: 24 periods
+  Clustered UC layer: disabled
+
+================================================================================
+Step 5: Running sequential unit commitment optimization...
+================================================================================
+
+--------------------------------------------------------------------------------
+Processing scheduling interval 1 of 1...
+--------------------------------------------------------------------------------
+  Updating boundary conditions based on previous interval results...
+  Solving unit commitment optimization for interval 1...
+Step-3: Creating dispatching model (Refactored & Modularized)
+	 Variables defined.
+DEBUG set_objective_economic!: NT=24, NG=108, ND=91, NW=20, NS=1, K=3, size(refcost)=(108,), size(eachslope)=(3, 108)
+objective_function
+	MILP economic objective set
+subject to.
+	 constraints: 1) minimum shutup/shutdown time limits			 done
+	 constraints: 2) binary variable logic					 done
+	 constraints: 3) shutup/shutdown cost					 done
+	 constraints: 4) loadcurtailments and spoliedwinds			 done
+	 constraints: 5) generatos power limits					 done
+	 constraints: 6) system reserves limits					 done
+	 constraints: 7) power balance constraints				 done
+	 constraints: 8) ramp-up/ramp-down constraints				 done
+	 constraints: 9) piece linearization constraints			 done
+	 constraints: 10) transmissionline limits skipped (is_NetWorkCon != 1 or Gsdf missing or NL=0)
+	 constraints: 11) stroges system constraints skipped (NC=0 or variables not defined)
+	 constraints: 12) data centra constraints skipped (is_ConsiderDataCentra != 1)
+	 constraints: 13) frequency control constraints skipped (is_ConsiderFrequencyControl != 1)
+	 constraints: 14) hydro power limits					 done
++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+Step-4: starting Gurobi solver
+Step-5: Gurobi solver finished
++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+assert_is_solved_and_feasible(scuc) = nothing
+solution_summary(scuc) = solution_summary(; result = 1, verbose = false)
+├ solver_name          : Gurobi
+├ Termination
+│ ├ termination_status : OPTIMAL
+│ ├ result_count       : 6
+│ ├ raw_status         : Model was solved to optimality (subject to tolerances), and an optimal solution is available.
+│ └ objective_bound    : 1.57691e+06
+├ Solution (result = 1)
+│ ├ primal_status        : FEASIBLE_POINT
+│ ├ dual_status          : NO_SOLUTION
+│ ├ objective_value      : 1.59594e+06
+│ └ relative_gap         : 1.19214e-02
+└ Work counters
+  ├ solve_time (sec)   : 7.14959e-01
+  ├ simplex_iterations : 9809
+  ├ barrier_iterations : 0
+  └ node_count         : 1
+
+
+Termination Status: OPTIMAL
+Acceptable solution found (Status: OPTIMAL).
+Step-6: record datas
+PART1: [unit-commitment] calculation result has been saved to: /Users/yuanyiping/Documents/GitHub/02 Ongoing/module_unitcommitment/output/pcm_benchmark/full_matrix_20260809/108_units/smooth/standard/run1/output/details_schedule_results/pcm_simulation_results/intervels_[1]/res_schedule_commitment_result.txt
+  ✓ Interval 1 optimization completed successfully
+  Saving detailed results for interval 1...
+Extracting results from dictionary...
+details [unit_commtiemnt] scheduling results have been saved!
+  ✓ Interval 1 processing completed
+
+================================================================================
+Step 6: Aggregating total scheduling costs...
+================================================================================
+  ✓ Total scheduling costs saved to: /Users/yuanyiping/Documents/GitHub/02 Ongoing/module_unitcommitment/output/pcm_benchmark/full_matrix_20260809/108_units/smooth/standard/run1/output/details_schedule_results/pcm_simulation_results/summary_scheduling_report//total_scheduled_results.csv
+
+================================================================================
+✓ Sequential Production Cost Minimization completed successfully!
+================================================================================
+  Total intervals processed: 1
+  Results saved to: output/details_schedule_results/pcm_simulation_results/
+================================================================================
+

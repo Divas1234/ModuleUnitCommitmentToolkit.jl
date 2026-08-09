@@ -1,0 +1,2 @@
+timestamp,method,load_profile,status,solver,wall_time_sec,allocated_mb,gc_time_sec,peak_rss_mb,input_file,window_hours,intervals,physical_units,virtual_units,commitment_integer_variables,cluster_attempts,cluster_successes,cluster_fallbacks,total_cost,failure
+2026-08-09T22:56:08.687,adaptive_overlap,baseline,OK,gurobi,48.601376875,65854.17231750488,5.247475003,2279.296875,/Users/yuanyiping/Documents/GitHub/02 Ongoing/module_unitcommitment/data/data_118_clustered_pcm.xlsx,24,3,108,31,7776,0,0,0,,

@@ -1,0 +1,3 @@
+profile,method,solver,runs,successful_runs,success_rate_pct,median_wall_time_sec,median_allocated_mb,median_peak_rss_mb,median_total_cost,startup_shutdown_cost,fuel_cost,reserve_cost,load_shed_cost,wind_curtail_cost,physical_units,equivalent_units,state_reduction_pct,median_integer_variables,cluster_attempts,cluster_successes,cluster_fallbacks,mean_overlap_hours,max_overlap_hours,ramp_event_intervals
+baseline,standard,gurobi,1,1,100.0,34.691686667,9428.180755615234,1668.828125,1.70480562064e6,11678.0,1.69312762064e6,0.0,0.0,0.0,108.0,108.0,0.0,7776.0,0.0,0.0,0.0,0.0,0.0,0.0
+baseline,clustered_pcm,gurobi,1,1,100.0,36.452995666,4090.1371002197266,1509.5625,1.8255790597e6,12900.0,1.81256567955e6,113.38015,0.0,0.0,108.0,31.0,71.2962962962963,2232.0,1.0,1.0,0.0,0.0,0.0,0.0

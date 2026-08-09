@@ -1,0 +1,406 @@
+module PCMThreeMethodBenchmark
+
+using CSV
+using DataFrames
+using Dates
+using DelimitedFiles
+using Printf
+using Statistics
+
+export parse_list, cost_delta_pct, method_equivalent_units, read_cost_vector,
+       normalize_solver, aggregate_metrics, add_relative_metrics, extract_cluster_intermediate,
+       extract_adaptive_intermediate, run_one, write_report, rebuild_outputs, main
+
+const PROJECT_ROOT = normpath(joinpath(@__DIR__, "..", ".."))
+const DEFAULT_METHODS = ["standard", "clustered_pcm", "adaptive_overlap"]
+const DEFAULT_PROFILES = ["baseline", "smooth", "extreme_ramp"]
+
+parse_list(value::AbstractString) = [strip(item) for item ∈ split(value, ',') if !isempty(strip(item))]
+
+function normalize_solver(value::AbstractString)
+    solver = lowercase(strip(value))
+    solver in ("gurobi", "gurobi_direct") && return "gurobi"
+    solver in ("glpk", "glpk_fallback") && return "glpk"
+    solver == "auto" && return "auto"
+    throw(ArgumentError("Unsupported PCM_SOLVER='$value'. Use gurobi, glpk, or auto."))
+end
+
+function cost_delta_pct(base, candidate)
+    (ismissing(base) || ismissing(candidate) || base == 0) && return missing
+    100.0 * (Float64(candidate) / Float64(base) - 1.0)
+end
+
+function method_equivalent_units(method::AbstractString, physical, virtual)
+    lowercase(method) == "clustered_pcm" ? virtual : physical
+end
+
+function read_cost_vector(path::AbstractString)
+    isfile(path) || return nothing
+    matrix = readdlm(path, ',', Float64)
+    isempty(matrix) && return nothing
+    Float64.(vec(matrix[end, :]))
+end
+
+function _safe_float(value)
+    ismissing(value) && return missing
+    value isa Number && return Float64(value)
+    try
+        Float64(value)
+    catch
+        missing
+    end
+end
+
+function _safe_median(values)
+    available = [_safe_float(value) for value ∈ values if !ismissing(_safe_float(value))]
+    isempty(available) ? missing : median(available)
+end
+
+function _safe_mean(values)
+    available = [_safe_float(value) for value ∈ values if !ismissing(_safe_float(value))]
+    isempty(available) ? missing : mean(available)
+end
+
+function _safe_sum(values)
+    available = [_safe_float(value) for value ∈ values if !ismissing(_safe_float(value))]
+    isempty(available) ? 0.0 : sum(available)
+end
+
+_column_or_missing(data::AbstractDataFrame, name::Symbol) = name ∈ propertynames(data) ? data[!, name] : fill(missing, nrow(data))
+
+function aggregate_metrics(raw::DataFrame)
+    rows = NamedTuple[]
+    for group ∈ groupby(raw, [:profile, :method])
+        status = String.(group.status)
+        physical = _safe_median(group.physical_units)
+        equivalent = _safe_median(group.equivalent_units)
+        reduction = ismissing(physical) || ismissing(equivalent) || physical == 0 ? missing :
+                    100.0 * (1.0 - equivalent / physical)
+        solver_value = first(_column_or_missing(group, :solver))
+        push!(rows, (
+            profile = String(first(group.profile)),
+            method = String(first(group.method)),
+            solver = ismissing(solver_value) ? "unknown" : String(solver_value),
+            runs = nrow(group),
+            successful_runs = count(==("OK"), status),
+            success_rate_pct = 100.0 * count(==("OK"), status) / max(nrow(group), 1),
+            median_wall_time_sec = _safe_median(group.wall_time_sec),
+            median_allocated_mb = _safe_median(group.allocated_mb),
+            median_peak_rss_mb = _safe_median(group.peak_rss_mb),
+            median_total_cost = _safe_median(group.total_cost),
+            startup_shutdown_cost = _safe_median(_column_or_missing(group, :startup_shutdown_cost)),
+            fuel_cost = _safe_median(_column_or_missing(group, :fuel_cost)),
+            reserve_cost = _safe_median(_column_or_missing(group, :reserve_cost)),
+            load_shed_cost = _safe_median(_column_or_missing(group, :load_shed_cost)),
+            wind_curtail_cost = _safe_median(_column_or_missing(group, :wind_curtail_cost)),
+            physical_units = physical,
+            equivalent_units = equivalent,
+            state_reduction_pct = reduction,
+            median_integer_variables = _safe_median(group.commitment_integer_variables),
+            cluster_attempts = _safe_sum(group.cluster_attempts),
+            cluster_successes = _safe_sum(group.cluster_successes),
+            cluster_fallbacks = _safe_sum(group.cluster_fallbacks),
+            mean_overlap_hours = _safe_mean(_column_or_missing(group, :average_overlap_hours)),
+            max_overlap_hours = maximum(skipmissing(_column_or_missing(group, :max_overlap_hours)); init = 0.0),
+            ramp_event_intervals = _safe_sum(_column_or_missing(group, :ramp_event_intervals))))
+    end
+    DataFrame(rows)
+end
+
+function add_relative_metrics(summary::DataFrame)
+    result = copy(summary)
+    n = nrow(result)
+    speedup = Vector{Union{Missing, Float64}}(missing, n)
+    wall_delta = Vector{Union{Missing, Float64}}(missing, n)
+    cost_delta = Vector{Union{Missing, Float64}}(missing, n)
+    allocated_delta = Vector{Union{Missing, Float64}}(missing, n)
+    peak_delta = Vector{Union{Missing, Float64}}(missing, n)
+    integer_reduction = Vector{Union{Missing, Float64}}(missing, n)
+
+    for i ∈ 1:n
+        baseline_rows = result[(result.profile .== result.profile[i]) .& (result.method .== "standard"), :]
+        nrow(baseline_rows) == 1 || continue
+        baseline = baseline_rows[1, :]
+        speedup[i] = ismissing(baseline.median_wall_time_sec) || ismissing(result.median_wall_time_sec[i]) ? missing :
+                     baseline.median_wall_time_sec / result.median_wall_time_sec[i]
+        wall_delta[i] = cost_delta_pct(baseline.median_wall_time_sec, result.median_wall_time_sec[i])
+        cost_delta[i] = cost_delta_pct(baseline.median_total_cost, result.median_total_cost[i])
+        allocated_delta[i] = cost_delta_pct(baseline.median_allocated_mb, result.median_allocated_mb[i])
+        peak_delta[i] = cost_delta_pct(baseline.median_peak_rss_mb, result.median_peak_rss_mb[i])
+        integer_reduction[i] = ismissing(baseline.median_integer_variables) || ismissing(result.median_integer_variables[i]) ||
+                               baseline.median_integer_variables == 0 ? missing :
+                               100.0 * (1.0 - result.median_integer_variables[i] / baseline.median_integer_variables)
+    end
+    result.speedup_vs_standard = speedup
+    result.wall_time_delta_pct = wall_delta
+    result.cost_delta_pct = cost_delta
+    result.allocated_delta_pct = allocated_delta
+    result.peak_rss_delta_pct = peak_delta
+    result.integer_reduction_pct = integer_reduction
+    result
+end
+
+function _metric_value(metrics, name, default = missing)
+    name ∈ propertynames(metrics) || return default
+    value = metrics[1, name]
+    ismissing(value) ? default : value
+end
+
+function _overlap_metrics(run_dir, method)
+    method != "adaptive_overlap" && return (windows = "", average = 0.0, maximum = 0.0, ramp_events = 0.0)
+    path = joinpath(run_dir, "output", "details_schedule_results", "adaptive_pcm_simulation_results", "overlap_window_statistics.csv")
+    isfile(path) || return (windows = "", average = missing, maximum = missing, ramp_events = missing)
+    stats = CSV.read(path, DataFrame)
+    windows = isempty(stats) ? "" : join(stats.Final_Adaptive_Overlap_h, ";")
+    average = isempty(stats) ? missing : mean(Float64.(stats.Final_Adaptive_Overlap_h))
+    max_overlap = isempty(stats) ? missing : Float64(Base.maximum(stats.Final_Adaptive_Overlap_h))
+    ramp_events = isempty(stats) ? 0.0 : Float64(count(identity, Bool.(stats.Ramp_Event_Detected)))
+    (windows = windows, average = average, maximum = max_overlap, ramp_events = ramp_events)
+end
+
+function extract_cluster_intermediate(run_dir::AbstractString, profile::AbstractString, run_number::Integer)
+    log_path = joinpath(run_dir, "run.log")
+    isfile(log_path) || return DataFrame()
+    rows = NamedTuple[]
+    interval = 0
+    current = 0
+    for line ∈ split(read(log_path, String), '\n')
+        interval_match = match(r"Processing scheduling interval (\d+) of", line)
+        interval_match !== nothing && (interval = parse(Int, interval_match.captures[1]))
+        cluster_match = match(r"Clustered PCM: (\d+) physical units -> (\d+) equivalent units \(([0-9.]+)% state reduction; (\d+) units", line)
+        if cluster_match !== nothing
+            current = length(rows) + 1
+            push!(rows, (
+                profile = String(profile), method = "clustered_pcm", run = Int(run_number), interval = interval,
+                attempt = count(row -> row.interval == interval, rows) + 1,
+                physical_units = parse(Int, cluster_match.captures[1]),
+                equivalent_units = parse(Int, cluster_match.captures[2]),
+                state_reduction_pct = parse(Float64, cluster_match.captures[3]),
+                non_singleton_units = parse(Int, cluster_match.captures[4]),
+                status = "attempted", failure_stage = "", diagnostic = ""))
+        elseif current > 0 && occursin("True clustered UC completed", line)
+            rows[current] = merge(rows[current], (status = "completed", diagnostic = strip(line)))
+        elseif current > 0 && occursin("True clustered UC failed", line)
+            failure_match = match(r"failed at ([^:]+): (.*?)(?:; falling back|$)", line)
+            stage = failure_match === nothing ? "unknown" : strip(failure_match.captures[1])
+            diagnostic = failure_match === nothing ? strip(line) : strip(failure_match.captures[2])
+            rows[current] = merge(rows[current], (status = "failed", failure_stage = stage, diagnostic = diagnostic))
+        end
+    end
+    DataFrame(rows)
+end
+
+function extract_adaptive_intermediate(run_dir::AbstractString, profile::AbstractString, run_number::Integer)
+    path = joinpath(run_dir, "output", "details_schedule_results", "adaptive_pcm_simulation_results", "overlap_window_statistics.csv")
+    isfile(path) || return DataFrame()
+    stats = CSV.read(path, DataFrame)
+    isempty(stats) && return DataFrame()
+    insertcols!(stats, 1, :profile => fill(String(profile), nrow(stats)),
+        :method => fill("adaptive_overlap", nrow(stats)), :run => fill(Int(run_number), nrow(stats)))
+    stats
+end
+
+function _cost_path(run_dir, method)
+    folder = method == "adaptive_overlap" ? "adaptive_pcm_simulation_results" : "pcm_simulation_results"
+    filename = method == "adaptive_overlap" ? "total_scheduled_results.csv" :
+               joinpath("summary_scheduling_report", "total_scheduled_results.csv")
+    joinpath(run_dir, "output", "details_schedule_results", folder, filename)
+end
+
+function _run_row(metrics, profile, method, run_number, run_dir)
+    physical = _safe_float(_metric_value(metrics, :physical_units))
+    virtual = _safe_float(_metric_value(metrics, :virtual_units))
+    equivalent = method_equivalent_units(method, physical, virtual)
+    cost_vector = read_cost_vector(_cost_path(run_dir, method))
+    metric_cost = _safe_float(_metric_value(metrics, :total_cost))
+    total_cost = cost_vector === nothing ? metric_cost : sum(cost_vector)
+    components = cost_vector === nothing ? fill(missing, 7) : cost_vector
+    overlap = _overlap_metrics(run_dir, method)
+    (
+        profile = profile,
+        method = method,
+        run = run_number,
+        solver = String(_metric_value(metrics, :solver, "unknown")),
+        status = String(_metric_value(metrics, :status, "FAILED")),
+        wall_time_sec = _safe_float(_metric_value(metrics, :wall_time_sec)),
+        allocated_mb = _safe_float(_metric_value(metrics, :allocated_mb)),
+        peak_rss_mb = _safe_float(_metric_value(metrics, :peak_rss_mb)),
+        total_cost = total_cost,
+        startup_shutdown_cost = components[1] + components[2],
+        fuel_cost = components[3],
+        reserve_cost = components[4] + components[5],
+        load_shed_cost = components[6],
+        wind_curtail_cost = components[7],
+        physical_units = physical,
+        equivalent_units = equivalent,
+        state_reduction_pct = ismissing(physical) || ismissing(equivalent) || physical == 0 ? missing :
+                              100.0 * (1.0 - equivalent / physical),
+        commitment_integer_variables = _safe_float(_metric_value(metrics, :commitment_integer_variables)),
+        cluster_attempts = _safe_float(_metric_value(metrics, :cluster_attempts, 0.0)),
+        cluster_successes = _safe_float(_metric_value(metrics, :cluster_successes, 0.0)),
+        cluster_fallbacks = _safe_float(_metric_value(metrics, :cluster_fallbacks, 0.0)),
+        overlap_windows_h = overlap.windows,
+        average_overlap_hours = overlap.average,
+        max_overlap_hours = overlap.maximum,
+        ramp_event_intervals = overlap.ramp_events)
+end
+
+function run_one(; project_root = PROJECT_ROOT, julia_project = joinpath(project_root, "pkg"), output_root, input_file,
+        profile, method, run_number, intervals, window_hours, network_constraints, random_seed, overlap_mode, solver)
+    run_dir = joinpath(output_root, profile, method, "run$(run_number)")
+    mkpath(run_dir)
+    metrics_path = joinpath(run_dir, "metrics.csv")
+    log_path = joinpath(run_dir, "run.log")
+    command = `$(Base.julia_cmd()) --project=$(julia_project) $(joinpath(project_root, "tools", "pcm", "benchmark_method.jl"))`
+    environment = Dict(
+        "PCM_METHOD" => method,
+        "PCM_INPUT_XLSX" => input_file,
+        "MODULE_UC_DATA_FILE" => input_file,
+        "PCM_LOAD_PROFILE" => profile,
+        "PCM_INTERVALS" => string(intervals),
+        "PCM_WINDOW_HOURS" => string(window_hours),
+        "PCM_NETWORK_CONSTRAINTS" => network_constraints,
+        "PCM_RANDOM_SEED" => random_seed,
+        "PCM_OVERLAP_MODE" => overlap_mode,
+        "PCM_SOLVER" => solver,
+        "PCM_BENCHMARK_METRICS" => metrics_path)
+
+    println("[$(now())] profile=$(profile) method=$(method) run=$(run_number)")
+    cd(run_dir) do
+        open(log_path, "w") do io
+            process = run(pipeline(addenv(command, environment), stdout = io, stderr = io); wait = false)
+            wait(process)
+        end
+    end
+    metrics = isfile(metrics_path) ? CSV.read(metrics_path, DataFrame) : DataFrame(status = ["FAILED"])
+    _run_row(metrics, profile, method, run_number, run_dir)
+end
+
+function _markdown_table(io, data::DataFrame, columns)
+    println(io, "| ", join(string.(columns), " | "), " |")
+    println(io, "| ", join(fill("---", length(columns)), " | "), " |")
+    for row ∈ eachrow(data)
+        values = [ismissing(row[column]) ? "NA" : string(row[column]) for column ∈ columns]
+        println(io, "| ", join(values, " | "), " |")
+    end
+end
+
+function write_report(path, raw, summary, comparison; input_file, profiles, methods, intervals, window_hours,
+        cluster_intermediate = DataFrame(), adaptive_intermediate = DataFrame())
+    open(path, "w") do io
+        println(io, "# PCM 三方案统一计算结果与性能对比\n")
+        println(io, "- 输入：`$(input_file)`")
+        println(io, "- 场景：$(join(profiles, ", "))")
+        println(io, "- 方法：$(join(methods, ", "))")
+        println(io, "- 滚动范围：$(intervals) × $(window_hours) h")
+        println(io, "- 成本、耗时和内存均按重复实验中位数汇总；失败样本不参与成本中位数。\n")
+        println(io, "## 汇总指标\n")
+        _markdown_table(io, comparison, [:profile, :method, :solver, :successful_runs, :success_rate_pct, :median_wall_time_sec,
+            :median_peak_rss_mb, :median_total_cost, :speedup_vs_standard, :cost_delta_pct, :cluster_fallbacks,
+            :mean_overlap_hours, :ramp_event_intervals])
+        println(io, "\n## 规模与降维\n")
+        _markdown_table(io, comparison, [:profile, :method, :physical_units, :equivalent_units, :state_reduction_pct,
+            :median_integer_variables, :integer_reduction_pct, :median_allocated_mb, :allocated_delta_pct])
+        if nrow(cluster_intermediate) > 0
+            println(io, "\n## clustered_pcm 关键中间过程\n")
+            println(io, "该表保留每次聚类主问题尝试及其后验解群校核结果；`failed` 表示该聚合解未通过物理单机路径校核，随后进入安全回退。\n")
+            _markdown_table(io, cluster_intermediate, [:profile, :run, :interval, :attempt, :physical_units,
+                :equivalent_units, :state_reduction_pct, :status, :failure_stage, :diagnostic])
+        end
+        if nrow(adaptive_intermediate) > 0
+            println(io, "\n## adaptive_overlap 关键中间过程\n")
+            println(io, "该表保留每个滚动区间的交叠窗决策来源、最终交叠长度和实际求解时域。\n")
+            _markdown_table(io, adaptive_intermediate, [:profile, :run, :Interval_ID, :Steady_State_Overlap_h,
+                :Unit_Dwell_Overlap_h, :Ramp_Event_Detected, :Ramp_Overlap_h, :Limiting_Factor,
+                :Final_Adaptive_Overlap_h, :Total_Solved_Horizon_h, :Subproblem_SolveTime_sec, :Optimization_Status])
+        end
+        println(io, "\n## 解释口径\n")
+        println(io, "- `speedup_vs_standard > 1` 表示比 standard 更快。")
+        println(io, "- `cost_delta_pct` 为相对 standard 的总调度成本变化；缺少可靠成本文件时记为 `NA`。")
+        println(io, "- 聚类回退次数和 adaptive 的交叠窗来自各自运行日志/统计文件，不用缺失值替代。")
+        println(io, "\n原始逐次计量见 `metrics.csv`，聚合结果见 `summary.csv`，相对基线结果见 `comparison.csv`。\n")
+    end
+end
+
+"""Rebuild summaries and intermediate-process artifacts from a completed run directory."""
+function rebuild_outputs(output_root::AbstractString; input_file = "unknown", profiles = nothing, methods = nothing,
+        intervals = 3, window_hours = 24)
+    metrics_path = joinpath(output_root, "metrics.csv")
+    isfile(metrics_path) || error("Benchmark metrics not found: $metrics_path")
+    raw = CSV.read(metrics_path, DataFrame)
+    selected_profiles = profiles === nothing ? String.(unique(raw.profile)) : String.(profiles)
+    selected_methods = methods === nothing ? String.(unique(raw.method)) : String.(methods)
+    cluster_frames = DataFrame[]
+    adaptive_frames = DataFrame[]
+    for row ∈ eachrow(raw)
+        run_dir = joinpath(output_root, String(row.profile), String(row.method), "run$(row.run)")
+        row.method == "clustered_pcm" && push!(cluster_frames, extract_cluster_intermediate(run_dir, row.profile, row.run))
+        row.method == "adaptive_overlap" && push!(adaptive_frames, extract_adaptive_intermediate(run_dir, row.profile, row.run))
+    end
+    summary = aggregate_metrics(raw)
+    comparison = add_relative_metrics(summary)
+    cluster_intermediate = isempty(cluster_frames) ? DataFrame() : vcat(cluster_frames...; cols = :union)
+    adaptive_intermediate = isempty(adaptive_frames) ? DataFrame() : vcat(adaptive_frames...; cols = :union)
+    CSV.write(joinpath(output_root, "summary.csv"), summary)
+    CSV.write(joinpath(output_root, "comparison.csv"), comparison)
+    nrow(cluster_intermediate) > 0 && CSV.write(joinpath(output_root, "cluster_intermediate.csv"), cluster_intermediate)
+    nrow(adaptive_intermediate) > 0 && CSV.write(joinpath(output_root, "adaptive_intermediate.csv"), adaptive_intermediate)
+    write_report(joinpath(output_root, "comparison.md"), raw, summary, comparison;
+        input_file, profiles = selected_profiles, methods = selected_methods, intervals, window_hours,
+        cluster_intermediate, adaptive_intermediate)
+    output_root
+end
+
+function main(; project_root = PROJECT_ROOT,
+        julia_project = get(ENV, "PCM_JULIA_PROJECT", joinpath(project_root, "pkg")),
+        input_file = abspath(get(ENV, "PCM_INPUT_XLSX", joinpath(project_root, "data", "data_118_clustered_pcm.xlsx"))),
+        output_root = abspath(get(ENV, "PCM_THREE_METHOD_OUTPUT", joinpath(project_root, "output", "pcm_benchmark", "three_method_$(Dates.format(now(), "yyyymmdd_HHMMSS"))"))),
+        profiles = parse_list(get(ENV, "PCM_BENCHMARK_PROFILES", join(DEFAULT_PROFILES, ","))),
+        methods = parse_list(get(ENV, "PCM_BENCHMARK_METHODS", join(DEFAULT_METHODS, ","))),
+        runs = parse(Int, get(ENV, "PCM_BENCHMARK_RUNS", "1")),
+        intervals = parse(Int, get(ENV, "PCM_INTERVALS", "3")),
+        window_hours = parse(Int, get(ENV, "PCM_WINDOW_HOURS", "24")),
+        network_constraints = get(ENV, "PCM_NETWORK_CONSTRAINTS", "0"),
+        random_seed = get(ENV, "PCM_RANDOM_SEED", "20260809"),
+        overlap_mode = get(ENV, "PCM_OVERLAP_MODE", "ml_prediction"),
+        solver = normalize_solver(get(ENV, "PCM_SOLVER", "gurobi")))
+    isfile(input_file) || error("PCM input file not found: $input_file")
+    isempty(profiles) && error("PCM_BENCHMARK_PROFILES is empty")
+    isempty(methods) && error("PCM_BENCHMARK_METHODS is empty")
+    runs >= 1 || error("PCM_BENCHMARK_RUNS must be positive")
+    mkpath(output_root)
+
+    rows = NamedTuple[]
+    cluster_process_frames = DataFrame[]
+    adaptive_process_frames = DataFrame[]
+    for profile ∈ profiles, method ∈ methods, run_number ∈ 1:runs
+        lowercase(method) ∈ DEFAULT_METHODS || error("Unsupported PCM method: $method")
+        run_row = run_one(; project_root, julia_project, output_root, input_file = abspath(input_file), profile,
+            method = lowercase(method), run_number, intervals, window_hours, network_constraints, random_seed, overlap_mode, solver)
+        push!(rows, run_row)
+        run_dir = joinpath(output_root, String(profile), lowercase(method), "run$(run_number)")
+        lowercase(method) == "clustered_pcm" && push!(cluster_process_frames, extract_cluster_intermediate(run_dir, profile, run_number))
+        lowercase(method) == "adaptive_overlap" && push!(adaptive_process_frames, extract_adaptive_intermediate(run_dir, profile, run_number))
+    end
+    raw = DataFrame(rows)
+    summary = aggregate_metrics(raw)
+    comparison = add_relative_metrics(summary)
+    cluster_intermediate = isempty(cluster_process_frames) ? DataFrame() : vcat(cluster_process_frames...; cols = :union)
+    adaptive_intermediate = isempty(adaptive_process_frames) ? DataFrame() : vcat(adaptive_process_frames...; cols = :union)
+    CSV.write(joinpath(output_root, "metrics.csv"), raw)
+    CSV.write(joinpath(output_root, "summary.csv"), summary)
+    CSV.write(joinpath(output_root, "comparison.csv"), comparison)
+    nrow(cluster_intermediate) > 0 && CSV.write(joinpath(output_root, "cluster_intermediate.csv"), cluster_intermediate)
+    nrow(adaptive_intermediate) > 0 && CSV.write(joinpath(output_root, "adaptive_intermediate.csv"), adaptive_intermediate)
+    write_report(joinpath(output_root, "comparison.md"), raw, summary, comparison;
+        input_file, profiles, methods, intervals, window_hours, cluster_intermediate, adaptive_intermediate)
+    println("PCM three-method benchmark complete: $output_root")
+    println(comparison)
+    output_root
+end
+
+end
+
+if abspath(PROGRAM_FILE) == abspath(@__FILE__)
+    PCMThreeMethodBenchmark.main()
+end

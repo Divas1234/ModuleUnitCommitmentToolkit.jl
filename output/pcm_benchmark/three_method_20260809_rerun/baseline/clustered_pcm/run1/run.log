@@ -1,0 +1,351 @@
+Set parameter Username
+Set parameter LicenseID to value 2754784
+Academic license - for non-commercial use only - expires 2026-12-14
+Set parameter Username
+Set parameter LicenseID to value 2754784
+Academic license - for non-commercial use only - expires 2026-12-14
+Set parameter Username
+Set parameter LicenseID to value 2754784
+Academic license - for non-commercial use only - expires 2026-12-14
+Set parameter Username
+Set parameter LicenseID to value 2754784
+Academic license - for non-commercial use only - expires 2026-12-14
+Set parameter Username
+Set parameter LicenseID to value 2754784
+Academic license - for non-commercial use only - expires 2026-12-14
+Set parameter Username
+Set parameter LicenseID to value 2754784
+Academic license - for non-commercial use only - expires 2026-12-14
+Set parameter MIPGap to value 0.015
+Set parameter MIPGap to value 0.015
+Gurobi Optimizer version 13.0.2 build v13.0.2rc1 (mac64[arm] - Darwin 27.0.0 26A5388g)
+
+CPU model: Apple M3
+Thread count: 8 physical cores, 8 logical processors, using up to 8 threads
+
+Non-default parameters:
+MIPGap  0.015
+
+Optimize a model with 49544 rows, 31536 columns and 439480 nonzeros (Min)
+Model fingerprint: 0x10b83938
+Model has 23400 linear objective coefficients
+Variable types: 23664 continuous, 7872 integer (7872 binary)
+Coefficient statistics:
+  Matrix range     [3e-02, 4e+02]
+  Objective range  [1e+00, 1e+15]
+  Bounds range     [0e+00, 0e+00]
+  RHS range        [2e-02, 4e+02]
+Warning: Model contains large objective coefficients
+         Consider reformulating model or setting NumericFocus parameter
+         to avoid numerical issues.
+
+Presolve removed 23853 rows and 13818 columns
+Presolve time: 0.24s
+Presolved: 25691 rows, 17718 columns, 97333 nonzeros
+Variable types: 10608 continuous, 7110 integer (7110 binary)
+Found heuristic solution: objective 7858866.8131
+Found heuristic solution: objective 7597137.6057
+Found heuristic solution: objective 6990032.4435
+
+Root relaxation: objective 2.451327e+06, 13155 iterations, 0.29 seconds (0.58 work units)
+
+    Nodes    |    Current Node    |     Objective Bounds      |     Work
+ Expl Unexpl |  Obj  Depth IntInf | Incumbent    BestBd   Gap | It/Node Time
+
+     0     0 2451326.82    0  425 6990032.44 2451326.82  64.9%     -    0s
+H    0     0                    2606369.7860 2451326.82  5.95%     -    0s
+H    0     0                    2598275.8600 2451326.82  5.66%     -    0s
+H    0     0                    2545753.8048 2451326.82  3.71%     -    0s
+H    0     0                    2543754.4107 2451326.82  3.63%     -    0s
+     0     0 2543754.41    0  443 2543754.41 2543754.41  0.00%     -    1s
+
+Cutting planes:
+  Learned: 11
+  Gomory: 17
+  Cover: 4
+  Implied bound: 73
+  MIR: 38
+  Flow cover: 20
+  Network: 5
+  RLT: 92
+  Relax-and-lift: 8
+
+Explored 1 nodes (14400 simplex iterations) in 1.17 seconds (2.30 work units)
+Thread count was 8 (of 8 available processors)
+
+Solution count 7: 2.54375e+06 2.54575e+06 2.59828e+06 ... 7.85887e+06
+
+Optimal solution found (tolerance 1.50e-02)
+Best objective 2.543754410664e+06, best bound 2.543754410664e+06, gap 0.0000%
+
+User-callback calls 471, time in user-callback 0.00 sec
+Set parameter Username
+Set parameter LicenseID to value 2754784
+Academic license - for non-commercial use only - expires 2026-12-14
+Set parameter Username
+Set parameter LicenseID to value 2754784
+Academic license - for non-commercial use only - expires 2026-12-14
+Set parameter MIPGap to value 0.015
+Set parameter MIPGap to value 0.015
+Gurobi Optimizer version 13.0.2 build v13.0.2rc1 (mac64[arm] - Darwin 27.0.0 26A5388g)
+
+CPU model: Apple M3
+Thread count: 8 physical cores, 8 logical processors, using up to 8 threads
+
+Non-default parameters:
+MIPGap  0.015
+
+Optimize a model with 49539 rows, 31536 columns and 439453 nonzeros (Min)
+Model fingerprint: 0x89df0c1b
+Model has 23400 linear objective coefficients
+Variable types: 23664 continuous, 7872 integer (7872 binary)
+Coefficient statistics:
+  Matrix range     [3e-02, 4e+02]
+  Objective range  [1e+00, 1e+15]
+  Bounds range     [0e+00, 0e+00]
+  RHS range        [1e-02, 4e+02]
+Warning: Model contains large objective coefficients
+         Consider reformulating model or setting NumericFocus parameter
+         to avoid numerical issues.
+
+Presolve removed 23931 rows and 13848 columns
+Presolve time: 0.24s
+Presolved: 25608 rows, 17688 columns, 96894 nonzeros
+Variable types: 10608 continuous, 7080 integer (7080 binary)
+Found heuristic solution: objective 1.249645e+07
+Found heuristic solution: objective 1.041786e+07
+Found heuristic solution: objective 6221159.0189
+
+Root relaxation: objective 9.773076e+05, 9882 iterations, 0.22 seconds (0.54 work units)
+
+    Nodes    |    Current Node    |     Objective Bounds      |     Work
+ Expl Unexpl |  Obj  Depth IntInf | Incumbent    BestBd   Gap | It/Node Time
+
+     0     0 977307.625    0  202 6221159.02 977307.625  84.3%     -    0s
+H    0     0                    1060677.0122 977307.625  7.86%     -    0s
+H    0     0                    1015023.6968 977307.625  3.72%     -    0s
+H    0     0                    1015023.6964 977307.625  3.72%     -    0s
+H    0     0                    1009263.2850 977307.625  3.17%     -    0s
+H    0     0                    1003571.3063 977307.625  2.62%     -    0s
+H    0     0                    1003571.3049 977307.625  2.62%     -    0s
+H    0     0                    997477.44690 977307.625  2.02%     -    0s
+H    0     0                    997477.44529 977307.625  2.02%     -    0s
+H    0     0                    997042.22883 977307.625  1.98%     -    0s
+H    0     0                    996676.29418 977307.625  1.94%     -    0s
+H    0     0                    996676.29127 977307.625  1.94%     -    0s
+
+Cutting planes:
+  Learned: 5
+  Gomory: 25
+  Cover: 4
+  Implied bound: 54
+  MIR: 30
+  Flow cover: 9
+  Network: 6
+  RLT: 47
+  Relax-and-lift: 10
+  BQP: 5
+
+Explored 1 nodes (9924 simplex iterations) in 1.12 seconds (2.27 work units)
+Thread count was 8 (of 8 available processors)
+
+Solution count 10: 996676 996676 997042 ... 1.04179e+07
+
+Optimal solution found (tolerance 1.50e-02)
+Best objective 9.966762912521e+05, best bound 9.966762912521e+05, gap 0.0000%
+
+User-callback calls 529, time in user-callback 0.00 sec
+	→ The renewable energy scenarios module loaded.
+	→ Input data module loaded and ready for UC modeling.
+	→ The [JULIA] environment_config has been loaded.
+	→ Constraint modules included and functions exported.
+	→ Objective functions module loaded and exported.
+	→ Utility functions module loaded and exported.
+	→ all boundary conditions validated.
+  PCM random seed: 20260809
+
+================================================================================
+Step 1: Reading input data from Excel file...
+================================================================================
+Step-1: Loading packages and functions...
+  Reading data from: /Users/yuanyiping/Documents/GitHub/02 Ongoing/module_unitcommitment/data/data_118_clustered_pcm.xlsx
+  Reading frequency parameters...
+  Reading energy storage system data...
+  Reading generator, network, and load data...
+  Reading data center data...
+  Reading hydroelectric power data...
+  ✓ All data successfully loaded from Excel file.
+
+================================================================================
+Step 2: Formatting input data for optimization model...
+================================================================================
+Step-2: imput data are loaded
+  PCM load profile: baseline
+  PCM network constraints: disabled
+
+================================================================================
+Step 3: Generating wind power scenarios...
+================================================================================
+
+================================================================================
+Step 4: Configuring sequential scheduling parameters...
+================================================================================
+  Scheduling intervals: 3
+  Time periods per interval: 24
+  Total planning horizon: 72 periods
+  Clustered UC layer: enabled
+
+================================================================================
+Step 5: Running sequential unit commitment optimization...
+================================================================================
+
+--------------------------------------------------------------------------------
+Processing scheduling interval 1 of 3...
+--------------------------------------------------------------------------------
+  Updating boundary conditions based on previous interval results...
+  Solving unit commitment optimization for interval 1...
+Step-3: Creating dispatching model (Refactored & Modularized)
+  Clustered PCM: 108 physical units -> 31 equivalent units (71.3% state reduction; 108 units in non-singleton clusters)
+  ✓ True clustered UC completed (31 virtual units)
+  ✓ Interval 1 optimization completed successfully
+  Saving detailed results for interval 1...
+Extracting results from dictionary...
+details [unit_commtiemnt] scheduling results have been saved!
+  ✓ Interval 1 processing completed
+
+--------------------------------------------------------------------------------
+Processing scheduling interval 2 of 3...
+--------------------------------------------------------------------------------
+  Updating boundary conditions based on previous interval results...
+  Solving unit commitment optimization for interval 2...
+Step-3: Creating dispatching model (Refactored & Modularized)
+  Clustered PCM: 108 physical units -> 39 equivalent units (63.9% state reduction; 94 units in non-singleton clusters)
+  ⚠ True clustered UC failed at residence_flow: insufficient mature off pool; falling back to full unit-network SCUC
+	 Variables defined.
+DEBUG set_objective_economic!: NT=24, NG=108, ND=91, NW=20, NS=1, K=3, size(refcost)=(108,), size(eachslope)=(3, 108)
+objective_function
+	MILP economic objective set
+subject to.
+	 constraints: 1) minimum shutup/shutdown time limits			 done
+	 constraints: 2) binary variable logic					 done
+	 constraints: 3) shutup/shutdown cost					 done
+	 constraints: 4) loadcurtailments and spoliedwinds			 done
+	 constraints: 5) generatos power limits					 done
+	 constraints: 6) system reserves limits					 done
+	 constraints: 7) power balance constraints				 done
+	 constraints: 8) ramp-up/ramp-down constraints				 done
+	 constraints: 9) piece linearization constraints			 done
+	 constraints: 10) transmissionline limits skipped (is_NetWorkCon != 1 or Gsdf missing or NL=0)
+	 constraints: 11) stroges system constraints skipped (NC=0 or variables not defined)
+	 constraints: 12) data centra constraints skipped (is_ConsiderDataCentra != 1)
+	 constraints: 13) frequency control constraints skipped (is_ConsiderFrequencyControl != 1)
+	 constraints: 14) hydro power limits					 done
++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+Step-4: starting Gurobi solver
+Step-5: Gurobi solver finished
++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+assert_is_solved_and_feasible(scuc) = nothing
+solution_summary(scuc) = solution_summary(; result = 1, verbose = false)
+├ solver_name          : Gurobi
+├ Termination
+│ ├ termination_status : OPTIMAL
+│ ├ result_count       : 7
+│ ├ raw_status         : Model was solved to optimality (subject to tolerances), and an optimal solution is available.
+│ └ objective_bound    : 2.54375e+06
+├ Solution (result = 1)
+│ ├ primal_status        : FEASIBLE_POINT
+│ ├ dual_status          : NO_SOLUTION
+│ ├ objective_value      : 2.54375e+06
+│ └ relative_gap         : 0.00000e+00
+└ Work counters
+  ├ solve_time (sec)   : 1.17011e+00
+  ├ simplex_iterations : 14400
+  ├ barrier_iterations : 0
+  └ node_count         : 1
+
+
+Termination Status: OPTIMAL
+Acceptable solution found (Status: OPTIMAL).
+Step-6: record datas
+PART1: [unit-commitment] calculation result has been saved to: /Users/yuanyiping/Documents/GitHub/02 Ongoing/module_unitcommitment/output/pcm_benchmark/three_method_20260809_rerun/baseline/clustered_pcm/run1/output/details_schedule_results/pcm_simulation_results/intervels_[2]/res_schedule_commitment_result.txt
+  ✓ Interval 2 optimization completed successfully
+  Saving detailed results for interval 2...
+Extracting results from dictionary...
+details [unit_commtiemnt] scheduling results have been saved!
+  ✓ Interval 2 processing completed
+
+--------------------------------------------------------------------------------
+Processing scheduling interval 3 of 3...
+--------------------------------------------------------------------------------
+  Updating boundary conditions based on previous interval results...
+  Solving unit commitment optimization for interval 3...
+Step-3: Creating dispatching model (Refactored & Modularized)
+  Clustered PCM: 108 physical units -> 39 equivalent units (63.9% state reduction; 94 units in non-singleton clusters)
+  ⚠ True clustered UC failed at residence_flow: insufficient mature on pool; falling back to full unit-network SCUC
+	 Variables defined.
+DEBUG set_objective_economic!: NT=24, NG=108, ND=91, NW=20, NS=1, K=3, size(refcost)=(108,), size(eachslope)=(3, 108)
+objective_function
+	MILP economic objective set
+subject to.
+	 constraints: 1) minimum shutup/shutdown time limits			 done
+	 constraints: 2) binary variable logic					 done
+	 constraints: 3) shutup/shutdown cost					 done
+	 constraints: 4) loadcurtailments and spoliedwinds			 done
+	 constraints: 5) generatos power limits					 done
+	 constraints: 6) system reserves limits					 done
+	 constraints: 7) power balance constraints				 done
+	 constraints: 8) ramp-up/ramp-down constraints				 done
+	 constraints: 9) piece linearization constraints			 done
+	 constraints: 10) transmissionline limits skipped (is_NetWorkCon != 1 or Gsdf missing or NL=0)
+	 constraints: 11) stroges system constraints skipped (NC=0 or variables not defined)
+	 constraints: 12) data centra constraints skipped (is_ConsiderDataCentra != 1)
+	 constraints: 13) frequency control constraints skipped (is_ConsiderFrequencyControl != 1)
+	 constraints: 14) hydro power limits					 done
++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+Step-4: starting Gurobi solver
+Step-5: Gurobi solver finished
++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+assert_is_solved_and_feasible(scuc) = nothing
+solution_summary(scuc) = solution_summary(; result = 1, verbose = false)
+├ solver_name          : Gurobi
+├ Termination
+│ ├ termination_status : OPTIMAL
+│ ├ result_count       : 10
+│ ├ raw_status         : Model was solved to optimality (subject to tolerances), and an optimal solution is available.
+│ └ objective_bound    : 9.96676e+05
+├ Solution (result = 1)
+│ ├ primal_status        : FEASIBLE_POINT
+│ ├ dual_status          : NO_SOLUTION
+│ ├ objective_value      : 9.96676e+05
+│ └ relative_gap         : 0.00000e+00
+└ Work counters
+  ├ solve_time (sec)   : 1.12245e+00
+  ├ simplex_iterations : 9924
+  ├ barrier_iterations : 0
+  └ node_count         : 1
+
+
+Termination Status: OPTIMAL
+Acceptable solution found (Status: OPTIMAL).
+Step-6: record datas
+PART1: [unit-commitment] calculation result has been saved to: /Users/yuanyiping/Documents/GitHub/02 Ongoing/module_unitcommitment/output/pcm_benchmark/three_method_20260809_rerun/baseline/clustered_pcm/run1/output/details_schedule_results/pcm_simulation_results/intervels_[3]/res_schedule_commitment_result.txt
+  ✓ Interval 3 optimization completed successfully
+  Saving detailed results for interval 3...
+Extracting results from dictionary...
+details [unit_commtiemnt] scheduling results have been saved!
+  ✓ Interval 3 processing completed
+
+================================================================================
+Step 6: Aggregating total scheduling costs...
+================================================================================
+  ✓ Total scheduling costs saved to: /Users/yuanyiping/Documents/GitHub/02 Ongoing/module_unitcommitment/output/pcm_benchmark/three_method_20260809_rerun/baseline/clustered_pcm/run1/output/details_schedule_results/pcm_simulation_results/summary_scheduling_report//total_scheduled_results.csv
+
+================================================================================
+✓ Sequential Production Cost Minimization completed successfully!
+================================================================================
+  Total intervals processed: 3
+  Results saved to: output/details_schedule_results/pcm_simulation_results/
+================================================================================
+

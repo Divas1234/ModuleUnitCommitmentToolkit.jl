@@ -1,0 +1,82 @@
+Set parameter Username
+Set parameter LicenseID to value 2754784
+Academic license - for non-commercial use only - expires 2026-12-14
+Set parameter Username
+Set parameter LicenseID to value 2754784
+Academic license - for non-commercial use only - expires 2026-12-14
+Set parameter Username
+Set parameter LicenseID to value 2754784
+Academic license - for non-commercial use only - expires 2026-12-14
+Set parameter Username
+Set parameter LicenseID to value 2754784
+Academic license - for non-commercial use only - expires 2026-12-14
+	→ The renewable energy scenarios module loaded.
+	→ Input data module loaded and ready for UC modeling.
+	→ The [JULIA] environment_config has been loaded.
+	→ Constraint modules included and functions exported.
+	→ Objective functions module loaded and exported.
+	→ Utility functions module loaded and exported.
+	→ all boundary conditions validated.
+  PCM random seed: 20260809
+
+================================================================================
+Step 1: Reading input data from Excel file...
+================================================================================
+Step-1: Loading packages and functions...
+  Reading data from: /Users/yuanyiping/Documents/GitHub/02 Ongoing/module_unitcommitment/data/data_118_clustered_pcm_10x.xlsx
+  Reading frequency parameters...
+  Reading energy storage system data...
+  Reading generator, network, and load data...
+  Reading data center data...
+  Reading hydroelectric power data...
+  ✓ All data successfully loaded from Excel file.
+
+================================================================================
+Step 2: Formatting input data for optimization model...
+================================================================================
+Step-2: imput data are loaded
+  PCM load profile: smooth
+  PCM network constraints: disabled
+
+================================================================================
+Step 3: Generating wind power scenarios...
+================================================================================
+
+================================================================================
+Step 4: Configuring sequential scheduling parameters...
+================================================================================
+  Scheduling intervals: 1
+  Time periods per interval: 24
+  Total planning horizon: 24 periods
+  Clustered UC layer: enabled
+
+================================================================================
+Step 5: Running sequential unit commitment optimization...
+================================================================================
+
+--------------------------------------------------------------------------------
+Processing scheduling interval 1 of 1...
+--------------------------------------------------------------------------------
+  Updating boundary conditions based on previous interval results...
+  Solving unit commitment optimization for interval 1...
+Step-3: Creating dispatching model (Refactored & Modularized)
+  Clustered PCM: 1080 physical units -> 31 equivalent units (97.1% state reduction; 1080 units in non-singleton clusters)
+  ✓ True clustered UC completed (31 virtual units)
+  ✓ Interval 1 optimization completed successfully
+  Saving detailed results for interval 1...
+Extracting results from dictionary...
+details [unit_commtiemnt] scheduling results have been saved!
+  ✓ Interval 1 processing completed
+
+================================================================================
+Step 6: Aggregating total scheduling costs...
+================================================================================
+  ✓ Total scheduling costs saved to: /Users/yuanyiping/Documents/GitHub/02 Ongoing/module_unitcommitment/output/pcm_benchmark/full_matrix_20260809/1080_units/smooth/clustered_pcm/run1/output/details_schedule_results/pcm_simulation_results/summary_scheduling_report//total_scheduled_results.csv
+
+================================================================================
+✓ Sequential Production Cost Minimization completed successfully!
+================================================================================
+  Total intervals processed: 1
+  Results saved to: output/details_schedule_results/pcm_simulation_results/
+================================================================================
+

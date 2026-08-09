@@ -6,4 +6,5 @@
 # - network_dispatch.jl：固定启停状态后的物理单机网络再调度。
 include("adapter.jl")
 include("network_dispatch.jl")
+include("costs.jl")
 include("master.jl")

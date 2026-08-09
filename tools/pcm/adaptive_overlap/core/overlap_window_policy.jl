@@ -1,6 +1,10 @@
 # PCM 自适应交叠窗决策策略
 # 根据边界误差、净负荷爬坡和预测损失确定交叠时长。
 
+function adaptive_overlap_verbose()
+    lowercase(get(ENV, "PCM_OVERLAP_VERBOSE", "1")) in ("1", "true", "yes", "on")
+end
+
 """
     compute_steady_state_overlap_mapping(
     	loads::load, winds::wind, units::unit, start_time::Int64, exec_NT::Int64,
@@ -123,6 +127,7 @@ function compute_adaptive_overlap_window(
             T_overlap = min(T_overlap, remaining_time)
             T_overlap = max(0, T_overlap)
         end
+        adaptive_overlap_verbose() && println("[AdaptiveOverlap] interval=$(interval_scheduling_id) criterion=fixed steady=$(fixed_val) final=$(T_overlap)")
         return T_overlap, false, fixed_val, 0, 0
     end
 
@@ -173,6 +178,14 @@ function compute_adaptive_overlap_window(
         max_possible_overlap = total_time_avail - (start_time + exec_NT - 1)
         T_overlap = max(0, min(T_overlap, max_possible_overlap))
 
+        if adaptive_overlap_verbose()
+            println("[AdaptiveOverlap] interval=$(interval_scheduling_id) start=$(start_time) mode=ml_prediction")
+            println("  boundary criterion: U_norm=$(round(U_norm; digits=4)), T_dwell_rem=$(round(T_dwell_rem; digits=2)), X_delta_norm=$(round(X_delta_norm; digits=4)), X_switch_ratio=$(round(X_switch_ratio; digits=4))")
+            println("  steady-state criterion: L_norm=$(round(L_norm; digits=4)), sigma_load=$(round(sigma_load; digits=4)), R_wind_max=$(round(R_wind_max; digits=4)), T_ml=$(T_o_pred)")
+            println("  physical criteria: T_unit=$(T_unit), ramp_event=$(is_ramp), T_ramp=$(T_ramp)")
+            println("  final criterion: max(T_ml=$(T_o_pred), T_unit=$(T_unit), T_ramp=$(T_ramp))=$(max(T_o_pred, T_unit, T_ramp)); clamped_final=$(T_overlap), solved_horizon=$(exec_NT + T_overlap)")
+        end
+
         return T_overlap, is_ramp, T_o_pred, T_unit, T_ramp
     end
 
@@ -219,6 +232,13 @@ function compute_adaptive_overlap_window(
     total_time_avail = size(loads.load_curve, 2)
     max_possible_overlap = total_time_avail - (start_time + exec_NT - 1)
     T_overlap = max(0, min(T_overlap, max_possible_overlap))
+
+    if adaptive_overlap_verbose()
+        println("[AdaptiveOverlap] interval=$(interval_scheduling_id) start=$(start_time) mode=$(steady_state_mode)")
+        println("  steady-state criterion: T_steady=$(T_steady), epsilon=$(epsilon), alpha=$(alpha)")
+        println("  physical criteria: T_unit=$(T_unit), ramp_event=$(is_ramp), T_ramp=$(T_ramp)")
+        println("  final criterion: max(T_steady=$(T_steady), T_unit=$(T_unit), T_ramp=$(T_ramp))=$(T_overlap_raw); clamped_final=$(T_overlap), solved_horizon=$(exec_NT + T_overlap)")
+    end
 
     return T_overlap, is_ramp, T_steady, T_unit, T_ramp
 end

@@ -72,9 +72,24 @@ end
 
 if HAS_GUROBI
     using Gurobi
-else
-    using GLPK
 end
+using GLPK
+
+"""Resolve the PCM solver explicitly instead of silently changing backends."""
+function pcm_solver_name()
+    requested = lowercase(strip(get(ENV, "PCM_SOLVER", HAS_GUROBI ? "gurobi" : "glpk")))
+    if requested in ("gurobi", "gurobi_direct")
+        HAS_GUROBI || error("PCM_SOLVER=gurobi requested, but Gurobi is unavailable or its license could not be loaded")
+        return "gurobi"
+    elseif requested in ("glpk", "glpk_fallback")
+        return "glpk"
+    elseif requested == "auto"
+        return HAS_GUROBI ? "gurobi" : "glpk"
+    end
+    error("Unsupported PCM_SOLVER='$requested'. Use gurobi, glpk, or auto")
+end
+
+pcm_optimizer() = pcm_solver_name() == "gurobi" ? Gurobi.Optimizer : GLPK.Optimizer
 using Test
 using DelimitedFiles
 using LaTeXStrings

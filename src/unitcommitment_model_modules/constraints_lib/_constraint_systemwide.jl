@@ -50,7 +50,7 @@ function add_reserve_constraints!(scuc::Model, NT, NG, NC, NS, units, loads, win
     # Sum generator reserve + storage discharge (if available)
     sys_upreserve_constr = @constraint(scuc, [s = 1:NS, t = 1:NT, i = 1:NG],
         sum(sr⁺[(1 + (s - 1) * NG):(s * NG), t]) +
-        (ph !== nothing ? sum.(hydros.p_max, hydros.reservoircurve[t, 1] * ones(tem_NH, 1)) - sum(ph[(tem_NH * (s - 1) + 1):(s * tem_NH), t]) : 0.0) +
+        (ph !== nothing ? sum(min.(hydros.p_max, hydros.reservoircurve[t, 1]) - ph[(tem_NH * (s - 1) + 1):(s * tem_NH), t]) : 0.0) +
         (NC > 0 && pc⁻ !== nothing ? sum(pc⁻[(NC * (s - 1) + 1):(s * NC), t]) : 0.0) >= 0.5 * unit_pmax[i, 1] * x[i, t]) # max constraints reformulation
     #  Original formulation used 0.5, keeping it
 
@@ -122,5 +122,5 @@ function add_power_balance_constraints!(scuc::Model, NT, NG, ND, NC, NW, NS, loa
 end
 
 function check_var_exists(model::Model, name::String)
-    return any(v -> v == name, all_variables(model))
+    return haskey(JuMP.object_dictionary(model), Symbol(name))
 end

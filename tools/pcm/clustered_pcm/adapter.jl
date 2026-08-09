@@ -40,7 +40,11 @@ if !isdefined(@__MODULE__, :_PCM_CLUSTERED_ADAPTER_INCLUDED)
              PhysicalUnitData(; id = i, cluster = c.id, bus = Int(units.locatebus[i]), p_min = Float64(units.p_min[i]),
                  p_max = Float64(units.p_max[i]), ramp_up = Float64(units.ramp_up[i]), ramp_down = Float64(units.ramp_down[i]),
                  startup_ramp = Float64(units.shut_up[i]), shutdown_ramp = Float64(units.shut_down[i]), initial_on = units.x_0[i]>0.5,
-                 initial_duration = units.x_0[i]>0.5 ? c.min_up : c.min_down, initial_power = Float64(units.p_0[i]),
+                 initial_duration = begin
+                     on = units.x_0[i]>0.5
+                     minimum = on ? c.min_up : c.min_down
+                     max(0, minimum-round(Int, on ? units.t_0[i] : units.t_1[i]))
+                 end, initial_power = Float64(units.p_0[i]),
                  min_up = c.min_up, min_down = c.min_down, marginal_cost = Float64(units.coffi_b[i]))
          end
          for i ∈ eachindex(units.index)]
@@ -50,7 +54,8 @@ if !isdefined(@__MODULE__, :_PCM_CLUSTERED_ADAPTER_INCLUDED)
         paths=AnonymousUnitPath[]
         for (local_id, i) ∈ enumerate(c.unit_indices)
             on0=units.x_0[i]>0.5
-            age=on0 ? c.min_up : c.min_down
+            minimum=on0 ? c.min_up : c.min_down
+            age=max(0, minimum-round(Int, on0 ? units.t_0[i] : units.t_1[i]))
             ages=Int[]
             states=Symbol[]
             for t ∈ axes(x, 2)
@@ -59,7 +64,7 @@ if !isdefined(@__MODULE__, :_PCM_CLUSTERED_ADAPTER_INCLUDED)
                 push!(states, x[i, t]>0 ? (age>=c.min_up ? :ON_MATURE : Symbol("ON_$(age)")) : (age>=c.min_down ? :OFF_MATURE : Symbol("OFF_$(age)")))
             end
             push!(paths,
-                AnonymousUnitPath(; id = local_id, initial_on = on0, initial_duration = on0 ? c.min_up : c.min_down,
+                AnonymousUnitPath(; id = local_id, initial_on = on0, initial_duration = age,
                     u = vec(x[i, :]), y = vec(y[i, :]), z = vec(z[i, :]), age = ages, states = states))
         end
         paths

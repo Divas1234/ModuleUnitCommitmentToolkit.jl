@@ -10,16 +10,23 @@ using DataFrames
 include("../../../../src/renewableresource_modules/stochasticsimulation.jl")
 include("../../../../src/read_inputdata_modules/readdatas.jl")
 include("../../standard/period_scuc.jl")
+include("../../load_profiles.jl")
 include("../core/pcm_overlap_core.jl")
 
-function run_offline_dataset_generation()
+function run_offline_dataset_generation(; input_file = get(ENV, "MODULE_UC_DATA_FILE", joinpath(ADAPTIVE_PCM_PROJECT_ROOT, "data", "data_118_clustered_pcm.xlsx")),
+        load_profile = get(ENV, "PCM_LOAD_PROFILE", "baseline"),
+        output_dir = joinpath(ADAPTIVE_PCM_PROJECT_ROOT, "output", "pcm_training_cache"),
+        force = lowercase(get(ENV, "PCM_FORCE_TRAINING", "0")) in ("1", "true", "yes", "on"))
     println("="^80)
     println("OFFLINE DATASET GENERATION FOR IEEE 118-BUS SYSTEM")
     println("="^80)
 
-    # 1. Read base case data from data_118.xlsx
-    println("Loading base case data from data_118.xlsx...")
-    ENV["MODULE_UC_DATA_FILE"] = joinpath(ADAPTIVE_PCM_PROJECT_ROOT, "data", "data_118.xlsx")
+    # 1. Read the requested case. The cache is keyed by the file contents,
+    # dimensions, profile, horizon and solver configuration.
+    input_file = abspath(input_file)
+    load_profile = lowercase(strip(load_profile))
+    println("Loading case from $input_file...")
+    ENV["MODULE_UC_DATA_FILE"] = input_file
     UnitsFreqParam, WindsFreqParam, StrogeData, DataGen, GenCost, DataBranch, LoadCurve, DataLoad, Datacentra_Data, HydroData,
     HydroCurve = readxlssheet()
 
@@ -28,14 +35,21 @@ function run_offline_dataset_generation()
 
     config_param, units, lines, loads, stroges, NB, NG, NL, ND, NT, NC, ND2, NH, DataCentras, hydros = forminputdata(
         DataGen, DataBranch, DataLoad, LoadCurve, GenCost, UnitsFreqParam, StrogeData, Datacentra_Data, HydroData, HydroCurve)
-    config_param.is_NetWorkCon = 0
+    apply_pcm_load_profile!(loads, load_profile)
+    config_param.is_NetWorkCon = parse(Int, get(ENV, "PCM_NETWORK_CONSTRAINTS", "0"))
 
     # Store base curves
     base_winds, NW = genscenario(WindsFreqParam, 0)
     base_winds.scenarios_nums = 1
     base_winds.scenarios_curve = base_winds.scenarios_curve[1:1, :]
 
-    required_horizon = 24 * 7
+    exec_NT = parse(Int, get(ENV, "PCM_WINDOW_HOURS", "24"))
+    N_sets = parse(Int, get(ENV, "PCM_INTERVALS", "7"))
+    T_max = parse(Int, get(ENV, "PCM_MAX_OVERLAP", "12"))
+    min_overlap = parse(Int, get(ENV, "PCM_MIN_OVERLAP", "2"))
+    training_mode = lowercase(strip(get(ENV, "PCM_TRAINING_MODE", "sweep")))
+    training_mode in ("sweep", "fast_max_overlap") || error("Unsupported PCM_TRAINING_MODE='$training_mode'")
+    required_horizon = exec_NT * N_sets
     repeat_to_horizon(curve) = repeat(Matrix{Float64}(curve), 1, cld(required_horizon, size(curve, 2)))[:, 1:required_horizon]
 
     # Preserve native multi-day uncertainty when the workbook already contains a
@@ -51,10 +65,25 @@ function run_offline_dataset_generation()
     base_loads = deepcopy(loads)
     global scenarios_prob = 1.0
 
-    exec_NT = 24
-    N_sets = 7
-    T_max = 6
-    min_overlap = 2
+    solver_name = try
+        pcm_solver_name()
+    catch
+        get(ENV, "PCM_SOLVER", "unknown")
+    end
+    cache_metadata = AdaptiveOverlapTrainingCache.build_case_metadata(
+        input_file = input_file, load_profile = load_profile, solver = solver_name,
+        network_constraints = string(config_param.is_NetWorkCon), window_hours = exec_NT, intervals = N_sets,
+        min_overlap = min_overlap, max_overlap = T_max,
+        dimensions = Dict("NB" => NB, "NG" => NG, "ND" => ND, "NL" => NL, "NW" => length(winds.index), "NH" => NH),
+        load_curve = loads.load_curve, wind_curve = winds.scenarios_curve, training_mode = training_mode)
+    cached_training_data = force ? nothing : AdaptiveOverlapTrainingCache.load_cached_dataset(output_dir;
+        expected_metadata = cache_metadata, min_samples = 4)
+    if cached_training_data !== nothing
+        println("Training cache hit: $(nrow(cached_training_data)) samples; skip all calibration solves.")
+        return cached_training_data
+    end
+    cache_signature = cache_metadata["signature"]
+    println("Training cache miss: generating samples for case signature $cache_signature.")
 
     # Scenarios for scaling data to create historical variety
     load_scales = [0.97, 1.03]
@@ -113,7 +142,13 @@ function run_offline_dataset_generation()
                     k, NG, exec_NT, total_NT, start_time, units, loads, winds, pre_results_baseline)
                 baseline_units_states[k] = deepcopy(mini_units)
 
-                # Solve baseline UC
+                # Fast mode only needs current-case boundary features. Avoid a
+                # redundant large-case baseline UC; full sweep mode retains the
+                # original baseline trajectory for calibrated labels.
+                if training_mode == "fast_max_overlap"
+                    baseline_states[k] = Dict{String, Array{Float64}}()
+                    continue
+                end
                 res = each_period_scucmodel_modules(total_NT, NB, NG, ND, NC, ND2, mini_units, step_loads, step_winds, lines,
                     DataCentras, config_param, stroges, scenarios_prob, NL, k, hydros, NH)
                 if res === nothing
@@ -159,16 +194,18 @@ function run_offline_dataset_generation()
                 # The first-period commitment is used as the local economic
                 # benchmark for boundary-deviation features.
                 x_ref_curr = nothing
-                try
-                    ref_units, ref_loads, ref_winds = update_adaptive_boundary_conditions(
-                        1, NG, exec_NT, exec_NT + T_max_interval, start_time, units, loads, winds, nothing)
-                    ref_res = each_period_scucmodel_modules(exec_NT + T_max_interval, NB, NG, ND, NC, ND2, ref_units, ref_loads, ref_winds,
-                        lines, DataCentras, config_param, stroges, scenarios_prob, NL, k, hydros, NH)
-                    if ref_res !== nothing && haskey(ref_res, "x₀")
-                        x_ref_curr = Float64.(ref_res["x₀"][:, 1] .> 0.5)
+                if training_mode != "fast_max_overlap"
+                    try
+                        ref_units, ref_loads, ref_winds = update_adaptive_boundary_conditions(
+                            1, NG, exec_NT, exec_NT + T_max_interval, start_time, units, loads, winds, nothing)
+                        ref_res = each_period_scucmodel_modules(exec_NT + T_max_interval, NB, NG, ND, NC, ND2, ref_units, ref_loads, ref_winds,
+                            lines, DataCentras, config_param, stroges, scenarios_prob, NL, k, hydros, NH)
+                        if ref_res !== nothing && haskey(ref_res, "x₀")
+                            x_ref_curr = Float64.(ref_res["x₀"][:, 1] .> 0.5)
+                        end
+                    catch e
+                        println("  Warning: Local no-boundary reference solve failed at interval $k. Falling back to initial state.")
                     end
-                catch e
-                    println("  Warning: Local no-boundary reference solve failed at interval $k. Falling back to initial state.")
                 end
 
                 X_delta_norm, X_switch_ratio = commitment_boundary_deviation(units, x_0_curr, x_ref_curr)
@@ -193,6 +230,12 @@ function run_offline_dataset_generation()
                 wind_ramps = [abs(winds.scenarios_curve[s, t + 1] - winds.scenarios_curve[s, t])
                               for s ∈ 1:winds.scenarios_nums, t ∈ start_time:(end_horizon - 1)]
                 R_wind_max = isempty(wind_ramps) ? 0.0 : maximum(wind_ramps)
+
+                if training_mode == "fast_max_overlap"
+                    push!(df_dataset, (U_norm, T_dwell_rem, L_norm, sigma_load, R_wind_max, X_delta_norm, X_switch_ratio, T_max_interval))
+                    println(@sprintf("  Interval %d: fast ML training label uses max overlap %d h.", k, T_max_interval))
+                    continue
+                end
 
                 # Compute baseline cost (T_max)
                 res_max = baseline_states[k]
@@ -242,17 +285,16 @@ function run_offline_dataset_generation()
         end
     end
 
-    # Save to CSV
-    outdir = joinpath(ADAPTIVE_PCM_PROJECT_ROOT, "output", "details_schedule_results")
-    mkpath(outdir)
-    csv_path = joinpath(outdir, "offline_training_dataset.csv")
-    CSV.write(csv_path, df_dataset)
+    saved = AdaptiveOverlapTrainingCache.save_cached_dataset(output_dir, df_dataset, cache_metadata)
     println("\n" * "="^80)
     println("Dataset generation complete!")
     println("Total samples generated: ", size(df_dataset, 1))
-    println("Dataset saved to: ", csv_path)
+    println("Dataset saved to: ", saved.dataset_path)
+    println("Metadata saved to: ", saved.metadata_path)
     println("="^80)
+    return df_dataset
 end
 
-# Run the dataset generation
-run_offline_dataset_generation()
+if abspath(PROGRAM_FILE) == abspath(@__FILE__)
+    run_offline_dataset_generation()
+end

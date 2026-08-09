@@ -1,8 +1,9 @@
 module OverlapPredictor
 
 using CSV, DataFrames, Statistics, Printf
+using ..AdaptiveOverlapTrainingCache
 
-export DecisionNode, train_model, predict_overlap, load_trained_model_or_fallback
+export DecisionNode, train_model, predict_overlap, load_trained_model_or_fallback, configure_training_cache!
 
 # Decision Tree Node structure
 struct DecisionNode
@@ -18,6 +19,15 @@ DecisionNode(val::Float64) = DecisionNode(0, 0.0, val, nothing, nothing)
 
 # In-memory global model reference
 const GLOBAL_MODEL = Ref{Union{DecisionNode, Nothing}}(nothing)
+const TRAINING_CACHE_ROOT = Ref{Union{Nothing, String}}(nothing)
+const EXPECTED_TRAINING_METADATA = Ref{Any}(nothing)
+
+function configure_training_cache!(cache_root::AbstractString, expected_metadata::AbstractDict)
+    TRAINING_CACHE_ROOT[] = String(cache_root)
+    EXPECTED_TRAINING_METADATA[] = Dict{String, String}(String(key) => string(value) for (key, value) ∈ expected_metadata)
+    GLOBAL_MODEL[] = nothing
+    nothing
+end
 
 # Predict using a DecisionNode
 function predict_tree(node::DecisionNode, x::Vector{Float64})::Float64
@@ -168,20 +178,32 @@ function get_fallback_tree()::DecisionNode
 end
 
 # Loader helper
+function _configured_dataset_path(csv_path::AbstractString)
+    expected = EXPECTED_TRAINING_METADATA[]
+    expected === nothing && return isfile(csv_path) ? csv_path : nothing
+    cache_root = TRAINING_CACHE_ROOT[] === nothing ? dirname(csv_path) : TRAINING_CACHE_ROOT[]
+    cached = AdaptiveOverlapTrainingCache.load_cached_dataset(cache_root; expected_metadata = expected,
+        required_columns = [:U_norm, :T_dwell_rem, :L_norm, :sigma_load, :R_wind_max, :X_delta_norm, :X_switch_ratio, :To_star],
+        min_samples = 4)
+    cached === nothing ? nothing : AdaptiveOverlapTrainingCache.cache_paths(cache_root, expected).dataset_path
+end
+
 function load_trained_model_or_fallback(csv_path::String = normpath(joinpath(
         @__DIR__, "..", "..", "..", "..", "output", "details_schedule_results", "offline_training_dataset.csv")))
     if GLOBAL_MODEL[] !== nothing
         return GLOBAL_MODEL[]
     end
 
-    if isfile(csv_path)
+    dataset_path = _configured_dataset_path(csv_path)
+    if dataset_path !== nothing
         try
-            return train_model(csv_path)
+            println("  Training cache hit: $(dataset_path)")
+            return train_model(dataset_path)
         catch e
             println("  Warning: Failed to train decision tree from dataset ($(e)). Falling back to default heuristic.")
         end
     else
-        println("  Info: Offline training dataset CSV not found. Loading pre-trained fallback decision model.")
+        println("  Info: No compatible offline training cache found. Loading pre-trained fallback decision model.")
     end
 
     GLOBAL_MODEL[] = get_fallback_tree()

@@ -159,8 +159,12 @@ function detect_ramp_events_and_overlap(loads::load, winds::wind, start_time::In
         severity_window = ceil(Int, max_lookahead * clamp(strongest_ramp_ratio / 0.40, 0.0, 1.0))
         T_ramp_overlap = max(first_event_idx + 2, severity_window)
         T_ramp_overlap = min(T_ramp_overlap, max_lookahead)
+        if adaptive_overlap_verbose()
+            println("[AdaptiveOverlap][RampCriterion] start=$(start_time) event_indices=$(event_indices) first_event=$(first_event_idx) strongest_ratio=$(round(strongest_ramp_ratio; digits=4)) severity_window=$(severity_window) -> T_ramp=$(T_ramp_overlap)")
+        end
         return true, T_ramp_overlap
     else
+        adaptive_overlap_verbose() && println("[AdaptiveOverlap][RampCriterion] start=$(start_time) no ramp/uncertainty event in lookahead; T_ramp=0")
         return false, 0
     end
 end
