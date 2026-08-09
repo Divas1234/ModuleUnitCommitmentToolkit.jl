@@ -1,9 +1,9 @@
-name: Merge pushes to main and tag
+name: Tag main pushes
 
 on:
   push:
     branches:
-      - '**'
+      - main
 
 permissions:
   contents: write
@@ -13,7 +13,7 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
-  merge-and-tag:
+  tag:
     runs-on: ubuntu-latest
     steps:
       - name: Check out the pushed commit
@@ -22,29 +22,16 @@ jobs:
           fetch-depth: 0
           ref: ${{ github.sha }}
 
-      - name: Merge into main and create a tag
+      - name: Create a tag for the main commit
         env:
-          GH_TOKEN: ${{ github.token }}
-          PUSHED_BRANCH: ${{ github.ref_name }}
-          PUSHED_SHA: ${{ github.sha }}
           RUN_NUMBER: ${{ github.run_number }}
         run: |
           set -euo pipefail
 
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git fetch origin main
-
-          if [[ "$PUSHED_BRANCH" != "main" ]]; then
-            git switch --create main --track origin/main
-            git merge --no-ff --no-edit "$PUSHED_SHA"
-            git push origin HEAD:main
-          else
-            git switch --detach "$PUSHED_SHA"
-          fi
-
           tag="auto-$(date -u +'%Y%m%d-%H%M%S')-${RUN_NUMBER}"
-          git tag --annotate "$tag" --message "Automatic tag for main commit $(git rev-parse HEAD)"
+          git tag --annotate "$tag" --message "Automatic tag for main commit ${{ github.sha }}" "${{ github.sha }}"
           git push origin "$tag"
 
-          echo "Created $tag at $(git rev-parse HEAD)"
+          echo "Created $tag at ${{ github.sha }}"

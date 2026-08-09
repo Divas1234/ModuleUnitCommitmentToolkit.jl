@@ -16,8 +16,8 @@ Pkg.activate("d:/GithubClonefiles/module_unitcommitment/pkg")
 using Printf, Statistics
 include("../../src/renewableresource_modules/stochasticsimulation.jl")
 include("../../src/read_inputdata_modules/readdatas.jl")
-include("period_scuc_modules.jl")
-include("adaptive_period_scuc_modules.jl")
+include("period_scuc.jl")
+include("adaptive_period_scuc.jl")
 
 println("\n" * "="^80)
 println("STARTING BENCHMARK: Standard PCM vs. Adaptive Overlapping PCM")

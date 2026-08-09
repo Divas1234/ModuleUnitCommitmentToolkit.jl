@@ -146,8 +146,8 @@ function write_grouped_bar_svg(path::String, title::String, labels::Vector{Strin
         println(io, """<rect width="100%" height="100%" fill="#ffffff"/>""")
         println(io, """<text x="$(width/2)" y="32" text-anchor="middle" font-family="Arial" font-size="22" font-weight="700">$(svg_escape(title))</text>""")
         println(io, """<text x="22" y="$(top + plot_h/2)" transform="rotate(-90 22 $(top + plot_h/2))" text-anchor="middle" font-family="Arial" font-size="14">$(svg_escape(ylabel))</text>""")
-        println(io, """<rect x="$(width-265)" y="48" width="14" height="14" fill="$(colors[1])"/><text x="$(width-244)" y="60" font-family="Arial" font-size="13">Normal IEEE-118</text>""")
-        println(io, """<rect x="$(width-160)" y="48" width="14" height="14" fill="$(colors[2])"/><text x="$(width-139)" y="60" font-family="Arial" font-size="13">Extreme ramp</text>""")
+        println(io, """<rect x="$(width-265)" y="48" width="14" height="14" fill="$(colors[1])"/><text x="$(width-244)" y="60" font-family="Arial" font-size="13">普通 118</text>""")
+        println(io, """<rect x="$(width-160)" y="48" width="14" height="14" fill="$(colors[2])"/><text x="$(width-139)" y="60" font-family="Arial" font-size="13">极端爬坡</text>""")
         for i in 0:5
             yv = lo + (hi - lo) * i / 5
             y = scale_y(yv)
@@ -215,7 +215,8 @@ function summarize_scenario(dir::String)
     perf = ordered!(CSV.read(joinpath(dir, "criteria_combination_performance.csv"), DataFrame))
     intervals = CSV.read(joinpath(dir, "criteria_combination_intervals.csv"), DataFrame)
 
-    load_xlsx = joinpath(dir, "input_data_118.xlsx")
+    input_xlsx_files = filter(f -> startswith(basename(f), "input_data") && endswith(lowercase(f), ".xlsx"), readdir(dir; join = true))
+    load_xlsx = isempty(input_xlsx_files) ? joinpath(dir, "input_data_118.xlsx") : first(sort(input_xlsx_files))
     if isfile(load_xlsx)
         load_df = read_load_curve_xlsx(load_xlsx)
         CSV.write(joinpath(dir, "load_curve_168h.csv"), load_df)
@@ -315,7 +316,7 @@ function write_cross_report(batch_dir::String, scenario_frames::Vector{DataFrame
     end
 
     open(joinpath(batch_dir, "detailed_comparison_report.md"), "w") do io
-        println(io, "# Ordinary IEEE-118 vs Extreme-Ramp Overlap Criteria Comparison")
+        println(io, "# Overlap Criteria Combination Comparison")
         println(io)
         println(io, "- Archive batch: `$batch_dir`")
         println(io, "- Generated: `$(Dates.format(now(), "yyyy-mm-dd HH:MM:SS"))`")

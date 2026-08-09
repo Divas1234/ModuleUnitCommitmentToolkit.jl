@@ -3,10 +3,20 @@ Pkg.activate("d:/GithubClonefiles/module_unitcommitment/pkg")
 
 using Printf, Statistics, CSV, DataFrames
 
+const ROOT = normpath(joinpath(@__DIR__, "..", ".."))
+
+function arg_value(flag::String, default::Union{Nothing, String} = nothing)
+    idx = findfirst(==(flag), ARGS)
+    if idx === nothing || idx == length(ARGS)
+        return default
+    end
+    return ARGS[idx + 1]
+end
+
 include("../../src/renewableresource_modules/stochasticsimulation.jl")
 include("../../src/read_inputdata_modules/readdatas.jl")
-include("period_scuc_modules.jl")
-include("adaptive_period_scuc_modules.jl")
+include("period_scuc.jl")
+include("adaptive_period_scuc.jl")
 
 function repeat_time_series_to_horizon(curve::AbstractMatrix{<:Real}, target_hours::Int)
     source_hours = size(curve, 2)
@@ -151,7 +161,17 @@ function main()
     println("EVALUATING OVERLAP CRITERIA COMBINATIONS")
     println("="^80)
 
-    ENV["MODULE_UC_DATA_FILE"] = "d:/GithubClonefiles/module_unitcommitment/data/data_118.xlsx"
+    data_file_arg = arg_value("--data-file", joinpath(ROOT, "data", "data_118.xlsx"))
+    data_file = isabspath(data_file_arg) ? data_file_arg : joinpath(ROOT, data_file_arg)
+    scenario_label = arg_value("--scenario-label", replace(splitext(basename(data_file))[1], "data_" => "ieee"))
+    outdir_arg = arg_value("--output-dir", joinpath(ROOT, "output", "details_schedule_results", "adaptive_pcm_simulation_results"))
+    outdir = isabspath(outdir_arg) ? outdir_arg : joinpath(ROOT, outdir_arg)
+
+    ENV["MODULE_UC_DATA_FILE"] = data_file
+    println("Input data file: $data_file")
+    println("Scenario label : $scenario_label")
+    println("Output dir     : $outdir")
+
     UnitsFreqParam, WindsFreqParam, StrogeData, DataGen, GenCost, DataBranch, LoadCurve, DataLoad, Datacentra_Data, HydroData, HydroCurve = readxlssheet()
     global config_param, units, lines, loads, stroges, NB, NG, NL, ND, NT, NC, ND2, NH, DataCentras, hydros, scenarios_prob, winds
     config_param, units, lines, loads, stroges, NB, NG, NL, ND, NT, NC, ND2, NH, DataCentras, hydros = forminputdata(
@@ -255,19 +275,32 @@ function main()
         )
     end
 
-    baseline_cost = df_results[df_results.Mode .== "Steady+Unit+Ramp", :TotalCost_USD][1]
-    baseline_time = df_results[df_results.Mode .== "NoOverlap", :SubproblemSolveTime_sec][1]
-    df_results.CostGap_vs_All_pct = round.((df_results.TotalCost_USD .- baseline_cost) ./ baseline_cost .* 100.0; digits = 4)
-    df_results.SolveTimeDelta_vs_NoOverlap_sec = round.(df_results.SubproblemSolveTime_sec .- baseline_time; digits = 3)
-    df_results.CalibrationTime_excluded_sec .= calibration_time
-    df_results.ReferenceTime_excluded_sec .= sum(reference_times)
+    baseline_cost = df_results[df_results[!, :Mode] .== "Steady+Unit+Ramp", :TotalCost_USD][1]
+    baseline_time = df_results[df_results[!, :Mode] .== "NoOverlap", :SubproblemSolveTime_sec][1]
+    df_results[!, :CostGap_vs_All_pct] = round.((df_results[!, :TotalCost_USD] .- baseline_cost) ./ baseline_cost .* 100.0; digits = 4)
+    df_results[!, :SolveTimeDelta_vs_NoOverlap_sec] = round.(df_results[!, :SubproblemSolveTime_sec] .- baseline_time; digits = 3)
+    df_results[!, :CalibrationTime_excluded_sec] = fill(calibration_time, nrow(df_results))
+    df_results[!, :ReferenceTime_excluded_sec] = fill(sum(reference_times), nrow(df_results))
 
-    outdir = joinpath(pwd(), "output", "details_schedule_results", "adaptive_pcm_simulation_results")
     mkpath(outdir)
     summary_path = joinpath(outdir, "criteria_combination_performance.csv")
     intervals_path = joinpath(outdir, "criteria_combination_intervals.csv")
     CSV.write(summary_path, df_results)
     CSV.write(intervals_path, df_intervals)
+    cp(data_file, joinpath(outdir, "input_data_$(scenario_label).xlsx"); force = true)
+
+    open(joinpath(outdir, "run_metadata.txt"), "w") do io
+        println(io, "scenario_label=$scenario_label")
+        println(io, "data_file=$data_file")
+        println(io, "exec_NT=$exec_NT")
+        println(io, "N_sets=$N_sets")
+        println(io, "alpha=$alpha")
+        println(io, "epsilon=$epsilon")
+        println(io, "min_overlap=$min_overlap")
+        println(io, "max_overlap=$max_overlap")
+        println(io, "calibration_time_excluded_sec=$calibration_time")
+        println(io, "reference_time_excluded_sec=$(sum(reference_times))")
+    end
 
     println("="^80)
     println("CRITERIA COMBINATION SUMMARY")

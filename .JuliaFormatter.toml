@@ -1,6 +1,6 @@
 style = "sciml"
 indent = 4
-margin = 256
+margin = 150
 always_for_in = true
 for_in_replacement = "∈"
 whitespace_typedefs = true

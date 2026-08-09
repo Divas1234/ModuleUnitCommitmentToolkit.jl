@@ -1,4 +1,4 @@
-[x] DCC issue.
-[x] The output folder did not include scheduling cost or unit commitment files, only balance data.
-[ ] Interface/section issue: screen heavily overloaded lines and critical corridors.
-[ ] Menu navigation does not work.
+[x]. DCC问题
+[x]. output 文件夹没有调度成本、机组开停机等信息，只有平衡数据
+4. 断面问题，筛选线路重过载时间与关键断面
+1. 菜单导航不起作用

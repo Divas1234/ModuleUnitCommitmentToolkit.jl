@@ -19,7 +19,7 @@ println("Controller configuration loaded successfully.")
 
 flag_converter = Int64(0)
 
-# Extract VSM parameters.
+# 提取 vsm 参数
 converter_vsm_parameters = get(controller_config, "VSM", Dict())["control_parameters"]
 converter_droop_parameters = get(controller_config, "Droop", Dict())["control_parameters"]
 

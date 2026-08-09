@@ -1,65 +1,17 @@
 """
-    solve_uc(; algorithm = :benchmark, input = :excel, scenario_limit = 20, ...)
+    solve_uc(...)
 
-Unified solver entry point for the extensive-form benchmark, Benders, and CCG
-algorithms. The selected algorithm and input source are routed internally to
-the existing implementation modules; callers do not need to manage include
-order or algorithm-specific data-loading branches.
-
-`calibration` is a named tuple or dictionary of runtime ENV overrides. Values
-are applied only for the duration of this solve, so a one-off calibration does
-not leak into later calls in the same Julia process.
+The `pcm` branch is intentionally trimmed to the adaptive PCM workflow.
+Benchmark, Benders, and CCG drivers are not shipped in this branch. Use the
+scripts under `tools/pcm/` for PCM simulations and archived overlap analyses.
 """
-
-const _UC_ALGORITHM_MODULES_READY = Ref(false)
-
-function _ensure_uc_algorithm_modules!()
-    if !_UC_ALGORITHM_MODULES_READY[]
-        include("../tools/ccg/ccg_solver.jl")
-        include("../tools/benchmark/benchmark_uc.jl")
-        _UC_ALGORITHM_MODULES_READY[] = true
-    end
-    return nothing
-end
 
 function _normalize_solver_algorithm(algorithm)
     name = lowercase(replace(string(algorithm), '-' => '_', ' ' => '_'))
-    aliases = Dict(
-        "benchmark" => :benchmark,
-        "benchmark_uc" => :benchmark,
-        "extensive" => :benchmark,
-        "extensive_form" => :benchmark,
-        "benders" => :benders,
-        "ccg" => :ccg,
-        "column_constraint_generation" => :ccg,
-    )
-    haskey(aliases, name) || throw(ArgumentError("algorithm must be :benchmark, :benders, or :ccg; got $(algorithm)"))
-    return aliases[name]
-end
-
-function _calibration_pairs(calibration)
-    calibration === nothing && return Pair{String, String}[]
-    entries = calibration isa NamedTuple ? pairs(calibration) : calibration isa AbstractDict ? pairs(calibration) : nothing
-    entries === nothing && throw(ArgumentError("calibration must be a NamedTuple, dictionary, or nothing"))
-
-    result = Pair{String, String}[]
-    for (key, value) in entries
-        value === nothing && throw(ArgumentError("calibration value for $(key) cannot be nothing"))
-        value isa Bool && (value = value ? 1 : 0)
-        value isa Number || value isa AbstractString || throw(ArgumentError("calibration values must be scalar; $(key) has type $(typeof(value))"))
-        push!(result, uppercase(string(key)) => string(value))
+    if name in ("pcm", "adaptive_pcm", "rolling_pcm")
+        return :pcm
     end
-    return result
-end
-
-function _run_with_uc_context(fn::Function, calibration, output_dir; detailed::Bool = false)
-    overrides = _calibration_pairs(calibration)
-    output_dir === nothing || push!(overrides, "MODULE_UC_OUTPUT_DIR" => String(output_dir))
-    detailed && push!(overrides, "PRINT_BOUNDARY_CONDITION" => "1")
-    isempty(overrides) && return fn()
-    return withenv(overrides...) do
-        return fn()
-    end
+    throw(ArgumentError("Only PCM workflows are available on this branch; got $(algorithm). Run scripts under tools/pcm/."))
 end
 
 function UCInputSpec(;
@@ -110,7 +62,7 @@ function load_uc_data(spec::UCInputSpec)
 end
 
 function UCSolveRequest(;
-    algorithm::Union{Symbol, AbstractString} = :benchmark,
+    algorithm::Union{Symbol, AbstractString} = :pcm,
     input::Union{Symbol, AbstractString} = :excel,
     use_powersystems::Union{Nothing, Bool} = nothing,
     scenario_limit::Int64 = 20,
@@ -149,148 +101,8 @@ function UCSolveRequest(;
     )
 end
 
-function _invoke_uc_algorithm(name::Symbol, args...; kwargs...)
-    algorithm = Base.invokelatest(getfield, @__MODULE__, name)
-    return Base.invokelatest(algorithm, args...; kwargs...)
-end
-
-function _solve_benders_unified(request::UCSolveRequest)
-    input = request.input
-    values = _invoke_uc_algorithm(
-        :main;
-        input = input.source,
-        scenario_limit = input.scenario_limit,
-        sys = input.sys,
-        case_name = input.case_name,
-        case_category = input.case_category,
-        case_dir = input.case_dir,
-        data_center_buses = input.data_center_buses,
-        data_center_pmax = input.data_center_pmax,
-        frequency_parameters = input.frequency_parameters,
-        data_centers = input.data_centers,
-        horizon = input.horizon,
-    )
-    setup = values
-
-    decomposition_result = _invoke_uc_algorithm(
-        :multiple_bender_decomposition_scuc,
-        setup.master_model,
-        setup.sub_model,
-        setup.master_struct,
-        setup.batch_subproblems,
-        setup.winds,
-        setup.config_param,
-        setup.NG,
-        setup.NT,
-        length(setup.winds.index),
-        setup.ND,
-        setup.NL,
-    )
-    return merge(decomposition_result, (data = setup.data,))
-end
-
-function _solve_uc_selected(request::UCSolveRequest)
-    algorithm = request.algorithm
-    input = request.input
-    _ensure_uc_algorithm_modules!()
-    if algorithm == :benchmark
-        source = input.source
-        if source == :excel
-            return _invoke_uc_algorithm(:solve_benchmark_uc; scenario_limit = input.scenario_limit)
-        elseif source == :powersystems_csv
-            return _invoke_uc_algorithm(
-                :solve_benchmark_uc_powersystems,
-                input.sys,
-                input.case_dir;
-                scenario_limit = input.scenario_limit,
-                data_center_buses = input.data_center_buses,
-                data_center_pmax = input.data_center_pmax,
-                frequency_parameters = input.frequency_parameters,
-                data_centers = input.data_centers,
-                horizon = input.horizon,
-            )
-        elseif input.case_name !== nothing
-            return _invoke_uc_algorithm(
-                :solve_benchmark_uc_powersystems,
-                input.case_name;
-                case_category = input.case_category,
-                scenario_limit = input.scenario_limit,
-                data_center_buses = input.data_center_buses,
-                data_center_pmax = input.data_center_pmax,
-                frequency_parameters = input.frequency_parameters,
-                data_centers = input.data_centers,
-                horizon = input.horizon,
-            )
-        else
-            return _invoke_uc_algorithm(
-                :solve_benchmark_uc_powersystems,
-                input.sys;
-                scenario_limit = input.scenario_limit,
-                data_center_buses = input.data_center_buses,
-                data_center_pmax = input.data_center_pmax,
-                frequency_parameters = input.frequency_parameters,
-                data_centers = input.data_centers,
-                horizon = input.horizon,
-            )
-        end
-    elseif algorithm == :ccg
-        return _invoke_uc_algorithm(
-            :solve_ccg_unit_commitment;
-            input = input.source,
-            scenario_limit = input.scenario_limit,
-            sys = input.sys,
-            case_name = input.case_name,
-            case_category = input.case_category,
-            case_dir = input.case_dir,
-            data_center_buses = input.data_center_buses,
-            data_center_pmax = input.data_center_pmax,
-            frequency_parameters = input.frequency_parameters,
-            data_centers = input.data_centers,
-            horizon = input.horizon,
-        )
-    else
-        return _solve_benders_unified(request)
-    end
-end
-
-function solve_uc(request::UCSolveRequest)
-    configured_output_dir = request.output_dir === nothing ? uc_output_root() : uc_output_dir(request.output_dir)
-    verbosity = _normalize_uc_verbosity(request.verbosity)
-
-    result = if verbosity === :verbose
-        _run_with_uc_context(request.calibration, request.output_dir; detailed = false) do
-            _solve_uc_selected(request)
-        end
-    elseif verbosity === :detailed
-        redirect_stderr(devnull) do
-            _run_with_uc_context(request.calibration, request.output_dir; detailed = true) do
-                _solve_uc_selected(request)
-            end
-        end
-    else
-        try
-            captured_result = redirect_stdout(devnull) do
-                redirect_stderr(devnull) do
-                    _run_with_uc_context(request.calibration, request.output_dir; detailed = false) do
-                        _solve_uc_selected(request)
-                    end
-                end
-            end
-            captured_result
-        catch error
-            println(stderr, "[UC solve failed] ", sprint(showerror, error))
-            rethrow()
-        end
-    end
-
-    envelope = UCSolveResult(request.algorithm, request.input.source, configured_output_dir, result)
-    verbosity === :summary && print_uc_result(envelope)
-    if verbosity === :detailed
-        redirect_stderr(devnull) do
-            print_uc_result(envelope; detail = true)
-        end
-    end
-    return envelope
+function solve_uc(::UCSolveRequest)
+    throw(ArgumentError("The trimmed pcm branch does not expose solve_uc algorithm drivers. Run tools/pcm/pcm_main.jl or tools/pcm/evaluate_overlap_criteria_combinations.jl."))
 end
 
 function solve_uc(; kwargs...)

@@ -169,8 +169,8 @@ function data_visualization(
     # temp = damping[tem_interaction_point:end], max_inertia[tem_interaction_point:end]
 
     # l = @layout [
-    # 	a{0.2h}    # Top section uses 33% of the height
-    # 	b{0.7h}    # Middle section uses 34% of the height
+    # 	a{0.2h}    # 上部分占 33% 高度
+    # 	b{0.7h}    # 中间部分占 34% 高度
     # 	c{0.1h}
     # ]
 
@@ -179,10 +179,10 @@ function data_visualization(
     # 		damping,
     # 		inertia_updown_bindings[:, 1],
     # 		# framestyle = :box,
-    # 		ylims = (15, 23),           # Adjust the upper-limit range
-    # 		yticks = 15:5:20,           # Use evenly spaced ticks
-    # 		xlabel = "",               # Remove xlabel
-    # 		ylabel = "",              # Remove the separate ylabel
+    # 		ylims = (15, 23),           # 调整上限范围
+    # 		yticks = 15:5:20,           # 设置均匀刻度
+    # 		xlabel = "",               # 移除 xlabel
+    # 		ylabel = "",              # 移除单独的 ylabel
     # 		lw = 3,
     # 		showaxis = :y,
     # 		bottom_margin = -15Plots.px,
@@ -197,8 +197,8 @@ function data_visualization(
     # 			inertia_updown_bindings[:, 1],
     # 			fillrange = fillarea,
     # 			fillalpha = 0.3,
-    # 			ylims = (5, 15),         # Keep the middle range
-    # 			yticks = 5:2:15,         # Use evenly spaced ticks
+    # 			ylims = (5, 15),         # 保持中间范围
+    # 			yticks = 5:2:15,         # 设置均匀刻度
     # 			showaxis = :y,
     # 			bottom_margin = -15Plots.px,
     # 			top_margin = -15Plots.px,
@@ -235,19 +235,19 @@ function data_visualization(
     # 		damping,
     # 		inertia_updown_bindings[:, 2],
     # 		lw = 3,
-    # 		ylims = (-2, 5),             # Adjust the lower-limit range
-    # 		yticks = 0:5:5,             # Use evenly spaced ticks
+    # 		ylims = (-2, 5),             # 调整下限范围
+    # 		yticks = 0:5:5,             # 设置均匀刻度
     # 		top_margin = -15Plots.px,
     # 		label = "Lower Bound",
     # 		color = :forestgreen,
     # 		xlabel = "Damping (p.u.)",
-    # 		ylabel = "",               # Remove the separate ylabel
+    # 		ylabel = "",               # 移除单独的 ylabel
     # 		grid = true,
     # 	),
     # 	layout = l,
     # 	size = (400, 300),
-    # 	left_margin = 30Plots.px,    # Adjust the left margin
-    # 	ylabel = "Inertia (p.u.)",    # Add the global ylabel
+    # 	left_margin = 30Plots.px,    # 调整左边距
+    # 	ylabel = "Inertia (p.u.)",    # 添加全局 ylabel
     # 	legend = :topright,     # Main plot legend
     # 	legendfontsize = 8,     # Adjust legend font size
     # 	legend_column = 2,       # Arrange legend in 2 columns

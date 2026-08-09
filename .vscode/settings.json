@@ -270,7 +270,7 @@
     "editor.formatOnSave": false,
     "editor.formatOnType": false,
     "terminal.integrated.fontLigatures.enabled": true,
-    "terminal.integrated.fontFamily": "Geist Mono, Maple Mono, Fira Code, Hack Nerd Font, MesloLGS NF, Hack Nerd Font",
+    "terminal.integrated.fontFamily": "Hack Nerd font Mono, Geist Mono, Maple Mono, Fira Code, Hack Nerd Font, MesloLGS NF, Hack Nerd Font",
     "terminal.integrated.fontSize": 12,
     "git.terminalGitEditor": true,
     "terminal.integrated.suggest.enabled": true,
