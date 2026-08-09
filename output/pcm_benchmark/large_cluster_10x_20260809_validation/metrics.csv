@@ -1,0 +1,3 @@
+timestamp,method,load_profile,status,wall_time_sec,allocated_mb,gc_time_sec,peak_rss_mb,input_file,window_hours,intervals,physical_units,virtual_units,commitment_integer_variables,cluster_attempts,cluster_successes,cluster_fallbacks,total_cost,failure
+2026-08-09T18:39:31.972,standard,baseline,OK,336.0051685,410885.3553953171,72.0666097,5697.69140625,D:\GithubClonefiles\module_unitcommitment\data\data_118_clustered_pcm_10x.xlsx,24,1,1080,28,77760,0,0,0,3.7860359457928576e7,
+2026-08-09T18:39:59.949,clustered_pcm,baseline,OK,26.2293126,4307.654698371887,2.3297748,1723.34375,D:\GithubClonefiles\module_unitcommitment\data\data_118_clustered_pcm_10x.xlsx,24,1,1080,28,2016,1,1,0,3.8117862419596314e7,

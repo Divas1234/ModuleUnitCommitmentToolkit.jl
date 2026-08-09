@@ -13,6 +13,9 @@ if !isdefined(@__MODULE__, :_PERIOD_SCUC_MODULES_INCLUDED)
     include("../../../src/unitcommitment_model_modules/utilitie_modules_lib/utilities.jl")
     include("../../../src/unitcommitment_model_modules/tests_lib/tests.jl")
     include("../clustered_pcm/clustered_pcm.jl")
+    const PCM_CLUSTER_ATTEMPTS = Ref(0)
+    const PCM_CLUSTER_SUCCESSES = Ref(0)
+    const PCM_CLUSTER_FALLBACKS = Ref(0)
     #---------------------------------------------------------------------------------------------------
 
     """
@@ -116,15 +119,18 @@ if !isdefined(@__MODULE__, :_PERIOD_SCUC_MODULES_INCLUDED)
         # This switch therefore changes only the formulation used in the benchmark.
         clustered_enabled=lowercase(get(ENV, "PCM_USE_CLUSTERED_UC", "true")) in ("1", "true", "yes", "on")
         if clustered_enabled
+            PCM_CLUSTER_ATTEMPTS[] += 1
             clustered_result=solve_true_clustered_pcm_window(NT, NB, NG, ND, units, loads, winds, lines, config_param, NL, hydros,
                 NH; optimizer = (HAS_GUROBI ? Gurobi.Optimizer : GLPK.Optimizer))
             if clustered_result.feasible
+                PCM_CLUSTER_SUCCESSES[] += 1
                 println("  ✓ True clustered UC completed ($(length(clustered_result.clusters)) virtual units)")
                 return clustered_result.results
             end
             # Never export an unverified aggregate schedule. The physical
             # disaggregation is the feasibility certificate for clustered PCM.
             println("  ⚠ True clustered UC failed at $(clustered_result.stage): $(clustered_result.message); falling back to full unit-network SCUC")
+            PCM_CLUSTER_FALLBACKS[] += 1
             clustered_enabled=false
         end
 

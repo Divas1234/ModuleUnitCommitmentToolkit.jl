@@ -29,3 +29,15 @@ end
     @test clustered["load_curve"]["B2"][]≈2*source["load_curve"]["B2"][]
     @test clustered["branch_data"]["E2"][]≈2*source["branch_data"]["E2"][]
 end
+
+@testset "10x homogeneous clustered PCM Excel input" begin
+    source=XLSX.readxlsx(joinpath(PROJECT_ROOT, "data", "data_118_clustered_pcm.xlsx"))
+    expanded=XLSX.readxlsx(joinpath(PROJECT_ROOT, "data", "data_118_clustered_pcm_10x.xlsx"))
+    @test size(expanded["units_data"][:], 1)-1==10*(size(source["units_data"][:], 1)-1)==1080
+    @test size(expanded["units_cost"][:], 1)-1==1080
+    @test size(expanded["units_frequencyparam"][:], 1)-1==1080
+    @test expanded["units_data"]["A1081"][]==1080
+    @test expanded["units_frequencyparam"]["A1081"][]==1080
+    @test expanded["load_curve"]["B2"][]≈10*source["load_curve"]["B2"][]
+    @test expanded["branch_data"]["E2"][]≈10*source["branch_data"]["E2"][]
+end
