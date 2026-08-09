@@ -4,10 +4,7 @@ export solve_and_extract_results
 
 # Helper function to solve the model and extract results
 function solve_and_extract_results(
-    scuc::Model,
-    NT, NG, ND, NC, NW, NS, ND2,
-    scenarios_prob, eachslope, refcost, config_param, units, loads, winds, lines, DataCentras,
-)
+        scuc::Model, NT, NG, ND, NC, NW, NS, ND2, scenarios_prob, eachslope, refcost, config_param, units, loads, winds, lines, DataCentras)
     println("+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++")
     println("Step-4: starting Gurobi solver")
     optimize!(scuc)
@@ -68,49 +65,20 @@ function solve_and_extract_results(
         # Note: Original function returned specific variables directly.
         # Adjust the return statement based on what the caller function `mainfun.jl` expects.
         # Returning a dictionary or a custom struct might be cleaner.
-        results = Dict(
-            "objective_value" => objective_value(scuc),
-            "objective_bound" => objective_bound(scuc),
-            "relative_gap" => relative_gap(scuc),
-            "solve_time" => solve_time(scuc),
-            "status" => status,
-            "x₀" => x₀,
-            "u₀" => u₀,
-            "v₀" => v₀,
-            "p₀" => pg₀,
-            "pₖ" => pgₖ,
-            "su_cost" => su_cost,
-            "sd_cost" => sd_cost,
-            "seq_sr⁺" => seq_sr⁺,
-            "seq_sr⁻" => seq_sr⁻,
-            "pᵨ" => pᵨ,
-            "pᵩ" => pᵩ,
-        )
+        results = Dict("objective_value" => objective_value(scuc), "objective_bound" => objective_bound(scuc), "relative_gap" => relative_gap(scuc),
+            "solve_time" => solve_time(scuc), "status" => status, "x₀" => x₀, "u₀" => u₀, "v₀" => v₀, "p₀" => pg₀, "pₖ" => pgₖ,
+            "su_cost" => su_cost, "sd_cost" => sd_cost, "seq_sr⁺" => seq_sr⁺, "seq_sr⁻" => seq_sr⁻, "pᵨ" => pᵨ, "pᵩ" => pᵩ)
 
         if NC > 0 && config_param.is_ConsiderBESS == 1
-            push!(
-                results,
-                "pss_charge_p⁺" => pss_charge_p⁺,
-                "pss_charge_p⁻" => pss_charge_p⁻,
-                "pss_charge_state⁺" => pss_charge_state⁺,
-                "pss_charge_state⁻" => pss_charge_state⁻,
-                "pss_charge_cycle⁺" => pss_charge_cycle⁺,
-                "pss_charge_cycle⁻" => pss_charge_cycle⁻,
-                "pss_Qc" => pss_Qc,
-            )
+            push!(results, "pss_charge_p⁺" => pss_charge_p⁺, "pss_charge_p⁻" => pss_charge_p⁻,
+                "pss_charge_state⁺" => pss_charge_state⁺, "pss_charge_state⁻" => pss_charge_state⁻,
+                "pss_charge_cycle⁺" => pss_charge_cycle⁺, "pss_charge_cycle⁻" => pss_charge_cycle⁻, "pss_Qc" => pss_Qc)
         end
 
         # Add data centra results to dictionary
         if config_param.is_ConsiderDataCentra == 1 && ND2 > 0
-            push!(
-                results,
-                "dc_p" => dc_p_res,
-                "dc_fv²" => dc_fv²_res,
-                "dc_fv²λ" => dc_fv²λ_res,
-                "dc_fv²_plus" => dc_fv²_plus_res,
-                "dc_fv²_minus" => dc_fv²_minus_res,
-                "dc_fv²λ_plus" => dc_fv²λ_plus_res,
-            )
+            push!(results, "dc_p" => dc_p_res, "dc_fv²" => dc_fv²_res, "dc_fv²λ" => dc_fv²λ_res,
+                "dc_fv²_plus" => dc_fv²_plus_res, "dc_fv²_minus" => dc_fv²_minus_res, "dc_fv²λ_plus" => dc_fv²λ_plus_res)
         end
 
         # "prod_cost" => prod_cost,
@@ -118,12 +86,9 @@ function solve_and_extract_results(
         # "cr⁻"       => cr⁻,       # Removed as they are not calculated here anymore
 
         cost_summary = exported_scheduling_cost(
-            NS, NT, NB, NG, ND, NC, ND2,
-            units, loads, winds, lines, DataCentras, config_param, scenarios_prob, su_cost, sd_cost,
-            pgₖ, pg₀, x₀, u₀, v₀, seq_sr⁺, seq_sr⁻, pᵨ, pᵩ, eachslope, refcost,
-            pss_charge_state⁺, pss_charge_state⁻, pss_charge_p⁺, pss_charge_p⁻, pss_Qc,
-            dc_p_res, dc_fv²_res, dc_fv²λ_res, dc_fv²_plus_res, dc_fv²_minus_res, dc_fv²λ_plus_res,
-        )
+            NS, NT, NB, NG, ND, NC, ND2, units, loads, winds, lines, DataCentras, config_param, scenarios_prob, su_cost, sd_cost,
+            pgₖ, pg₀, x₀, u₀, v₀, seq_sr⁺, seq_sr⁻, pᵨ, pᵩ, eachslope, refcost, pss_charge_state⁺, pss_charge_state⁻, pss_charge_p⁺,
+            pss_charge_p⁻, pss_Qc, dc_p_res, dc_fv²_res, dc_fv²λ_res, dc_fv²_plus_res, dc_fv²_minus_res, dc_fv²λ_plus_res)
         push!(results, "cost_summary" => cost_summary)
 
         return results

@@ -59,18 +59,7 @@ like data centers and frequency control.
 - `scuc::Model`: Modified model with all variables defined
 """
 
-function define_decision_variables!(
-    scuc::Model,
-    NT,
-    NG,
-    ND,
-    NC,
-    ND2,
-    NS,
-    NW,
-    NH,
-    config_param,
-)
+function define_decision_variables!(scuc::Model, NT, NG, ND, NC, ND2, NS, NW, NH, config_param)
     # ========================================================================
     # Binary Variables: Unit Commitment
     # ========================================================================
@@ -81,42 +70,42 @@ function define_decision_variables!(
     # ========================================================================
     # Continuous Variables: Power Generation
     # ========================================================================
-    @variable(scuc, pg₀[1:(NG*NS), 1:NT] >= 0)      # Base power output
-    @variable(scuc, pgₖ[1:(NG*NS), 1:NT, 1:3] >= 0) # Piecewise linear segments
+    @variable(scuc, pg₀[1:(NG * NS), 1:NT] >= 0)      # Base power output
+    @variable(scuc, pgₖ[1:(NG * NS), 1:NT, 1:3] >= 0) # Piecewise linear segments
     @variable(scuc, su₀[1:NG, 1:NT] >= 0)           # Startup cost
     @variable(scuc, sd₀[1:NG, 1:NT] >= 0)           # Shutdown cost
-    @variable(scuc, sr⁺[1:(NG*NS), 1:NT] >= 0)      # Upward spinning reserve
-    @variable(scuc, sr⁻[1:(NG*NS), 1:NT] >= 0)      # Downward spinning reserve
+    @variable(scuc, sr⁺[1:(NG * NS), 1:NT] >= 0)      # Upward spinning reserve
+    @variable(scuc, sr⁻[1:(NG * NS), 1:NT] >= 0)      # Downward spinning reserve
 
     # ========================================================================
     # Continuous Variables: Curtailment
     # ========================================================================
-    @variable(scuc, Δpd[1:(ND*NS), 1:NT] >= 0)  # Load curtailment
-    @variable(scuc, Δpw[1:(NW*NS), 1:NT] >= 0)  # Wind curtailment
+    @variable(scuc, Δpd[1:(ND * NS), 1:NT] >= 0)  # Load curtailment
+    @variable(scuc, Δpw[1:(NW * NS), 1:NT] >= 0)  # Wind curtailment
 
     # ========================================================================
     # Variables: Energy Storage System (ESS)
     # ========================================================================
-    @variable(scuc, κ⁺[1:(NC*NS), 1:NT], Bin)  # Charging status
-    @variable(scuc, κ⁻[1:(NC*NS), 1:NT], Bin)  # Discharging status
-    @variable(scuc, pc⁺[1:(NC*NS), 1:NT] >= 0) # Charging power
-    @variable(scuc, pc⁻[1:(NC*NS), 1:NT] >= 0) # Discharging power
-    @variable(scuc, qc[1:(NC*NS), 1:NT] >= 0)  # Energy state (cumulative)
+    @variable(scuc, κ⁺[1:(NC * NS), 1:NT], Bin)  # Charging status
+    @variable(scuc, κ⁻[1:(NC * NS), 1:NT], Bin)  # Discharging status
+    @variable(scuc, pc⁺[1:(NC * NS), 1:NT] >= 0) # Charging power
+    @variable(scuc, pc⁻[1:(NC * NS), 1:NT] >= 0) # Discharging power
+    @variable(scuc, qc[1:(NC * NS), 1:NT] >= 0)  # Energy state (cumulative)
 
     # BESS charging/discharging binary variables
-    @variable(scuc, α[1:(NS*NC), 1:NT], Bin)  # Charging binary
-    @variable(scuc, β[1:(NS*NC), 1:NT], Bin)  # Discharging binary
+    @variable(scuc, α[1:(NS * NC), 1:NT], Bin)  # Charging binary
+    @variable(scuc, β[1:(NS * NC), 1:NT], Bin)  # Discharging binary
 
     # ========================================================================
     # Optional Variables: Data Centers
     # ========================================================================
     if config_param.is_ConsiderDataCentra == 1
-        @variable(scuc, dc_p[1:(ND2*NS), 1:NT] >= 0)    # Data center power consumption
-        @variable(scuc, dc_f[1:(ND2*NS), 1:NT] >= 0)    # Data center frequency
-        @variable(scuc, dc_v²[1:(ND2*NS), 1:NT] >= 0)   # Data center voltage squared
-        @variable(scuc, dc_λ[1:(ND2*NS), 1:NT] >= 0)    # Data center dual variable
-        @variable(scuc, dc_Δu1[1:(ND2*NS), 1:NT] >= 0)  # Data center control variable 1
-        @variable(scuc, dc_Δu2[1:(ND2*NS), 1:NT] >= 0)  # Data center control variable 2
+        @variable(scuc, dc_p[1:(ND2 * NS), 1:NT] >= 0)    # Data center power consumption
+        @variable(scuc, dc_f[1:(ND2 * NS), 1:NT] >= 0)    # Data center frequency
+        @variable(scuc, dc_v²[1:(ND2 * NS), 1:NT] >= 0)   # Data center voltage squared
+        @variable(scuc, dc_λ[1:(ND2 * NS), 1:NT] >= 0)    # Data center dual variable
+        @variable(scuc, dc_Δu1[1:(ND2 * NS), 1:NT] >= 0)  # Data center control variable 1
+        @variable(scuc, dc_Δu2[1:(ND2 * NS), 1:NT] >= 0)  # Data center control variable 2
     end
 
     # ========================================================================
@@ -132,7 +121,7 @@ function define_decision_variables!(
     # Optional Variables: Hydroelectric Units
     # ========================================================================
     if config_param.is_HydroUnitCon == 1
-        @variable(scuc, ph[1:(NH*NS), 1:NT] >= 0) # Hydro power output
+        @variable(scuc, ph[1:(NH * NS), 1:NT] >= 0) # Hydro power output
     end
 
     println("\t Variables defined.")

@@ -22,13 +22,7 @@ function get_parmeters(flag_converter)
     @assert droop > factorial_coefficient
     # @assert inertia * 2 < (damping * factorial_coefficient) * time_content
 
-    return initial_inertia,
-    factorial_coefficient,
-    time_content,
-    droop,
-    ROCOF_threshold,
-    NADIR_threshold,
-    delta_p
+    return initial_inertia, factorial_coefficient, time_content, droop, ROCOF_threshold, NADIR_threshold, delta_p
 end
 
 # test

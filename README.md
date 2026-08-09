@@ -15,7 +15,7 @@
 
 ```text
 tools/pcm/pcm_main.jl
-tools/pcm/adaptive_period_scuc.jl
+tools/pcm/adaptive_overlap/core/adaptive_period_scuc.jl
 tools/pcm/evaluate_overlap_criteria_combinations.jl
 tools/pcm/generate_realistic_load_curve.jl
 tools/pcm/archive_pcm_comparison.jl

@@ -20,7 +20,7 @@ function reorginze_constraints_sets(all_constraints_dict)
     all_constr_greaterthan_sets = Dict{Symbol, T2}()
     all_constr_equalto_sets = Dict{Symbol, T0}()
 
-    for (key, constr) in all_constraints_dict
+    for (key, constr) ∈ all_constraints_dict
         constr_type_str = string(typeof(constr))
         if occursin("EqualTo", constr_type_str)
             all_constr_equalto_sets[key] = constr

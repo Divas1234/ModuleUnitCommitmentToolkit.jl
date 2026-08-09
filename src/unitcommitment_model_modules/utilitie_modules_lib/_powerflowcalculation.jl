@@ -6,43 +6,39 @@ Calculate linearized DC power flow matrices for transmission network analysis.
 This function computes the generation shift distribution factors (GSDF) and
 bus-to-generator/load mapping matrices using DC power flow approximation.
 The DC approximation assumes:
-- Line resistances are negligible (only reactance considered)
-- Voltage magnitudes are constant
-- Small angle approximation (sin(θ) ≈ θ)
+
+  - Line resistances are negligible (only reactance considered)
+  - Voltage magnitudes are constant
+  - Small angle approximation (sin(θ) ≈ θ)
 
 # Arguments
-- `units::unit`: Generator unit data with `locatebus` field
-- `lines::transmissionline`: Transmission line data with:
-  - `from`: From bus indices
-  - `to`: To bus indices
-  - `x`: Line reactance (p.u.)
-- `loads::load`: Load data with `locatebus` field
-- `NG::Int`: Number of generators
-- `NB::Int`: Number of buses
-- `ND::Int`: Number of loads
-- `NL::Int`: Number of transmission lines
+
+  - `units::unit`: Generator unit data with `locatebus` field
+  - `lines::transmissionline`: Transmission line data with:
+      + `from`: From bus indices
+      + `to`: To bus indices
+      + `x`: Line reactance (p.u.)
+  - `loads::load`: Load data with `locatebus` field
+  - `NG::Int`: Number of generators
+  - `NB::Int`: Number of buses
+  - `ND::Int`: Number of loads
+  - `NL::Int`: Number of transmission lines
 
 # Returns
-- `G2B::Matrix{Float64}`: Generator-to-bus incidence matrix (NB × NG)
-- `D2B::Matrix{Float64}`: Load-to-bus incidence matrix (NB × ND)
-- `Gsdf::Matrix{Float64}`: Generation shift distribution factors (NL × NB)
-  - Gsdf[l, b] represents the power flow on line l when 1 MW is injected at bus b
+
+  - `G2B::Matrix{Float64}`: Generator-to-bus incidence matrix (NB × NG)
+  - `D2B::Matrix{Float64}`: Load-to-bus incidence matrix (NB × ND)
+  - `Gsdf::Matrix{Float64}`: Generation shift distribution factors (NL × NB)
+      + Gsdf[l, b] represents the power flow on line l when 1 MW is injected at bus b
 
 # Algorithm
-1. Build bus admittance matrix B from line reactances
-2. Build branch-to-bus incidence matrix M
-3. Remove slack bus (bus 1) to make B invertible
-4. Calculate Gsdf using: Gsdf = M' * inv(B) / x
+
+ 1. Build bus admittance matrix B from line reactances
+ 2. Build branch-to-bus incidence matrix M
+ 3. Remove slack bus (bus 1) to make B invertible
+ 4. Calculate Gsdf using: Gsdf = M' * inv(B) / x
 """
-function linearpowerflow(
-    units::unit,
-    lines::transmissionline,
-    loads::load,
-    NG::Int64,
-    NB::Int64,
-    ND::Int64,
-    NL::Int64,
-)
+function linearpowerflow(units::unit, lines::transmissionline, loads::load, NG::Int64, NB::Int64, ND::Int64, NL::Int64)
     # ========================================================================
     # Step 1: Build bus admittance matrix B
     # ========================================================================
@@ -50,7 +46,7 @@ function linearpowerflow(
     M = zeros(NB, NL)
 
     # Build branch-to-bus incidence matrix M and admittance matrix B
-    for k = 1:NL
+    for k ∈ 1:NL
         n1 = lines.from[k, 1]  # From bus
         n2 = lines.to[k, 1]     # To bus
 
@@ -74,10 +70,10 @@ function linearpowerflow(
     G2B = zeros(NB, NG)  # Generator-to-bus: 1 if generator g is at bus b
     D2B = zeros(NB, ND)  # Load-to-bus: 1 if load d is at bus b
 
-    for i = 1:NG
+    for i ∈ 1:NG
         G2B[units.locatebus[i, 1], i] = 1
     end
-    for i = 1:ND
+    for i ∈ 1:ND
         D2B[loads.locatebus[i, 1], i] = 1
     end
 
@@ -90,13 +86,13 @@ function linearpowerflow(
     B1 = zeros(NB - 1, NB - 1)
     if Note_slack == 1
         # Remove first row and column (slack bus)
-        B1[1:(NB-1), :] = B[2:NB, 2:NB]
+        B1[1:(NB - 1), :] = B[2:NB, 2:NB]
     else
         # General case: remove slack bus at arbitrary position
-        B1[1:(Note_slack-1), 1:(Note_slack-1)] = B[1:(Note_slack-1), 1:(Note_slack-1)]
-        B1[Note_slack:(NB-1), 1:(Note_slack-1)] = B[Note_slack:NB, 1:(Note_slack-1)]
-        B1[1:(Note_slack-1), (Note_slack-1):(NB-1)] = B[1:(Note_slack-1), Note_slack:NB]
-        B1[(Note_slack-1):(NB-1), (Note_slack-1):(NB-1)] = B[Note_slack:NB, Note_slack:NB]
+        B1[1:(Note_slack - 1), 1:(Note_slack - 1)] = B[1:(Note_slack - 1), 1:(Note_slack - 1)]
+        B1[Note_slack:(NB - 1), 1:(Note_slack - 1)] = B[Note_slack:NB, 1:(Note_slack - 1)]
+        B1[1:(Note_slack - 1), (Note_slack - 1):(NB - 1)] = B[1:(Note_slack - 1), Note_slack:NB]
+        B1[(Note_slack - 1):(NB - 1), (Note_slack - 1):(NB - 1)] = B[Note_slack:NB, Note_slack:NB]
     end
 
     # ========================================================================
@@ -112,7 +108,7 @@ function linearpowerflow(
 
     # Calculate T1 = M' * inv(B1) / x
     T1 = M1' / B1
-    for k = 1:(NB-1)
+    for k ∈ 1:(NB - 1)
         T1[:, k] = T1[:, k] ./ lines.x
     end
 
@@ -122,11 +118,11 @@ function linearpowerflow(
     Gsdf = zeros(NL, NB)
     if Note_slack == 1
         # Slack bus is first bus, so shift columns
-        Gsdf[:, (Note_slack+1):NB] = T1[:, Note_slack:(NB-1)]
+        Gsdf[:, (Note_slack + 1):NB] = T1[:, Note_slack:(NB - 1)]
     else
         # General case: insert slack bus column
-        Gsdf[:, 1:(Note_slack-1)] = T1[:, 1:(Note_slack-1)]
-        Gsdf[:, (Note_slack+1):NB] = T1[:, Note_slack:(NB-1)]
+        Gsdf[:, 1:(Note_slack - 1)] = T1[:, 1:(Note_slack - 1)]
+        Gsdf[:, (Note_slack + 1):NB] = T1[:, Note_slack:(NB - 1)]
     end
 
     return G2B, D2B, Gsdf

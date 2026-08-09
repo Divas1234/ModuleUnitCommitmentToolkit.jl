@@ -47,27 +47,14 @@ end
 
 function config_from_env()
     consider_bess = model_env_int("MODEL_CONSIDER_BESS", parse(Int64, get(ENV, "BENDERS_CONSIDER_BESS", get(ENV, "CONSIDER_BESS", "0"))))
-    return config(
-        model_env_int("MODEL_IS_NETWORK_CON", 1),
-        model_env_int("MODEL_IS_THERMAL_UNIT_CON", 1),
-        model_env_int("MODEL_IS_WIND_UNIT_CON", 1),
-        model_env_int("MODEL_IS_SYSTEM_CON", 1),
-        model_env_int("MODEL_IS_PIECE_LINEAR", 1),
-        model_env_int("MODEL_NUM_SEGMENTS", 3),
-        model_env_float("MODEL_ALPHA", 0.005),
-        model_env_float("MODEL_BETA", 0.005),
-        model_env_int("MODEL_COAL_PRICE", 1),
-        model_env_int("MODEL_IS_ACTIVE_LOAD", 1),
-        model_env_int("MODEL_IS_WIND_INTEGRATION", 1),
-        model_env_float("MODEL_LOAD_CUTTING_COEFFICIENT", 1e5),
-        model_env_float("MODEL_WIND_CUTTING_COEFFICIENT", 1e5),
-        model_env_int("MODEL_MAX_ITERATIONS_NUM", 50),
-        model_env_float("MODEL_CALCULATION_PRECISION", 0.01),
-        model_env_int("MODEL_CONSIDER_DATA_CENTER", 0),
-        model_env_int("MODEL_CONSIDER_FREQUENCY_CONTROL", 0),
-        consider_bess,
-        model_env_int("MODEL_CONSIDER_MULTI_CUTS", 1),
-    )
+    return config(model_env_int("MODEL_IS_NETWORK_CON", 1), model_env_int("MODEL_IS_THERMAL_UNIT_CON", 1),
+        model_env_int("MODEL_IS_WIND_UNIT_CON", 1), model_env_int("MODEL_IS_SYSTEM_CON", 1),
+        model_env_int("MODEL_IS_PIECE_LINEAR", 1), model_env_int("MODEL_NUM_SEGMENTS", 3), model_env_float("MODEL_ALPHA", 0.005),
+        model_env_float("MODEL_BETA", 0.005), model_env_int("MODEL_COAL_PRICE", 1), model_env_int("MODEL_IS_ACTIVE_LOAD", 1),
+        model_env_int("MODEL_IS_WIND_INTEGRATION", 1), model_env_float("MODEL_LOAD_CUTTING_COEFFICIENT", 1e5),
+        model_env_float("MODEL_WIND_CUTTING_COEFFICIENT", 1e5), model_env_int("MODEL_MAX_ITERATIONS_NUM", 50),
+        model_env_float("MODEL_CALCULATION_PRECISION", 0.01), model_env_int("MODEL_CONSIDER_DATA_CENTER", 0),
+        model_env_int("MODEL_CONSIDER_FREQUENCY_CONTROL", 0), consider_bess, model_env_int("MODEL_CONSIDER_MULTI_CUTS", 1))
 end
 
 """
@@ -118,18 +105,11 @@ struct unit
     Tg::Vector{Float64}                   # Governor/Turbine operational time constant (s)
     Rg::Vector{Float64}                   # Unit governor speed regulation or droop factor (p.u.)
 
-    function unit(
-        index, locatebus, p_max, p_min, ramp_up, ramp_down, shut_up, shut_down,
-        min_shutup_time, min_shutdown_time,
-        x_0, t_0, p_0, coffi_a, coffi_b, coffi_c, coffi_cold_shutup_1, coffi_cold_shutup_2, coffi_cold_shutdown_1, coffi_cold_shutdown_2,
-        Hg, Dg, Kg, Fg, Tg, Rg,
-    )
+    function unit(index, locatebus, p_max, p_min, ramp_up, ramp_down, shut_up, shut_down, min_shutup_time, min_shutdown_time, x_0, t_0, p_0, coffi_a,
+            coffi_b, coffi_c, coffi_cold_shutup_1, coffi_cold_shutup_2, coffi_cold_shutdown_1, coffi_cold_shutdown_2, Hg, Dg, Kg, Fg, Tg, Rg)
         return new(
-            index, locatebus, p_max, p_min, ramp_up, ramp_down, shut_up, shut_down,
-            min_shutup_time, min_shutdown_time, x_0, t_0, p_0, coffi_a, coffi_b, coffi_c,
-            coffi_cold_shutup_1, coffi_cold_shutup_2, coffi_cold_shutdown_1, coffi_cold_shutdown_2,
-            Hg, Dg, Kg, Fg, Tg, Rg,
-        )
+            index, locatebus, p_max, p_min, ramp_up, ramp_down, shut_up, shut_down, min_shutup_time, min_shutdown_time, x_0, t_0, p_0, coffi_a,
+            coffi_b, coffi_c, coffi_cold_shutup_1, coffi_cold_shutup_2, coffi_cold_shutdown_1, coffi_cold_shutdown_2, Hg, Dg, Kg, Fg, Tg, Rg)
     end
 
     # units(Hg,Dg,Kg,Fg,Tg,Rg) = new(Hg,Dg,Kg,Fg,Tg,Rg)

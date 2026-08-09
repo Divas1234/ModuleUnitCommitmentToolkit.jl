@@ -18,20 +18,8 @@ function generate_wind_scenarios(WindsFreqParam, mode, NT::Int64 = 24; scenario_
 
     scenarios_nums = size(scenarios_curve, 1)
     scenarios_prob = 1.0 / scenarios_nums
-    winds = wind(
-        index,
-        locatebus,
-        p_max,
-        scenarios_prob,
-        scenarios_nums,
-        scenarios_curve,
-        vec(WindsFreqParam[:, 1]),
-        vec(WindsFreqParam[:, 2]),
-        vec(WindsFreqParam[:, 3]),
-        vec(WindsFreqParam[:, 4]),
-        vec(WindsFreqParam[:, 5]),
-        vec(WindsFreqParam[:, 6]),
-    )
+    winds = wind(index, locatebus, p_max, scenarios_prob, scenarios_nums, scenarios_curve, vec(WindsFreqParam[:, 1]), vec(WindsFreqParam[:, 2]),
+        vec(WindsFreqParam[:, 3]), vec(WindsFreqParam[:, 4]), vec(WindsFreqParam[:, 5]), vec(WindsFreqParam[:, 6]))
     return winds, NW
 end
 
@@ -43,5 +31,4 @@ function generate_weibull_wind_availability(base_profile::AbstractMatrix, scenar
     return clamp.(repeat(base_profile, scenario_count, 1) .+ signs .* noise, 0.0, 1.0)
 end
 
-genscenario(WindsFreqParam, flag, NT::Int64 = 24; scenario_limit::Int64 = 50) =
-    generate_wind_scenarios(WindsFreqParam, flag, NT; scenario_limit = scenario_limit)
+genscenario(WindsFreqParam, flag, NT::Int64 = 24; scenario_limit::Int64 = 50) = generate_wind_scenarios(WindsFreqParam, flag, NT; scenario_limit = scenario_limit)

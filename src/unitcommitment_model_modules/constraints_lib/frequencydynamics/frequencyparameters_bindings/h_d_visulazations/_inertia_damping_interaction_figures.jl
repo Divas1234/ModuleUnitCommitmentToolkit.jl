@@ -25,32 +25,36 @@ Generates a plot visualizing the feasible operating region for inertia and dampi
 considering converter configurations and system stability limits (RoCoF, Nadir).
 
 Improvements:
-- More descriptive function and variable names (snake_case).
-- Explicit type annotations for clarity and potential performance benefits.
-- Renamed external function calls to be more descriptive (assuming control over them).
-- Vectorized calculations where possible (e.g., `fill_area_lower_bound`).
-- Simplified dictionary access.
-- Used constants for magic numbers in plotting.
-- Removed redundant variable assignments.
-- Added basic input validation.
-- Removed debugging (`@show`) and commented-out code sections.
-- Added `LinearAlgebra` import if potentially needed by fitting functions.
+
+  - More descriptive function and variable names (snake_case).
+  - Explicit type annotations for clarity and potential performance benefits.
+  - Renamed external function calls to be more descriptive (assuming control over them).
+  - Vectorized calculations where possible (e.g., `fill_area_lower_bound`).
+  - Simplified dictionary access.
+  - Used constants for magic numbers in plotting.
+  - Removed redundant variable assignments.
+  - Added basic input validation.
+  - Removed debugging (`@show`) and commented-out code sections.
+  - Added `LinearAlgebra` import if potentially needed by fitting functions.
 
 Arguments:
-- `droop_setting`: The droop parameter value (p.u.).
-- `damping_values`: A vector of damping values (p.u.) to evaluate. Defaults to `DEFAULT_DAMPING_RANGE`.
-- `flag_converter`: Integer flag selecting a specific converter model or scenario. Defaults to 0.
+
+  - `droop_setting`: The droop parameter value (p.u.).
+  - `damping_values`: A vector of damping values (p.u.) to evaluate. Defaults to `DEFAULT_DAMPING_RANGE`.
+  - `flag_converter`: Integer flag selecting a specific converter model or scenario. Defaults to 0.
 
 Returns:
-- A `Plots.Plot` object representing the generated figure.
+
+  - A `Plots.Plot` object representing the generated figure.
 
 Raises:
-- `ArgumentError`: If `damping_values` is empty.
+
+  - `ArgumentError`: If `damping_values` is empty.
 """
 function generate_inertia_damping_figure(
-    droop_setting::Float64;
-    damping_values::AbstractVector{Float64} = DEFAULT_DAMPING_RANGE,
-    flag_converter::Int = 0, # Parameterized flag_converter
+        droop_setting::Float64;
+        damping_values::AbstractVector{Float64} = DEFAULT_DAMPING_RANGE,
+        flag_converter::Int = 0 # Parameterized flag_converter
 )
     # --- Input Validation ---
     if isempty(damping_values)
@@ -65,8 +69,7 @@ function generate_inertia_damping_figure(
 
     # Simplified and safer dictionary access using get with default values
     vsm_params = get(get(controller_configs, "VSM", Dict()), "control_parameters", Dict())
-    droop_params =
-        get(get(controller_configs, "Droop", Dict()), "control_parameters", Dict())
+    droop_params = get(get(controller_configs, "Droop", Dict()), "control_parameters", Dict())
 
     # --- Parameter Retrieval ---
     # Descriptive function name, clearer variable names
@@ -74,8 +77,7 @@ function generate_inertia_damping_figure(
     # TODO: Replace placeholder with actual function call if available
     # initial_inertia, factor_coeff, time_const, _, rocof_limit, nadir_limit, power_dev =
     #     get_system_parameters(flag_converter)
-    initial_inertia, factor_coeff, time_const, _, rocof_limit, nadir_limit, power_dev =
-        get_parmeters(flag_converter) # Keeping original name if rename isn't possible yet
+    initial_inertia, factor_coeff, time_const, _, rocof_limit, nadir_limit, power_dev = get_parmeters(flag_converter) # Keeping original name if rename isn't possible yet
 
     # Use the provided droop setting directly
     droop = droop_setting
@@ -94,7 +96,7 @@ function generate_inertia_damping_figure(
         damping_values,
         vsm_params,
         droop_params,
-        flag_converter,
+        flag_converter
     )
 
     # Descriptive function name
@@ -106,7 +108,7 @@ function generate_inertia_damping_figure(
         damping_values,
         factor_coeff,
         time_const,
-        droop,
+        droop
     ) # Note: nadir_limit is still unused here, as per original code. Verify if intended.
 
     # Descriptive function name, clearer variable names
@@ -117,8 +119,7 @@ function generate_inertia_damping_figure(
 
     # Calculate the fitted inertia curve using the quadratic model (vectorized)
     # Using @. macro for broadcasting is concise
-    fitted_inertia =
-        @. fit_coeffs[1] + fit_coeffs[2] * damping_values + fit_coeffs[3] * damping_values^2
+    fitted_inertia = @. fit_coeffs[1] + fit_coeffs[2] * damping_values + fit_coeffs[3] * damping_values^2
 
     # Calculate the lower bound for the fill area (vectorized)
     # Takes the maximum of the fitted curve and the minimum inertia limit at each point
@@ -131,35 +132,35 @@ function generate_inertia_damping_figure(
     # Initial plot setup
     p = Plots.plot(
         damping_values,
-        inertia_bounds[:, 1], # Upper bound
+        inertia_bounds[:, 1]; # Upper bound
         framestyle = :box,
         ylims = (0, maximum(inertia_bounds[:, 1]) * 1.05), # Add slight padding to ylims
         xlabel = "Damping (p.u.)", # Clearer labels
         ylabel = "Inertia (p.u.)",
         lw = 3,
         label = "Upper Inertia Bound",
-        legend = :topright, # Adjust legend position if needed
+        legend = :topright # Adjust legend position if needed
     )
 
     # Add lower inertia bound
     Plots.plot!(
         p,
         damping_values,
-        inertia_bounds[:, 2], # Lower bound
+        inertia_bounds[:, 2]; # Lower bound
         lw = 3,
         label = "Lower Inertia Bound",
-        color = :forestgreen,
+        color = :forestgreen
     )
 
     # Add fitted inertia curve
     Plots.plot!(
         p,
         damping_values,
-        fitted_inertia,
+        fitted_inertia;
         lw = 3,
         label = "Fitted Inertia Boundary",
         linestyle = :dash, # Differentiate fitted curve
-        color = :purple,
+        color = :purple
     )
 
     # Add constant stability limits
@@ -167,21 +168,21 @@ function generate_inertia_damping_figure(
     if isa(min_inertia_limit, Number)
         Plots.hline!(
             p,
-            [min_inertia_limit], # Use the calculated limit directly
+            [min_inertia_limit]; # Use the calculated limit directly
             lw = 3,
             label = "Min Stability Inertia",
             linestyle = :dot,
-            color = :red,
+            color = :red
         )
     else # Assuming it's a vector matching damping_values
         Plots.plot!(
             p,
             damping_values,
-            min_inertia_limit,
+            min_inertia_limit;
             lw = 3,
             label = "Min Stability Inertia",
             linestyle = :dot,
-            color = :red,
+            color = :red
         )
     end
 
@@ -189,11 +190,11 @@ function generate_inertia_damping_figure(
     Plots.plot!(
         p,
         damping_values,
-        max_inertia_limit,
+        max_inertia_limit;
         lw = 3,
         label = "Max Stability Inertia (RoCoF)",
         linestyle = :dot,
-        color = :orange,
+        color = :orange
     )
 
     # Add fill area representing the feasible region (optional, uncomment if needed)
@@ -208,19 +209,19 @@ function generate_inertia_damping_figure(
     # Add vertical lines for default damping range bindings
     Plots.vline!(
         p,
-        [DEFAULT_DAMPING_MIN],
+        [DEFAULT_DAMPING_MIN];
         lw = 2, # Slightly thinner for visual distinction
         label = "Default Min Damping",
         linestyle = :dashdot,
-        color = :grey,
+        color = :grey
     )
     Plots.vline!(
         p,
-        [DEFAULT_DAMPING_MAX],
+        [DEFAULT_DAMPING_MAX];
         lw = 2,
         label = "Default Max Damping",
         linestyle = :dashdot,
-        color = :grey,
+        color = :grey
     )
 
     # Add title

@@ -2,90 +2,32 @@
     using PowerSystems
 
     system = System(100.0)
-    bus1 = ACBus(;
-        number = 10,
-        name = "Bus 10",
-        available = true,
-        bustype = ACBusTypes.REF,
-        angle = 0.0,
-        magnitude = 1.0,
-        voltage_limits = (min = 0.95, max = 1.05),
-        base_voltage = 138.0,
-        area = nothing,
-        load_zone = nothing,
-    )
-    bus2 = ACBus(;
-        number = 20,
-        name = "Bus 20",
-        available = true,
-        bustype = ACBusTypes.PQ,
-        angle = 0.0,
-        magnitude = 1.0,
-        voltage_limits = (min = 0.95, max = 1.05),
-        base_voltage = 138.0,
-        area = nothing,
-        load_zone = nothing,
-    )
-    add_component!(system, bus1; skip_validation = true)
-    add_component!(system, bus2; skip_validation = true)
+    set_runchecks!(system, false) # 桥接测试只验证数据映射，不验证设备工程参数范围。
+    bus1 = ACBus(; number = 10, name = "Bus 10", available = true, bustype = ACBusTypes.REF, angle = 0.0, magnitude = 1.0,
+        voltage_limits = (min = 0.95, max = 1.05), base_voltage = 138.0, area = nothing, load_zone = nothing)
+    bus2 = ACBus(; number = 20, name = "Bus 20", available = true, bustype = ACBusTypes.PQ, angle = 0.0, magnitude = 1.0,
+        voltage_limits = (min = 0.95, max = 1.05), base_voltage = 138.0, area = nothing, load_zone = nothing)
+    add_component!(system, bus1)
+    add_component!(system, bus2)
 
-    generator = ThermalStandard(;
-        name = "thermal-1",
-        available = true,
-        status = true,
-        bus = bus1,
-        active_power = 30.0,
-        reactive_power = 0.0,
-        rating = 80.0,
-        active_power_limits = (min = 10.0, max = 80.0),
-        reactive_power_limits = nothing,
-        ramp_limits = (up = 25.0, down = 25.0),
-        operation_cost = ThermalGenerationCost(nothing),
-        base_power = 100.0,
-        time_limits = (up = 2.0, down = 2.0),
-        must_run = false,
-        prime_mover_type = PrimeMovers.ST,
-        fuel = ThermalFuels.COAL,
-    )
-    add_component!(system, generator; skip_validation = true)
+    generator = ThermalStandard(; name = "thermal-1", available = true, status = true, bus = bus1, active_power = 30.0, reactive_power = 0.0,
+        rating = 80.0, active_power_limits = (min = 10.0, max = 80.0), reactive_power_limits = nothing,
+        ramp_limits = (up = 25.0, down = 25.0), operation_cost = ThermalGenerationCost(nothing), base_power = 100.0,
+        time_limits = (up = 2.0, down = 2.0), must_run = false, prime_mover_type = PrimeMovers.ST, fuel = ThermalFuels.COAL)
+    add_component!(system, generator)
 
-    line = Line(;
-        name = "line-1",
-        available = true,
-        active_power_flow = 0.0,
-        reactive_power_flow = 0.0,
-        arc = Arc(bus1, bus2),
-        r = 0.0,
-        x = 0.1,
-        b = (from = 0.0, to = 0.0),
-        g = (from = 0.0, to = 0.0),
-        rating = 100.0,
-        angle_limits = (min = -1.5, max = 1.5),
-    )
-    add_component!(system, line; skip_validation = true)
+    line = Line(; name = "line-1", available = true, active_power_flow = 0.0, reactive_power_flow = 0.0, arc = Arc(bus1, bus2), r = 0.0,
+        x = 0.1, b = (from = 0.0, to = 0.0), g = (from = 0.0, to = 0.0), rating = 100.0, angle_limits = (min = -1.5, max = 1.5))
+    add_component!(system, line)
 
-    power_load = PowerLoad(;
-        name = "load-1",
-        available = true,
-        bus = bus2,
-        active_power = 50.0,
-        reactive_power = 0.0,
-        base_power = 100.0,
-        max_active_power = 50.0,
-        max_reactive_power = 0.0,
-    )
-    add_component!(system, power_load; skip_validation = true)
+    power_load = PowerLoad(; name = "load-1", available = true, bus = bus2, active_power = 50.0, reactive_power = 0.0,
+        base_power = 100.0, max_active_power = 50.0, max_reactive_power = 0.0)
+    add_component!(system, power_load)
 
     frequency = Dict("thermal-1" => (H = 6.5, D = 1.2, K = 0.4, F = 0.3, T = 0.25, R = 0.05))
     centers = [(bus = 20, p_max = 12.0, p_min = 3.0, idle_power = 1.0, server_energy = 0.5, lambda = 2.0, mu = 4.0, workload = fill(0.5, 4))]
     data = load_uc_data(;
-        use_powersystems = true,
-        sys = system,
-        scenario_limit = 1,
-        frequency_parameters = frequency,
-        data_centers = centers,
-        horizon = 4,
-    )
+        use_powersystems = true, sys = system, scenario_limit = 1, frequency_parameters = frequency, data_centers = centers, horizon = 4)
 
     @test data.NB == 2
     @test data.NG == 1

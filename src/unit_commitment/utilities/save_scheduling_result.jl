@@ -56,50 +56,17 @@ function save_details_scheduled_results(config_param, results)
 end
 
 #LINK -  save the main results as .txt file
-function save_UCresults(
-    x₀, bench_x₀, p₀, pᵨ, pᵩ, seq_sr⁺, seq_sr⁻,
-    pss_charge_p⁺, pss_charge_p⁻,
-    su_cost, sd_cost, prod_cost, cost_sr⁺, cost_sr⁻,
-    bench_p₀, bench_pᵨ, bench_pᵩ, bench_seq_sr⁺, bench_seq_sr⁻, bench_pss_charge_p⁺, bench_pss_charge_p⁻, bench_su_cost, bench_sd_cost, bench_prod_cost, bench_cost_sr⁺, bench_cost_sr⁻,
-    NT, NG, ND, NW, units, winds,
-)
+function save_UCresults(x₀, bench_x₀, p₀, pᵨ, pᵩ, seq_sr⁺, seq_sr⁻, pss_charge_p⁺, pss_charge_p⁻, su_cost, sd_cost, prod_cost, cost_sr⁺,
+        cost_sr⁻, bench_p₀, bench_pᵨ, bench_pᵩ, bench_seq_sr⁺, bench_seq_sr⁻, bench_pss_charge_p⁺, bench_pss_charge_p⁻,
+        bench_su_cost, bench_sd_cost, bench_prod_cost, bench_cost_sr⁺, bench_cost_sr⁻, NT, NG, ND, NW, units, winds)
     output_path = joinpath(uc_output_dir(), "bench", "mydata_1.jld")
     mkpath(dirname(output_path))
-    return save(
-        output_path,
-        "x₀", x₀,
-        "p₀", p₀,
-        "pᵨ", pᵨ,
-        "pᵩ", pᵩ,
-        "seq_sr⁺", seq_sr⁺,
-        "seq_sr⁻", seq_sr⁻,
-        "pss_charge_p⁺", pss_charge_p⁺,
-        "pss_charge_p⁻", pss_charge_p⁻,
-        "su_cost", su_cost,
-        "sd_cost", sd_cost,
-        "prod_cost", prod_cost,
-        "cost_sr⁺", cost_sr⁺,
-        "cost_sr⁻", cost_sr⁻,
-        "NT", NT,
-        "NG", NG,
-        "ND", ND,
-        "NW", NW,
-        "winds", winds,
-        "units", units,
-        "bench_x₀", bench_x₀,
-        "bench_p₀", bench_p₀,
-        "bench_pᵨ", bench_pᵨ,
-        "bench_pᵩ", bench_pᵩ,
-        "bench_seq_sr⁺", bench_seq_sr⁺,
-        "bench_seq_sr⁻", bench_seq_sr⁻,
-        "bench_pss_charge_p⁺", bench_pss_charge_p⁺,
-        "bench_pss_charge_p⁻", bench_pss_charge_p⁻,
-        "bench_su_cost", bench_su_cost,
-        "bench_sd_cost", bench_sd_cost,
-        "bench_prod_cost", bench_prod_cost,
-        "bench_cost_sr⁺", bench_cost_sr⁺,
-        "bench_cost_sr⁻", bench_cost_sr⁻,
-    )
+    return save(output_path, "x₀", x₀, "p₀", p₀, "pᵨ", pᵨ, "pᵩ", pᵩ, "seq_sr⁺", seq_sr⁺, "seq_sr⁻", seq_sr⁻, "pss_charge_p⁺", pss_charge_p⁺,
+        "pss_charge_p⁻", pss_charge_p⁻, "su_cost", su_cost, "sd_cost", sd_cost, "prod_cost", prod_cost, "cost_sr⁺", cost_sr⁺, "cost_sr⁻",
+        cost_sr⁻, "NT", NT, "NG", NG, "ND", ND, "NW", NW, "winds", winds, "units", units, "bench_x₀", bench_x₀, "bench_p₀", bench_p₀,
+        "bench_pᵨ", bench_pᵨ, "bench_pᵩ", bench_pᵩ, "bench_seq_sr⁺", bench_seq_sr⁺, "bench_seq_sr⁻", bench_seq_sr⁻, "bench_pss_charge_p⁺",
+        bench_pss_charge_p⁺, "bench_pss_charge_p⁻", bench_pss_charge_p⁻, "bench_su_cost", bench_su_cost, "bench_sd_cost",
+        bench_sd_cost, "bench_prod_cost", bench_prod_cost, "bench_cost_sr⁺", bench_cost_sr⁺, "bench_cost_sr⁻", bench_cost_sr⁻)
 end
 
 #LINK -  sub exported modelue for saving results as .txt file
@@ -140,36 +107,36 @@ function read_UCresults()
         write(file, "bench_cost_sr⁺", bench_cost_sr⁺)
         return write(file, "bench_cost_sr⁻", bench_cost_sr⁻)
     end
-    return x₀, bench_x₀, p₀, pᵨ, pᵩ, seq_sr⁺, seq_sr⁻, pss_charge_p⁺, pss_charge_p⁻, su_cost, sd_cost, prod_cost, cost_sr⁺, cost_sr⁻,
-    bench_p₀, bench_pᵨ, bench_pᵩ, bench_seq_sr⁺, bench_seq_sr⁻, bench_pss_charge_p⁺, bench_pss_charge_p⁻, bench_su_cost, bench_sd_cost, bench_prod_cost, bench_cost_sr⁺, bench_cost_sr⁻,
-    NT, NG, ND, NW, units, winds
+    return x₀, bench_x₀, p₀, pᵨ, pᵩ, seq_sr⁺, seq_sr⁻, pss_charge_p⁺, pss_charge_p⁻, su_cost, sd_cost, prod_cost, cost_sr⁺,
+    cost_sr⁻, bench_p₀, bench_pᵨ, bench_pᵩ, bench_seq_sr⁺, bench_seq_sr⁻, bench_pss_charge_p⁺, bench_pss_charge_p⁻,
+    bench_su_cost, bench_sd_cost, bench_prod_cost, bench_cost_sr⁺, bench_cost_sr⁻, NT, NG, ND, NW, units, winds
 end
 
 function savebalance_result(bench_p₀, bench_pᵨ, bench_pᵩ, bench_pss_charge_p⁺, bench_pss_charge_p⁻, flag; output_dir = nothing)
     # @show DataFrame(bench_p₀[1:3,:],:auto)
     thermalunits_output = zeros(24, 1)
-    for i in 1:24
+    for i ∈ 1:24
         thermalunits_output[i, 1] = sum(bench_p₀[1:3, i])
     end
     # Plots.plot(thermalunits_output)
     # @show DataFrame(bench_pᵩ[1:3,:],:auto)
     windunits_output = zeros(24, 1)
-    for i in 1:24
+    for i ∈ 1:24
         windunits_output[i, 1] = sum(winds.p_max) * winds.scenarios_curve[1, i] - sum(bench_pᵩ[1:2, i])
     end
     # Plots.plot(windunits_output)
     forceloadcurtailment = zeros(24, 1)
-    for i in 1:24
+    for i ∈ 1:24
         forceloadcurtailment[i, 1] = sum(bench_pᵨ[1:ND, i])
     end
     # Plots.plot(forceloadcurtailment)
     # @show bench_pss_charge_p⁺[1,:]
     BESScharging_output, BESSdischarging_output = zeros(24, 1), zeros(24, 1)
     if config_param.is_ConsiderBESS == 1
-        for i in 1:24
+        for i ∈ 1:24
             BESScharging_output[i, 1] = sum(bench_pss_charge_p⁺[1, i])
         end
-        for i in 1:24
+        for i ∈ 1:24
             BESSdischarging_output[i, 1] = sum(bench_pss_charge_p⁻[1, i])
         end
     end

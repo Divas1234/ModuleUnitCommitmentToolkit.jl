@@ -12,17 +12,15 @@ function plotcasestudies(p₀, pᵨ, pᵩ, seq_sr⁺, seq_sr⁻, su_cost, sd_cos
     fig3 = line1(seq_sr⁺, seq_sr⁻, NT, NC)
     fig4 = line2(seq_sr⁺, seq_sr⁻, NT, NC)
 
-    return [
-        fig1 fig2
-        fig3 fig4
-    ]
+    return [fig1 fig2
+            fig3 fig4]
 end
 
 function area1(p₀, pᵨ, pᵩ, NT, NG, ND, NW, NC)
     y1_index = p₀[1:NG, 1:NT] # units power
 
     y2_index = zeros(NW, NT)
-    for i in 1:NW
+    for i ∈ 1:NW
         y2_index[i, :] = winds.scenarios_curve[1, :] .* winds.p_max[i, 1] - pᵨ[i, 1:NT] # wind power
     end
     y3_index = pᵩ[1:NW, 1:NT] # spolied wind power
@@ -31,12 +29,12 @@ function area1(p₀, pᵨ, pᵩ, NT, NG, ND, NW, NC)
     # y5_index = pss_charge_p⁻[1:NC, 1:NT] # pss discharge power
     y6_index = pᵨ[1:ND, 1:NT] # loadcutting power
 
-    y1_index = sum(y1_index[i, :] for i in 1:NG)
-    y2_index = sum(y2_index[i, :] for i in 1:NW)
-    y3_index = sum(y3_index[i, :] for i in 1:NW)
+    y1_index = sum(y1_index[i, :] for i ∈ 1:NG)
+    y2_index = sum(y2_index[i, :] for i ∈ 1:NW)
+    y3_index = sum(y3_index[i, :] for i ∈ 1:NW)
     # y4_index = sum(y4_index[i, :] for i in 1:NC)
     # y5_index = sum(y5_index[i, :] for i in 1:NC)
-    y6_index = sum(y6_index[i, :] for i in 1:ND)
+    y6_index = sum(y6_index[i, :] for i ∈ 1:ND)
 
     # Note: must do not appear the spoliedwinds
     # s0 = (y4_index + y3_index) * -1

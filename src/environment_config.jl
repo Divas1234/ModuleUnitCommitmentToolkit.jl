@@ -18,13 +18,13 @@ using Pkg
 
 # Use active project environment if specified, otherwise activate current directory
 if !isfile(Base.active_project())
-	if isdir("pkg") && isfile(joinpath("pkg", "Project.toml"))
-		try
-			Pkg.activate("pkg")
-		catch
-			nothing
-		end
-	end
+    if isdir("pkg") && isfile(joinpath("pkg", "Project.toml"))
+        try
+            Pkg.activate("pkg")
+        catch
+            nothing
+        end
+    end
 end
 
 # ============================================================================
@@ -32,51 +32,37 @@ end
 # ============================================================================
 # List of required packages (removed duplicates)
 neededPackages = [
-	# Optimization
-	:JuMP,
-	:Gurobi,
-	# Data handling
-	:DataFrames,
-	:CSV,
-	:XLSX,
-	:DelimitedFiles,
-	:JLD,
-	# Statistics and analysis
-	:Distributions,
-	:MultivariateStats,
-	:Clustering,
-	:StatsPlots,
-	# Visualization
-	:Plots,
-	:UnicodePlots,
-	:LaTeXStrings,
-	# Utilities
-	:Revise,
-	:Test,
-	:Random,
-	:DataStructures
-]
+    # Optimization
+    :JuMP, :Gurobi,
+    # Data handling
+    :DataFrames, :CSV, :XLSX, :DelimitedFiles, :JLD,
+    # Statistics and analysis
+    :Distributions, :MultivariateStats, :Clustering, :StatsPlots,
+    # Visualization
+    :Plots, :UnicodePlots, :LaTeXStrings,
+    # Utilities
+    :Revise, :Test, :Random, :DataStructures]
 
 # Automatically install missing packages
-for neededpackage in neededPackages
-	package_name = String(neededpackage)
-	if !(package_name in keys(Pkg.project().dependencies))
-		println("Installing missing package: $package_name")
-		Pkg.add(package_name)
-	end
+for neededpackage ∈ neededPackages
+    package_name = String(neededpackage)
+    if !(package_name in keys(Pkg.project().dependencies))
+        println("Installing missing package: $package_name")
+        Pkg.add(package_name)
+    end
 end
 
 # ============================================================================
 # Package Imports
 # ============================================================================
 try
-	using Revise
+    using Revise
 catch
-	# Revise is optional for interactive REPL development
+    # Revise is optional for interactive REPL development
 end
 using JuMP
 const HAS_GUROBI = try
-    import Gurobi
+    using Gurobi: Gurobi
     # Test if Gurobi can load its library
     Gurobi.Env()
     true

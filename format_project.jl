@@ -1,8 +1,24 @@
-#!/usr/bin/env julia
-
 const PROJECT_ROOT = normpath(@__DIR__)
 const FORMATTER_MODULE = Ref{Module}()
 const DEFAULT_EXCLUDED_DIRS = Set([".git", ".julia", ".pkg", ".codegraph", ".reasonix", ".kilo", "output"])
+
+struct HostPlatform
+    name::String
+    case_insensitive_paths::Bool
+end
+
+"""
+识别当前宿主平台；未知类 Unix 系统使用 POSIX 路径规则。
+"""
+function detect_host_platform()
+    Sys.iswindows() && return HostPlatform("Windows", true)
+    Sys.isapple() && return HostPlatform("macOS", false)
+    Sys.islinux() && return HostPlatform("Linux", false)
+    Sys.isfreebsd() && return HostPlatform("FreeBSD", false)
+    return HostPlatform("$(Sys.KERNEL)-$(Sys.ARCH)", false)
+end
+
+const HOST_PLATFORM = detect_host_platform()
 
 function print_usage()
     return println("""
@@ -44,7 +60,7 @@ function parse_args(args)
     include_all = false
     paths = String[]
 
-    for arg in args
+    for arg ∈ args
         if arg == "--check"
             check = true
         elseif arg == "--verbose" || arg == "-v"
@@ -73,18 +89,31 @@ function should_skip_dir(dir::AbstractString, include_all::Bool)
     return startswith(dir_name, ".") || dir_name in DEFAULT_EXCLUDED_DIRS
 end
 
+function resolve_input_path(raw_path::AbstractString)
+    expanded_path = expanduser(raw_path)
+    return normpath(isabspath(expanded_path) ? expanded_path : joinpath(PROJECT_ROOT, expanded_path))
+end
+
+is_julia_file(path::AbstractString) = lowercase(splitext(path)[2]) == ".jl"
+
+function normalize_file_list!(files::Vector{String})
+    sort!(files; by = path -> HOST_PLATFORM.case_insensitive_paths ? lowercase(path) : path)
+    unique!(path -> HOST_PLATFORM.case_insensitive_paths ? lowercase(path) : path, files)
+    return files
+end
+
 function collect_julia_files(paths::Vector{String}, include_all::Bool)
     files = String[]
 
-    for raw_path in paths
-        path = abspath(PROJECT_ROOT, raw_path)
+    for raw_path ∈ paths
+        path = resolve_input_path(raw_path)
         if isfile(path)
-            endswith(path, ".jl") && push!(files, path)
+            is_julia_file(path) && push!(files, path)
         elseif isdir(path)
-            for (root, dirs, names) in walkdir(path)
+            for (root, dirs, names) ∈ walkdir(path)
                 filter!(dir -> !should_skip_dir(joinpath(root, dir), include_all), dirs)
-                for name in names
-                    endswith(name, ".jl") && push!(files, joinpath(root, name))
+                for name ∈ names
+                    is_julia_file(name) && push!(files, normpath(joinpath(root, name)))
                 end
             end
         else
@@ -93,8 +122,7 @@ function collect_julia_files(paths::Vector{String}, include_all::Bool)
         end
     end
 
-    unique!(sort!(files))
-    return files
+    return normalize_file_list!(files)
 end
 
 function format_files(files::Vector{String}; check::Bool, verbose::Bool)
@@ -102,7 +130,7 @@ function format_files(files::Vector{String}; check::Bool, verbose::Bool)
     failed = Pair{String, Any}[]
     formatter = getfield(FORMATTER_MODULE[], :format)
 
-    for file in files
+    for file ∈ files
         verbose && println(if check
             "Checking $(relpath(file, PROJECT_ROOT))"
         else
@@ -122,6 +150,7 @@ end
 function print_summary(files, changed, failed; check::Bool)
     println()
     println("JuliaFormatter summary")
+    println("  Platform: $(HOST_PLATFORM.name) ($(Sys.ARCH))")
     println("  Project: $(PROJECT_ROOT)")
     println("  Mode:    $(check ? "check" : "format")")
     println("  Files:   $(length(files))")
@@ -131,7 +160,7 @@ function print_summary(files, changed, failed; check::Bool)
     if !isempty(changed)
         println()
         println(check ? "Files that need formatting:" : "Files formatted:")
-        for file in changed
+        for file ∈ changed
             println("  ", relpath(file, PROJECT_ROOT))
         end
     end
@@ -139,8 +168,11 @@ function print_summary(files, changed, failed; check::Bool)
     if !isempty(failed)
         println()
         println("Files that failed:")
-        for (file, err) in failed
-            println("  ", relpath(file, PROJECT_ROOT), " :: ", sprint(showerror, err))
+        for (file, err) ∈ failed
+            # 解析异常可能携带整份源码；限制单条诊断长度，保持终端和 CI 日志可读。
+            message = first(split(sprint(showerror, err), '\n'))
+            compact_message = length(message) > 240 ? first(message, 237) * "..." : message
+            println("  ", relpath(file, PROJECT_ROOT), " :: ", nameof(typeof(err)), " :: ", compact_message)
         end
     end
 end

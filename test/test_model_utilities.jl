@@ -1,7 +1,7 @@
 @testset "model utility functions" begin
     UnitsFreqParam, _, StrogeData, DataGen, GenCost, DataBranch, LoadCurve, DataLoad, datacentra_Data = readxlssheet()
-    _, units, _, _, _, _, NG, _, _, _, _, _, _ =
-        forminputdata(DataGen, DataBranch, DataLoad, LoadCurve, GenCost, UnitsFreqParam, StrogeData, datacentra_Data)
+    _, units, _, _, _, _, NG, _, _, _, _, _, _ = forminputdata(
+        DataGen, DataBranch, DataLoad, LoadCurve, GenCost, UnitsFreqParam, StrogeData, datacentra_Data)
 
     refcost, eachslope = linearizationfuelcurve(units, NG)
 

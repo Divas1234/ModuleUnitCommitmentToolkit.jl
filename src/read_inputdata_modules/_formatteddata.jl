@@ -170,63 +170,11 @@ mutable struct unit
     Rg::Vector{Float64}  # Droop gain
 
     function unit(
-        index,
-        locatebus,
-        p_max,
-        p_min,
-        ramp_up,
-        ramp_down,
-        shut_up,
-        shut_down,
-        min_shutup_time,
-        min_shutdown_time,
-        x_0,
-        t_0,
-        t_1,
-        p_0,
-        coffi_a,
-        coffi_b,
-        coffi_c,
-        coffi_cold_shutup_1,
-        coffi_cold_shutup_2,
-        coffi_cold_shutdown_1,
-        coffi_cold_shutdown_2,
-        Hg,
-        Dg,
-        Kg,
-        Fg,
-        Tg,
-        Rg,
-    )
+            index, locatebus, p_max, p_min, ramp_up, ramp_down, shut_up, shut_down, min_shutup_time, min_shutdown_time, x_0, t_0, t_1, p_0, coffi_a,
+            coffi_b, coffi_c, coffi_cold_shutup_1, coffi_cold_shutup_2, coffi_cold_shutdown_1, coffi_cold_shutdown_2, Hg, Dg, Kg, Fg, Tg, Rg)
         return new(
-            index,
-            locatebus,
-            p_max,
-            p_min,
-            ramp_up,
-            ramp_down,
-            shut_up,
-            shut_down,
-            min_shutup_time,
-            min_shutdown_time,
-            x_0,
-            t_0,
-            t_1,
-            p_0,
-            coffi_a,
-            coffi_b,
-            coffi_c,
-            coffi_cold_shutup_1,
-            coffi_cold_shutup_2,
-            coffi_cold_shutdown_1,
-            coffi_cold_shutdown_2,
-            Hg,
-            Dg,
-            Kg,
-            Fg,
-            Tg,
-            Rg,
-        )
+            index, locatebus, p_max, p_min, ramp_up, ramp_down, shut_up, shut_down, min_shutup_time, min_shutdown_time, x_0, t_0, t_1, p_0, coffi_a,
+            coffi_b, coffi_c, coffi_cold_shutup_1, coffi_cold_shutup_2, coffi_cold_shutdown_1, coffi_cold_shutdown_2, Hg, Dg, Kg, Fg, Tg, Rg)
     end
 end
 
@@ -359,30 +307,8 @@ mutable struct data_centra
     μ::Vector{Float64}
     computational_power_tasks::Matrix{Float64}
 
-    function data_centra(
-        index,
-        locatebus,
-        p_max,
-        p_min,
-        voltage_regulation,
-        idale,
-        sv_constant,
-        λ,
-        μ,
-        computational_power_tasks,
-    )
-        return new(
-            index,
-            locatebus,
-            p_max,
-            p_min,
-            voltage_regulation,
-            idale,
-            sv_constant,
-            λ,
-            μ,
-            computational_power_tasks,
-        )
+    function data_centra(index, locatebus, p_max, p_min, voltage_regulation, idale, sv_constant, λ, μ, computational_power_tasks)
+        return new(index, locatebus, p_max, p_min, voltage_regulation, idale, sv_constant, λ, μ, computational_power_tasks)
     end
 end
 

@@ -1,5 +1,5 @@
 """
-	validate_inputs(units, loads, winds, lines, DataCentras, config_param)
+    validate_inputs(units, loads, winds, lines, DataCentras, config_param)
 
 Validates the input data for the SUC model.
 

@@ -51,8 +51,8 @@ function generate_stochastic_load_curve(base_profile::Vector{Float64}; n_days::I
     drift = 0.0
     base_mean = mean(base_profile)
 
-    for day in 1:n_days
-        for h in 1:24
+    for day ∈ 1:n_days
+        for h ∈ 1:24
             hour = (day - 1) * 24 + h
             base = base_profile[h]
 
@@ -88,14 +88,14 @@ end
 function update_excel_load_curve(load_values::Vector{Float64}; excel_path::String = joinpath(pwd(), "data", "data_118.xlsx"))
     println("\nUpdating Excel load curve at: $excel_path...")
 
-    XLSX.openxlsx(excel_path, mode = "rw") do xf
+    XLSX.openxlsx(excel_path; mode = "rw") do xf
         if !("load_curve" in XLSX.sheetnames(xf))
             error("Sheet 'load_curve' not found in $excel_path")
         end
         sh = xf["load_curve"]
         sh["A1"] = "time"
         sh["B1"] = "load_curve"
-        for (i, val) in enumerate(load_values)
+        for (i, val) ∈ enumerate(load_values)
             sh[i + 1, 1] = Float64(i)
             sh[i + 1, 2] = Float64(val)
         end
@@ -114,4 +114,3 @@ update_excel_load_curve(load_vals; excel_path = excel_path)
 println("\n" * "="^80)
 println("✓ Stochastic 118-Bus Load Curve with Strong Ramp Events Generated (168 Hours)")
 println("="^80 * "\n")
-

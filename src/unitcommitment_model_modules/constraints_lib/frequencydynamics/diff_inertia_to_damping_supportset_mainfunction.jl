@@ -7,19 +7,11 @@ function main_module(droop_parameter)
     ~, sub_vertices = get_inertiatodamping_functions(droop_parameter)
 
     # 提取x和y坐标
-    x_coords = [v[2] for v in sub_vertices]
-    y_coords = [v[3] for v in sub_vertices]
+    x_coords = [v[2] for v ∈ sub_vertices]
+    y_coords = [v[3] for v ∈ sub_vertices]
 
     # 在原图上添加多面体
-    plot!(
-        p,
-        x_coords,
-        y_coords;
-        seriestype = :shape,
-        fillalpha = 0.2,
-        fillcolor = :red,
-        label = "Feasible Region",
-    )
+    plot!(p, x_coords, y_coords; seriestype = :shape, fillalpha = 0.2, fillcolor = :red, label = "Feasible Region")
 
     return p, sub_vertices
 end

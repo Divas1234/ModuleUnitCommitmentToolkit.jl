@@ -6,13 +6,12 @@
 # 2. output/details_schedule_results/adaptive_pcm_simulation_results/overlap_window_summary.txt
 # ============================================================================
 
-using Pkg
-Pkg.activate("d:/GithubClonefiles/module_unitcommitment/pkg")
-using Printf, Statistics, CSV, DataFrames
-include("../../src/renewableresource_modules/stochasticsimulation.jl")
-include("../../src/read_inputdata_modules/readdatas.jl")
-include("period_scuc.jl")
-include("adaptive_period_scuc.jl")
+using Printf, Statistics, CSV, DataFrames, Random
+include("../paths.jl")
+include("../../../../src/renewableresource_modules/stochasticsimulation.jl")
+include("../../../../src/read_inputdata_modules/readdatas.jl")
+include("../../standard/period_scuc.jl")
+include("../core/pcm_overlap_core.jl")
 
 function repeat_time_series_to_horizon(curve::AbstractMatrix{<:Real}, target_hours::Int)
     source_hours = size(curve, 2)
@@ -25,16 +24,16 @@ function repeat_time_series_to_horizon(curve::AbstractMatrix{<:Real}, target_hou
 end
 
 function overlap_limiting_factor(T_steady::Int, T_unit::Int, T_ramp::Int)
-    raw_max = max(T_steady, T_unit, T_ramp)
+    raw_max = Base.max(T_steady, T_unit, T_ramp)
     factors = String[]
     if T_steady == raw_max
-        push!(factors, "steady")
+        Base.push!(factors, "steady")
     end
     if T_unit == raw_max
-        push!(factors, "unit_dwell")
+        Base.push!(factors, "unit_dwell")
     end
     if T_ramp == raw_max
-        push!(factors, "ramp")
+        Base.push!(factors, "ramp")
     end
     return join(factors, "+")
 end
@@ -46,19 +45,23 @@ function export_overlap_statistics()
 
     # 1. Read input data
     println("\nReading project input data...")
-    ENV["MODULE_UC_DATA_FILE"] = "d:/GithubClonefiles/module_unitcommitment/data/data_118.xlsx"
-    UnitsFreqParam, WindsFreqParam, StrogeData, DataGen, GenCost, DataBranch, LoadCurve, DataLoad, Datacentra_Data, HydroData, HydroCurve = readxlssheet()
+    # 尊重统一入口传入的数据文件；未指定时才使用默认 118 节点算例。
+    get!(ENV, "MODULE_UC_DATA_FILE", joinpath(ADAPTIVE_PCM_PROJECT_ROOT, "data", "data_118.xlsx"))
+    UnitsFreqParam, WindsFreqParam, StrogeData, DataGen, GenCost, DataBranch, LoadCurve, DataLoad, Datacentra_Data, HydroData,
+    HydroCurve = readxlssheet()
     global config_param, units, lines, loads, stroges, NB, NG, NL, ND, NT, NC, ND2, NH, DataCentras, hydros, scenarios_prob, winds
     config_param, units, lines, loads, stroges, NB, NG, NL, ND, NT, NC, ND2, NH, DataCentras, hydros = forminputdata(
-        DataGen, DataBranch, DataLoad, LoadCurve, GenCost, UnitsFreqParam, StrogeData, Datacentra_Data, HydroData, HydroCurve
-    )
+        DataGen, DataBranch, DataLoad, LoadCurve, GenCost, UnitsFreqParam, StrogeData, Datacentra_Data, HydroData, HydroCurve)
     config_param.is_NetWorkCon = 0
+    random_seed = parse(Int, get(ENV, "PCM_RANDOM_SEED", "20260809"))
+    Random.seed!(random_seed)
+    println("  PCM random seed: $random_seed")
     winds, NW = genscenario(WindsFreqParam, 0)
     winds.scenarios_nums = 1
     winds.scenarios_curve = winds.scenarios_curve[1:1, :]
 
-    exec_NT = 24
-    N_sets = 7
+    exec_NT = parse(Int, get(ENV, "PCM_WINDOW_HOURS", "24"))
+    N_sets = parse(Int, get(ENV, "PCM_INTERVALS", "7"))
     required_horizon = exec_NT * N_sets
     alpha = 0.25
     epsilon = 0.10
@@ -84,10 +87,8 @@ function export_overlap_statistics()
     calibration_start = time()
     trained_models = TrainedLossModels(steady_state_mode)
     if steady_state_mode != "decay" && steady_state_mode != "ml_prediction"
-        trained_models = sample_and_train_loss_models(
-            loads, winds, units, lines, DataCentras, config_param, stroges, scenarios_prob,
-            hydros, exec_NT, min_overlap, max_overlap, NB, NG, ND, NC, ND2, NL, NH
-        )
+        trained_models = sample_and_train_loss_models(loads, winds, units, lines, DataCentras, config_param, stroges, scenarios_prob,
+            hydros, exec_NT, min_overlap, max_overlap, NB, NG, ND, NC, ND2, NL, NH)
     end
     calibration_time_excluded = time() - calibration_start
     println(@sprintf("  Calibration / training time excluded from subproblem solve times: %.2f s", calibration_time_excluded))
@@ -95,53 +96,35 @@ function export_overlap_statistics()
     slow_units, fast_units, T_unit_req = classify_generator_speed(units; slow_threshold = slow_threshold)
     T_steady_req = calculate_boundary_sensitivity_decay(alpha, epsilon)
 
-    df_stats = DataFrame(
-        Interval_ID = Int64[],
-        Start_Hour = Int64[],
-        Execution_Window_h = Int64[],
-        Steady_State_Overlap_h = Int64[],
-        Unit_Dwell_Overlap_h = Int64[],
-        Ramp_Event_Detected = Bool[],
-        Ramp_Overlap_h = Int64[],
-        Raw_Max_Overlap_h = Int64[],
-        Limiting_Factor = String[],
-        Final_Adaptive_Overlap_h = Int64[],
-        Total_Solved_Horizon_h = Int64[],
-        Subproblem_SolveTime_sec = Float64[],
-        Optimization_Status = String[]
-    )
+    df_stats = DataFrame(;
+        Interval_ID = Int64[], Start_Hour = Int64[], Execution_Window_h = Int64[], Steady_State_Overlap_h = Int64[], Unit_Dwell_Overlap_h = Int64[],
+        Ramp_Event_Detected = Bool[], Ramp_Overlap_h = Int64[], Raw_Max_Overlap_h = Int64[], Limiting_Factor = String[],
+        Final_Adaptive_Overlap_h = Int64[], Total_Solved_Horizon_h = Int64[], Subproblem_SolveTime_sec = Float64[], Optimization_Status = String[])
 
     pre_results = nothing
 
-    for k in 1:N_sets
+    for k ∈ 1:N_sets
         start_time = (k - 1) * exec_NT + 1
         # Local reference commitment for T_steady:
         # solve the same interval while ignoring inherited boundary conditions.
         # The first-period commitment is a local economic benchmark; T_steady
         # then measures how far the inherited rolling boundary is from this
         # benchmark and how much overlap is needed for that influence to decay.
-        x_ref_curr = solve_local_reference_commitment(
-            loads, winds, units, lines, DataCentras, config_param, stroges,
-            scenarios_prob, hydros, start_time, exec_NT, max_overlap,
-            NB, NG, ND, NC, ND2, NL, NH, k
-        )
+        x_ref_curr = solve_local_reference_commitment(loads, winds, units, lines, DataCentras, config_param, stroges, scenarios_prob,
+            hydros, start_time, exec_NT, max_overlap, NB, NG, ND, NC, ND2, NL, NH, k)
         T_overlap, is_ramp, T_steady, T_unit, T_ramp = compute_adaptive_overlap_window(
-            loads, winds, units, start_time, exec_NT, alpha, epsilon, min_overlap, max_overlap,
-            pre_results, k, steady_state_mode, trained_models, x_ref_curr
-        )
+            loads, winds, units, start_time, exec_NT, alpha, epsilon, min_overlap,
+            max_overlap, pre_results, k, steady_state_mode, trained_models, x_ref_curr)
         total_NT = exec_NT + T_overlap
         raw_max = max(T_steady, T_unit, T_ramp)
         limiting_factor = overlap_limiting_factor(T_steady, T_unit, T_ramp)
 
         mini_units, mini_loads, mini_winds = update_adaptive_boundary_conditions(
-            k, NG, exec_NT, total_NT, start_time, units, loads, winds, pre_results
-        )
+            k, NG, exec_NT, total_NT, start_time, units, loads, winds, pre_results)
 
         solve_start = time()
-        res = each_period_scucmodel_modules(
-            total_NT, NB, NG, ND, NC, ND2, mini_units, mini_loads, mini_winds,
-            lines, DataCentras, config_param, stroges, scenarios_prob, NL, k, hydros, NH
-        )
+        res = each_period_scucmodel_modules(total_NT, NB, NG, ND, NC, ND2, mini_units, mini_loads, mini_winds, lines,
+            DataCentras, config_param, stroges, scenarios_prob, NL, k, hydros, NH)
         solve_time = time() - solve_start
         status = res === nothing ? "FAILED" : "OK"
         if res === nothing
@@ -150,9 +133,7 @@ function export_overlap_statistics()
         pre_results = res
 
         push!(df_stats, (
-            k, start_time, exec_NT, T_steady, T_unit, is_ramp, T_ramp, raw_max,
-            limiting_factor, T_overlap, total_NT, solve_time, status
-        ))
+            k, start_time, exec_NT, T_steady, T_unit, is_ramp, T_ramp, raw_max, limiting_factor, T_overlap, total_NT, solve_time, status))
     end
 
     # Define output file paths
@@ -185,14 +166,12 @@ function export_overlap_statistics()
         println(io, "-"^80)
         println(io, "PER-INTERVAL OVERLAP WINDOW BREAKDOWN:")
         println(io, "-"^80)
-        for row in eachrow(df_stats)
-            println(io, @sprintf(
-                "Interval %d | Start Hour %3d | Exec: %2dh | Steady: %2dh | UnitDwell: %2dh | Ramp: %5s (%2dh) | Limiting: %-16s | Final Overlap: %2dh | Total Solved: %2dh | Solve: %.2fs",
-                row.Interval_ID, row.Start_Hour, row.Execution_Window_h, row.Steady_State_Overlap_h,
-                row.Unit_Dwell_Overlap_h, string(row.Ramp_Event_Detected), row.Ramp_Overlap_h,
-                row.Limiting_Factor, row.Final_Adaptive_Overlap_h, row.Total_Solved_Horizon_h,
-                row.Subproblem_SolveTime_sec
-            ))
+        for row ∈ eachrow(df_stats)
+            println(io,
+                @sprintf("Interval %d | Start Hour %3d | Exec: %2dh | Steady: %2dh | UnitDwell: %2dh | Ramp: %5s (%2dh) | Limiting: %-16s | Final Overlap: %2dh | Total Solved: %2dh | Solve: %.2fs",
+                    row.Interval_ID, row.Start_Hour, row.Execution_Window_h, row.Steady_State_Overlap_h,
+                    row.Unit_Dwell_Overlap_h, string(row.Ramp_Event_Detected), row.Ramp_Overlap_h, row.Limiting_Factor,
+                    row.Final_Adaptive_Overlap_h, row.Total_Solved_Horizon_h, row.Subproblem_SolveTime_sec))
         end
         println(io, "="^80)
     end

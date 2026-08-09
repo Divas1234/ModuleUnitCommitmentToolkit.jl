@@ -37,11 +37,8 @@ Stochastic Unit Commitment (SUC) model for power system optimization (Refactored
 
 # NOTE - function module
 
-function SUC_scucmodel(
-    NT::Int64, NB::Int64, NG::Int64, ND::Int64, NC::Int64, ND2::Int64,
-    units::unit, loads::load, winds::wind, lines::transmissionline, DataCentras::data_centra, config_param::config, stroges::Any,
-    scenarios_prob::Float64, NL::Int64,
-)
+function SUC_scucmodel(NT::Int64, NB::Int64, NG::Int64, ND::Int64, NC::Int64, ND2::Int64, units::unit, loads::load, winds::wind,
+        lines::transmissionline, DataCentras::data_centra, config_param::config, stroges::Any, scenarios_prob::Float64, NL::Int64)
     println("Step-3: Creating dispatching model (Refactored & Modularized)")
 
     # --- Input Validation ---
@@ -76,16 +73,14 @@ function SUC_scucmodel(
     # --- Add Constraints ---
     # Add the constraints to the optimization model using the modular activator
     apply_scuc_constraints!(
-        scuc, NT, NB, NL, NG, ND, NC, ND2, NS, NW, units, loads, winds, lines, DataCentras, stroges, config_param, onoffinit, Gsdf, Δp_contingency,
-    )
+        scuc, NT, NB, NL, NG, ND, NC, ND2, NS, NW, units, loads, winds, lines, DataCentras, stroges, config_param, onoffinit, Gsdf, Δp_contingency)
 
     # --- Solve and Extract Results ---
     # Solve the optimization model and extract the results
     try
         # Attempt to solve the SCUC model
         results = solve_and_extract_results(
-            scuc, NT, NG, ND, NC, NW, NS, ND2, scenarios_prob, eachslope, refcost, config_param, units, loads, winds, lines, DataCentras,
-        )
+            scuc, NT, NG, ND, NC, NW, NS, ND2, scenarios_prob, eachslope, refcost, config_param, units, loads, winds, lines, DataCentras)
 
         # --- Return Results ---
         # Check if the optimization was successful
@@ -98,7 +93,7 @@ function SUC_scucmodel(
                 compute_iis(scuc)
                 write_iis(scuc, "model.iis")
                 println("IIS written to model.iis:")
-                for line in readlines("model.iis")[1:min(100, end)]
+                for line ∈ readlines("model.iis")[1:min(100, end)]
                     println(line)
                 end
             catch err
@@ -113,8 +108,8 @@ function SUC_scucmodel(
         try
             JuMP.compute_conflict!(scuc)
             println("IIS computation completed. Conflicting constraints:")
-            for (F, S) in list_of_constraint_types(scuc)
-                for con in all_constraints(scuc, F, S)
+            for (F, S) ∈ list_of_constraint_types(scuc)
+                for con ∈ all_constraints(scuc, F, S)
                     try
                         if get_attribute(con, MOI.ConstraintConflictStatus()) == MOI.IN_CONFLICT
                             println("  IN_CONFLICT: ", con)

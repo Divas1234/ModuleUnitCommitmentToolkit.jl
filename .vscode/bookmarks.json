@@ -89,6 +89,16 @@
 					"label": ""
 				}
 			]
+		},
+		{
+			"path": "src/unit_commitment/clustered_disaggregation.jl",
+			"bookmarks": [
+				{
+					"line": 282,
+					"column": 0,
+					"label": ""
+				}
+			]
 		}
 	]
 }

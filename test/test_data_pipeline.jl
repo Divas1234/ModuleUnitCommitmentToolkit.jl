@@ -7,8 +7,8 @@
     @test size(DataBranch, 1) > 0
     @test size(LoadCurve, 1) >= 24
 
-    config_param, units, lines, loads, psses, NB, NG, NL, ND, NT, NC, ND2, DataCentras =
-        forminputdata(DataGen, DataBranch, DataLoad, LoadCurve, GenCost, UnitsFreqParam, StrogeData, datacentra_Data)
+    config_param, units, lines, loads, psses, NB, NG, NL, ND, NT, NC, ND2, DataCentras = forminputdata(
+        DataGen, DataBranch, DataLoad, LoadCurve, GenCost, UnitsFreqParam, StrogeData, datacentra_Data)
     winds, _ = genscenario(WindsFreqParam, 1; scenario_limit = 3)
 
     @test config_param isa config

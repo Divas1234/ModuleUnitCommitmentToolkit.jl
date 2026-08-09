@@ -31,7 +31,7 @@ function add_unit_operation_constraints!(scuc::Model, NT, NG, units, onoffinit)
     Lupmin = zeros(NG, 1)     # Minimum startup time
     Ldownmin = zeros(NG, 1)   # Minimum shutdown time
 
-    for i in 1:NG
+    for i ∈ 1:NG
         # Uncomment if initial status is provided
         # onoffinit[i] = ((units.x_0[i, 1] > 0.5) ? 1 : 0)
         # Calculate minimum up/down time limits
@@ -43,18 +43,18 @@ function add_unit_operation_constraints!(scuc::Model, NT, NG, units, onoffinit)
     units_mindowntime_constr = Vector{ConType}()
 
     # --- Minimum Up and Down Time Constraints ---
-    for i in 1:NG
+    for i ∈ 1:NG
         # Minimum Up Time: If a unit starts, it must remain on for units.min_shutup_time
-        for t in Int64(max(1, Lupmin[i])):NT
+        for t ∈ Int64(max(1, Lupmin[i])):NT
             LB = Int64(max(t - units.min_shutup_time[i, 1] + 1, 1))
-            con = @constraint(scuc, sum(u[i, r] for r in LB:t) <= x[i, t])
+            con = @constraint(scuc, sum(u[i, r] for r ∈ LB:t) <= x[i, t])
             push!(units_minuptime_constr, con)
         end
 
         # Minimum Down Time: If a unit stops, it must remain off for units.min_shutdown_time
-        for t in Int64(max(1, Ldownmin[i])):NT
+        for t ∈ Int64(max(1, Ldownmin[i])):NT
             LB = Int64(max(t - units.min_shutdown_time[i, 1] + 1, 1))
-            con = @constraint(scuc, sum(v[i, r] for r in LB:t) <= (1 - x[i, t]))
+            con = @constraint(scuc, sum(v[i, r] for r ∈ LB:t) <= (1 - x[i, t]))
             push!(units_mindowntime_constr, con)
         end
     end
@@ -63,8 +63,8 @@ function add_unit_operation_constraints!(scuc::Model, NT, NG, units, onoffinit)
 
     # --- Binary Variable Logic (State Transitions) ---
     # u[t] - v[t] = x[t] - x[t-1]
-    units_init_stateslogic_consist_constr =
-        @constraint(scuc, [i = 1:NG, t = 1:NT], u[i, t] - v[i, t] == x[i, t] - ((t == 1) ? onoffinit[i] : x[i, t - 1]))
+    units_init_stateslogic_consist_constr = @constraint(scuc, [i = 1:NG, t = 1:NT],
+        u[i, t] - v[i, t] == x[i, t] - ((t == 1) ? onoffinit[i] : x[i, t - 1]))
 
     # Prevent simultaneous startup and shutdown
     units_states_consist_constr = @constraint(scuc, [i = 1:NG, t = 1:NT], u[i, t] + v[i, t] <= 1)
@@ -80,15 +80,8 @@ function add_unit_operation_constraints!(scuc::Model, NT, NG, units, onoffinit)
     units_shutdown_cost_constr = @constraint(scuc, [t = 2:NT], sd₀[:, t] .>= shutdowncost .* v[:, t])
 
     println("\t constraints: 3) shutup/shutdown cost\t\t\t\t\t done")
-    return scuc,
-    units_minuptime_constr,
-    units_mindowntime_constr,
-    units_init_stateslogic_consist_constr,
-    units_states_consist_constr,
-    units_init_shutup_cost_constr,
-    units_init_shutdown_cost_costr,
-    units_shutup_cost_constr,
-    units_shutdown_cost_constr
+    return scuc, units_minuptime_constr, units_mindowntime_constr, units_init_stateslogic_consist_constr, units_states_consist_constr,
+    units_init_shutup_cost_constr, units_init_shutdown_cost_costr, units_shutup_cost_constr, units_shutdown_cost_constr
 end
 
 """
@@ -108,16 +101,10 @@ function add_generator_power_constraints!(scuc::Model, NT, NG, NS, units)
     sr⁺ = scuc[:sr⁺]
     sr⁻ = scuc[:sr⁻]
 
-    units_minpower_constr = @constraint(
-        scuc,
-        [s = 1:NS, t = 1:NT],
-        pg₀[(1 + (s - 1) * NG):(s * NG), t] + sr⁺[(1 + (s - 1) * NG):(s * NG), t] .<= units.p_max[:, 1] .* x[:, t]
-    )
-    units_maxpower_constr = @constraint(
-        scuc,
-        [s = 1:NS, t = 1:NT],
-        pg₀[(1 + (s - 1) * NG):(s * NG), t] - sr⁻[(1 + (s - 1) * NG):(s * NG), t] .>= units.p_min[:, 1] .* x[:, t]
-    )
+    units_minpower_constr = @constraint(scuc, [s = 1:NS, t = 1:NT],
+        pg₀[(1 + (s - 1) * NG):(s * NG), t] + sr⁺[(1 + (s - 1) * NG):(s * NG), t] .<= units.p_max[:, 1] .* x[:, t])
+    units_maxpower_constr = @constraint(scuc, [s = 1:NS, t = 1:NT],
+        pg₀[(1 + (s - 1) * NG):(s * NG), t] - sr⁻[(1 + (s - 1) * NG):(s * NG), t] .>= units.p_min[:, 1] .* x[:, t])
     println("\t constraints: 5) generatos power limits\t\t\t\t\t done")
     return scuc, units_minpower_constr, units_maxpower_constr
 end
@@ -147,34 +134,24 @@ function add_ramp_constraints!(scuc::Model, NT, NG, NS, units, onoffinit)
     p_max = units.p_max
     p_min = units.p_min
 
-    units_upramp_constr = @constraint(
-        scuc,
-        [s = 1:NS, t = 1:NT],
+    units_upramp_constr = @constraint(scuc, [s = 1:NS, t = 1:NT],
         pg₀[(1 + (s - 1) * NG):(s * NG), t] - ((t == 1) ? units.p_0[:, 1] : pg₀[(1 + (s - 1) * NG):(s * NG), t - 1]) .<=
         ramp_up[:, 1] .* ((t == 1) ? onoffinit[:, 1] : x[:, t - 1]) +
         shut_up[:, 1] .* ((t == 1) ? ones(NG, 1) : u[:, t - 1]) +
         p_max[:, 1] .* (ones(NG, 1) - ((t == 1) ? onoffinit[:, 1] : x[:, t - 1])) +
-        (
-            if ramp_violation⁺ === nothing
-                zeros(NG)
-            else
-                ramp_violation⁺[(1 + (s - 1) * NG):(s * NG), t]
-            end
-        )
-    )
+        (if ramp_violation⁺ === nothing
+            zeros(NG)
+        else
+            ramp_violation⁺[(1 + (s - 1) * NG):(s * NG), t]
+        end))
 
-    units_downramp_constr = @constraint(
-        scuc,
-        [s = 1:NS, t = 1:NT],
+    units_downramp_constr = @constraint(scuc, [s = 1:NS, t = 1:NT],
         ((t == 1) ? units.p_0[:, 1] : pg₀[(1 + (s - 1) * NG):(s * NG), t - 1]) - pg₀[(1 + (s - 1) * NG):(s * NG), t] .<=
-        ramp_down[:, 1] .* x[:, t] + shut_down[:, 1] .* v[:, t] + p_max[:, 1] .* (x[:, t]) + (
-            if ramp_violation⁻ === nothing
-                zeros(NG)
-            else
-                ramp_violation⁻[(1 + (s - 1) * NG):(s * NG), t]
-            end
-        )
-    )
+        ramp_down[:, 1] .* x[:, t] + shut_down[:, 1] .* v[:, t] + p_max[:, 1] .* (x[:, t]) + (if ramp_violation⁻ === nothing
+            zeros(NG)
+        else
+            ramp_violation⁻[(1 + (s - 1) * NG):(s * NG), t]
+        end))
     println("\t constraints: 8) ramp-up/ramp-down constraints\t\t\t\t done")
     return scuc, units_upramp_constr, units_downramp_constr
 end
@@ -207,18 +184,12 @@ function add_pwl_constraints!(scuc::Model, NT, NG, NS, units)
 
     eachsegment = (p_max - p_min) / num_segments
 
-    units_pwlpower_sum_constr = @constraint(
-        scuc,
-        [s = 1:NS, t = 1:NT, i = 1:NG],
-        pg₀[i + (s - 1) * NG, t] .== p_min[i, 1] * x[i, t] + sum(pgₖ[i + (s - 1) * NG, t, k] for k in 1:num_segments)
-    )
-    units_pwlblock_upbound_constr =
-        @constraint(scuc, [s = 1:NS, t = 1:NT, i = 1:NG, k = 1:num_segments], pgₖ[i + (s - 1) * NG, t, k] <= eachsegment[i, 1] * x[i, t])
-    units_pwlblock_dwbound_constr = @constraint(
-        scuc, # Ensure segments are non-negative
-        [s = 1:NS, t = 1:NT, i = 1:NG, k = 1:num_segments],
-        pgₖ[i + (s - 1) * NG, t, k] >= 0
-    )
+    units_pwlpower_sum_constr = @constraint(scuc, [s = 1:NS, t = 1:NT, i = 1:NG],
+        pg₀[i + (s - 1) * NG, t] .== p_min[i, 1] * x[i, t] + sum(pgₖ[i + (s - 1) * NG, t, k] for k ∈ 1:num_segments))
+    units_pwlblock_upbound_constr = @constraint(scuc, [s = 1:NS, t = 1:NT, i = 1:NG, k = 1:num_segments],
+        pgₖ[i + (s - 1) * NG, t, k] <= eachsegment[i, 1] * x[i, t])
+    units_pwlblock_dwbound_constr = @constraint(scuc, # Ensure segments are non-negative
+        [s = 1:NS, t = 1:NT, i = 1:NG, k = 1:num_segments], pgₖ[i + (s - 1) * NG, t, k] >= 0)
     println("\t constraints: 9) piece linearization constraints\t\t\t done")
     return scuc, units_pwlpower_sum_constr, units_pwlblock_upbound_constr, units_pwlblock_dwbound_constr
 end

@@ -14,7 +14,7 @@ include("tests_lib/tests.jl")
 
 Stochastic Unit Commitment (SUC) model for power system optimization (Refactored & Modularized).
 
-#NOTE -  Arguments
+# NOTE -  Arguments
 - `NT::Int64`: Number of time periods
 - `NB::Int64`: Number of buses
 - `NG::Int64`: Number of generators
@@ -37,7 +37,8 @@ Stochastic Unit Commitment (SUC) model for power system optimization (Refactored
 
 # NOTE - function module
 
-function SUC_scucmodel(NT::Int64, NB::Int64, NG::Int64, ND::Int64, NC::Int64, ND2::Int64, units::unit, loads::load, winds::wind, lines::transmissionline,
+function SUC_scucmodel(
+        NT::Int64, NB::Int64, NG::Int64, ND::Int64, NC::Int64, ND2::Int64, units::unit, loads::load, winds::wind, lines::transmissionline,
         DataCentras::data_centra, config_param::config, stroges::Any, scenarios_prob::Float64, NL::Int64, hydros::hydro, NH::Int64)
     println("Step-3: Creating dispatching model (Refactored & Modularized)")
 

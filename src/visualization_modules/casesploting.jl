@@ -1,22 +1,6 @@
 using PlotlyJS, LaTeXStrings
 
-function plotcasestudies(
-    p₀,
-    pᵨ,
-    pᵩ,
-    seq_sr⁺,
-    seq_sr⁻,
-    su_cost,
-    sd_cost,
-    prod_cost,
-    cost_sr⁺,
-    cost_sr⁻,
-    NT,
-    NG,
-    ND,
-    NW,
-    NC,
-)
+function plotcasestudies(p₀, pᵨ, pᵩ, seq_sr⁺, seq_sr⁻, su_cost, sd_cost, prod_cost, cost_sr⁺, cost_sr⁻, NT, NG, ND, NW, NC)
 
     # Powerbalance fig
     fig1 = area1(p₀, pᵨ, pᵩ, NT, NG, ND, NW, NC)
@@ -28,17 +12,15 @@ function plotcasestudies(
     fig3 = line1(seq_sr⁺, seq_sr⁻, NT, NC)
     fig4 = line2(seq_sr⁺, seq_sr⁻, NT, NC)
 
-    return [
-        fig1 fig2
-        fig3 fig4
-    ]
+    return [fig1 fig2
+            fig3 fig4]
 end
 
 function area1(p₀, pᵨ, pᵩ, NT, NG, ND, NW, NC)
     y1_index = p₀[1:NG, 1:NT] # units power
 
     y2_index = zeros(NW, NT)
-    for i = 1:NW
+    for i ∈ 1:NW
         y2_index[i, :] = winds.scenarios_curve[1, :] .* winds.p_max[i, 1] - pᵨ[i, 1:NT] # wind power
     end
     y3_index = pᵩ[1:NW, 1:NT] # spolied wind power
@@ -47,12 +29,12 @@ function area1(p₀, pᵨ, pᵩ, NT, NG, ND, NW, NC)
     # y5_index = pss_charge_p⁻[1:NC, 1:NT] # pss discharge power
     y6_index = pᵨ[1:ND, 1:NT] # loadcutting power
 
-    y1_index = sum(y1_index[i, :] for i = 1:NG)
-    y2_index = sum(y2_index[i, :] for i = 1:NW)
-    y3_index = sum(y3_index[i, :] for i = 1:NW)
+    y1_index = sum(y1_index[i, :] for i ∈ 1:NG)
+    y2_index = sum(y2_index[i, :] for i ∈ 1:NW)
+    y3_index = sum(y3_index[i, :] for i ∈ 1:NW)
     # y4_index = sum(y4_index[i, :] for i in 1:NC)
     # y5_index = sum(y5_index[i, :] for i in 1:NC)
-    y6_index = sum(y6_index[i, :] for i = 1:ND)
+    y6_index = sum(y6_index[i, :] for i ∈ 1:ND)
 
     # Note: must do not appear the spoliedwinds
     # s0 = (y4_index + y3_index) * -1
@@ -70,7 +52,7 @@ function area1(p₀, pᵨ, pᵩ, NT, NG, ND, NW, NC)
     trace5 = PlotlyJS.scatter(; x = 1:NT, y = s4, fill = "tonexty", mode = "none")
     # trace6 = PlotlyJS.scatter(; x = 1:NT, y = s5, fill = "tonexty", mode = "none")
 
-    return PlotlyJS.plot([trace1, trace4, trace5], Layout(title = "Fig.1 Powerbalance"))
+    return PlotlyJS.plot([trace1, trace4, trace5], Layout(; title = "Fig.1 Powerbalance"))
 end
 
 function bar1(seq_sr⁺, seq_sr⁻, su_cost, sd_cost, prod_cost, cost_sr⁺, cost_sr⁻)
@@ -83,7 +65,7 @@ function bar1(seq_sr⁺, seq_sr⁻, su_cost, sd_cost, prod_cost, cost_sr⁺, cos
     y_label = [su_cost, sd_cost, prod_cost, cost_sr⁺, cost_sr⁻]
 
     fig2 = PlotlyJS.bar(; x = x_label, y = y_label)
-    return PlotlyJS.plot(fig2, Layout(title = "Fig.2 cost_result"))
+    return PlotlyJS.plot(fig2, Layout(; title = "Fig.2 cost_result"))
 end
 
 function line1(seq_sr⁺, seq_sr⁻, NT, NC)
@@ -95,7 +77,7 @@ function line1(seq_sr⁺, seq_sr⁻, NT, NC)
     # trace2 = PlotlyJS.scatter(; x=1:NT, y=seq_sr⁺, mode="lines+markers")
     # trace2 = PlotlyJS.scatter(; x = 1:NT, y = seq_sr⁻, mode = "lines+markers")
 
-    return PlotlyJS.plot([trace1], Layout(title = "Fig.3 sr_plus"))
+    return PlotlyJS.plot([trace1], Layout(; title = "Fig.3 sr_plus"))
 end
 
 function line2(seq_sr⁺, seq_sr⁻, NT, NC)
@@ -106,5 +88,5 @@ function line2(seq_sr⁺, seq_sr⁻, NT, NC)
     # str = sum(pss_charge_p⁺[c, :] for c in 1:NC)
     # trace2 = PlotlyJS.scatter(; x=1:NT, y=seq_sr⁻, mode="lines+markers")
 
-    return PlotlyJS.plot([trace1], Layout(title = "Fig.4 sr_mins"))
+    return PlotlyJS.plot([trace1], Layout(; title = "Fig.4 sr_mins"))
 end

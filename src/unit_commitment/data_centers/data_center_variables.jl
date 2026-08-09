@@ -1,5 +1,5 @@
 """
-	define_data_center_variables!(model, time_count, data_center_count, scenario_count; binary_response_weights)
+    define_data_center_variables!(model, time_count, data_center_count, scenario_count; binary_response_weights)
 
 Create data-center response variables.
 
@@ -10,12 +10,7 @@ used by the extensive-form benchmark and CCG recourse/master models.
 Benders subproblems so that dual multipliers and optimality cuts are well-defined.
 """
 function define_data_center_variables!(
-    model::Model,
-    time_count::Int,
-    data_center_count::Int,
-    scenario_count::Int;
-    binary_response_weights::Bool = true,
-)
+        model::Model, time_count::Int, data_center_count::Int, scenario_count::Int; binary_response_weights::Bool = true)
     if data_center_count <= 0
         return nothing
     end

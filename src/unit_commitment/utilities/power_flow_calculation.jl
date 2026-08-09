@@ -2,7 +2,7 @@ function linearpowerflow(units::unit, lines::transmissionline, loads::load, NG::
     B = zeros(NB, NB)
     M = zeros(NB, NL)
 
-    for k in 1:NL
+    for k ∈ 1:NL
         n1 = lines.from[k, 1]
         n2 = lines.to[k, 1]
         M[n1, k] = 1
@@ -17,10 +17,10 @@ function linearpowerflow(units::unit, lines::transmissionline, loads::load, NG::
     G2B = zeros(NB, NG)
     D2B = zeros(NB, ND)
 
-    for i in 1:NG
+    for i ∈ 1:NG
         G2B[units.locatebus[i, 1], i] = 1
     end
-    for i in 1:ND
+    for i ∈ 1:ND
         D2B[loads.locatebus[i, 1], i] = 1
     end
     # UnitsPower = sum(loads.load_curve) / NT / sum(units.p_max) .* units.p_max
@@ -45,7 +45,7 @@ function linearpowerflow(units::unit, lines::transmissionline, loads::load, NG::
     # Line_power = (M1' * inv(B1) * P_injection) ./ lines.x
 
     T1 = M1' / B1
-    for k in 1:(NB - 1)
+    for k ∈ 1:(NB - 1)
         T1[:, k] = T1[:, k] ./ lines.x
     end
 

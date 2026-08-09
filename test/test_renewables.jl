@@ -1,8 +1,6 @@
 @testset "renewable scenario generation" begin
-    winds_freq_param = [
-        1.0 1.0 0.05 0.0 0.0 0.1
-        1.0 1.0 0.05 0.0 0.0 0.1
-    ]
+    winds_freq_param = [1.0 1.0 0.05 0.0 0.0 0.1
+                        1.0 1.0 0.05 0.0 0.0 0.1]
 
     Random.seed!(1234)
     winds, wind_count = genscenario(winds_freq_param, 1; scenario_limit = 6)

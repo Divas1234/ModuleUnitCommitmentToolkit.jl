@@ -2,15 +2,12 @@
     include(joinpath(PROJECT_ROOT, "src", "runtime_config.jl"))
 
     tmp_config = tempname() * ".toml"
-    write(
-        tmp_config,
-        """
-        		[demo]
-        		MODULE_UC_TEST_VALUE = 7
-        		MODULE_UC_TEST_BOOL = true
-        		MODULE_UC_TEST_EMPTY = ""
-        		""",
-    )
+    write(tmp_config, """
+                      		[demo]
+                      		MODULE_UC_TEST_VALUE = 7
+                      		MODULE_UC_TEST_BOOL = true
+                      		MODULE_UC_TEST_EMPTY = ""
+                      		""")
 
     delete!(ENV, "MODULE_UC_TEST_VALUE")
     delete!(ENV, "MODULE_UC_TEST_BOOL")
@@ -37,11 +34,9 @@
 end
 
 @testset "model config from env" begin
-    old_values = Dict{String, Union{Nothing, String}}(
-        "MODEL_CONSIDER_BESS" => get(ENV, "MODEL_CONSIDER_BESS", nothing),
+    old_values = Dict{String, Union{Nothing, String}}("MODEL_CONSIDER_BESS" => get(ENV, "MODEL_CONSIDER_BESS", nothing),
         "MODEL_LOAD_CUTTING_COEFFICIENT" => get(ENV, "MODEL_LOAD_CUTTING_COEFFICIENT", nothing),
-        "MODEL_CONSIDER_MULTI_CUTS" => get(ENV, "MODEL_CONSIDER_MULTI_CUTS", nothing),
-    )
+        "MODEL_CONSIDER_MULTI_CUTS" => get(ENV, "MODEL_CONSIDER_MULTI_CUTS", nothing))
 
     ENV["MODEL_CONSIDER_BESS"] = "1"
     ENV["MODEL_LOAD_CUTTING_COEFFICIENT"] = "123.5"
@@ -51,7 +46,7 @@ end
     @test cfg.is_LoadsCuttingCoefficient == 123.5
     @test cfg.is_ConsiderMultiCUTs == 0
 
-    for (key, value) in old_values
+    for (key, value) ∈ old_values
         if value === nothing
             delete!(ENV, key)
         else

@@ -3,14 +3,10 @@ function frequency_nadir_sampling_dataset(units, winds, contingency::Float64)
     states = frequency_commitment_samples(NG)
     X = zeros(Float64, length(states), 4)
     y = zeros(Float64, length(states))
-    for (row, state) in enumerate(states)
+    for (row, state) ∈ enumerate(states)
         H, R, D, F, T = aggregate_littlecase_frequency_parameters(units, winds, state)
-        X[row, :] = [
-            littlecase_inertia_feature(units, winds, state),
-            littlecase_fg_response_feature(units, state),
-            littlecase_primary_response_feature(units, state),
-            1.0,
-        ]
+        X[row, :] = [littlecase_inertia_feature(units, winds, state), littlecase_fg_response_feature(units, state),
+            littlecase_primary_response_feature(units, state), 1.0]
         y[row] = littlecase_frequency_nadir(H, R, D, F, T, contingency)
     end
     return X, y
@@ -18,8 +14,8 @@ end
 
 function frequency_commitment_samples(NG::Int64)
     states = Vector{Vector{Float64}}()
-    for mask in 0:(2 ^ NG - 1)
-        state = [Float64((mask >> (i - 1)) & 1) for i in 1:NG]
+    for mask ∈ 0:(2 ^ NG - 1)
+        state = [Float64((mask >> (i - 1)) & 1) for i ∈ 1:NG]
         state[1] = 1.0
         push!(states, state)
     end

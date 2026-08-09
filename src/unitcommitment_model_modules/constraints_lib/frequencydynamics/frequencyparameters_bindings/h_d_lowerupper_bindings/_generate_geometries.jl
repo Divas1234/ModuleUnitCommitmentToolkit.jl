@@ -24,27 +24,23 @@ function load_geometry_from_txt(filepath)
             return nothing
         end
         if size(vertices_data, 2) != 3
-            println(
-                "Warning: File $filepath is not a n*3 matrix, it is $(size(vertices_data))",
-            )
+            println("Warning: File $filepath is not a n*3 matrix, it is $(size(vertices_data))",)
             return nothing
         end
 
         # Convert the data to Point3f0 vertices
-        vertices = [Point3f0(row[1], row[2], row[3]) for row in eachrow(vertices_data)]
+        vertices = [Point3f0(row[1], row[2], row[3]) for row ∈ eachrow(vertices_data)]
 
         # Check if there are enough vertices to form a triangle
         if length(vertices) < 3
-            println(
-                "Warning: File $filepath does not contain enough vertices (at least 3) to form a triangle.",
-            )
+            println("Warning: File $filepath does not contain enough vertices (at least 3) to form a triangle.",)
             return nothing
         end
 
         # Create faces (triangles). Assuming vertices form a triangulated surface.
         # We'll triangulate assuming a fan pattern from the first vertex.
         faces = []
-        for i = 2:(length(vertices)-1)
+        for i ∈ 2:(length(vertices) - 1)
             push!(faces, TriangleFace{Int}(1, i, i + 1))
         end
 
@@ -66,10 +62,10 @@ function draw_geometry(res_path)
     Args:
     	res_path (str): Path to the directory containing text files.
     """
-    res_folder = res_path[1:(findlast(x->x=='\\', res_path)-1)]
+    res_folder = res_path[1:(findlast(x -> x == '\\', res_path) - 1)]
 
     # Get all text files in the directory
-    txt_files = filter(f -> endswith(f, ".txt"), readdir(res_folder, join = true))
+    txt_files = filter(f -> endswith(f, ".txt"), readdir(res_folder; join = true))
 
     if isempty(txt_files)
         println("No .txt files found in directory: $res_path")
@@ -77,7 +73,7 @@ function draw_geometry(res_path)
     end
 
     meshes = []
-    for file in txt_files
+    for file ∈ txt_files
         mesh = load_geometry_from_txt(file)
         if !isnothing(mesh)
             push!(meshes, mesh)
@@ -90,18 +86,18 @@ function draw_geometry(res_path)
 
     # Create a Makie figure and axis
     fig = Figure()
-    ax = Axis3(fig[1, 1], aspect = :data)
+    ax = Axis3(fig[1, 1]; aspect = :data)
 
     # Draw the mesh using GLMakie
-    for mesh in meshes
-        mesh!(ax, mesh, color = :blue, transparency = true)
-        wireframe!(ax, mesh, color = :black)
+    for mesh ∈ meshes
+        mesh!(ax, mesh; color = :blue, transparency = true)
+        wireframe!(ax, mesh; color = :black)
     end
 
     # Update the scene to fit the geometry
     if !isempty(meshes)
         limits = GeometryBasics.boundingbox(meshes[1]) # fix boundingbox
-        for i in eachindex(meshes)[2:end]
+        for i ∈ eachindex(meshes)[2:end]
             limits = union(limits, GeometryBasics.boundingbox(meshes[i]))
         end
         limits!(ax, limits)

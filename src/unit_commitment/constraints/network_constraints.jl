@@ -18,11 +18,7 @@ Flow(Line l) = Sum(GSDF(l, Bus b) * Net_Injection(Bus b))
 Net_Injection(Bus b) = P_gen + P_wind_net - P_load_net - P_storage_net - P_datacenter_net
 """
 function add_transmission_constraints!(
-    scuc::Model,
-    NT, NG, ND, NC, NW, NL, NS, units, loads, winds, lines, stroges, Gsdf, config_param,
-    ND2 = nothing,
-    DataCentras = nothing,
-)
+        scuc::Model, NT, NG, ND, NC, NW, NL, NS, units, loads, winds, lines, stroges, Gsdf, config_param, ND2 = nothing, DataCentras = nothing)
 
     # Only apply constraints if network modeling is enabled and GSDF data is available
     if config_param.is_NetWorkCon == 1 && Gsdf !== nothing && NL > 0
@@ -43,34 +39,32 @@ function add_transmission_constraints!(
         pc⁺ = check_var_exists(scuc, "pc⁺") ? scuc[:pc⁺] : nothing
         pc⁻ = check_var_exists(scuc, "pc⁻") ? scuc[:pc⁻] : nothing
 
-        dc_enabled =
-            config_param.is_ConsiderDataCentra == 1 && ND2 !== nothing && ND2 > 0 && DataCentras !== nothing && check_var_exists(scuc, "dc_p")
+        dc_enabled = config_param.is_ConsiderDataCentra == 1 &&
+                     ND2 !== nothing &&
+                     ND2 > 0 &&
+                     DataCentras !== nothing &&
+                     check_var_exists(scuc, "dc_p")
         dc_p = dc_enabled ? scuc[:dc_p] : nothing
 
-        for l in 1:NL
+        for l ∈ 1:NL
             subGsdf_units = Gsdf[l, units.locatebus]
             subGsdf_winds = Gsdf[l, winds.index]
             subGsdf_loads = Gsdf[l, loads.locatebus]
             subGsdf_psses = (NC > 0 && !isempty(stroges.locatebus)) ? Gsdf[l, stroges.locatebus] : []
             subGsdf_dc = dc_enabled ? Gsdf[l, DataCentras.locatebus] : Float64[]
 
-            flow = @expression(
-                scuc,
-                [s = 1:NS, t = 1:NT],
-                sum(subGsdf_units[i] * pg₀[i + (s - 1) * NG, t] for i in 1:NG) +
-                sum(subGsdf_winds[w] * (winds.scenarios_curve[s, t] * winds.p_max[w, 1] - Δpw[(s - 1) * NW + w, t]) for w in 1:NW) -
-                sum(subGsdf_loads[d] * (loads.load_curve[d, t] - Δpd[(s - 1) * ND + d, t]) for d in 1:ND) - (
-                    if dc_enabled
-                        sum(subGsdf_dc[c] * dc_p[(s - 1) * ND2 + c, t] for c in 1:ND2)
-                    else
-                        0.0
-                    end
-                ) + sum(if (NC > 0 && pc⁺ !== nothing && pc⁻ !== nothing && c <= length(subGsdf_psses))
-                    subGsdf_psses[c] * (pc⁻[(s - 1) * NC + c, t] - pc⁺[(s - 1) * NC + c, t])
+            flow = @expression(scuc, [s = 1:NS, t = 1:NT],
+                sum(subGsdf_units[i] * pg₀[i + (s - 1) * NG, t] for i ∈ 1:NG) +
+                sum(subGsdf_winds[w] * (winds.scenarios_curve[s, t] * winds.p_max[w, 1] - Δpw[(s - 1) * NW + w, t]) for w ∈ 1:NW) -
+                sum(subGsdf_loads[d] * (loads.load_curve[d, t] - Δpd[(s - 1) * ND + d, t]) for d ∈ 1:ND) - (if dc_enabled
+                    sum(subGsdf_dc[c] * dc_p[(s - 1) * ND2 + c, t] for c ∈ 1:ND2)
                 else
                     0.0
-                end for c in 1:NC)
-            )
+                end) + sum(if (NC > 0 && pc⁺ !== nothing && pc⁻ !== nothing && c <= length(subGsdf_psses))
+                        subGsdf_psses[c] * (pc⁻[(s - 1) * NC + c, t] - pc⁺[(s - 1) * NC + c, t])
+                    else
+                        0.0
+                    end for c ∈ 1:NC))
             push!(transmissionline_powerflow_upbound_constr, @constraint(scuc, [s = 1:NS, t = 1:NT], flow[s, t] <= lines.p_max[l, 1]))
             push!(transmissionline_powerflow_downbound_constr, @constraint(scuc, [s = 1:NS, t = 1:NT], flow[s, t] >= lines.p_min[l, 1]))
         end

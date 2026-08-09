@@ -27,15 +27,15 @@ function frequency_nadir_fit_contingency(units, fallback_contingency::Float64)
 end
 
 function parse_frequency_vector(text::String)
-    return [parse(Float64, strip(value)) for value in split(text, ",") if !isempty(strip(value))]
+    return [parse(Float64, strip(value)) for value ∈ split(text, ",") if !isempty(strip(value))]
 end
 
 function parse_frequency_matrix(text::String)
-    rows = [parse_frequency_vector(row) for row in split(text, ";") if !isempty(strip(row))]
+    rows = [parse_frequency_vector(row) for row ∈ split(text, ";") if !isempty(strip(row))]
     if isempty(rows)
         return zeros(Float64, 0, 4)
     end
     row_width = length(rows[1])
-    all(length(row) == row_width for row in rows) || throw(ArgumentError("FREQUENCY_NADIR_FITTING_PARAMETERS rows must have the same length"))
-    return reduce(vcat, reshape(row, 1, row_width) for row in rows)
+    all(length(row) == row_width for row ∈ rows) || throw(ArgumentError("FREQUENCY_NADIR_FITTING_PARAMETERS rows must have the same length"))
+    return reduce(vcat, reshape(row, 1, row_width) for row ∈ rows)
 end

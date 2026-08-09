@@ -49,29 +49,20 @@ function fit_frequency_nadir_max_min_affine(X::Matrix{Float64}, y::Vector{Float6
 
     @constraint(fit_model, [k = 1:cut_count, j = 1:4], coefficient_abs[k, j] >= coefficient[k, j])
     @constraint(fit_model, [k = 1:cut_count, j = 1:4], coefficient_abs[k, j] >= -coefficient[k, j])
-    @constraint(fit_model, [i = 1:row_count], sum(assignment[i, k] for k in 1:cut_count) == 1)
-    @constraint(fit_model, [k = 1:cut_count], sum(assignment[i, k] for i in 1:row_count) >= 1)
-    @constraint(fit_model, [i = 1:row_count, k = 1:cut_count], sum(coefficient[k, j] * X[i, j] for j in 1:4) <= y[i])
-    @constraint(
-        fit_model,
-        [i = 1:row_count, k = 1:cut_count],
-        selected_value[i] <= sum(coefficient[k, j] * X[i, j] for j in 1:4) + big_m * (1 - assignment[i, k])
-    )
-    @constraint(
-        fit_model,
-        [i = 1:row_count, k = 1:cut_count],
-        selected_value[i] >= sum(coefficient[k, j] * X[i, j] for j in 1:4) - big_m * (1 - assignment[i, k])
-    )
+    @constraint(fit_model, [i = 1:row_count], sum(assignment[i, k] for k ∈ 1:cut_count) == 1)
+    @constraint(fit_model, [k = 1:cut_count], sum(assignment[i, k] for i ∈ 1:row_count) >= 1)
+    @constraint(fit_model, [i = 1:row_count, k = 1:cut_count], sum(coefficient[k, j] * X[i, j] for j ∈ 1:4) <= y[i])
+    @constraint(fit_model, [i = 1:row_count, k = 1:cut_count],
+        selected_value[i] <= sum(coefficient[k, j] * X[i, j] for j ∈ 1:4) + big_m * (1 - assignment[i, k]))
+    @constraint(fit_model, [i = 1:row_count, k = 1:cut_count],
+        selected_value[i] >= sum(coefficient[k, j] * X[i, j] for j ∈ 1:4) - big_m * (1 - assignment[i, k]))
     @constraint(fit_model, [i = 1:row_count], fitting_error[i] >= y[i] - selected_value[i])
     @constraint(fit_model, [i = 1:row_count], max_error >= fitting_error[i])
     if fit_tolerance > 0.0
         @constraint(fit_model, max_error <= fit_tolerance)
     end
-    @objective(
-        fit_model,
-        Min,
-        1.0e3 * max_error + sum(fitting_error[i] for i in 1:row_count) + regularization * sum(coefficient_abs[k, j] for k in 1:cut_count, j in 1:4)
-    )
+    @objective(fit_model, Min,
+        1.0e3 * max_error + sum(fitting_error[i] for i ∈ 1:row_count) + regularization * sum(coefficient_abs[k, j] for k ∈ 1:cut_count, j ∈ 1:4))
 
     optimize!(fit_model)
     if termination_status(fit_model) != MathOptInterface.OPTIMAL

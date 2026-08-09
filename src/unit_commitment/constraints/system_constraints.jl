@@ -22,11 +22,8 @@ function add_curtailment_constraints!(scuc::Model, NT, ND, NW, NS, loads, winds)
     wind_pmax = winds.p_max
     load_curve = loads.load_curve
 
-    winds_curt_constr = @constraint(
-        scuc,
-        winds_curt_constr_for_eachscenario[s = 1:NS, t = 1:NT],
-        Δpw[(1 + (s - 1) * NW):(s * NW), t] .<= winds.scenarios_curve[s, t] * wind_pmax[:, 1]
-    )
+    winds_curt_constr = @constraint(scuc, winds_curt_constr_for_eachscenario[s = 1:NS, t = 1:NT],
+        Δpw[(1 + (s - 1) * NW):(s * NW), t] .<= winds.scenarios_curve[s, t] * wind_pmax[:, 1])
     loads_curt_const = @constraint(scuc, [s = 1:NS, t = 1:NT], Δpd[(1 + (s - 1) * ND):(s * ND), t] .<= load_curve[:, t])
     println("\t constraints: 4) loadcurtailments and spoliedwinds\t\t\t done")
     return scuc, winds_curt_constr, loads_curt_const
@@ -76,26 +73,20 @@ function add_reserve_constraints!(scuc::Model, NT, NG, NC, NS, units, loads, win
 
     # Up-reserve constraint: Sum over all generators and storage discharge must meet a minimum requirement per running unit 'i'.
     # Sum generator reserve + storage discharge (if available)
-    sys_upreserve_constr = @constraint(
-        scuc,
-        [s = 1:NS, t = 1:NT, i = 1:NG],
+    sys_upreserve_constr = @constraint(scuc, [s = 1:NS, t = 1:NT, i = 1:NG],
         sum(sr⁺[(1 + (s - 1) * NG):(s * NG), t]) +
         (NC > 0 && pc⁻ !== nothing ? sum(pc⁻[(NC * (s - 1) + 1):(s * NC), t]) : 0.0) +
-        (reserve_shortage⁺ === nothing ? 0.0 : reserve_shortage⁺[s, t]) >= 0.5 * unit_pmax[i, 1] * x[i, t]
-    ) # max constraints reformulation
+        (reserve_shortage⁺ === nothing ? 0.0 : reserve_shortage⁺[s, t]) >= 0.5 * unit_pmax[i, 1] * x[i, t]) # max constraints reformulation
     #  Original formulation used 0.5, keeping it
 
     # Down-reserve constraint
     # Assuming 1.0 multiplier is intentional
     # Sum generator reserve + storage charge (if available)
-    sys_down_reserve_constr = @constraint(
-        scuc,
-        [s = 1:NS, t = 1:NT],
+    sys_down_reserve_constr = @constraint(scuc, [s = 1:NS, t = 1:NT],
         sum(sr⁻[(1 + (s - 1) * NG):(s * NG), t]) +
         (NC > 0 && pc⁺ !== nothing ? sum(pc⁺[(NC * (s - 1) + 1):(s * NC), t]) : 0.0) +
         (reserve_shortage⁻ === nothing ? 0.0 : reserve_shortage⁻[s, t]) >=
-        1.0 * (alpha_res * forcast_reserve[s, t] + beta_res * sum(load_curve[:, t]))
-    )
+        1.0 * (alpha_res * forcast_reserve[s, t] + beta_res * sum(load_curve[:, t])))
     println("\t constraints: 6) system reserves limits\t\t\t\t\t done")
     return scuc, sys_upreserve_constr, sys_down_reserve_constr
 end
@@ -129,31 +120,21 @@ function add_power_balance_constraints!(scuc::Model, NT, NG, ND, NC, NW, NS, loa
 
     # Base power balance without data centers
     if config_param.is_ConsiderBESS == 0
-        common_balance = @expression(
-            scuc,
-            [s = 1:NS, t = 1:NT],
-            sum(pg₀[(1 + (s - 1) * NG):(s * NG), t]) + sum(winds.scenarios_curve[s, t] * wind_pmax[w, 1] - Δpw[(s - 1) * NW + w, t] for w in 1:NW) -
-            sum(load_curve[d, t] - Δpd[(s - 1) * ND + d, t] for d in 1:ND)
-        ) # Net Load
+        common_balance = @expression(scuc, [s = 1:NS, t = 1:NT],
+            sum(pg₀[(1 + (s - 1) * NG):(s * NG), t]) + sum(winds.scenarios_curve[s, t] * wind_pmax[w, 1] - Δpw[(s - 1) * NW + w, t] for w ∈ 1:NW) -
+            sum(load_curve[d, t] - Δpd[(s - 1) * ND + d, t] for d ∈ 1:ND)) # Net Load
     else
-        common_balance = @expression(
-            scuc,
-            [s = 1:NS, t = 1:NT],
-            sum(pg₀[(1 + (s - 1) * NG):(s * NG), t]) + sum(winds.scenarios_curve[s, t] * wind_pmax[w, 1] - Δpw[(s - 1) * NW + w, t] for w in 1:NW) -
-            sum(load_curve[d, t] - Δpd[(s - 1) * ND + d, t] for d in 1:ND) + (
-                if NC > 0 && pc⁻ !== nothing
-                    sum(pc⁻[((s - 1) * NC + 1):(s * NC), t])
-                else
-                    0.0
-                end
-            ) - (
-                if NC > 0 && pc⁺ !== nothing
-                    sum(pc⁺[((s - 1) * NC + 1):(s * NC), t])
-                else
-                    0.0
-                end
-            )
-        )
+        common_balance = @expression(scuc, [s = 1:NS, t = 1:NT],
+            sum(pg₀[(1 + (s - 1) * NG):(s * NG), t]) + sum(winds.scenarios_curve[s, t] * wind_pmax[w, 1] - Δpw[(s - 1) * NW + w, t] for w ∈ 1:NW) -
+            sum(load_curve[d, t] - Δpd[(s - 1) * ND + d, t] for d ∈ 1:ND) + (if NC > 0 && pc⁻ !== nothing
+                sum(pc⁻[((s - 1) * NC + 1):(s * NC), t])
+            else
+                0.0
+            end) - (if NC > 0 && pc⁺ !== nothing
+                sum(pc⁺[((s - 1) * NC + 1):(s * NC), t])
+            else
+                0.0
+            end))
     end
 
     sys_balance_constr = []

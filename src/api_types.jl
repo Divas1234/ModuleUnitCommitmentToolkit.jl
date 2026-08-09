@@ -22,7 +22,9 @@ struct UCSolveRequest
     verbosity::Symbol
 end
 
-"""Stable public result envelope; algorithm-specific fields live in `details`."""
+"""
+Stable public result envelope; algorithm-specific fields live in `details`.
+"""
 struct UCSolveResult{T <: NamedTuple}
     algorithm::Symbol
     input::Symbol
@@ -44,7 +46,8 @@ end
 
 Base.getindex(result::UCSolveResult, name::Symbol) = getproperty(result, name)
 
-"""Named Benders model setup returned by `main`.
+"""
+Named Benders model setup returned by `main`.
 
 The iterator exposes the historical 20-value order for old scripts. New code
 must use named fields; the compatibility iterator can be removed in a future
@@ -74,28 +77,8 @@ struct BendersSetup
     data::Any
 end
 
-const _BENDERS_LEGACY_FIELDS = (
-    :master_model,
-    :sub_model,
-    :master_struct,
-    :sub_struct,
-    :batch_subproblems,
-    :config_param,
-    :units,
-    :lines,
-    :loads,
-    :winds,
-    :psses,
-    :NB,
-    :NG,
-    :NL,
-    :ND,
-    :NS,
-    :NT,
-    :NC,
-    :ND2,
-    :DataCentras,
-)
+const _BENDERS_LEGACY_FIELDS = (:master_model, :sub_model, :master_struct, :sub_struct, :batch_subproblems, :config_param,
+    :units, :lines, :loads, :winds, :psses, :NB, :NG, :NL, :ND, :NS, :NT, :NC, :ND2, :DataCentras)
 
 function Base.iterate(setup::BendersSetup, state::Int = 1)
     state > length(_BENDERS_LEGACY_FIELDS) && return nothing

@@ -21,4 +21,3 @@ align_matrix = true
 indent_submodule = true
 surround_whereop_typeparameters = false
 yas_style_nesting = false
-join_lines_based_on_source = false

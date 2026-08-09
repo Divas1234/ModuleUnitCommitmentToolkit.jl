@@ -3,7 +3,7 @@ using TOML
 const DEFAULT_RUNTIME_CONFIG_PATH = joinpath(dirname(@__DIR__), "config", "runtime_config.toml")
 
 """
-	runtime_config_value_to_env(value)
+    runtime_config_value_to_env(value)
 
 Convert a TOML scalar into the string representation expected by `ENV`.
 
@@ -25,7 +25,7 @@ function runtime_config_value_to_env(value)
 end
 
 """
-	collect_runtime_config_entries!(entries, table)
+    collect_runtime_config_entries!(entries, table)
 
 Flatten a nested TOML table into `ENV` key-value pairs.
 
@@ -34,7 +34,7 @@ human organization in the TOML file and are not prefixed onto the final ENV key.
 This keeps the public variable names stable, e.g. `BENDERS_MAX_ITERATIONS`.
 """
 function collect_runtime_config_entries!(entries::Vector{Pair{String, String}}, table)
-    for (key, value) in table
+    for (key, value) ∈ table
         if value isa AbstractDict
             collect_runtime_config_entries!(entries, value)
         else
@@ -45,7 +45,7 @@ function collect_runtime_config_entries!(entries::Vector{Pair{String, String}}, 
 end
 
 """
-	runtime_config_entries(config_path)
+    runtime_config_entries(config_path)
 
 Parse and validate a runtime TOML file without mutating process state.
 Use this function in tests or diagnostics when the caller only needs to inspect
@@ -60,29 +60,27 @@ function runtime_config_entries(config_path::AbstractString)
 end
 
 """
-	load_runtime_config!(; config_path, override, verbose)
+    load_runtime_config!(; config_path, override, verbose)
 
 Load runtime defaults from TOML into `ENV`.
 
 Precedence is production-oriented:
-- existing shell/CI environment variables win by default;
-- TOML values fill in missing variables;
-- `override=true` is reserved for tests or controlled experiments.
+
+  - existing shell/CI environment variables win by default;
+  - TOML values fill in missing variables;
+  - `override=true` is reserved for tests or controlled experiments.
 
 Blank TOML strings are treated as "unset" sentinels. This is useful for options
 such as `CCG_INITIAL_SCENARIOS`, where an empty value means "derive a default
 from the loaded scenario count" instead of forcing a literal empty string.
 """
-function load_runtime_config!(;
-    config_path::AbstractString = get(ENV, "MODULE_UC_CONFIG_FILE", DEFAULT_RUNTIME_CONFIG_PATH),
-    override::Bool = false,
-    verbose::Bool = get(ENV, "MODULE_UC_CONFIG_VERBOSE", "0") in ("1", "true", "yes", "on"),
-)
+function load_runtime_config!(; config_path::AbstractString = get(ENV, "MODULE_UC_CONFIG_FILE", DEFAULT_RUNTIME_CONFIG_PATH),
+        override::Bool = false, verbose::Bool = get(ENV, "MODULE_UC_CONFIG_VERBOSE", "0") in ("1", "true", "yes", "on"))
     entries = runtime_config_entries(config_path)
     applied = String[]
     skipped = String[]
 
-    for (key, value) in entries
+    for (key, value) ∈ entries
         if isempty(value)
             continue
         end

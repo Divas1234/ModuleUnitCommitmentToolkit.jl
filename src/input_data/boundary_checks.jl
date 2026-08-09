@@ -17,9 +17,9 @@ end
 
 function _print_matrix_rows(label::AbstractString, matrix, row_count::Int64, col_count::Int64)
     println("  ", label, " (", row_count, " x ", col_count, "):")
-    for i in 1:row_count
+    for i ∈ 1:row_count
         @printf("    row %02d:", i)
-        for j in 1:col_count
+        for j ∈ 1:col_count
             @printf(" %10.4f", matrix[i, j])
         end
         println()
@@ -33,11 +33,11 @@ end
 
 function _print_checks(checks::Vector{Tuple{String, Bool}})
     _print_section("Consistency Checks")
-    for (label, ok) in checks
+    for (label, ok) ∈ checks
         @printf("  [%s] %s\n", ok ? "OK" : "FAIL", label)
     end
-    if any(!ok for (_, ok) in checks)
-        failed = [label for (label, ok) in checks if !ok]
+    if any(!ok for (_, ok) ∈ checks)
+        failed = [label for (label, ok) ∈ checks if !ok]
         throw(ArgumentError("Boundary condition check failed: " * join(failed, "; ")))
     end
     return nothing
@@ -60,7 +60,7 @@ function _print_runtime_configuration()
         println("  unable to read runtime config: ", sprint(showerror, error))
         Pair{String, String}[]
     end
-    for entry in sort(entries; by = item -> item.first)
+    for entry ∈ sort(entries; by = item -> item.first)
         key = entry.first
         configured_value = entry.second
         effective_value = get(ENV, key, configured_value)
@@ -69,13 +69,10 @@ function _print_runtime_configuration()
 
     configured_keys = Set(first.(entries))
     runtime_prefixes = ("BENCHMARK_", "MODEL_", "BENDERS_", "CCG_", "FREQUENCY_")
-    overrides = sort([
-        key for key in keys(ENV) if
-        any(startswith(key, prefix) for prefix in runtime_prefixes) && !(key in configured_keys)
-    ])
+    overrides = sort([key for key ∈ keys(ENV) if any(startswith(key, prefix) for prefix ∈ runtime_prefixes) && !(key in configured_keys)])
     isempty(overrides) || begin
         println("  calibration/runtime overrides:")
-        for key in overrides
+        for key ∈ overrides
             _print_kv("    " * key, ENV[key])
         end
     end
@@ -87,59 +84,18 @@ function boundary_env_bool(name::String, default::Bool)
     return value in ("1", "true", "yes", "y", "on")
 end
 
-function maybe_print_boundarycondition(
-    NB::Int64,
-    NL::Int64,
-    NG::Int64,
-    NT::Int64,
-    ND::Int64,
-    units::unit,
-    loads::load,
-    lines::transmissionline,
-    winds::wind,
-    stroges::pss,
-    config_param::config,
-    ;
-    data_centers = nothing,
-    default_enabled::Bool = true,
-)
+function maybe_print_boundarycondition(NB::Int64, NL::Int64, NG::Int64, NT::Int64, ND::Int64, units::unit, loads::load, lines::transmissionline,
+        winds::wind, stroges::pss, config_param::config, ; data_centers = nothing, default_enabled::Bool = true)
     if !boundary_env_bool("PRINT_BOUNDARY_CONDITION", default_enabled)
         return nothing
     end
     show_plots = boundary_env_bool("BOUNDARY_SHOW_PLOTS", false)
     return boundarycondition(
-        NB,
-        NL,
-        NG,
-        NT,
-        ND,
-        units,
-        loads,
-        lines,
-        winds,
-        stroges,
-        config_param;
-        data_centers = data_centers,
-        show_plots = show_plots,
-    )
+        NB, NL, NG, NT, ND, units, loads, lines, winds, stroges, config_param; data_centers = data_centers, show_plots = show_plots)
 end
 
-function boundrycondition(
-    NB::Int64,
-    NL::Int64,
-    NG::Int64,
-    NT::Int64,
-    ND::Int64,
-    units::unit,
-    loads::load,
-    lines::transmissionline,
-    winds::wind,
-    stroges::pss,
-    config_param::config,
-    ;
-    data_centers = nothing,
-    show_plots::Bool = true,
-)
+function boundrycondition(NB::Int64, NL::Int64, NG::Int64, NT::Int64, ND::Int64, units::unit, loads::load, lines::transmissionline,
+        winds::wind, stroges::pss, config_param::config, ; data_centers = nothing, show_plots::Bool = true)
     NS = winds.scenarios_nums
     NW = length(winds.index)
 
@@ -173,7 +129,7 @@ function boundrycondition(
     _print_kv("Wind availability min/max", @sprintf("%.4f / %.4f", minimum(winds.scenarios_curve), maximum(winds.scenarios_curve)))
 
     _print_section("Configuration Flags")
-    for field in fieldnames(config)
+    for field ∈ fieldnames(config)
         _print_kv(String(field), getfield(config_param, field))
     end
     _print_runtime_configuration()
@@ -283,31 +239,15 @@ function plt_unicodeplot(winds = nothing, loads = nothing, flag = 0)
     xdata = collect(1:1:24)
     if flag == 0
         NS = size(winds.scenarios_curve, 1)
-        plt = lineplot(
-            xdata,
-            winds.scenarios_curve[1, :];
-            height = 10,
-            xlim = (0, 25),
-            title = "stochastic realization of renewable resource",
-            name = "wind farms",
-            xlabel = "t / h",
-            ylabel = "output / p.u.",
-        )
-        for i in 2:NS
+        plt = lineplot(xdata, winds.scenarios_curve[1, :]; height = 10, xlim = (0, 25), title = "stochastic realization of renewable resource",
+            name = "wind farms", xlabel = "t / h", ylabel = "output / p.u.")
+        for i ∈ 2:NS
             lineplot!(plt, xdata, winds.scenarios_curve[i, :])
         end
     else
         # ND = size( loads.load_curve,1)
-        plt = lineplot(
-            xdata,
-            loads.load_curve[1, :];
-            height = 10,
-            xlim = (0, 25),
-            title = "sequential demand curve",
-            name = "loads",
-            xlabel = "t / h",
-            ylabel = "output / p.u.",
-        )
+        plt = lineplot(xdata, loads.load_curve[1, :]; height = 10, xlim = (0, 25), title = "sequential demand curve",
+            name = "loads", xlabel = "t / h", ylabel = "output / p.u.")
     end
     return plt
 end

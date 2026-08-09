@@ -23,6 +23,7 @@ include("../src/unit_commitment/utilities/decision_variables.jl")
 include("../src/api_types.jl")
 include("../src/output_reporting.jl")
 include("../src/solver_interface.jl")
+include("../tools/pcm/clustered_pcm/clustered_pcm.jl")
 
 @testset "module_unitcommitment" begin
     include("test_runtime_config.jl")
@@ -34,4 +35,7 @@ include("../src/solver_interface.jl")
     include("test_powersystems_cases.jl")
     include("test_model_utilities.jl")
     include("test_src_modules.jl")
+    include("test_clustered_disaggregation.jl")
+    include("test_clustered_pcm_adapter.jl")
+    include("test_clustered_pcm_master.jl")
 end

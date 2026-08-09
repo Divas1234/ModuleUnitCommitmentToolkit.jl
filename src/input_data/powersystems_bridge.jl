@@ -5,7 +5,7 @@ using DataFrames
 using Logging
 
 export build_system_from_powersystems,
-    extract_uc_data_from_powersystems, generate_wind_scenarios_from_system, load_native_powersystems_case, generate_frequency_parameters
+       extract_uc_data_from_powersystems, generate_wind_scenarios_from_system, load_native_powersystems_case, generate_frequency_parameters
 
 const _POWER_SYSTEM_CASE_CATALOG = (
     ieee6 = (
@@ -13,64 +13,64 @@ const _POWER_SYSTEM_CASE_CATALOG = (
         aliases = ("ieee6", "ieee_6bus", "ieee6bus", "case6", "matpower_case6_sys"),
         case_name = "matpower_case6_sys",
         case_category = MatpowerTestSystems,
-        description = "IEEE 6-bus MATPOWER case",
+        description = "IEEE 6-bus MATPOWER case"
     ),
     ieee14 = (
         alias = "ieee14",
         aliases = ("ieee14", "ieee_14bus", "ieee14bus", "case14", "matpower_case14_sys"),
         case_name = "matpower_case14_sys",
         case_category = MatpowerTestSystems,
-        description = "IEEE 14-bus MATPOWER case",
+        description = "IEEE 14-bus MATPOWER case"
     ),
     ieee24 = (
         alias = "ieee24",
         aliases = ("ieee24", "ieee_24bus", "ieee24bus", "case24", "matpower_case24_sys"),
         case_name = "matpower_case24_sys",
         case_category = MatpowerTestSystems,
-        description = "IEEE 24-bus MATPOWER case",
+        description = "IEEE 24-bus MATPOWER case"
     ),
     ieee30 = (
         alias = "ieee30",
         aliases = ("ieee30", "ieee_30bus", "ieee30bus", "case30", "matpower_case30_sys"),
         case_name = "matpower_case30_sys",
         case_category = MatpowerTestSystems,
-        description = "IEEE 30-bus MATPOWER case",
+        description = "IEEE 30-bus MATPOWER case"
     ),
     ieee118 = (
         alias = "ieee118",
         aliases = ("ieee118", "ieee_118bus", "ieee118bus", "case118", "118_bus"),
         case_name = "118_bus",
         case_category = nothing,
-        description = "118-bus PowerSystemsTestData case with thermal units, loads, and AC branches",
+        description = "118-bus PowerSystemsTestData case with thermal units, loads, and AC branches"
     ),
     c_sys5_all_components = (
         alias = "c_sys5_all_components",
         aliases = ("c_sys5_all_components",),
         case_name = "c_sys5_all_components",
         case_category = PSITestSystems,
-        description = "5-bus case with renewable generation, storage, and multiple load types",
+        description = "5-bus case with renewable generation, storage, and multiple load types"
     ),
     rts_gmlc = (
         alias = "rts_gmlc",
         aliases = ("rts_gmlc", "matpower_rts_gmlc", "matpower_rts_gmlc_sys"),
         case_name = "matpower_RTS_GMLC_sys",
         case_category = MatpowerTestSystems,
-        description = "RTS-GMLC MATPOWER case",
+        description = "RTS-GMLC MATPOWER case"
     ),
     activsg2000 = (
         alias = "activsg2000",
         aliases = ("activsg2000", "activsg_2000", "matpower_activsg2000_sys"),
         case_name = "matpower_ACTIVSg2000_sys",
         case_category = MatpowerTestSystems,
-        description = "ACTIVSg2000 large MATPOWER case",
+        description = "ACTIVSg2000 large MATPOWER case"
     ),
     activsg10k = (
         alias = "activsg10k",
         aliases = ("activsg10k", "activsg_10k", "matpower_activsg10k_sys"),
         case_name = "matpower_ACTIVSg10k_sys",
         case_category = MatpowerTestSystems,
-        description = "ACTIVSg10k very-large MATPOWER case",
-    ),
+        description = "ACTIVSg10k very-large MATPOWER case"
+    )
 )
 
 """
@@ -100,8 +100,8 @@ end
 
 function _catalog_case(case_name)
     key = _normalize_powersystems_case_key(case_name)
-    for entry in values(_POWER_SYSTEM_CASE_CATALOG)
-        key in (_normalize_powersystems_case_key(alias) for alias in entry.aliases) && return entry
+    for entry ∈ values(_POWER_SYSTEM_CASE_CATALOG)
+        key in (_normalize_powersystems_case_key(alias) for alias ∈ entry.aliases) && return entry
     end
     return nothing
 end
@@ -153,9 +153,9 @@ function _build_ieee118_system()
 
     bus_by_number = Dict{Int, ACBus}()
     buses = ACBus[]
-    for row in eachrow(bus_df)
+    for row ∈ eachrow(bus_df)
         number = _ieee118_bus_number(row["Number"])
-        bus = ACBus(
+        bus = ACBus(;
             name = "bus$(lpad(number, 3, '0'))",
             available = true,
             number = number,
@@ -164,17 +164,17 @@ function _build_ieee118_system()
             magnitude = _ieee118_float(row["Magnitude "], 1.0),
             voltage_limits = (
                 min = _ieee118_float(row["Voltage-Min (pu)"], 0.94),
-                max = _ieee118_float(row["Voltage-Max (pu)"], 1.06),
+                max = _ieee118_float(row["Voltage-Max (pu)"], 1.06)
             ),
-            base_voltage = _ieee118_float(row["Base Voltage kV"], 138.0),
+            base_voltage = _ieee118_float(row["Base Voltage kV"], 138.0)
         )
         bus_by_number[number] = bus
         push!(buses, bus)
     end
-    sort!(buses, by = get_number)
+    sort!(buses; by = get_number)
 
     generators = ThermalStandard[]
-    for row in eachrow(generator_df)
+    for row ∈ eachrow(generator_df)
         strip(String(row["type"])) == "Thermal" || continue
         bus_number = _ieee118_component_bus(row["bus of connection"])
         haskey(bus_by_number, bus_number) || throw(ArgumentError("IEEE 118 generator references unknown bus $bus_number"))
@@ -182,7 +182,7 @@ function _build_ieee118_system()
         minimum_power = clamp(_ieee118_float(row["Min Stable Level (MW)"], 0.0), 0.0, maximum_power)
         ramp_up = max(_ieee118_float(row["Max Ramp Up (MW/min)"], maximum_power), 0.0)
         ramp_down = max(_ieee118_float(row["Max Ramp Down (MW/min)"], maximum_power), 0.0)
-        generator = ThermalStandard(
+        generator = ThermalStandard(;
             name = String(row["Generator Name"]),
             available = true,
             status = true,
@@ -197,16 +197,16 @@ function _build_ieee118_system()
             base_power = base_power,
             time_limits = (
                 up = max(_ieee118_float(row["Min Up Time (h)"], 1.0), 0.0),
-                down = max(_ieee118_float(row["Min Down Time (h)"], 1.0), 0.0),
+                down = max(_ieee118_float(row["Min Down Time (h)"], 1.0), 0.0)
             ),
             prime_mover_type = PrimeMovers.OT,
-            fuel = ThermalFuels.OTHER,
+            fuel = ThermalFuels.OTHER
         )
         push!(generators, generator)
     end
 
     branches = Line[]
-    for (index, row) in enumerate(eachrow(line_df))
+    for (index, row) ∈ enumerate(eachrow(line_df))
         from_number = _ieee118_component_bus(row["Bus from "])
         to_number = _ieee118_component_bus(row["Bus to"])
         haskey(bus_by_number, from_number) && haskey(bus_by_number, to_number) ||
@@ -214,7 +214,7 @@ function _build_ieee118_system()
         rating = max(_ieee118_float(row["Max Flow (MW)"], 0.0), 0.0)
         push!(
             branches,
-            Line(
+            Line(;
                 name = String(row["Line Name"]),
                 available = true,
                 active_power_flow = 0.0,
@@ -224,18 +224,18 @@ function _build_ieee118_system()
                 x = _ieee118_float(row["Reactance (p.u.)"], 0.01),
                 b = (from = 0.0, to = 0.0),
                 rating = rating / base_power,
-                angle_limits = (min = -pi, max = pi),
-            ),
+                angle_limits = (min = -pi, max = pi)
+            )
         )
     end
 
     regional_peaks = Dict{String, Float64}()
-    for region in ("R1", "R2", "R3")
+    for region ∈ ("R1", "R2", "R3")
         profile = CSV.read(joinpath(case_dir, "Load", "RT", "Load$(region)RT.csv"), DataFrame)
         regional_peaks[region] = maximum(_ieee118_float.(profile[:, 2], 0.0))
     end
     loads = PowerLoad[]
-    for row in eachrow(participation_df)
+    for row ∈ eachrow(participation_df)
         bus_number = _ieee118_component_bus(row["Bus Name"])
         haskey(bus_by_number, bus_number) || throw(ArgumentError("IEEE 118 load references unknown bus $bus_number"))
         region = String(row["Region"])
@@ -243,7 +243,7 @@ function _build_ieee118_system()
         maximum_power = max(regional_peaks[region] * factor, 0.0)
         push!(
             loads,
-            PowerLoad(
+            PowerLoad(;
                 name = "load$(lpad(bus_number, 3, '0'))",
                 available = true,
                 bus = bus_by_number[bus_number],
@@ -251,14 +251,14 @@ function _build_ieee118_system()
                 reactive_power = 0.0,
                 base_power = base_power,
                 max_active_power = maximum_power / base_power,
-                max_reactive_power = 0.0,
-            ),
+                max_reactive_power = 0.0
+            )
         )
     end
 
     system = System(base_power; runchecks = false)
-    for component in (buses, generators, branches, loads)
-        for item in component
+    for component ∈ (buses, generators, branches, loads)
+        for item ∈ component
             add_component!(system, item)
         end
     end
@@ -298,13 +298,13 @@ optional fields are `p_min`, `idle_power`, `server_energy`, `lambda`, `mu`, and
 `workload`.
 """
 function load_native_powersystems_case(
-    case_name::Union{Symbol, AbstractString};
-    case_category::Type{<:SystemCategory} = MatpowerTestSystems,
-    scenario_limit::Int64 = 50,
-    frequency_parameters = nothing,
-    data_centers = NamedTuple[],
-    horizon::Int64 = 24,
-    kwargs...,
+        case_name::Union{Symbol, AbstractString};
+        case_category::Type{<:SystemCategory} = MatpowerTestSystems,
+        scenario_limit::Int64 = 50,
+        frequency_parameters = nothing,
+        data_centers = NamedTuple[],
+        horizon::Int64 = 24,
+        kwargs...
 )
     sys = build_system_from_powersystems(case_name; case_category = case_category, kwargs...)
     return _load_native_powersystems_system(
@@ -312,7 +312,7 @@ function load_native_powersystems_case(
         scenario_limit = scenario_limit,
         frequency_parameters = frequency_parameters,
         data_centers = data_centers,
-        horizon = horizon,
+        horizon = horizon
     )
 end
 
@@ -349,7 +349,7 @@ function _frequency_value(parameters, generator_name::String, index::Int, field:
 end
 
 function _time_series_or_static(component, horizon::Int64)
-    for label in ("max_active_power", "active_power", "scaling_factor_active_power")
+    for label ∈ ("max_active_power", "active_power", "scaling_factor_active_power")
         try
             values = Float64.(collect(get_time_series_values(SingleTimeSeries, component, label)))
             isempty(values) && continue
@@ -395,7 +395,7 @@ function _normalize_data_centers(data_centers, legacy_buses, legacy_pmax)
         return data_centers
     end
     length(legacy_buses) == length(legacy_pmax) || throw(ArgumentError("data_center_buses and data_center_pmax must have the same length"))
-    return [(bus = legacy_buses[i], p_max = legacy_pmax[i]) for i in eachindex(legacy_buses)]
+    return [(bus = legacy_buses[i], p_max = legacy_pmax[i]) for i ∈ eachindex(legacy_buses)]
 end
 
 function _data_center_struct(data_centers, bus_to_index::Dict{Int, Int}, horizon::Int64, base_power::Float64)
@@ -412,7 +412,7 @@ function _data_center_struct(data_centers, bus_to_index::Dict{Int, Int}, horizon
     lambda = Float64[]
     mu = Float64[]
     workloads = zeros(count, horizon)
-    for (i, center) in enumerate(data_centers)
+    for (i, center) ∈ enumerate(data_centers)
         bus = Int(_field_or_default(center, :bus, 0))
         haskey(bus_to_index, bus) || throw(ArgumentError("Data center $i references unknown bus $bus"))
         maximum_power = Float64(_field_or_default(center, :p_max, -1.0))
@@ -451,51 +451,51 @@ converted with the native system base power. The function keeps a contiguous
 internal bus index so arbitrary PowerSystems bus numbers are supported.
 """
 function extract_uc_data_from_powersystems(
-    sys::System;
-    data_center_buses::Vector{Int} = Int[],
-    data_center_pmax::Vector{Float64} = Float64[],
-    frequency_params_override = nothing,
-    frequency_parameters = frequency_params_override,
-    data_centers = NamedTuple[],
-    horizon::Int64 = 24,
+        sys::System;
+        data_center_buses::Vector{Int} = Int[],
+        data_center_pmax::Vector{Float64} = Float64[],
+        frequency_params_override = nothing,
+        frequency_parameters = frequency_params_override,
+        data_centers = NamedTuple[],
+        horizon::Int64 = 24
 )
     horizon > 0 || throw(ArgumentError("horizon must be positive"))
     base_power = Float64(get_base_power(sys))
-    buses = sort(collect(get_components(ACBus, sys)), by = get_number)
+    buses = sort(collect(get_components(ACBus, sys)); by = get_number)
     isempty(buses) && throw(ArgumentError("PowerSystems system has no AC buses"))
-    bus_to_index = Dict{Int, Int}(get_number(bus) => index for (index, bus) in enumerate(buses))
+    bus_to_index = Dict{Int, Int}(get_number(bus) => index for (index, bus) ∈ enumerate(buses))
     bus_index(bus) = bus_to_index[get_number(bus)]
 
-    generators = sort(collect(get_components(ThermalStandard, sys)), by = get_name)
+    generators = sort(collect(get_components(ThermalStandard, sys)); by = get_name)
     isempty(generators) && throw(ArgumentError("PowerSystems system has no ThermalStandard generators"))
     generator_count = length(generators)
     generator_index = collect(Int64(1):Int64(generator_count))
-    generator_bus = Int64[bus_index(get_bus(generator)) for generator in generators]
-    p_max = Float64[];
-    p_min = Float64[];
-    ramp_up = Float64[];
-    ramp_down = Float64[];
-    startup_ramp = Float64[];
+    generator_bus = Int64[bus_index(get_bus(generator)) for generator ∈ generators]
+    p_max = Float64[]
+    p_min = Float64[]
+    ramp_up = Float64[]
+    ramp_down = Float64[]
+    startup_ramp = Float64[]
     shutdown_ramp = Float64[]
-    min_up = Float64[];
-    min_down = Float64[];
-    initial_status = Float64[];
-    initial_hours = Float64[];
+    min_up = Float64[]
+    min_down = Float64[]
+    initial_status = Float64[]
+    initial_hours = Float64[]
     initial_power = Float64[]
-    cost_a = Float64[];
-    cost_b = Float64[];
-    cost_c = Float64[];
-    hot_start = Float64[];
-    cold_start = Float64[];
-    shutdown_cost = Float64[];
+    cost_a = Float64[]
+    cost_b = Float64[]
+    cost_c = Float64[]
+    hot_start = Float64[]
+    cold_start = Float64[]
+    shutdown_cost = Float64[]
     cold_time = Float64[]
-    inertia = Float64[];
-    damping = Float64[];
-    gain = Float64[];
-    turbine_fraction = Float64[];
-    time_constant = Float64[];
+    inertia = Float64[]
+    damping = Float64[]
+    gain = Float64[]
+    turbine_fraction = Float64[]
+    time_constant = Float64[]
     droop = Float64[]
-    for (index, generator) in enumerate(generators)
+    for (index, generator) ∈ enumerate(generators)
         limits = get_active_power_limits(generator)
         ramps = getproperty(generator, :ramp_limits)
         time_limits = getproperty(generator, :time_limits)
@@ -510,76 +510,76 @@ function extract_uc_data_from_powersystems(
         # PowerSystems uses SYSTEM_BASE units for component power values. These
         # quantities are already per-unit on the system base; dividing by
         # `base_power` here would perform a second, incorrect normalization.
-        push!(p_max, maximum_power);
+        push!(p_max, maximum_power)
         push!(p_min, Float64(limits.min))
         push!(ramp_up, Float64(_field_or_default(ramps, :up, maximum_power)))
         push!(ramp_down, Float64(_field_or_default(ramps, :down, maximum_power)))
-        push!(startup_ramp, maximum_power);
+        push!(startup_ramp, maximum_power)
         push!(shutdown_ramp, maximum_power)
-        push!(min_up, Float64(_field_or_default(time_limits, :up, 1.0)));
+        push!(min_up, Float64(_field_or_default(time_limits, :up, 1.0)))
         push!(min_down, Float64(_field_or_default(time_limits, :down, 1.0)))
-        push!(initial_status, getproperty(generator, :status) ? 1.0 : 0.0);
-        push!(initial_hours, 1.0);
+        push!(initial_status, getproperty(generator, :status) ? 1.0 : 0.0)
+        push!(initial_hours, 1.0)
         push!(initial_power, Float64(getproperty(generator, :active_power)))
         a, b, c = _thermal_cost_coefficients(generator, base_power)
-        push!(cost_a, a);
-        push!(cost_b, b);
+        push!(cost_a, a)
+        push!(cost_b, b)
         push!(cost_c, c)
         operation_cost = getproperty(generator, :operation_cost)
         startup_cost_value = _finite_float(_field_or_default(operation_cost, :start_up, 0.0), 0.0)
-        push!(hot_start, startup_cost_value);
-        push!(cold_start, startup_cost_value);
-        push!(shutdown_cost, _finite_float(_field_or_default(operation_cost, :shut_down, 0.0), 0.0));
+        push!(hot_start, startup_cost_value)
+        push!(cold_start, startup_cost_value)
+        push!(shutdown_cost, _finite_float(_field_or_default(operation_cost, :shut_down, 0.0), 0.0))
         push!(cold_time, 1.0)
         name = get_name(generator)
-        push!(inertia, _frequency_value(frequency_parameters, name, index, :H, 5.0));
+        push!(inertia, _frequency_value(frequency_parameters, name, index, :H, 5.0))
         push!(damping, _frequency_value(frequency_parameters, name, index, :D, 0.0))
-        push!(gain, _frequency_value(frequency_parameters, name, index, :K, 0.0));
+        push!(gain, _frequency_value(frequency_parameters, name, index, :K, 0.0))
         push!(turbine_fraction, _frequency_value(frequency_parameters, name, index, :F, 0.0))
-        push!(time_constant, _frequency_value(frequency_parameters, name, index, :T, 0.0));
+        push!(time_constant, _frequency_value(frequency_parameters, name, index, :T, 0.0))
         push!(droop, _frequency_value(frequency_parameters, name, index, :R, 1.0))
     end
     units = unit(
         generator_index, generator_bus,
         p_max, p_min, ramp_up, ramp_down, startup_ramp, shutdown_ramp, min_up, min_down,
         initial_status, initial_hours, initial_power,
-        cost_a, cost_b, cost_c, hot_start, cold_start, shutdown_cost, cold_time, inertia, damping, gain, turbine_fraction, time_constant, droop,
+        cost_a, cost_b, cost_c, hot_start, cold_start, shutdown_cost, cold_time, inertia, damping, gain, turbine_fraction, time_constant, droop
     )
 
-    branches = sort(collect(get_components(ACBranch, sys)), by = get_name)
+    branches = sort(collect(get_components(ACBranch, sys)); by = get_name)
     branch_count = length(branches)
     lines = transmissionline(
         collect(Int64(1):Int64(branch_count)),
-        Int64[bus_index(get_from(get_arc(branch))) for branch in branches],
-        Int64[bus_index(get_to(get_arc(branch))) for branch in branches],
-        Float64[get_x(branch) for branch in branches],
-        Float64[get_rating(branch) for branch in branches],
-        Float64[-get_rating(branch) for branch in branches],
+        Int64[bus_index(get_from(get_arc(branch))) for branch ∈ branches],
+        Int64[bus_index(get_to(get_arc(branch))) for branch ∈ branches],
+        Float64[get_x(branch) for branch ∈ branches],
+        Float64[get_rating(branch) for branch ∈ branches],
+        Float64[-get_rating(branch) for branch ∈ branches]
     )
 
-    power_loads = sort(collect(get_components(PowerLoad, sys)), by = get_name)
+    power_loads = sort(collect(get_components(PowerLoad, sys)); by = get_name)
     load_count = length(power_loads)
     loads = load(
         collect(Int64(1):Int64(load_count)),
-        Int64[bus_index(get_bus(power_load)) for power_load in power_loads],
-        reduce(vcat, [_time_series_or_static(power_load, horizon)' for power_load in power_loads]; init = zeros(0, horizon)),
+        Int64[bus_index(get_bus(power_load)) for power_load ∈ power_loads],
+        reduce(vcat, [_time_series_or_static(power_load, horizon)' for power_load ∈ power_loads]; init = zeros(0, horizon))
     )
 
-    storage = sort(collect(get_components(EnergyReservoirStorage, sys)), by = get_name)
+    storage = sort(collect(get_components(EnergyReservoirStorage, sys)); by = get_name)
     storage_count = length(storage)
     psses = pss(
         collect(Int64(1):Int64(storage_count)),
-        Int64[bus_index(get_bus(item)) for item in storage],
-        Float64[get_storage_capacity(item) for item in storage],
-        Float64[get_storage_level_limits(item).min for item in storage],
-        Float64[get_input_active_power_limits(item).max for item in storage],
-        Float64[get_output_active_power_limits(item).max for item in storage],
-        Float64[get_initial_storage_capacity_level(item) for item in storage],
-        Float64[get_input_active_power_limits(item).max for item in storage],
-        Float64[get_output_active_power_limits(item).max for item in storage],
-        Float64[get_efficiency(item).in for item in storage],
-        Float64[get_efficiency(item).out for item in storage],
-        zeros(storage_count),
+        Int64[bus_index(get_bus(item)) for item ∈ storage],
+        Float64[get_storage_capacity(item) for item ∈ storage],
+        Float64[get_storage_level_limits(item).min for item ∈ storage],
+        Float64[get_input_active_power_limits(item).max for item ∈ storage],
+        Float64[get_output_active_power_limits(item).max for item ∈ storage],
+        Float64[get_initial_storage_capacity_level(item) for item ∈ storage],
+        Float64[get_input_active_power_limits(item).max for item ∈ storage],
+        Float64[get_output_active_power_limits(item).max for item ∈ storage],
+        Float64[get_efficiency(item).in for item ∈ storage],
+        Float64[get_efficiency(item).out for item ∈ storage],
+        zeros(storage_count)
     )
 
     centers = _normalize_data_centers(data_centers, data_center_buses, data_center_pmax)
@@ -591,9 +591,9 @@ function extract_uc_data_from_powersystems(
     # native wind fields Fcmode/Kw/Rw/Mw/Dw/Tw. This lets a caller configure
     # all frequency resources through one UCSolveRequest.frequency_parameters
     # value without introducing a second input channel.
-    renewables = sort(collect(get_components(RenewableGen, sys)), by = get_name)
+    renewables = sort(collect(get_components(RenewableGen, sys)); by = get_name)
     renewable_frequency_parameters = zeros(length(renewables), 6)
-    for (index, renewable) in enumerate(renewables)
+    for (index, renewable) ∈ enumerate(renewables)
         record = if frequency_parameters isa AbstractDict
             get(frequency_parameters, get_name(renewable), nothing)
         else
@@ -613,23 +613,22 @@ function extract_uc_data_from_powersystems(
 end
 
 function generate_wind_scenarios_from_system(
-    sys::System,
-    wind_frequency_parameters::Matrix{Float64},
-    mode::Int,
-    horizon::Int64 = 24;
-    bus_to_idx::Dict{Int, Int} = Dict{Int, Int}(),
-    scenario_limit::Int64 = 50,
+        sys::System,
+        wind_frequency_parameters::Matrix{Float64},
+        mode::Int,
+        horizon::Int64 = 24;
+        bus_to_idx::Dict{Int, Int} = Dict{Int, Int}(),
+        scenario_limit::Int64 = 50
 )
-    renewables = sort(collect(get_components(RenewableGen, sys)), by = get_name)
+    renewables = sort(collect(get_components(RenewableGen, sys)); by = get_name)
     base_power = Float64(get_base_power(sys))
     count = length(renewables)
     count == 0 &&
         return wind(Int64[], Int64[], Float64[], 1.0, 1, zeros(1, horizon), Float64[], Float64[], Float64[], Float64[], Float64[], Float64[]), 0
     index = collect(Int64(1):Int64(count))
-    locatebus = Int64[get(bus_to_idx, get_number(get_bus(item)), get_number(get_bus(item))) for item in renewables]
-    p_max = Float64[get_rating(item) for item in renewables]
-    base_profile =
-        reshape([clamp(Float64(getproperty(item, :active_power)) / max(Float64(get_rating(item)), eps()), 0.0, 1.0) for item in renewables], :, 1)
+    locatebus = Int64[get(bus_to_idx, get_number(get_bus(item)), get_number(get_bus(item))) for item ∈ renewables]
+    p_max = Float64[get_rating(item) for item ∈ renewables]
+    base_profile = reshape([clamp(Float64(getproperty(item, :active_power)) / max(Float64(get_rating(item)), eps()), 0.0, 1.0) for item ∈ renewables], :, 1)
     profile = repeat(mean(base_profile; dims = 1), 1, horizon)
     scenarios = if mode == 1
         generate_weibull_wind_availability(profile, scenario_limit, horizon)
@@ -654,14 +653,15 @@ function generate_wind_scenarios_from_system(
         frequency[:, 3],
         frequency[:, 4],
         frequency[:, 5],
-        frequency[:, 6],
+        frequency[:, 6]
     ),
     count
 end
 
 function _load_native_powersystems_system(sys::System; scenario_limit::Int64, frequency_parameters, data_centers, horizon::Int64)
-    config_parameter, units, lines, loads, psses, NB, NG, NL, ND, NT, NC, ND2, data_center_data, wind_frequency_parameters, bus_to_index =
-        extract_uc_data_from_powersystems(sys; frequency_parameters = frequency_parameters, data_centers = data_centers, horizon = horizon)
+    config_parameter, units, lines, loads, psses, NB, NG, NL, ND, NT, NC, ND2, data_center_data,
+    wind_frequency_parameters, bus_to_index = extract_uc_data_from_powersystems(
+        sys; frequency_parameters = frequency_parameters, data_centers = data_centers, horizon = horizon)
     winds, NW = generate_wind_scenarios_from_system(sys, wind_frequency_parameters, 1, NT; bus_to_idx = bus_to_index, scenario_limit = scenario_limit)
     NS = Int64(winds.scenarios_nums)
     return (
@@ -681,15 +681,15 @@ function _load_native_powersystems_system(sys::System; scenario_limit::Int64, fr
         ND2 = ND2,
         NW = NW,
         NS = NS,
-        full_scenario_probability = 1.0 / NS,
+        full_scenario_probability = 1.0 / NS
     )
 end
 
 """
     generate_frequency_parameters(sys::System; overrides::Dict = Dict())
 
-Generate a complete frequency parameters dictionary for all conventional generators 
-in the given PowerSystems `System`. The default parameters are assigned based on the 
+Generate a complete frequency parameters dictionary for all conventional generators
+in the given PowerSystems `System`. The default parameters are assigned based on the
 generator's fuel type and name prefix to ensure realistic physical behavior.
 
 Description:
@@ -707,10 +707,10 @@ function generate_frequency_parameters(sys::System; overrides::Dict = Dict())
         :gas => (H = 4.0, D = 0.05, K = 0.90, F = 0.15, T = 5.0, R = 0.04),
         :hydro => (H = 3.0, D = 0.10, K = 1.00, F = 0.50, T = 4.0, R = 0.05),
         :nuclear => (H = 7.0, D = 0.10, K = 0.00, F = 0.00, T = 0.0, R = 1.00), # No governor response
-        :default => (H = 5.0, D = 0.00, K = 0.00, F = 0.00, T = 0.0, R = 1.00),  # Safe default (no governor)
+        :default => (H = 5.0, D = 0.00, K = 0.00, F = 0.00, T = 0.0, R = 1.00)  # Safe default (no governor)
     )
 
-    for generator in get_components(ThermalGen, sys)
+    for generator ∈ get_components(ThermalGen, sys)
         name = get_name(generator)
 
         # Check user overrides first

@@ -13,6 +13,7 @@ By default the workbook is read from the current repository's `data/` directory.
 Set `MODULE_UC_DATA_FILE` to run a different case without editing source code.
 
 # Returns
+
 A tuple containing matrices for generator frequency parameters, wind frequency parameters,
 energy storage capabilities, generator static characteristics, generation costs, branch network parameters,
 load curves, point loads, and data center requirements.
@@ -74,6 +75,7 @@ system components (`unit`, `transmissionline`, `load`, `pss`, `data_centra`, etc
 required for Security-Constrained Unit Commitment (SCUC) optimization.
 
 # Returns
+
 A consolidated tuple of physical component structs, optimization parameters, and topological dimensions
 (e.g., number of buses `NB`, number of generators `NG`, number of lines `NL`, etc.).
 """
@@ -129,7 +131,7 @@ function forminputdata(DataGen, DataBranch, DataLoad, LoadCurve, GenCost, UnitsF
     Loads_Percent = DataLoad[:, 3]                           # Load distribution percentage
     Loads_SumLoad = LoadCurve[:, 2] / 100                    # System total load curve (p.u.)
     Loads_PerLoad = zeros(ND, NT)                            # Individual nodal load distribution
-    for i in 1:NT
+    for i ∈ 1:NT
         Loads_PerLoad[:, i] = Loads_SumLoad[i, 1] .* Loads_Percent[:, 1]
     end
 
@@ -168,12 +170,8 @@ function forminputdata(DataGen, DataBranch, DataLoad, LoadCurve, GenCost, UnitsF
     # a/b/c: Fuel cost curve coefficients (quadratic, linear, constant terms)
     # CU/CU1/CD/Cold: Startup costs (intervals) and shutdown costs, cold start limits
     # Hg/Dg/Kg/Fg/Tg/Rg: Frequency regulation parameters (inertia, damping, gain, deadband, etc.)
-    units = unit(
-        Gens_Index, Gens_LocateBus, Gens_Pmax, Gens_Pmin,
-        Gens_RU, Gens_RD, Gens_SU, Gens_SD, Gens_TU, Gens_TD, Gens_x0, Gens_t0, Gens_p0,
-        Gens_a, Gens_b, Gens_c, Gens_CU, Gens_CU1, Gens_CD, Gens_Cold,
-        Hg, Dg, Kg, Fg, Tg, Rg,
-    )
+    units = unit(Gens_Index, Gens_LocateBus, Gens_Pmax, Gens_Pmin, Gens_RU, Gens_RD, Gens_SU, Gens_SD, Gens_TU, Gens_TD, Gens_x0,
+        Gens_t0, Gens_p0, Gens_a, Gens_b, Gens_c, Gens_CU, Gens_CU1, Gens_CD, Gens_Cold, Hg, Dg, Kg, Fg, Tg, Rg)
     # lines = transmissionline(Trans_From, Trans_To, Trans_x, Trans_b, Trans_Pmax, Trans_Pmin)
 
     # Initialize transmission line structure
@@ -227,8 +225,7 @@ function forminputdata(DataGen, DataBranch, DataLoad, LoadCurve, GenCost, UnitsF
     # λ/μ: Task arrival rate and processing service rate parameters
     # computational_power_tasks: Time-series computational load task curve
     datacentra_data = data_centra(
-        dc_index, dc_locatebus, dc_pmax, dc_pmin, dc_voltage_regulation, dc_idale, dc_sv_constent, dc_λ, dc_μ, dc_computational_power_tasks,
-    )
+        dc_index, dc_locatebus, dc_pmax, dc_pmin, dc_voltage_regulation, dc_idale, dc_sv_constent, dc_λ, dc_μ, dc_computational_power_tasks)
 
     println("Step-2: imput data are loaded")
 

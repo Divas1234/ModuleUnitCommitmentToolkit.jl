@@ -11,13 +11,12 @@
 # 6. Window size statistics
 # ============================================================================
 
-using Pkg
-Pkg.activate("d:/GithubClonefiles/module_unitcommitment/pkg")
 using Printf, Statistics
-include("../../src/renewableresource_modules/stochasticsimulation.jl")
-include("../../src/read_inputdata_modules/readdatas.jl")
-include("period_scuc.jl")
-include("adaptive_period_scuc.jl")
+include("../paths.jl")
+include("../../../../src/renewableresource_modules/stochasticsimulation.jl")
+include("../../../../src/read_inputdata_modules/readdatas.jl")
+include("../../standard/period_scuc.jl")
+include("../core/pcm_overlap_core.jl")
 
 println("\n" * "="^80)
 println("STARTING BENCHMARK: Standard PCM vs. Adaptive Overlapping PCM")
@@ -25,9 +24,10 @@ println("="^80)
 
 # 1. Read and format input data
 println("\n[1/3] Loading Input Data...")
-ENV["MODULE_UC_DATA_FILE"] = "d:/GithubClonefiles/module_unitcommitment/data/data_118.xlsx"
+ENV["MODULE_UC_DATA_FILE"] = joinpath(ADAPTIVE_PCM_PROJECT_ROOT, "data", "data_118.xlsx")
 UnitsFreqParam, WindsFreqParam, StrogeData, DataGen, GenCost, DataBranch, LoadCurve, DataLoad, Datacentra_Data, HydroData, HydroCurve = readxlssheet()
-config_param, units, lines, loads, stroges, NB, NG, NL, ND, NT, NC, ND2, NH, DataCentras, hydros = forminputdata(DataGen, DataBranch, DataLoad, LoadCurve, GenCost, UnitsFreqParam, StrogeData, Datacentra_Data, HydroData, HydroCurve)
+config_param, units, lines, loads, stroges, NB, NG, NL, ND, NT, NC, ND2, NH, DataCentras, hydros = forminputdata(
+    DataGen, DataBranch, DataLoad, LoadCurve, GenCost, UnitsFreqParam, StrogeData, Datacentra_Data, HydroData, HydroCurve)
 config_param.is_NetWorkCon = 0
 winds, NW = genscenario(WindsFreqParam, 0)
 winds.scenarios_nums = 1
@@ -73,7 +73,8 @@ t_start_std = time()
 for k ∈ 1:N_sets
     global pre_results_std
     mini_units, mini_loads, mini_winds = update_boundary_conditions(k, NG, exec_NT, units, loads, winds, pre_results_std)
-    res_std = each_period_scucmodel_modules(exec_NT, NB, NG, ND, NC, ND2, mini_units, mini_loads, mini_winds, lines, DataCentras, config_param, stroges, scenarios_prob, NL, k, hydros, NH)
+    res_std = each_period_scucmodel_modules(exec_NT, NB, NG, ND, NC, ND2, mini_units, mini_loads, mini_winds, lines,
+        DataCentras, config_param, stroges, scenarios_prob, NL, k, hydros, NH)
     if res_std === nothing
         error("Standard PCM failed at interval $k")
     end
@@ -125,7 +126,8 @@ adapt_costs_matrix = zeros(N_sets + 1, 7)
 calibration_start = time()
 trained_models = TrainedLossModels(steady_state_mode == "ml_prediction" ? "decay" : steady_state_mode)
 if steady_state_mode != "decay" && steady_state_mode != "ml_prediction"
-    trained_models = sample_and_train_loss_models(loads, winds, units, lines, DataCentras, config_param, stroges, scenarios_prob, hydros, exec_NT, min_overlap, max_overlap, NB, NG, ND, NC, ND2, NL, NH)
+    trained_models = sample_and_train_loss_models(loads, winds, units, lines, DataCentras, config_param, stroges, scenarios_prob,
+        hydros, exec_NT, min_overlap, max_overlap, NB, NG, ND, NC, ND2, NL, NH)
 end
 calibration_time_excluded = time() - calibration_start
 println(@sprintf("  Calibration / training time excluded from solve-time comparison: %.2f s", calibration_time_excluded))
@@ -142,24 +144,26 @@ for k ∈ 1:N_sets
     global pre_results_adapt
     start_time = (k - 1) * exec_NT + 1
 
-    x_ref_curr = solve_local_reference_commitment(
-        loads, winds, units, lines, DataCentras, config_param, stroges,
-        scenarios_prob, hydros, start_time, exec_NT, max_overlap,
-        NB, NG, ND, NC, ND2, NL, NH, k
-    )
-    T_overlap, is_ramp, T_steady, T_unit, T_ramp = compute_adaptive_overlap_window(loads, winds, units, start_time, exec_NT, alpha, epsilon, min_overlap, max_overlap, pre_results_adapt, k, steady_state_mode, trained_models, x_ref_curr)
+    x_ref_curr = solve_local_reference_commitment(loads, winds, units, lines, DataCentras, config_param, stroges, scenarios_prob,
+        hydros, start_time, exec_NT, max_overlap, NB, NG, ND, NC, ND2, NL, NH, k)
+    T_overlap, is_ramp, T_steady, T_unit, T_ramp = compute_adaptive_overlap_window(
+        loads, winds, units, start_time, exec_NT, alpha, epsilon, min_overlap,
+        max_overlap, pre_results_adapt, k, steady_state_mode, trained_models, x_ref_curr)
     push!(overlap_history, T_overlap)
     total_NT = exec_NT + T_overlap
 
-    mini_units, mini_loads, mini_winds = update_adaptive_boundary_conditions(k, NG, exec_NT, total_NT, start_time, units, loads, winds, pre_results_adapt)
+    mini_units, mini_loads, mini_winds = update_adaptive_boundary_conditions(
+        k, NG, exec_NT, total_NT, start_time, units, loads, winds, pre_results_adapt)
 
-    res_adapt = each_period_scucmodel_modules(total_NT, NB, NG, ND, NC, ND2, mini_units, mini_loads, mini_winds, lines, DataCentras, config_param, stroges, scenarios_prob, NL, k, hydros, NH)
+    res_adapt = each_period_scucmodel_modules(total_NT, NB, NG, ND, NC, ND2, mini_units, mini_loads, mini_winds, lines,
+        DataCentras, config_param, stroges, scenarios_prob, NL, k, hydros, NH)
     if res_adapt === nothing
         error("Adaptive PCM failed at interval $k")
     end
 
     committed_res = truncate_and_commit_results(res_adapt, exec_NT)
-    committed_cost = compute_committed_cost(committed_res, exec_NT, mini_units, mini_loads, mini_winds, lines, DataCentras, config_param, k, hydros, scenarios_prob)
+    committed_cost = compute_committed_cost(
+        committed_res, exec_NT, mini_units, mini_loads, mini_winds, lines, DataCentras, config_param, k, hydros, scenarios_prob)
     adapt_costs_matrix[k, :] = committed_cost
 
     pre_results_adapt = res_adapt
@@ -191,12 +195,15 @@ println("="^80)
 
 println("\n| Performance Metric | Standard PCM (Fixed 24h) | Adaptive Overlapping PCM | Difference / Delta |")
 println("| :--- | :---: | :---: | :---: |")
-println(@sprintf("| Total Solve Time (sec) | %.2f s | %.2f s | %+.2f s (%+.1f%%) |", time_std, time_adapt, time_adapt - time_std, (time_adapt - time_std)/time_std*100))
+println(@sprintf("| Total Solve Time (sec) | %.2f s | %.2f s | %+.2f s (%+.1f%%) |", time_std, time_adapt, time_adapt - time_std,
+    (time_adapt - time_std)/time_std*100))
 println(@sprintf("| Calibration / Training Time | excluded | excluded | %.2f s excluded from adaptive timing |", calibration_time_excluded))
-println(@sprintf("| Total Operation Cost (USD) | USD %.2f | USD %.2f | %+.2f USD (%+.2f%%) |", std_total_cost, adapt_total_cost, adapt_total_cost - std_total_cost, (adapt_total_cost - std_total_cost)/std_total_cost*100))
+println(@sprintf("| Total Operation Cost (USD) | USD %.2f | USD %.2f | %+.2f USD (%+.2f%%) |",
+    std_total_cost, adapt_total_cost, adapt_total_cost - std_total_cost, (adapt_total_cost - std_total_cost)/std_total_cost*100))
 println(@sprintf("| Startup & Shutdown Cost (USD) | USD %.2f | USD %.2f | %+.2f USD |", std_su, adapt_su, adapt_su - std_su))
 println(@sprintf("| Generation Fuel Cost (USD) | USD %.2f | USD %.2f | %+.2f USD |", std_fuel, adapt_fuel, adapt_fuel - std_fuel))
-println(@sprintf("| Wind Curtailment (MWh) | %.2f MWh | %.2f MWh | %+.2f MWh |", std_wind_curtail, adapt_wind_curtail, adapt_wind_curtail - std_wind_curtail))
+println(@sprintf("| Wind Curtailment (MWh) | %.2f MWh | %.2f MWh | %+.2f MWh |", std_wind_curtail, adapt_wind_curtail,
+    adapt_wind_curtail - std_wind_curtail))
 println(@sprintf("| Load Shedding (MWh) | %.2f MWh | %.2f MWh | %+.2f MWh |", std_load_shed, adapt_load_shed, adapt_load_shed - std_load_shed))
 println(@sprintf("| Avg Overlap Window (h) | 0.0 h | %.1f h | +%.1f h |", mean(overlap_history), mean(overlap_history)))
 

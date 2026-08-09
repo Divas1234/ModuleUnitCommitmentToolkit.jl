@@ -8,8 +8,7 @@ const UC_OUTPUT_VERBOSITIES = (:summary, :detailed, :verbose, :silent)
 function _normalize_uc_verbosity(value)
     name = lowercase(replace(string(value), '-' => '_', ' ' => '_'))
     verbosity = Symbol(name)
-    verbosity in UC_OUTPUT_VERBOSITIES ||
-        throw(ArgumentError("verbosity must be :detailed, :summary, :verbose, or :silent; got $(value)"))
+    verbosity in UC_OUTPUT_VERBOSITIES || throw(ArgumentError("verbosity must be :detailed, :summary, :verbose, or :silent; got $(value)"))
     return verbosity
 end
 
@@ -44,10 +43,7 @@ function _uc_table_value(value)
 end
 
 function _uc_result_table(parameter, value)
-    return DataFrame(
-        parameter = String[string(item) for item in parameter],
-        value = Any[_uc_table_value(item) for item in value],
-    )
+    return DataFrame(; parameter = String[string(item) for item ∈ parameter], value = Any[_uc_table_value(item) for item ∈ value])
 end
 
 function _uc_write_result_table(df::DataFrame, name::AbstractString, output_dir::AbstractString)
@@ -75,38 +71,23 @@ end
 
 function _uc_print_data_summary(io::IO, data, output_dir::AbstractString)
     data === nothing && return nothing
-    fields = [
-        field for field in (:NB, :NG, :NL, :ND, :NT, :NW, :NS, :NC, :ND2, :full_scenario_probability)
-        if hasproperty(data, field)
-    ]
-    values = [getproperty(data, field) for field in fields]
+    fields = [field for field ∈ (:NB, :NG, :NL, :ND, :NT, :NW, :NS, :NC, :ND2, :full_scenario_probability) if hasproperty(data, field)]
+    values = [getproperty(data, field) for field ∈ fields]
     _uc_print_result_table(io, "Input data", "04_input_data", _uc_result_table(fields, values), output_dir)
 
     config_param = _uc_result_value(data, :config_param)
     config_param === nothing && return nothing
     config_fields = fieldnames(typeof(config_param))
-    config_values = [getfield(config_param, field) for field in config_fields]
-    _uc_print_result_table(
-        io,
-        "Effective model config",
-        "05_effective_config",
-        _uc_result_table(config_fields, config_values),
-        output_dir,
-    )
+    config_values = [getfield(config_param, field) for field ∈ config_fields]
+    _uc_print_result_table(io, "Effective model config", "05_effective_config", _uc_result_table(config_fields, config_values), output_dir)
     return nothing
 end
 
 function _uc_print_model_summary(io::IO, model, output_dir::AbstractString)
     model === nothing && return nothing
     fields = (:num_variables, :objective_value, :objective_bound, :relative_gap, :solve_time_seconds, :termination_status)
-    values = [
-        _uc_try(() -> JuMP.num_variables(model)),
-        _uc_try(() -> JuMP.objective_value(model)),
-        _uc_try(() -> JuMP.objective_bound(model)),
-        _uc_try(() -> JuMP.relative_gap(model)),
-        _uc_try(() -> JuMP.solve_time(model)),
-        _uc_try(() -> JuMP.termination_status(model)),
-    ]
+    values = [_uc_try(() -> JuMP.num_variables(model)), _uc_try(() -> JuMP.objective_value(model)), _uc_try(() -> JuMP.objective_bound(model)),
+        _uc_try(() -> JuMP.relative_gap(model)), _uc_try(() -> JuMP.solve_time(model)), _uc_try(() -> JuMP.termination_status(model))]
     _uc_print_result_table(io, "Model and solver details", "06_model_solver", _uc_result_table(fields, values), output_dir)
     return nothing
 end
@@ -114,19 +95,13 @@ end
 function _uc_print_history(io::IO, history, output_dir::AbstractString)
     history isa AbstractVector || return nothing
     columns = (:iteration, :active_scenarios, :lower_bound, :upper_bound, :gap, :added_scenarios)
-    rows = [
-        [_uc_result_value(item, field, "-") for field in columns]
-        for item in history
-    ]
-    values = isempty(rows) ? [Any[] for _ in columns] : [Any[row[index] for row in rows] for index in eachindex(columns)]
-    history_df = DataFrame(
-        iteration = isempty(rows) ? Int[] : values[1],
-        active_scenarios = isempty(rows) ? Any[] : [_uc_table_value(item) for item in values[2]],
+    rows = [[_uc_result_value(item, field, "-") for field ∈ columns] for item ∈ history]
+    values = isempty(rows) ? [Any[] for _ ∈ columns] : [Any[row[index] for row ∈ rows] for index ∈ eachindex(columns)]
+    history_df = DataFrame(;
+        iteration = isempty(rows) ? Int[] : values[1], active_scenarios = isempty(rows) ? Any[] : [_uc_table_value(item) for item ∈ values[2]],
         lower_bound = isempty(rows) ? Float64[] : values[3],
-        upper_bound = isempty(rows) ? Float64[] : values[4],
-        gap = isempty(rows) ? Float64[] : values[5],
-        added_scenarios = isempty(rows) ? String[] : [string(_uc_table_value(item)) for item in values[6]],
-    )
+        upper_bound = isempty(rows) ? Float64[] : values[4], gap = isempty(rows) ? Float64[] : values[5],
+        added_scenarios = isempty(rows) ? String[] : [string(_uc_table_value(item)) for item ∈ values[6]])
     _uc_print_result_table(io, "Iteration history", "07_iteration_history", history_df, output_dir)
     return nothing
 end
@@ -134,7 +109,7 @@ end
 function _uc_print_cost_summary(io::IO, cost_summary, output_dir::AbstractString)
     cost_summary === nothing && return nothing
     fields = collect(keys(cost_summary))
-    values = [getfield(cost_summary, field) for field in fields]
+    values = [getfield(cost_summary, field) for field ∈ fields]
     _uc_print_result_table(io, "Cost breakdown", "08_cost_breakdown", _uc_result_table(fields, values), output_dir)
     return nothing
 end
@@ -146,7 +121,7 @@ function _uc_print_algorithm_details(io::IO, result, output_dir::AbstractString)
     if evaluation isa AbstractDict
         statuses = Dict{String, Int}()
         recourse_costs = Float64[]
-        for item in values(evaluation)
+        for item ∈ values(evaluation)
             status = string(_uc_result_value(item, :status, "unknown"))
             statuses[status] = get(statuses, status, 0) + 1
             cost = _uc_result_value(item, :recourse_cost)
@@ -168,7 +143,7 @@ function _uc_print_algorithm_details(io::IO, result, output_dir::AbstractString)
 
     subproblem_results = _uc_result_value(result, :subproblem_results)
     if subproblem_results isa AbstractDict
-        feasible = [item for item in values(subproblem_results) if _uc_result_value(item, :is_feasible, false)]
+        feasible = [item for item ∈ values(subproblem_results) if _uc_result_value(item, :is_feasible, false)]
         push!(parameters, "subproblem_count")
         push!(diagnostic_values, length(subproblem_results))
         push!(parameters, "feasible_count")
@@ -190,13 +165,7 @@ function _uc_print_algorithm_details(io::IO, result, output_dir::AbstractString)
         end
     end
     isempty(parameters) && return nothing
-    _uc_print_result_table(
-        io,
-        "Algorithm diagnostics",
-        "09_algorithm_diagnostics",
-        _uc_result_table(parameters, diagnostic_values),
-        output_dir,
-    )
+    _uc_print_result_table(io, "Algorithm diagnostics", "09_algorithm_diagnostics", _uc_result_table(parameters, diagnostic_values), output_dir)
     return nothing
 end
 
@@ -219,35 +188,16 @@ function print_uc_result(result::UCSolveResult; io::IO = stdout, diagnostics::In
     cost_summary = _uc_result_value(result, :cost_summary)
     resolved_iterations = iterations === nothing ? (history === nothing ? nothing : length(history)) : iterations
 
-    _uc_print_result_table(
-        io,
-        "Request",
-        "01_request",
-        _uc_result_table((:algorithm, :input), (result.algorithm, result.input)),
-        result.output_dir,
-    )
-    _uc_print_result_table(
-        io,
+    _uc_print_result_table(io, "Request", "01_request", _uc_result_table((:algorithm, :input), (result.algorithm, result.input)), result.output_dir)
+    _uc_print_result_table(io,
         "Status",
         "02_status",
-        _uc_result_table(
-            (:status, :upper_bound, :lower_bound, :gap),
-            (
-                _uc_result_value(result, :status),
-                _uc_result_value(result, :upper_bound),
-                _uc_result_value(result, :lower_bound),
-                _uc_result_value(result, :gap),
-            ),
-        ),
-        result.output_dir,
-    )
+        _uc_result_table((:status, :upper_bound, :lower_bound, :gap),
+            (_uc_result_value(result, :status), _uc_result_value(result, :upper_bound),
+                _uc_result_value(result, :lower_bound), _uc_result_value(result, :gap))),
+        result.output_dir)
     _uc_print_result_table(
-        io,
-        "Progress",
-        "03_progress",
-        _uc_result_table((:iterations, :active_scenarios), (resolved_iterations, active_scenarios)),
-        result.output_dir,
-    )
+        io, "Progress", "03_progress", _uc_result_table((:iterations, :active_scenarios), (resolved_iterations, active_scenarios)), result.output_dir)
 
     if detail
         _uc_print_section(io, "Optimization details")

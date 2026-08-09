@@ -1,28 +1,23 @@
 """
-	min_inertia_estimation(ROCOF_threshold, delta_p, damping, factorial_coefficient, time_content, droop)
+    min_inertia_estimation(ROCOF_threshold, delta_p, damping, factorial_coefficient, time_content, droop)
 
 Estimate the minimum inertia based on given parameters.
 
 # Arguments
-- `ROCOF_threshold`: Rate of change of frequency threshold.
-- `delta_p`: Change in power.
-- `damping`: Damping coefficient array.
-- `factorial_coefficient`: Factorial coefficient.
-- `time_content`: Time content.
-- `droop`: Droop characteristic.
+
+  - `ROCOF_threshold`: Rate of change of frequency threshold.
+  - `delta_p`: Change in power.
+  - `damping`: Damping coefficient array.
+  - `factorial_coefficient`: Factorial coefficient.
+  - `time_content`: Time content.
+  - `droop`: Droop characteristic.
 
 # Returns
-- `lower_bound`: Lower bound of inertia estimation.
-- `upper_bound`: Upper bound of inertia estimation.
+
+  - `lower_bound`: Lower bound of inertia estimation.
+  - `upper_bound`: Upper bound of inertia estimation.
 """
-function min_inertia_estimation(
-    ROCOF_threshold,
-    delta_p,
-    damping,
-    factorial_coefficient,
-    time_content,
-    droop,
-)
+function min_inertia_estimation(ROCOF_threshold, delta_p, damping, factorial_coefficient, time_content, droop)
 
     # Input validation
     if ROCOF_threshold == 0
@@ -41,9 +36,7 @@ function min_inertia_estimation(
     upper_bound = zeros(damping_length, 1)
 
     # Upper bound vectorized calculation
-    upper_bound .=
-        (PERCENTAGE_BASE / FREQUENCY_BASE) * (droop .+ damping .+ factorial_coefficient) .*
-        (time_content / 2)
+    upper_bound .= (PERCENTAGE_BASE / FREQUENCY_BASE) * (droop .+ damping .+ factorial_coefficient) .* (time_content / 2)
 
     return lower_bound, upper_bound
 end

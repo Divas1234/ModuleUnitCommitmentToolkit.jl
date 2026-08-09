@@ -33,15 +33,7 @@ include("_saveschedulingresult.jl")
 include("_convert_datatype.jl")
 include("_reorginze_constr.jl")
 
-export define_decision_variables!,
-    solve_and_extract_results,
-    linearizationfuelcurve,
-    linearpowerflow,
-    save_UCresults,
-    read_UCresults,
-    savebalance_result,
-    convert_constraints_type_to_vector,
-    check_constrainsref_type,
-    reorginze_constraints_sets
+export define_decision_variables!, solve_and_extract_results, linearizationfuelcurve, linearpowerflow, save_UCresults, read_UCresults,
+       savebalance_result, convert_constraints_type_to_vector, check_constrainsref_type, reorginze_constraints_sets
 
 println("\t→ Utility functions module loaded and exported.")

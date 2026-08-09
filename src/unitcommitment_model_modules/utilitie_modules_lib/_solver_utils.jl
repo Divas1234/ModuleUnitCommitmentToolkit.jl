@@ -4,30 +4,12 @@ export solve_and_extract_results
 
 # Helper function to solve the model and extract results
 function solve_and_extract_results(
-    scuc::Model,
-    NT,
-    NG,
-    ND,
-    NC,
-    NW,
-    NS,
-    ND2,
-    NH,
-    scenarios_prob,
-    eachslope,
-    refcost,
-    config_param,
-    interval_scheduling_id = 0,
-)
-    println(
-        "+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++",
-    )
+        scuc::Model, NT, NG, ND, NC, NW, NS, ND2, NH, scenarios_prob, eachslope, refcost, config_param, interval_scheduling_id = 0)
+    println("+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++",)
     println("Step-4: starting Gurobi solver")
     optimize!(scuc)
     println("Step-5: Gurobi solver finished")
-    println(
-        "+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++\n",
-    )
+    println("+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++\n",)
 
     # Check termination status
     @show assert_is_solved_and_feasible(scuc)
@@ -36,10 +18,7 @@ function solve_and_extract_results(
     status = termination_status(scuc)
     println("Termination Status: ", status)
 
-    if status == MOI.OPTIMAL ||
-       status == MOI.LOCALLY_SOLVED ||
-       status == MOI.TIME_LIMIT ||
-       status == MOI.OBJECTIVE_LIMIT # Added OBJECTIVE_LIMIT as acceptable status
+    if status == MOI.OPTIMAL || status == MOI.LOCALLY_SOLVED || status == MOI.TIME_LIMIT || status == MOI.OBJECTIVE_LIMIT # Added OBJECTIVE_LIMIT as acceptable status
         println("Acceptable solution found (Status: $status).")
 
         # Extract values
@@ -58,13 +37,7 @@ function solve_and_extract_results(
         # β       = JuMP.value.(β)
 
         # Storage results (check if NC > 0)
-        pss_charge_p⁺,
-        pss_charge_p⁻,
-        pss_charge_state⁺,
-        pss_charge_state⁻,
-        pss_charge_cycle⁺,
-        pss_charge_cycle⁻,
-        pss_Qc = ntuple(_ -> nothing, 7)
+        pss_charge_p⁺, pss_charge_p⁻, pss_charge_state⁺, pss_charge_state⁻, pss_charge_cycle⁺, pss_charge_cycle⁻, pss_Qc = ntuple(_ -> nothing, 7)
         if NC > 0 && config_param.is_ConsiderBESS == 1
             pss_charge_p⁺ = JuMP.value.(scuc[:pc⁺])
             pss_charge_p⁻ = JuMP.value.(scuc[:pc⁻])
@@ -76,8 +49,7 @@ function solve_and_extract_results(
         end
 
         # Data centra results
-        dc_p_res, dc_f_res, dc_v²_res, dc_λ_res, dc_Δu1_res, dc_Δu2_res =
-            ntuple(_ -> nothing, 6) # Initialize as nothing
+        dc_p_res, dc_f_res, dc_v²_res, dc_λ_res, dc_Δu1_res, dc_Δu2_res = ntuple(_ -> nothing, 6) # Initialize as nothing
         if config_param.is_ConsiderDataCentra == 1 && ND2 > 0
             dc_p_res = JuMP.value.(scuc[:dc_p])
             dc_f_res = JuMP.value.(scuc[:dc_f])
@@ -99,50 +71,21 @@ function solve_and_extract_results(
         # Note: Original function returned specific variables directly.
         # Adjust the return statement based on what the caller function `mainfun.jl` expects.
         # Returning a dictionary or a custom struct might be cleaner.
-        results = Dict(
-            "objective_value" => objective_value(scuc),
-            "solve_time" => solve_time(scuc),
-            "status" => status,
-        )
+        results = Dict("objective_value" => objective_value(scuc), "solve_time" => solve_time(scuc), "status" => status)
 
-        results = Dict(
-            "x₀" => x₀,
-            "u₀" => u₀,
-            "v₀" => v₀,
-            "p₀" => pg₀,
-            "pₖ" => pgₖ,
-            "su_cost" => su_cost,
-            "sd_cost" => sd_cost,
-            "seq_sr⁺" => seq_sr⁺,
-            "seq_sr⁻" => seq_sr⁻,
-            "pᵨ" => pᵨ,
-            "pᵩ" => pᵩ,
-        )
+        results = Dict("x₀" => x₀, "u₀" => u₀, "v₀" => v₀, "p₀" => pg₀, "pₖ" => pgₖ, "su_cost" => su_cost,
+            "sd_cost" => sd_cost, "seq_sr⁺" => seq_sr⁺, "seq_sr⁻" => seq_sr⁻, "pᵨ" => pᵨ, "pᵩ" => pᵩ)
 
         if NC > 0 && config_param.is_ConsiderBESS == 1
-            push!(
-                results,
-                "pss_charge_p⁺" => pss_charge_p⁺,
-                "pss_charge_p⁻" => pss_charge_p⁻,
-                "pss_charge_state⁺" => pss_charge_state⁺,
-                "pss_charge_state⁻" => pss_charge_state⁻,
-                "pss_charge_cycle⁺" => pss_charge_cycle⁺,
-                "pss_charge_cycle⁻" => pss_charge_cycle⁻,
-                "pss_Qc" => pss_Qc,
-            )
+            push!(results, "pss_charge_p⁺" => pss_charge_p⁺, "pss_charge_p⁻" => pss_charge_p⁻,
+                "pss_charge_state⁺" => pss_charge_state⁺, "pss_charge_state⁻" => pss_charge_state⁻,
+                "pss_charge_cycle⁺" => pss_charge_cycle⁺, "pss_charge_cycle⁻" => pss_charge_cycle⁻, "pss_Qc" => pss_Qc)
         end
 
         # Add data centra results to dictionary
         if config_param.is_ConsiderDataCentra == 1 && ND2 > 0
-            push!(
-                results,
-                "dc_p" => dc_p_res,
-                "dc_f" => dc_f_res,
-                "dc_v²" => dc_v²_res,
-                "dc_λ" => dc_λ_res,
-                "dc_Δu1" => dc_Δu1_res,
-                "dc_Δu2" => dc_Δu2_res,
-            )
+            push!(results, "dc_p" => dc_p_res, "dc_f" => dc_f_res, "dc_v²" => dc_v²_res,
+                "dc_λ" => dc_λ_res, "dc_Δu1" => dc_Δu1_res, "dc_Δu2" => dc_Δu2_res)
         end
 
         if config_param.is_HydroUnitCon == 1
@@ -155,45 +98,9 @@ function solve_and_extract_results(
 
         # NOTE - save ResultStatusCode
         str = exported_scheduling_cost(
-            NS,
-            NT,
-            NB,
-            NG,
-            ND,
-            NC,
-            ND2,
-            NH,
-            units,
-            loads,
-            winds,
-            lines,
-            DataCentras,
-            config_param,
-            interval_scheduling_id,
-            su_cost,
-            sd_cost,
-            pgₖ,
-            pg₀,
-            x₀,
-            seq_sr⁺,
-            seq_sr⁻,
-            pᵨ,
-            pᵩ,
-            eachslope,
-            refcost,
-            pss_charge_state⁺,
-            pss_charge_state⁻,
-            pss_charge_p⁺,
-            pss_charge_p⁻,
-            pss_Qc,
-            dc_p_res,
-            dc_f_res,
-            dc_v²_res,
-            dc_λ_res,
-            dc_Δu1_res,
-            dc_Δu2_res,
-            ph,
-        )
+            NS, NT, NB, NG, ND, NC, ND2, NH, units, loads, winds, lines, DataCentras, config_param, interval_scheduling_id,
+            su_cost, sd_cost, pgₖ, pg₀, x₀, seq_sr⁺, seq_sr⁻, pᵨ, pᵩ, eachslope, refcost, pss_charge_state⁺, pss_charge_state⁻,
+            pss_charge_p⁺, pss_charge_p⁻, pss_Qc, dc_p_res, dc_f_res, dc_v²_res, dc_λ_res, dc_Δu1_res, dc_Δu2_res, ph)
 
         push!(results, "res_scheduled_costs" => str)
 

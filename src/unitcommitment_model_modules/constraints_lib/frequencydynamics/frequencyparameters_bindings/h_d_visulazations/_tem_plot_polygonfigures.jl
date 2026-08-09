@@ -7,7 +7,7 @@ using Printf # For formatted output filenames
 const MIN_POINTS_FOR_HULL = 3 # Minimum points needed for a 2D convex hull
 
 """
-	load_vertices(data_file::String)
+    load_vertices(data_file::String)
 
 Loads vertex data from a text file.
 Returns a matrix of vertices or throws an error if loading fails.
@@ -33,14 +33,14 @@ function load_vertices(data_file::String)::Matrix{Float64}
 end
 
 """
-	group_points_by_x(vertices::Matrix{Float64})
+    group_points_by_x(vertices::Matrix{Float64})
 
 Groups vertices by their unique x-coordinates.
 Returns a dictionary mapping x-coordinate to a matrix of points at that x.
 """
-function group_points_by_x(vertices::Matrix{Float64})::Dict{Float64,Matrix{Float64}}
-    grouped_points = Dict{Float64,Matrix{Float64}}()
-    for i = 1:size(vertices, 1)
+function group_points_by_x(vertices::Matrix{Float64})::Dict{Float64, Matrix{Float64}}
+    grouped_points = Dict{Float64, Matrix{Float64}}()
+    for i ∈ 1:size(vertices, 1)
         x = vertices[i, 1]
         point_row = vertices[i:i, :] # Keep as a 1xN matrix slice
         if haskey(grouped_points, x)
@@ -53,7 +53,7 @@ function group_points_by_x(vertices::Matrix{Float64})::Dict{Float64,Matrix{Float
 end
 
 """
-	plot_convex_hull_slice!(plt::Plots.Plot, points_at_x::Matrix{Float64})
+    plot_convex_hull_slice!(plt::Plots.Plot, points_at_x::Matrix{Float64})
 
 Calculates and plots the 2D convex hull (y-z plane) for a given set of points sharing the same x-coordinate.
 Modifies the input plot object `plt`.
@@ -85,7 +85,7 @@ function plot_convex_hull_slice!(plt::Plots.Plot, points_at_x::Matrix{Float64})
 
         # Plot the edges of the convex hull polygon
         n_hull = size(hull_points_3d, 1)
-        for i = 1:n_hull
+        for i ∈ 1:n_hull
             current_point = hull_points_3d[i, :]
             # Connect to the next point, wrapping around to the first
             next_point = hull_points_3d[mod1(i + 1, n_hull), :]
@@ -94,11 +94,11 @@ function plot_convex_hull_slice!(plt::Plots.Plot, points_at_x::Matrix{Float64})
                 plt,
                 [current_point[1], next_point[1]],
                 [current_point[2], next_point[2]],
-                [current_point[3], next_point[3]],
+                [current_point[3], next_point[3]];
                 color = :red,
                 linewidth = 0.5,
                 alpha = 0.8,
-                label = "", # Avoid adding legend entries for each segment
+                label = "" # Avoid adding legend entries for each segment
             )
         end
         return true # Indicate hull was plotted
@@ -109,23 +109,25 @@ function plot_convex_hull_slice!(plt::Plots.Plot, points_at_x::Matrix{Float64})
 end
 
 """
-	plot_polygon_figures(data_dir::String, output_dir::String; filename_base::String="polygon_figure")
+    plot_polygon_figures(data_dir::String, output_dir::String; filename_base::String="polygon_figure")
 
 Loads 3D vertex data, plots the points, and overlays 2D convex hulls (in y-z) for each unique x-slice.
 Saves the resulting plot to PDF and PNG formats.
 
 # Arguments
-- `data_dir::String`: Directory containing the 'all_vertices.txt' file.
-- `output_dir::String`: Directory where the output plots will be saved.
-- `filename_base::String`: Base name for the output plot files (without extension). Defaults to "polygon_figure".
+
+  - `data_dir::String`: Directory containing the 'all_vertices.txt' file.
+  - `output_dir::String`: Directory where the output plots will be saved.
+  - `filename_base::String`: Base name for the output plot files (without extension). Defaults to "polygon_figure".
 
 # Returns
-- `Plots.Plot`: The generated plot object.
+
+  - `Plots.Plot`: The generated plot object.
 """
 function plot_polygon_figures(
-    data_dir::String,
-    output_dir::String;
-    filename_base::String = "polygon_figure",
+        data_dir::String,
+        output_dir::String;
+        filename_base::String = "polygon_figure"
 )
     vertex_file = joinpath(data_dir, "all_vertices.txt")
     println("Loading vertices from: $vertex_file")
@@ -134,13 +136,13 @@ function plot_polygon_figures(
 
     # --- Plot Initialization ---
     println("Initializing plot...")
-    plt = plot(
+    plt = plot(;
         size = (600, 400), # Slightly larger for better detail
         dpi = 300,
         background = :white,
         legend = false, # No legend needed for hull segments
         grid = true,    # Enable grid for better spatial understanding
-        framestyle = :box, # Box frame for 3D
+        framestyle = :box # Box frame for 3D
     )
 
     # --- Plot All Vertices ---
@@ -149,12 +151,12 @@ function plot_polygon_figures(
         plt,
         vertices[:, 1],
         vertices[:, 2],
-        vertices[:, 3],
+        vertices[:, 3];
         markersize = 1.5, # Slightly smaller markers
         markercolor = :darkgray,
         markerstrokewidth = 0.5,
         alpha = 0.7,      # Slightly more transparent
-        label = "", # No label needed for scatter points if legend is off
+        label = "" # No label needed for scatter points if legend is off
     )
 
     # --- Group Points and Plot Hulls ---
@@ -169,7 +171,7 @@ function plot_polygon_figures(
     # Sort keys to process slices in order (optional, but often desirable)
     sorted_x_coords = sort(collect(keys(grouped_points)))
 
-    for x in sorted_x_coords
+    for x ∈ sorted_x_coords
         points_at_x = grouped_points[x]
         if plot_convex_hull_slice!(plt, points_at_x)
             num_hulls_plotted += 1
@@ -190,7 +192,7 @@ function plot_polygon_figures(
         tickfontsize = 8,  # Slightly larger fonts
         guidefontsize = 10,
         # title = "Convex Hulls of Vertex Slices",
-        titlefontsize = 12,
+        titlefontsize = 12
     )
 
     # --- Save and Display ---

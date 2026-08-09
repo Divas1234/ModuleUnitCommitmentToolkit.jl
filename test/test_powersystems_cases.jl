@@ -12,8 +12,8 @@
     @test catalog.ieee118.case_name == "118_bus"
 
     listed = list_powersystems_cases()
-    listed_names = Set(item.alias for item in listed)
-    @test all(name in listed_names for name in ("ieee6", "ieee30", "ieee118", "rts_gmlc"))
+    listed_names = Set(item.alias for item ∈ listed)
+    @test all(name in listed_names for name ∈ ("ieee6", "ieee30", "ieee118", "rts_gmlc"))
 
     system6 = build_system_from_powersystems("ieee6")
     system30 = build_system_from_powersystems(:ieee30)
@@ -47,36 +47,20 @@
     # permanently unavailable.
     native_generators30 = sort(collect(get_components(ThermalStandard, system30)), by = get_name)
     @test all(data30.units.p_max .> 0.0)
-    @test data30.units.p_max[3:6] == Float64[get_rating(generator) for generator in native_generators30[3:6]]
+    @test data30.units.p_max[3:6] == Float64[get_rating(generator) for generator ∈ native_generators30[3:6]]
 
     # A native PowerSystems renewable component must flow through the same
     # frequency_parameters dictionary as thermal units, while preserving the
     # wind-specific Fcmode/Kw/Rw/Mw/Dw/Tw fields.
     wind_bus = only(filter(bus -> get_number(bus) == 5, collect(get_components(ACBus, system30))))
-    wind_generator = RenewableDispatch(; 
-        name = "IEEE30 Wind Farm",
-        available = true,
-        bus = wind_bus,
-        active_power = 0.10,
-        reactive_power = 0.0,
-        rating = 0.20,
-        prime_mover_type = PrimeMovers.WT,
-        reactive_power_limits = nothing,
-        power_factor = 1.0,
-        operation_cost = RenewableGenerationCost(nothing),
-        base_power = get_base_power(system30),
-    )
-    add_component!(system30, wind_generator; skip_validation = true)
-    wind_frequency_parameters = Dict(
-        "IEEE30 Wind Farm" => (Fcmode = 1.0, Kw = 0.08, Rw = 0.10, Mw = 1.50, Dw = 0.40, Tw = 5.0),
-    )
+    wind_generator = RenewableDispatch(; name = "IEEE30 Wind Farm", available = true, bus = wind_bus, active_power = 0.10, reactive_power = 0.0,
+        rating = 0.20, prime_mover_type = PrimeMovers.WT, reactive_power_limits = nothing, power_factor = 1.0,
+        operation_cost = RenewableGenerationCost(nothing), base_power = get_base_power(system30))
+    set_runchecks!(system30, false) # 测试注入的风机使用标幺化容量。
+    add_component!(system30, wind_generator)
+    wind_frequency_parameters = Dict("IEEE30 Wind Farm" => (Fcmode = 1.0, Kw = 0.08, Rw = 0.10, Mw = 1.50, Dw = 0.40, Tw = 5.0),)
     data30_with_wind = load_uc_data(
-        input = :powersystems,
-        sys = system30,
-        scenario_limit = 1,
-        frequency_parameters = wind_frequency_parameters,
-        horizon = 4,
-    )
+        input = :powersystems, sys = system30, scenario_limit = 1, frequency_parameters = wind_frequency_parameters, horizon = 4)
     @test data30_with_wind.NW == 1
     @test data30_with_wind.winds.Fcmode == [1.0]
     @test data30_with_wind.winds.Kw == [0.08]
@@ -89,27 +73,15 @@
     # not divide these values by the system base a second time.
     native_generators6 = sort(collect(get_components(ThermalStandard, system6)), by = get_name)
     native_lines6 = sort(collect(get_components(Line, system6)), by = get_name)
-    expected_pmax6 = Float64[
-        get_active_power_limits(generator).max > 0.0 ?
-        get_active_power_limits(generator).max : get_rating(generator)
-        for generator in native_generators6
-    ]
+    expected_pmax6 = Float64[get_active_power_limits(generator).max > 0.0 ? get_active_power_limits(generator).max : get_rating(generator)
+                             for generator ∈ native_generators6]
     @test data6.units.p_max == expected_pmax6
-    @test data6.lines.p_max == Float64[get_rating(line) for line in native_lines6]
+    @test data6.lines.p_max == Float64[get_rating(line) for line ∈ native_lines6]
     @test maximum(data6.units.p_max) > 1.0
 
     empty_winds = (
-        index = Int64[],
-        Fcmode = Float64[],
-        Kw = Float64[],
-        Rw = Float64[],
-        Mw = Float64[],
-        Dw = Float64[],
-        Tw = Float64[],
-        p_max = Float64[],
-    )
-    support_fn = isdefined(Main, :wind_frequency_capacity_support) ?
-        getfield(Main, :wind_frequency_capacity_support) :
-        getfield(ModuleUnitCommitmentToolkit, :wind_frequency_capacity_support)
+        index = Int64[], Fcmode = Float64[], Kw = Float64[], Rw = Float64[], Mw = Float64[], Dw = Float64[], Tw = Float64[], p_max = Float64[])
+    support_fn = isdefined(Main, :wind_frequency_capacity_support) ? getfield(Main, :wind_frequency_capacity_support) :
+                 getfield(ModuleUnitCommitmentToolkit, :wind_frequency_capacity_support)
     @test support_fn(empty_winds) == (inertia = 0.0, damping = 0.0, primary = 0.0)
 end

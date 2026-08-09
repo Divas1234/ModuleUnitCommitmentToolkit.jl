@@ -1,5 +1,5 @@
 """
-	data_center_num_breakpoints()
+    data_center_num_breakpoints()
 
 Number of discrete breakpoints used by the data-center response approximation.
 The reference case uses five points; keeping this configurable makes sensitivity
@@ -12,11 +12,12 @@ end
 data_center_sos_count() = data_center_num_breakpoints()
 
 """
-	build_data_center_response_grid(num_breakpoints, data_center_count)
+    build_data_center_response_grid(num_breakpoints, data_center_count)
 
 Build the plus/minus square-difference grids used to approximate:
-- `fv2 = f * v^2`
-- `fv2lambda = fv2 * lambda`
+
+  - `fv2 = f * v^2`
+  - `fv2lambda = fv2 * lambda`
 
 The formulation follows the reference `datacentra_uc` littlecase:
 `xy = ((x + y) / 2)^2 - ((x - y) / 2)^2`.
@@ -46,24 +47,11 @@ function build_data_center_response_grid(num_breakpoints::Int, data_center_count
     fv2lambda_plus_grid = collect(range(fv2lambda_plus_lb[1], fv2lambda_plus_ub[1]; length = num_breakpoints))
     fv2lambda_minus_grid = collect(range(fv2lambda_minus_lb[1], fv2lambda_minus_ub[1]; length = num_breakpoints))
 
-    return (
-        fv2_plus_lb = fv2_plus_lb,
-        fv2_plus_ub = fv2_plus_ub,
-        fv2_minus_lb = fv2_minus_lb,
-        fv2_minus_ub = fv2_minus_ub,
-        fv2lambda_plus_lb = fv2lambda_plus_lb,
-        fv2lambda_plus_ub = fv2lambda_plus_ub,
-        fv2lambda_minus_lb = fv2lambda_minus_lb,
-        fv2lambda_minus_ub = fv2lambda_minus_ub,
-        fv2_plus_grid = fv2_plus_grid,
-        fv2_minus_grid = fv2_minus_grid,
-        fv2lambda_plus_grid = fv2lambda_plus_grid,
-        fv2lambda_minus_grid = fv2lambda_minus_grid,
-        fv2_2_plus_grid = fv2_plus_grid .^ 2,
-        fv2_2_minus_grid = fv2_minus_grid .^ 2,
-        fv2lambda_2_plus_grid = fv2lambda_plus_grid .^ 2,
-        fv2lambda_2_minus_grid = fv2lambda_minus_grid .^ 2,
-    )
+    return (fv2_plus_lb = fv2_plus_lb, fv2_plus_ub = fv2_plus_ub, fv2_minus_lb = fv2_minus_lb, fv2_minus_ub = fv2_minus_ub,
+        fv2lambda_plus_lb = fv2lambda_plus_lb, fv2lambda_plus_ub = fv2lambda_plus_ub, fv2lambda_minus_lb = fv2lambda_minus_lb,
+        fv2lambda_minus_ub = fv2lambda_minus_ub, fv2_plus_grid = fv2_plus_grid, fv2_minus_grid = fv2_minus_grid,
+        fv2lambda_plus_grid = fv2lambda_plus_grid, fv2lambda_minus_grid = fv2lambda_minus_grid, fv2_2_plus_grid = fv2_plus_grid .^ 2,
+        fv2_2_minus_grid = fv2_minus_grid .^ 2, fv2lambda_2_plus_grid = fv2lambda_plus_grid .^ 2, fv2lambda_2_minus_grid = fv2lambda_minus_grid .^ 2)
 end
 
 get_data_center_boundaries(num_sos::Int, ND2::Int) = build_data_center_response_grid(num_sos, ND2)

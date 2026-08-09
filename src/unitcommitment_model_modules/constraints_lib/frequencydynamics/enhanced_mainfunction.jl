@@ -4,16 +4,18 @@ include("_automatic_workflow.jl")
 const DROOP_PARAMETERS = collect(range(33, 40; length = 20))
 
 """
-	plot_inertia_damping(droop_parameters::AbstractVector)
+    plot_inertia_damping(droop_parameters::AbstractVector)
 
 Generates and plots the inertia-damping functions for a given set of droop parameters.
 
 # Arguments
-- `droop_parameters::AbstractVector`: A vector of droop parameters.
+
+  - `droop_parameters::AbstractVector`: A vector of droop parameters.
 
 # Returns
-- `Tuple{Plots.Plot, Vector{Vector{Tuple{Float64, Float64, Float64}}}}`: A tuple containing the plot and a vector of vertices.
-  Returns `(nothing, nothing)` if `droop_parameters` is empty or if no valid plots are generated.
+
+  - `Tuple{Plots.Plot, Vector{Vector{Tuple{Float64, Float64, Float64}}}}`: A tuple containing the plot and a vector of vertices.
+    Returns `(nothing, nothing)` if `droop_parameters` is empty or if no valid plots are generated.
 """
 function plot_inertia_damping(droop_parameters::AbstractVector)
     if isempty(droop_parameters)
@@ -24,7 +26,7 @@ function plot_inertia_damping(droop_parameters::AbstractVector)
 end
 
 """
-	_plot_inertia_damping(droop_parameters::AbstractVector)
+    _plot_inertia_damping(droop_parameters::AbstractVector)
 
 Internal function to generate and plot the inertia-damping functions.
 """
@@ -33,7 +35,7 @@ function _plot_inertia_damping(droop_parameters::AbstractVector)
     labels = []
     all_vertices = []
 
-    for param in droop_parameters
+    for param ∈ droop_parameters
         try
             p, sub_vertices = get_inertiatodamping_functions(param)
             if isnothing(p) || isnothing(sub_vertices) || isempty(sub_vertices)
@@ -56,14 +58,7 @@ function _plot_inertia_damping(droop_parameters::AbstractVector)
         return nothing, nothing # Return nothing if no plots were created
     end
 
-    p1 = Plots.plot(
-        plots...;
-        legend = false,
-        size = (1000, 1000),
-        xlabel = "Damping",
-        ylabel = "Inertia",
-        label = permutedims(labels),
-    ) # Correct label orientation
+    p1 = Plots.plot(plots...; legend = false, size = (1000, 1000), xlabel = "Damping", ylabel = "Inertia", label = permutedims(labels)) # Correct label orientation
 
     vertices_matrix = vertices_to_matrix(all_vertices::AbstractVector)
 
