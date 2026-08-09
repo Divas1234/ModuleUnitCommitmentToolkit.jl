@@ -14,10 +14,10 @@
 ## PCM 关键脚本
 
 ```text
-tools/pcm/adaptive_pcm_mainfunc.jl
-tools/pcm/adaptive_period_scuc_modules.jl
+tools/pcm/pcm_main.jl
+tools/pcm/adaptive_period_scuc.jl
 tools/pcm/evaluate_overlap_criteria_combinations.jl
-tools/pcm/generate_realistic_loadcurve.jl
+tools/pcm/generate_realistic_load_curve.jl
 tools/pcm/archive_pcm_comparison.jl
 tools/pcm/summarize_archived_criteria_results.jl
 ```
@@ -33,7 +33,7 @@ julia --project=pkg tools/pcm/evaluate_overlap_criteria_combinations.jl
 生成极端爬坡负荷曲线：
 
 ```bash
-julia --project=pkg tools/pcm/generate_realistic_loadcurve.jl
+julia --project=pkg tools/pcm/generate_realistic_load_curve.jl
 ```
 
 汇总归档中的判据组合结果：

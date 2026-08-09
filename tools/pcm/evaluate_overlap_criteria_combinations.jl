@@ -15,8 +15,8 @@ end
 
 include("../../src/renewableresource_modules/stochasticsimulation.jl")
 include("../../src/read_inputdata_modules/readdatas.jl")
-include("period_scuc_modules.jl")
-include("adaptive_period_scuc_modules.jl")
+include("period_scuc.jl")
+include("adaptive_period_scuc.jl")
 
 function repeat_time_series_to_horizon(curve::AbstractMatrix{<:Real}, target_hours::Int)
     source_hours = size(curve, 2)

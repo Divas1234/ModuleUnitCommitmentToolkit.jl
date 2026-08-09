@@ -20,7 +20,7 @@
 #    c. Save interval-specific results
 # 4. Aggregate and save total scheduling costs
 #
-# Usage: julia pcm_mainfunc.jl
+# Usage: julia pcm_main.jl
 # Output: Results saved to output/details_schedule_results/pcm_simulation_results/
 # ============================================================================
 
@@ -29,7 +29,7 @@
 # ============================================================================
 include("../../src/renewableresource_modules/stochasticsimulation.jl")
 include("../../src/read_inputdata_modules/readdatas.jl")
-include("period_scuc_modules.jl")
+include("period_scuc.jl")
 
 # ============================================================================
 # Step 2: Read input data from Excel file

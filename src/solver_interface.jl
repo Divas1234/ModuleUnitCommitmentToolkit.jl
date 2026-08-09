@@ -102,7 +102,7 @@ function UCSolveRequest(;
 end
 
 function solve_uc(::UCSolveRequest)
-    throw(ArgumentError("The trimmed pcm branch does not expose solve_uc algorithm drivers. Run tools/pcm/adaptive_pcm_mainfunc.jl or tools/pcm/evaluate_overlap_criteria_combinations.jl."))
+    throw(ArgumentError("The trimmed pcm branch does not expose solve_uc algorithm drivers. Run tools/pcm/pcm_main.jl or tools/pcm/evaluate_overlap_criteria_combinations.jl."))
 end
 
 function solve_uc(; kwargs...)

@@ -8,12 +8,12 @@
 # 4. Composite adaptive overlapping window calculation
 # 5. Boundary condition transmission from committed execution windows
 # ============================================================================
-# include("period_scuc_modules.jl")
+# include("period_scuc.jl")
 
 if !isdefined(@__MODULE__, :_ADAPTIVE_PERIOD_SCUC_MODULES_INCLUDED)
 	const _ADAPTIVE_PERIOD_SCUC_MODULES_INCLUDED = true
 
-	# include("period_scuc_modules.jl")
+	# include("period_scuc.jl")
 	include("overlap_predictor.jl")
 	using .OverlapPredictor
 	using LinearAlgebra, Statistics

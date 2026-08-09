@@ -31,8 +31,8 @@ module SequentialPCM
     using ..ModuleUnitCommitmentToolkit: config, unit, transmissionline, load, data_centra, wind
     const hydro = Any
 
-    include("../tools/pcm/period_scuc_modules.jl")
-    include("../tools/pcm/adaptive_period_scuc_modules.jl")
+    include("../tools/pcm/period_scuc.jl")
+    include("../tools/pcm/adaptive_period_scuc.jl")
 end
 
 export SequentialPCM

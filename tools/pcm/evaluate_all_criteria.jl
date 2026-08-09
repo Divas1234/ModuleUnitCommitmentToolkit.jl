@@ -10,8 +10,8 @@ using DataFrames
 # Include legacy data loaders and SCUC modeling components
 include("d:/GithubClonefiles/module_unitcommitment/src/renewableresource_modules/stochasticsimulation.jl")
 include("d:/GithubClonefiles/module_unitcommitment/src/read_inputdata_modules/readdatas.jl")
-include("period_scuc_modules.jl")
-include("adaptive_period_scuc_modules.jl")
+include("period_scuc.jl")
+include("adaptive_period_scuc.jl")
 
 function run_criteria_evaluation()
     println("="^80)
