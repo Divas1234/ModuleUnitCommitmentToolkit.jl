@@ -1,3 +1,5 @@
+__precompile__(false)
+
 module ModuleUnitCommitmentToolkit
 
 # Environment config and utilities
@@ -26,6 +28,9 @@ export SUC_scucmodel,
 
 # Include PCM tools in a submodule to enable LSP indexing and definition navigation (gd)
 module SequentialPCM
+    using ..ModuleUnitCommitmentToolkit: config, unit, transmissionline, load, data_centra, wind
+    const hydro = Any
+
     include("../tools/pcm/period_scuc_modules.jl")
     include("../tools/pcm/adaptive_period_scuc_modules.jl")
 end
