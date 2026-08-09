@@ -6,11 +6,11 @@ if !isdefined(@__MODULE__, :_TRUE_CLUSTERED_PCM_MASTER_INCLUDED)
     import MathOptInterface as MOI
 
     """
-    	建立同一母线、运行特性可互换的火电机组等价类。
+    建立同一母线、运行特性可互换的火电机组等价类。
 
-    	默认容差有意设置得很严格。仅归一化比例相似并不能保持 UC 可行域；
-    	绝对容量、启停爬坡、成本或滚动窗口初始状态不同，都不应直接聚合。
-    	"""
+    默认容差有意设置得很严格。仅归一化比例相似并不能保持 UC 可行域；
+    绝对容量、启停爬坡、成本或滚动窗口初始状态不同，都不应直接聚合。
+    """
     function build_similar_pcm_clusters(units; ratio_tol = 1e-6, ramp_tol = 1e-6, cost_tol = 1e-6)
         groups=Vector{Vector{Int}}()
         feature(i) = (units.p_min[i]/max(units.p_max[i], eps()), units.ramp_up[i]/max(units.p_max[i], eps()),

@@ -2,13 +2,13 @@ if !isdefined(@__MODULE__, :_CLUSTERED_PCM_NETWORK_DISPATCH_INCLUDED)
     const _CLUSTERED_PCM_NETWORK_DISPATCH_INCLUDED = true
 
     """
-    	第二阶段物理调度：固定聚类解群后得到的 `U/Y/Z`。
+    第二阶段物理调度：固定聚类解群后得到的 `U/Y/Z`。
 
-    	驻留流已经把聚合启停数量分配给真实机组。本模型不再增加组合二进制变量，
-    	只联合优化单机热出力/备用、水电、弃风和全部 DC 线路潮流。
+    驻留流已经把聚合启停数量分配给真实机组。本模型不再增加组合二进制变量，
+    只联合优化单机热出力/备用、水电、弃风和全部 DC 线路潮流。
 
-    	模型有意不设置负荷损失变量。返回 `nothing` 表示固定启停轨迹无法形成零切负荷网络调度，必须反馈主问题或回退到原始单机 SCUC。
-    	"""
+    模型有意不设置负荷损失变量。返回 `nothing` 表示固定启停轨迹无法形成零切负荷网络调度，必须反馈主问题或回退到原始单机 SCUC。
+    """
     function solve_clustered_physical_network_dispatch(
             x, y, z, units, loads, winds, hydros, lines, gsdf, config_param, NT, ND, NW, NH; optimizer = Gurobi.Optimizer, tolerance = 1e-5)
         NG=size(x, 1)

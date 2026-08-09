@@ -30,6 +30,7 @@
 include("../../../src/renewableresource_modules/stochasticsimulation.jl")
 include("../../../src/read_inputdata_modules/readdatas.jl")
 include("period_scuc.jl")
+include("../load_profiles.jl")
 
 using Random
 
@@ -55,6 +56,10 @@ println("="^80)
 
 config_param, units, lines, loads, stroges, NB, NG, NL, ND, NT, NC, ND2, NH, DataCentras, hydros = forminputdata(
     DataGen, DataBranch, DataLoad, LoadCurve, GenCost, UnitsFreqParam, StrogeData, Datacentra_Data, HydroData, HydroCurve)
+config_param.is_NetWorkCon=parse(Int, get(ENV, "PCM_NETWORK_CONSTRAINTS", "0"))
+apply_pcm_load_profile!(loads, get(ENV, "PCM_LOAD_PROFILE", "baseline"))
+println("  PCM load profile: $(get(ENV, "PCM_LOAD_PROFILE", "baseline"))")
+println("  PCM network constraints: $(config_param.is_NetWorkCon == 1 ? "enabled" : "disabled")")
 
 # ============================================================================
 # Step 4: Generate wind power scenarios

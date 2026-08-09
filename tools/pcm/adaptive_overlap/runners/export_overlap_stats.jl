@@ -11,6 +11,7 @@ include("../paths.jl")
 include("../../../../src/renewableresource_modules/stochasticsimulation.jl")
 include("../../../../src/read_inputdata_modules/readdatas.jl")
 include("../../standard/period_scuc.jl")
+include("../../load_profiles.jl")
 include("../core/pcm_overlap_core.jl")
 
 function repeat_time_series_to_horizon(curve::AbstractMatrix{<:Real}, target_hours::Int)
@@ -52,7 +53,9 @@ function export_overlap_statistics()
     global config_param, units, lines, loads, stroges, NB, NG, NL, ND, NT, NC, ND2, NH, DataCentras, hydros, scenarios_prob, winds
     config_param, units, lines, loads, stroges, NB, NG, NL, ND, NT, NC, ND2, NH, DataCentras, hydros = forminputdata(
         DataGen, DataBranch, DataLoad, LoadCurve, GenCost, UnitsFreqParam, StrogeData, Datacentra_Data, HydroData, HydroCurve)
-    config_param.is_NetWorkCon = 0
+    apply_pcm_load_profile!(loads, get(ENV, "PCM_LOAD_PROFILE", "baseline"))
+    println("  PCM load profile: $(get(ENV, "PCM_LOAD_PROFILE", "baseline"))")
+    config_param.is_NetWorkCon = parse(Int, get(ENV, "PCM_NETWORK_CONSTRAINTS", "0"))
     random_seed = parse(Int, get(ENV, "PCM_RANDOM_SEED", "20260809"))
     Random.seed!(random_seed)
     println("  PCM random seed: $random_seed")
@@ -68,7 +71,9 @@ function export_overlap_statistics()
     min_overlap = 2
     max_overlap = 12
     slow_threshold = 4.0
-    steady_state_mode = "regression"
+    # regression/neural_network 会执行离线标定；ml_prediction 使用已保存数据集
+    # 或内置回退树，不把标定过程混入在线滚动求解。
+    steady_state_mode = lowercase(get(ENV, "PCM_OVERLAP_MODE", "regression"))
 
     if size(loads.load_curve, 2) < required_horizon
         loads.load_curve = repeat_time_series_to_horizon(loads.load_curve, required_horizon)
@@ -102,6 +107,7 @@ function export_overlap_statistics()
         Final_Adaptive_Overlap_h = Int64[], Total_Solved_Horizon_h = Int64[], Subproblem_SolveTime_sec = Float64[], Optimization_Status = String[])
 
     pre_results = nothing
+    total_scheduled_cost=zeros(N_sets+1, 7)
 
     for k ∈ 1:N_sets
         start_time = (k - 1) * exec_NT + 1
@@ -130,6 +136,9 @@ function export_overlap_statistics()
         if res === nothing
             error("Adaptive subproblem failed at interval $k; overlap statistics are incomplete.")
         end
+        committed_results=truncate_and_commit_results(res, exec_NT)
+        total_scheduled_cost[k, :]=compute_committed_cost(committed_results, exec_NT, mini_units, mini_loads, mini_winds, lines,
+            DataCentras, config_param, k, hydros, scenarios_prob)
         pre_results = res
 
         push!(df_stats, (
@@ -142,6 +151,9 @@ function export_overlap_statistics()
 
     csv_path = joinpath(outdir, "overlap_window_statistics.csv")
     txt_path = joinpath(outdir, "overlap_window_summary.txt")
+    cost_path = joinpath(outdir, "total_scheduled_results.csv")
+    total_scheduled_cost[end, :]=sum(total_scheduled_cost[1:(end - 1), :]; dims = 1)
+    CSV.write(cost_path, DataFrame(total_scheduled_cost, :auto); writeheader = false)
 
     # Export CSV
     CSV.write(csv_path, df_stats)

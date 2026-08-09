@@ -24,18 +24,22 @@ function validate_inputs(NT, NB, NG, ND, NC, ND2, units, loads, winds, lines, Da
     end
 
     if size(loads.index, 1) != ND
-        @warn "Number of loads in `loads` ($(size(loads.p_load, 1))) does not match ND ($ND). This might lead to errors."
+        @warn "Number of loads in `loads` ($(length(loads.index))) does not match ND ($ND). This might lead to errors."
         return false
     end
 
-    NW = size(winds.index, 1)
-    if size(winds.index, 1) != NW
-        @warn "Number of wind farms in `winds` ($(size(winds.index, 1))) does not match NW ($NW). This might lead to errors."
+    wind_farms = length(winds.index)
+    if length(winds.p_max) != wind_farms
+        @warn "Wind-farm indices ($wind_farms) and capacities ($(length(winds.p_max))) have inconsistent lengths."
+        return false
+    end
+    if size(winds.scenarios_curve, 1) != winds.scenarios_nums || size(winds.scenarios_curve, 2) < NT
+        @warn "Wind scenario matrix $(size(winds.scenarios_curve)) is inconsistent with scenarios_nums=$(winds.scenarios_nums) or NT=$NT."
         return false
     end
 
     if NL > 0 && size(lines.index, 1) != NL
-        @warn "Number of transmission lines in `lines` ($(size(lines.rateA, 1))) does not match NL ($NL). This might lead to errors."
+        @warn "Number of transmission lines in `lines` ($(length(lines.index))) does not match NL ($NL). This might lead to errors."
         return false
     end
 
