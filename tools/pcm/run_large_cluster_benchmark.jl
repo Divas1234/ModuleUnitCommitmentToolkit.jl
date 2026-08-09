@@ -24,11 +24,20 @@ base_env=Dict(
     "PCM_BENCHMARK_METRICS"=>METRICS,
 )
 
+existing_runs=Dict{String, Int}()
+if isfile(METRICS)
+    existing_metrics=CSV.read(METRICS, DataFrame)
+    for group ∈ groupby(existing_metrics, :method)
+        existing_runs[string(first(group.method))]=nrow(group)
+    end
+end
+
 for repetition ∈ 1:RUNS, method ∈ ("standard", "clustered_pcm")
-    log_path=joinpath(OUTDIR, "$(method)_run$(repetition).log")
+    run_number=get(existing_runs, method, 0)+repetition
+    log_path=joinpath(OUTDIR, "$(method)_run$(run_number).log")
     command=`$(Base.julia_cmd()) --project=$(ROOT) $(joinpath(@__DIR__, "benchmark_method.jl"))`
     env=merge(base_env, Dict("PCM_METHOD"=>method))
-    println("[$(now())] run=$repetition method=$method log=$log_path")
+    println("[$(now())] run=$run_number method=$method log=$log_path")
     open(log_path, "w") do io
         process=run(pipeline(addenv(command, env), stdout = io, stderr = io); wait = false)
         wait(process)
