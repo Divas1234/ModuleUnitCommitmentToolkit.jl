@@ -502,65 +502,65 @@ if !isdefined(@__MODULE__, :_ADAPTIVE_PERIOD_SCUC_MODULES_INCLUDED)
 						U_norm = clamp(online_capacity / total_capacity, 0.0, 1.0)
 						X_delta_norm, X_switch_ratio = commitment_boundary_deviation(units, x_init, ref_x_curr)
 
-					#%% Solve ground truth
-					res_true = nothing
-					try
-						res_true = each_period_scucmodel_modules(total_NT_true, NB, NG, ND, NC, ND2, mini_units, mini_loads, mini_winds, lines, DataCentras, config_param, stroges, scenarios_prob, NL, 1, hydros, NH)
-					catch e
-						continue
-					end
-
-					if res_true === nothing
-						;
-						continue;
-					end
-
-					committed_res_true = truncate_and_commit_results(res_true, exec_NT)
-					committed_cost_true = compute_committed_cost(committed_res_true, exec_NT, mini_units, mini_loads, mini_winds, lines, DataCentras, config_param, 1, hydros, scenarios_prob)
-					C_true = sum(committed_cost_true)
-					if C_true <= 1.0
-						;
-						continue;
-					end
-
-					sample_count += 1
-
-					#%% Evaluate each candidate overlap size
-
-					for H ∈ overlap_sizes
-						total_NT_H = exec_NT + H
-						res_H = nothing
+						#%% Solve ground truth
+						res_true = nothing
 						try
-							res_H = each_period_scucmodel_modules(total_NT_H, NB, NG, ND, NC, ND2, mini_units, mini_loads, mini_winds, lines, DataCentras, config_param, stroges, scenarios_prob, NL, 1, hydros, NH)
+							res_true = each_period_scucmodel_modules(total_NT_true, NB, NG, ND, NC, ND2, mini_units, mini_loads, mini_winds, lines, DataCentras, config_param, stroges, scenarios_prob, NL, 1, hydros, NH)
 						catch e
 							continue
 						end
 
-						if res_H === nothing
+						if res_true === nothing
 							;
 							continue;
 						end
 
-						committed_res_H = truncate_and_commit_results(res_H, exec_NT)
-						committed_cost_H = compute_committed_cost(committed_res_H, exec_NT, mini_units, mini_loads, mini_winds, lines, DataCentras, config_param, 1, hydros, scenarios_prob)
-						C_H = sum(committed_cost_H)
+						committed_res_true = truncate_and_commit_results(res_true, exec_NT)
+						committed_cost_true = compute_committed_cost(committed_res_true, exec_NT, mini_units, mini_loads, mini_winds, lines, DataCentras, config_param, 1, hydros, scenarios_prob)
+						C_true = sum(committed_cost_true)
+						if C_true <= 1.0
+							;
+							continue;
+						end
 
-						# Accuracy loss combines cost deviation and commitment
-						# state deviation. Cost-only labels often make small
-						# overlaps look acceptable even when they leave a
-						# different terminal commitment for the next interval.
-						cost_loss = abs(C_H - C_true) / C_true
-						state_loss, switch_loss = commitment_boundary_deviation(
-							units, committed_res_H["x₀"][:, exec_NT],
-							committed_res_true["x₀"][:, exec_NT]
-						)
-						loss_val = cost_loss + 0.50 * state_loss + 0.25 * switch_loss
+						sample_count += 1
 
-						# Record sample
-						push!(X_list, [L_norm, U_norm, X_delta_norm, X_switch_ratio, Float64(H)])
-						push!(Y_list, loss_val)
+						#%% Evaluate each candidate overlap size
+
+						for H ∈ overlap_sizes
+							total_NT_H = exec_NT + H
+							res_H = nothing
+							try
+								res_H = each_period_scucmodel_modules(total_NT_H, NB, NG, ND, NC, ND2, mini_units, mini_loads, mini_winds, lines, DataCentras, config_param, stroges, scenarios_prob, NL, 1, hydros, NH)
+							catch e
+								continue
+							end
+
+							if res_H === nothing
+								;
+								continue;
+							end
+
+							committed_res_H = truncate_and_commit_results(res_H, exec_NT)
+							committed_cost_H = compute_committed_cost(committed_res_H, exec_NT, mini_units, mini_loads, mini_winds, lines, DataCentras, config_param, 1, hydros, scenarios_prob)
+							C_H = sum(committed_cost_H)
+
+							# Accuracy loss combines cost deviation and commitment
+							# state deviation. Cost-only labels often make small
+							# overlaps look acceptable even when they leave a
+							# different terminal commitment for the next interval.
+							cost_loss = abs(C_H - C_true) / C_true
+							state_loss, switch_loss = commitment_boundary_deviation(
+								units, committed_res_H["x₀"][:, exec_NT],
+								committed_res_true["x₀"][:, exec_NT]
+							)
+							loss_val = cost_loss + 0.50 * state_loss + 0.25 * switch_loss
+
+							# Record sample
+							push!(X_list, [L_norm, U_norm, X_delta_norm, X_switch_ratio, Float64(H)])
+							push!(Y_list, loss_val)
+						end
 					end
-				end
 				end
 			end
 		finally
@@ -629,7 +629,8 @@ if !isdefined(@__MODULE__, :_ADAPTIVE_PERIOD_SCUC_MODULES_INCLUDED)
 	the predicted solving accuracy loss under specific load level and startup/shutdown plans.
 	"""
 	function compute_steady_state_overlap_mapping(
-			loads::load, winds::wind, units::unit, start_time::Int64, exec_NT::Int64, epsilon::Float64, min_overlap::Int64, max_overlap::Int64, x_0_curr::Vector{Float64}, mode::String = "regression", trained_models = nothing, x_ref_curr::Union{Nothing, Vector{Float64}} = nothing)
+			loads::load, winds::wind, units::unit, start_time::Int64, exec_NT::Int64, epsilon::Float64, min_overlap::Int64, max_overlap::Int64,
+			x_0_curr::Vector{Float64}, mode::String = "regression", trained_models = nothing, x_ref_curr::Union{Nothing, Vector{Float64}} = nothing)
 		# Estimate system characteristics
 		total_time_avail = size(loads.load_curve, 2)
 		end_horizon = min(total_time_avail, start_time + exec_NT + max_overlap - 1)
