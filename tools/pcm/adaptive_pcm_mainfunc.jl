@@ -8,7 +8,7 @@
 # ============================================================================
 
 using Pkg
-Pkg.activate("d:/GithubClonefiles/module_unitcommitment/pkg")
+Pkg.activate("./pkg")
 include("../../src/renewableresource_modules/stochasticsimulation.jl")
 include("../../src/read_inputdata_modules/readdatas.jl")
 include("adaptive_period_scuc_modules.jl")
