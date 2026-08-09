@@ -1,0 +1,4 @@
+load_profile,status,ramp_events,overlap_windows_h,ramp_windows_h,wall_time_sec,peak_rss_mb,total_cost
+baseline,OK,0,"10;10;10","0;0;0",72.4690291,2079.59765625,4303561.003533931
+smooth,OK,0,"10;10;10","0;0;0",55.7236426,1951.8125,4916903.540567734
+extreme_ramp,OK,3,"12;12;12","12;12;12",94.2215726,2148.66796875,4821934.03121285

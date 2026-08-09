@@ -78,7 +78,7 @@ Both net-load ramp rate variations (|P_net(s, t+1) - P_net(s, t)|) and multi-sce
   - `T_ramp_overlap::Int64`: Required overlap window length to envelop the net-load event
 """
 function detect_ramp_events_and_overlap(loads::load, winds::wind, start_time::Int64, exec_NT::Int64, max_lookahead::Int64,
-        ramp_threshold_ratio::Float64 = 1.25, uncertainty_threshold_ratio::Float64 = 1.20)
+        ramp_threshold_ratio::Float64 = 2.0, uncertainty_threshold_ratio::Float64 = 1.50)
     total_time_avail = size(loads.load_curve, 2)
     end_horizon = min(total_time_avail, start_time + exec_NT + max_lookahead - 1)
 
@@ -105,12 +105,19 @@ function detect_ramp_events_and_overlap(loads::load, winds::wind, start_time::In
     # Find the earliest ramping event in the lookahead horizon across all scenarios
     lookahead_start_idx = exec_NT
     earliest_ramp_idx = nothing
+    strongest_ramp_ratio = 0.0
 
     for s ∈ 1:NS
         # Ramping rates for this specific scenario
         scen_ramps = [abs(net_load_matrix[s, t + 1] - net_load_matrix[s, t]) for t ∈ 1:(horizon_len - 1)]
-        mean_scen_ramp = mean(scen_ramps)
-        scen_threshold = ramp_threshold_ratio * mean_scen_ramp
+        # Use a robust background-ramp estimate. A mean over a profile with many
+        # extreme events rises with the events themselves and can suppress the
+        # detector. The absolute 90% net-load floor deliberately identifies
+        # extreme operational events, rather than ordinary daily load changes.
+        background_ramp = median(scen_ramps)
+        net_load_scale = max(mean(abs.(net_load_matrix[s, :])), eps())
+        extreme_ramp_floor = parse(Float64, get(ENV, "PCM_EXTREME_RAMP_RATIO", "0.90"))
+        scen_threshold = max(ramp_threshold_ratio * background_ramp, extreme_ramp_floor * net_load_scale)
 
         # Lookahead ramp rates for this specific scenario
         lookahead_scen_ramps = scen_ramps[lookahead_start_idx:end]
@@ -118,6 +125,7 @@ function detect_ramp_events_and_overlap(loads::load, winds::wind, start_time::In
         # Find first lookahead index exceeding the scenario-specific threshold
         scen_ramp_idx = findfirst(r -> r >= scen_threshold, lookahead_scen_ramps)
         if scen_ramp_idx !== nothing
+            strongest_ramp_ratio = max(strongest_ramp_ratio, maximum(lookahead_scen_ramps) / net_load_scale)
             if earliest_ramp_idx === nothing
                 earliest_ramp_idx = scen_ramp_idx
             else
@@ -145,8 +153,11 @@ function detect_ramp_events_and_overlap(loads::load, winds::wind, start_time::In
 
     if !isempty(event_indices)
         first_event_idx = minimum(event_indices)
-        # Required lookahead overlap to cover the net-load event plus 2h buffer
-        T_ramp_overlap = first_event_idx + 2
+        # Cover the event and reserve preparation time proportional to severity.
+        # A >=40% hourly net-load swing therefore requests the full 12h window,
+        # while moderate events retain a shorter event-position-based window.
+        severity_window = ceil(Int, max_lookahead * clamp(strongest_ramp_ratio / 0.40, 0.0, 1.0))
+        T_ramp_overlap = max(first_event_idx + 2, severity_window)
         T_ramp_overlap = min(T_ramp_overlap, max_lookahead)
         return true, T_ramp_overlap
     else

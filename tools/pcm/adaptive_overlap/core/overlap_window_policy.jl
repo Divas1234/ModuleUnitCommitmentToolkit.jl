@@ -162,16 +162,18 @@ function compute_adaptive_overlap_window(
 
         T_o_pred = OverlapPredictor.predict_overlap(feat_vec; min_overlap = min_overlap, max_overlap = max_overlap)
 
-        T_overlap = T_o_pred
-        # Clamping at boundary for last interval
-        if interval_scheduling_id == 7
-            total_time_avail = size(loads.load_curve, 2)
-            remaining_time = total_time_avail - (start_time + exec_NT - 1)
-            T_overlap = min(T_overlap, remaining_time)
-            T_overlap = max(0, T_overlap)
-        end
+        # CART estimates the accuracy-driven window, but physical safety floors
+        # must remain active. In particular, do not bypass event detection here:
+        # the final policy is max(T_ml, T_dwell, T_ramp).
+        T_unit = Int64(ceil(T_dwell_rem))
+        is_ramp, T_ramp = detect_ramp_events_and_overlap(loads, winds, start_time, exec_NT, max_overlap)
+        T_overlap = clamp(max(T_o_pred, T_unit, T_ramp), min_overlap, max_overlap)
 
-        return T_overlap, false, T_o_pred, 0, 0
+        total_time_avail = size(loads.load_curve, 2)
+        max_possible_overlap = total_time_avail - (start_time + exec_NT - 1)
+        T_overlap = max(0, min(T_overlap, max_possible_overlap))
+
+        return T_overlap, is_ramp, T_o_pred, T_unit, T_ramp
     end
 
     # 1. Steady-state overlap window.

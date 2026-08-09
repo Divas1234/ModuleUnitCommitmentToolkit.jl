@@ -4,7 +4,7 @@
         min_shutdown_time = [2.0, 2.0, 2.0, 2.0, 2.0], shut_up = fill(100.0, 5), shut_down = fill(100.0, 5),
         coffi_a = fill(0.01, 5), coffi_b = fill(10.0, 5), coffi_c = fill(1.0, 5), x_0 = zeros(5), p_0 = zeros(5))
 
-    clusters = build_similar_pcm_clusters(units)
+    clusters = build_similar_pcm_clusters(units; require_same_bus = true)
     memberships = [sort(c.unit_indices) for c ∈ clusters]
 
     @test [1, 2] in memberships
@@ -12,4 +12,8 @@
     @test [4] in memberships       # different network location
     @test [5] in memberships       # different normalized ramp characteristic
     @test sum(length, memberships) == length(units.index)
+
+    copperplate = build_similar_pcm_clusters(units)
+    copperplate_memberships = [sort(c.unit_indices) for c ∈ copperplate]
+    @test [1, 2, 4] in copperplate_memberships # network-free PCM may cluster identical cross-bus units
 end

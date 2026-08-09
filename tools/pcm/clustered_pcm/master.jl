@@ -6,12 +6,13 @@ if !isdefined(@__MODULE__, :_TRUE_CLUSTERED_PCM_MASTER_INCLUDED)
     import MathOptInterface as MOI
 
     """
-    建立同一母线、运行特性可互换的火电机组等价类。
+    建立运行特性可互换的火电机组等价类。
 
     默认容差有意设置得很严格。仅归一化比例相似并不能保持 UC 可行域；
     绝对容量、启停爬坡、成本或滚动窗口初始状态不同，都不应直接聚合。
+    无网络约束时允许跨母线聚类；网络约束启用时必须保持同母线注入。
     """
-    function build_similar_pcm_clusters(units; ratio_tol = 1e-6, ramp_tol = 1e-6, cost_tol = 1e-6)
+    function build_similar_pcm_clusters(units; ratio_tol = 1e-6, ramp_tol = 1e-6, cost_tol = 1e-6, require_same_bus::Bool = false)
         groups=Vector{Vector{Int}}()
         feature(i) = (units.p_min[i]/max(units.p_max[i], eps()), units.ramp_up[i]/max(units.p_max[i], eps()),
             units.ramp_down[i]/max(units.p_max[i], eps()), units.coffi_b[i])
@@ -23,7 +24,7 @@ if !isdefined(@__MODULE__, :_TRUE_CLUSTERED_PCM_MASTER_INCLUDED)
                 fj=feature(j)
                 scale(x, y) = max(1.0, abs(x), abs(y))
                 close(x, y, tol) = abs(x-y)<=tol*scale(x, y)
-                compatible=units.locatebus[i]==units.locatebus[j] &&
+                compatible=(!require_same_bus || units.locatebus[i]==units.locatebus[j]) &&
                            round(Int, units.min_shutup_time[i])==round(Int, units.min_shutup_time[j]) &&
                            round(Int, units.min_shutdown_time[i])==round(Int, units.min_shutdown_time[j]) &&
                            abs(fi[1]-fj[1])<=ratio_tol &&
@@ -49,8 +50,13 @@ if !isdefined(@__MODULE__, :_TRUE_CLUSTERED_PCM_MASTER_INCLUDED)
 
     function solve_true_clustered_pcm_window(NT, NB, NG, ND, units, loads, winds, lines, config_param, NL, hydros, NH; optimizer = Gurobi.Optimizer,
             tolerance = 1e-5, feedback_lines = Int[], iteration = 1, max_iterations = 6)
-        clusters=build_similar_pcm_clusters(units)
+        # The clustered master is copper-plate by default. Bus identity is only
+        # part of homogeneity when network constraints are actually represented.
+        clusters=build_similar_pcm_clusters(units; require_same_bus = config_param.is_NetWorkCon == 1)
         C=length(clusters)
+        clustered_units=sum(length(c.unit_indices) for c ∈ clusters if length(c.unit_indices)>1)
+        println("  Clustered PCM: $NG physical units -> $C equivalent units " *
+                "($(round(100 * (NG - C) / max(NG, 1); digits = 1))% state reduction; $clustered_units units in non-singleton clusters)")
         NW=length(winds.index)
         NS=winds.scenarios_nums
         NS==1||return (feasible = false, stage = :unsupported_scenarios, message = "true clustered master currently requires one PCM scenario")
