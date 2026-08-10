@@ -167,12 +167,14 @@ function compute_adaptive_overlap_window(
 
         T_o_pred = OverlapPredictor.predict_overlap(feat_vec; min_overlap = min_overlap, max_overlap = max_overlap)
 
-        # CART estimates the accuracy-driven window, but physical safety floors
-        # must remain active. In particular, do not bypass event detection here:
-        # the final policy is max(T_ml, T_dwell, T_ramp).
+        # The overlap window at the END of the execution window provides lookahead
+        # for steady-state accuracy decay (T_ml) and net-load ramping events (T_ramp).
+        # Dynamic remaining dwell time at start of interval (T_dwell_rem) is enforced
+        # at the BEGINNING of the subproblem (hours 1..T_dwell_rem <= 10) and is
+        # completed within the 24h execution window, so it does not force the end overlap.
         T_unit = Int64(ceil(T_dwell_rem))
         is_ramp, T_ramp = detect_ramp_events_and_overlap(loads, winds, start_time, exec_NT, max_overlap)
-        T_overlap = clamp(max(T_o_pred, T_unit, T_ramp), min_overlap, max_overlap)
+        T_overlap = clamp(max(T_o_pred, T_ramp), min_overlap, max_overlap)
 
         total_time_avail = size(loads.load_curve, 2)
         max_possible_overlap = total_time_avail - (start_time + exec_NT - 1)
@@ -182,8 +184,8 @@ function compute_adaptive_overlap_window(
             println("[AdaptiveOverlap] interval=$(interval_scheduling_id) start=$(start_time) mode=ml_prediction")
             println("  boundary criterion: U_norm=$(round(U_norm; digits=4)), T_dwell_rem=$(round(T_dwell_rem; digits=2)), X_delta_norm=$(round(X_delta_norm; digits=4)), X_switch_ratio=$(round(X_switch_ratio; digits=4))")
             println("  steady-state criterion: L_norm=$(round(L_norm; digits=4)), sigma_load=$(round(sigma_load; digits=4)), R_wind_max=$(round(R_wind_max; digits=4)), T_ml=$(T_o_pred)")
-            println("  physical criteria: T_unit=$(T_unit), ramp_event=$(is_ramp), T_ramp=$(T_ramp)")
-            println("  final criterion: max(T_ml=$(T_o_pred), T_unit=$(T_unit), T_ramp=$(T_ramp))=$(max(T_o_pred, T_unit, T_ramp)); clamped_final=$(T_overlap), solved_horizon=$(exec_NT + T_overlap)")
+            println("  physical criteria: T_unit_start=$(T_unit), ramp_event=$(is_ramp), T_ramp=$(T_ramp)")
+            println("  final criterion: max(T_ml=$(T_o_pred), T_ramp=$(T_ramp))=$(max(T_o_pred, T_ramp)); clamped_final=$(T_overlap), solved_horizon=$(exec_NT + T_overlap)")
         end
 
         return T_overlap, is_ramp, T_o_pred, T_unit, T_ramp
@@ -225,7 +227,7 @@ function compute_adaptive_overlap_window(
     is_ramp, T_ramp = detect_ramp_events_and_overlap(loads, winds, start_time, exec_NT, max_overlap)
 
     # Composite overlap calculation
-    T_overlap_raw = max(T_steady, T_unit, T_ramp)
+    T_overlap_raw = max(T_steady, T_ramp)
     T_overlap = clamp(T_overlap_raw, min_overlap, max_overlap)
 
     # Ensure total window does not exceed remaining simulation time
@@ -236,8 +238,8 @@ function compute_adaptive_overlap_window(
     if adaptive_overlap_verbose()
         println("[AdaptiveOverlap] interval=$(interval_scheduling_id) start=$(start_time) mode=$(steady_state_mode)")
         println("  steady-state criterion: T_steady=$(T_steady), epsilon=$(epsilon), alpha=$(alpha)")
-        println("  physical criteria: T_unit=$(T_unit), ramp_event=$(is_ramp), T_ramp=$(T_ramp)")
-        println("  final criterion: max(T_steady=$(T_steady), T_unit=$(T_unit), T_ramp=$(T_ramp))=$(T_overlap_raw); clamped_final=$(T_overlap), solved_horizon=$(exec_NT + T_overlap)")
+        println("  physical criteria: T_unit_start=$(T_unit), ramp_event=$(is_ramp), T_ramp=$(T_ramp)")
+        println("  final criterion: max(T_steady=$(T_steady), T_ramp=$(T_ramp))=$(T_overlap_raw); clamped_final=$(T_overlap), solved_horizon=$(exec_NT + T_overlap)")
     end
 
     return T_overlap, is_ramp, T_steady, T_unit, T_ramp

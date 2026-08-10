@@ -30,12 +30,12 @@ function sample_and_train_loss_models(loads::load, winds::wind, units::unit, lin
     # be limited to hour 1 and a single starting commitment. We sample
     # representative start times across the simulation horizon and several
     # boundary commitment states for each start time.
-    load_scales = [0.95, 1.05]
+    load_scales = [0.85, 0.95, 1.0, 1.05, 1.15]
     total_time_avail = size(loads.load_curve, 2)
     latest_start = max(1, total_time_avail - exec_NT - max_overlap + 1)
-    middle_start = max(1, min(latest_start, div(latest_start + 1, 2)))
-    start_time_candidates = unique(clamp.([1, middle_start, latest_start], 1, latest_start))
-    overlap_sizes = [min_overlap, Int64(round((min_overlap + max_overlap)/2)), max_overlap]
+    step_start = max(1, div(latest_start, 4))
+    start_time_candidates = unique(clamp.(collect(1:step_start:latest_start), 1, latest_start))
+    overlap_sizes = collect(min_overlap:max_overlap)
 
     X_list = Vector{Float64}[]
     Y_list = Float64[]
@@ -160,7 +160,7 @@ function sample_and_train_loss_models(loads::load, winds::wind, units::unit, lin
                         # different terminal commitment for the next interval.
                         cost_loss = abs(C_H - C_true) / C_true
                         state_loss, switch_loss = commitment_boundary_deviation(units, committed_res_H["x₀"][:, exec_NT], committed_res_true["x₀"][:, exec_NT])
-                        loss_val = cost_loss + 0.50 * state_loss + 0.25 * switch_loss
+                        loss_val = cost_loss + 0.05 * state_loss + 0.02 * switch_loss
 
                         # Record sample
                         push!(X_list, [L_norm, U_norm, X_delta_norm, X_switch_ratio, Float64(H)])
@@ -219,6 +219,54 @@ function sample_and_train_loss_models(loads::load, winds::wind, units::unit, lin
         println("  ✓ Neural Network model calibrated successfully.")
     catch e
         println("  ⚠ Neural network calibration failed. Using defaults.")
+    end
+
+    # 3. Fit CART Decision Tree and update OverlapPredictor & cache
+    try
+        groups = Dict{Tuple{Float64, Float64, Float64, Float64}, Vector{Tuple{Float64, Float64}}}()
+        for k ∈ eachindex(Y_list)
+            key = (X_list[k][1], X_list[k][2], X_list[k][3], X_list[k][4])
+            H_val = X_list[k][5]
+            loss_val = Y_list[k]
+            push!(get!(groups, key, Tuple{Float64, Float64}[]), (H_val, loss_val))
+        end
+
+        rows = NamedTuple[]
+        epsilon_target = 0.01
+        for (key, h_losses) ∈ groups
+            sort!(h_losses, by = x -> x[1])
+            best_H = maximum(x[1] for x ∈ h_losses)
+            for (H_val, loss_val) ∈ h_losses
+                if loss_val <= epsilon_target
+                    best_H = H_val
+                    break
+                end
+            end
+            push!(rows, (
+                U_norm = key[2],
+                T_dwell_rem = 0.0,
+                L_norm = key[1],
+                sigma_load = 10.0,
+                R_wind_max = 0.05,
+                X_delta_norm = key[3],
+                X_switch_ratio = key[4],
+                To_star = Float64(best_H)
+            ))
+        end
+
+        df_train = DataFrame(rows)
+        if nrow(df_train) >= 4 && isdefined(@__MODULE__, :ADAPTIVE_PCM_PROJECT_ROOT)
+            cache_root = joinpath(ADAPTIVE_PCM_PROJECT_ROOT, "output", "pcm_training_cache")
+            expected_meta = OverlapPredictor.EXPECTED_TRAINING_METADATA[]
+            if expected_meta !== nothing
+                paths = AdaptiveOverlapTrainingCache.cache_paths(cache_root, expected_meta)
+                AdaptiveOverlapTrainingCache.save_cached_dataset(cache_root, df_train, expected_meta)
+                OverlapPredictor.train_model(paths.dataset_path)
+                println("  ✓ CART Decision Tree trained and cached successfully ($(nrow(df_train)) unique samples).")
+            end
+        end
+    catch e
+        println("  ⚠ Decision tree cache update failed: $e")
     end
 
     return models

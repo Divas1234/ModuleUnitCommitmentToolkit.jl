@@ -1,5 +1,5 @@
 # PCM 唯一程序入口。
-# 通过 PCM_METHOD 选择 standard、clustered_pcm 或 adaptive_overlap。
+# 通过 PCM_METHOD 选择 standard、clustered_pcm、adaptive_overlap 或 clustered_adaptive_overlap。
 method=lowercase(get(ENV, "PCM_METHOD", "standard"))
 
 if method in ("standard", "single", "single_unit")
@@ -15,6 +15,11 @@ elseif method in ("clustered_pcm", "clustered", "cluster")
 elseif method in ("adaptive_overlap", "adaptive", "overlap")
     ENV["PCM_USE_CLUSTERED_UC"]="false"
     include("adaptive_overlap/runners/export_overlap_stats.jl")
+
+elseif method in ("clustered_adaptive_overlap", "clustered_overlap", "adaptive_clustered", "clustered_adaptive")
+    ENV["PCM_USE_CLUSTERED_UC"]="true"
+    include("adaptive_overlap/runners/run_clustered_adaptive_overlap.jl")
 else
-    error("Unsupported PCM_METHOD='$method'. Use standard, clustered_pcm, or adaptive_overlap.")
+    error("Unsupported PCM_METHOD='$method'. Use standard, clustered_pcm, adaptive_overlap, or clustered_adaptive_overlap.")
 end
+

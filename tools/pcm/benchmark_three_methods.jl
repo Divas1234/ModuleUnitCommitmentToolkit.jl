@@ -31,7 +31,7 @@ function cost_delta_pct(base, candidate)
 end
 
 function method_equivalent_units(method::AbstractString, physical, virtual)
-    lowercase(method) == "clustered_pcm" ? virtual : physical
+    lowercase(method) in ("clustered_pcm", "clustered_adaptive_overlap") ? virtual : physical
 end
 
 function read_cost_vector(path::AbstractString)
@@ -147,8 +147,9 @@ function _metric_value(metrics, name, default = missing)
 end
 
 function _overlap_metrics(run_dir, method)
-    method != "adaptive_overlap" && return (windows = "", average = 0.0, maximum = 0.0, ramp_events = 0.0)
-    path = joinpath(run_dir, "output", "details_schedule_results", "adaptive_pcm_simulation_results", "overlap_window_statistics.csv")
+    method ∉ ("adaptive_overlap", "clustered_adaptive_overlap") && return (windows = "", average = 0.0, maximum = 0.0, ramp_events = 0.0)
+    folder = method == "clustered_adaptive_overlap" ? "clustered_adaptive_pcm_simulation_results" : "adaptive_pcm_simulation_results"
+    path = joinpath(run_dir, "output", "details_schedule_results", folder, "overlap_window_statistics.csv")
     isfile(path) || return (windows = "", average = missing, maximum = missing, ramp_events = missing)
     stats = CSV.read(path, DataFrame)
     windows = isempty(stats) ? "" : join(stats.Final_Adaptive_Overlap_h, ";")
@@ -201,8 +202,9 @@ function extract_adaptive_intermediate(run_dir::AbstractString, profile::Abstrac
 end
 
 function _cost_path(run_dir, method)
-    folder = method == "adaptive_overlap" ? "adaptive_pcm_simulation_results" : "pcm_simulation_results"
-    filename = method == "adaptive_overlap" ? "total_scheduled_results.csv" :
+    folder = method == "clustered_adaptive_overlap" ? "clustered_adaptive_pcm_simulation_results" :
+             method == "adaptive_overlap" ? "adaptive_pcm_simulation_results" : "pcm_simulation_results"
+    filename = method in ("adaptive_overlap", "clustered_adaptive_overlap") ? "total_scheduled_results.csv" :
                joinpath("summary_scheduling_report", "total_scheduled_results.csv")
     joinpath(run_dir, "output", "details_schedule_results", folder, filename)
 end

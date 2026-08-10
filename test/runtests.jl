@@ -42,4 +42,5 @@ include("../tools/pcm/clustered_pcm/clustered_pcm.jl")
     include("test_three_method_benchmark.jl")
     include("test_two_scale_benchmark.jl")
     include("test_overlap_training_cache.jl")
+    include("test_clustered_adaptive_overlap.jl")
 end
