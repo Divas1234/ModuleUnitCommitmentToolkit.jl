@@ -1,0 +1,232 @@
+Set parameter Username
+Set parameter LicenseID to value 2826524
+Academic license - for non-commercial use only - expires 2027-05-22
+Set parameter Username
+Set parameter LicenseID to value 2826524
+Academic license - for non-commercial use only - expires 2027-05-22
+Set parameter MIPGap to value 0.015
+Set parameter Threads to value 2
+Set parameter TimeLimit to value 600
+Set parameter MIPGap to value 0.015
+Set parameter Threads to value 2
+Set parameter TimeLimit to value 600
+Gurobi Optimizer version 13.0.2 build v13.0.2rc1 (win64 - Windows 11+.0 (29639.2))
+
+CPU model: 13th Gen Intel(R) Core(TM) i7-13700F, instruction set [SSE2|AVX|AVX2]
+Thread count: 16 physical cores, 24 logical processors, using up to 2 threads
+
+Non-default parameters:
+TimeLimit  600
+MIPGap  0.015
+Threads  2
+
+Optimize a model with 149840 rows, 94608 columns and 1330264 nonzeros (Min)
+Model fingerprint: 0x2f62a582
+Model has 70200 linear objective coefficients
+Variable types: 70992 continuous, 23616 integer (23616 binary)
+Coefficient statistics:
+  Matrix range     [4e-02, 4e+02]
+  Objective range  [1e+00, 1e+15]
+  Bounds range     [0e+00, 0e+00]
+  RHS range        [1e-02, 3e+02]
+Warning: Model contains large objective coefficients
+         Consider reformulating model or setting NumericFocus parameter
+         to avoid numerical issues.
+
+Presolve removed 71801 rows and 40580 columns
+Presolve time: 1.37s
+Presolved: 78039 rows, 54028 columns, 369497 nonzeros
+Variable types: 31462 continuous, 22566 integer (22566 binary)
+Deterministic concurrent LP optimizer: primal and dual simplex
+Showing primal log only...
+
+
+Root simplex log...
+
+Iteration    Objective       Primal Inf.    Dual Inf.      Time
+   55881    7.2793892e+06   0.000000e+00   1.701422e+10      5s
+Concurrent spin time: 0.00s
+
+Solved with dual simplex
+
+Root simplex log...
+
+Iteration    Objective       Primal Inf.    Dual Inf.      Time
+   44871    5.5088386e+06   0.000000e+00   0.000000e+00      8s
+
+Use crossover to convert LP symmetric solution to basic solution...
+
+Root crossover log...
+
+    3975 DPushes remaining with DInf 0.0000000e+00                 8s
+       0 DPushes remaining with DInf 0.0000000e+00                 8s
+
+     226 PPushes remaining with PInf 0.0000000e+00                 8s
+       0 PPushes remaining with PInf 0.0000000e+00                 8s
+
+  Push phase complete: Pinf 0.0000000e+00, Dinf 2.5286635e-09      8s
+
+
+Root simplex log...
+
+Iteration    Objective       Primal Inf.    Dual Inf.      Time
+   45840    5.5088386e+06   0.000000e+00   0.000000e+00      8s
+Crossover time: 0.12 seconds (0.12 work units)
+
+Root relaxation: objective 5.508839e+06, 45840 iterations, 6.61 seconds (7.05 work units)
+
+    Nodes    |    Current Node    |     Objective Bounds      |     Work
+ Expl Unexpl |  Obj  Depth IntInf | Incumbent    BestBd   Gap | It/Node Time
+
+     0     0 5508838.63    0 1365          - 5508838.63      -     -    8s
+H    0     0                    2.386426e+16 5508838.63   100%     -    8s
+H    0     0                    1.005256e+14 5508838.63   100%     -    8s
+H    0     0                    1.043266e+07 5508838.63  47.2%     -    8s
+H    0     0                    7533803.8366 5508838.63  26.9%     -    8s
+H    0     0                    5876883.3473 5508838.63  6.26%     -    8s
+     0     0 5519922.08    0 1166 5876883.35 5519922.08  6.07%     -   10s
+     0     0 5521000.97    0 1133 5876883.35 5521000.97  6.06%     -   11s
+     0     0 5521122.68    0 1127 5876883.35 5521122.68  6.05%     -   11s
+     0     0 5521150.42    0 1127 5876883.35 5521150.42  6.05%     -   11s
+     0     0 5521163.94    0 1118 5876883.35 5521163.94  6.05%     -   12s
+     0     0 5521163.94    0 1119 5876883.35 5521163.94  6.05%     -   12s
+     0     0 5526546.04    0  909 5876883.35 5526546.04  5.96%     -   13s
+H    0     0                    5810359.7462 5526586.43  4.88%     -   14s
+H    0     0                    5809584.4298 5526586.43  4.87%     -   14s
+H    0     0                    5809102.0678 5526586.43  4.86%     -   14s
+     0     0 5527032.11    0  825 5809102.07 5527032.11  4.86%     -   14s
+     0     0 5527045.44    0  887 5809102.07 5527045.44  4.86%     -   14s
+     0     0 5527071.68    0  876 5809102.07 5527071.68  4.85%     -   14s
+     0     0 5527074.24    0  872 5809102.07 5527074.24  4.85%     -   15s
+     0     0 5533313.44    0  690 5809102.07 5533313.44  4.75%     -   17s
+H    0     0                    5590756.1982 5533313.47  1.03%     -   17s
+H    0     0                    5590571.4571 5533313.47  1.02%     -   17s
+
+Cutting planes:
+  Learned: 50
+  Gomory: 89
+  Cover: 2
+  Implied bound: 208
+  Clique: 7
+  MIR: 593
+  Flow cover: 484
+  Network: 1
+  RLT: 12
+  Relax-and-lift: 507
+
+Explored 1 nodes (57739 simplex iterations) in 17.67 seconds (25.52 work units)
+Thread count was 2 (of 24 available processors)
+
+Solution count 9: 5.59057e+06 5.8091e+06 5.80958e+06 ... 2.38643e+16
+
+Optimal solution found (tolerance 1.50e-02)
+Best objective 5.590571457133e+06, best bound 5.533313469286e+06, gap 1.0242%
+
+User-callback calls 1418, time in user-callback 0.00 sec
+Integrated PCM reference horizon: 72 h (single optimization problem)
+	→ The renewable energy scenarios module loaded.
+	→ Input data module loaded and ready for UC modeling.
+	→ The [JULIA] environment_config has been loaded.
+	→ Constraint modules included and functions exported.
+	→ Objective functions module loaded and exported.
+	→ Utility functions module loaded and exported.
+	→ all boundary conditions validated.
+  PCM random seed: 20260809
+
+================================================================================
+Step 1: Reading input data from Excel file...
+================================================================================
+Step-1: Loading packages and functions...
+  Reading data from: D:\GithubClonefiles\module_unitcommitment\data\data_118_clustered_pcm.xlsx
+  Reading frequency parameters...
+  Reading energy storage system data...
+  Reading generator, network, and load data...
+  Reading data center data...
+  Reading hydroelectric power data...
+  ✓ All data successfully loaded from Excel file.
+
+================================================================================
+Step 2: Formatting input data for optimization model...
+================================================================================
+Step-2: imput data are loaded
+  PCM load profile: baseline
+  PCM network constraints: disabled
+
+================================================================================
+Step 3: Generating wind power scenarios...
+================================================================================
+
+================================================================================
+Step 4: Configuring sequential scheduling parameters...
+================================================================================
+  Formulation: integrated
+  Scheduling intervals: 1
+  Time periods per interval: 72
+  Total planning horizon: 72 periods
+
+================================================================================
+Step 5: Running sequential unit commitment optimization...
+================================================================================
+
+--------------------------------------------------------------------------------
+Processing scheduling interval 1 of 1...
+--------------------------------------------------------------------------------
+Step-3: Creating dispatching model (Refactored & Modularized)
+	 Variables defined.
+DEBUG set_objective_economic!: NT=72, NG=108, ND=91, NW=20, NS=1, K=3, size(refcost)=(108,), size(eachslope)=(3, 108)
+objective_function
+	MILP economic objective set
+subject to.
+	 constraints: 1) minimum shutup/shutdown time limits			 done
+	 constraints: 2) binary variable logic					 done
+	 constraints: 3) shutup/shutdown cost					 done
+	 constraints: 4) loadcurtailments and spoliedwinds			 done
+	 constraints: 5) generatos power limits					 done
+	 constraints: 6) system reserves limits					 done
+	 constraints: 7) power balance constraints				 done
+	 constraints: 8) ramp-up/ramp-down constraints				 done
+	 constraints: 9) piece linearization constraints			 done
+	 constraints: 10) transmissionline limits skipped (is_NetWorkCon != 1 or Gsdf missing or NL=0)
+	 constraints: 11) stroges system constraints skipped (NC=0 or variables not defined)
+	 constraints: 12) data centra constraints skipped (is_ConsiderDataCentra != 1)
+	 constraints: 13) frequency control constraints skipped (is_ConsiderFrequencyControl != 1)
+	 constraints: 14) hydro power limits					 done
++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+Step-4: starting Gurobi solver
+Step-5: Gurobi solver finished
++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+assert_is_solved_and_feasible(scuc) = nothing
+solution_summary(scuc) = solution_summary(; result = 1, verbose = false)
+├ solver_name          : Gurobi
+├ Termination
+│ ├ termination_status : OPTIMAL
+│ ├ result_count       : 9
+│ ├ raw_status         : Model was solved to optimality (subject to tolerances), and an optimal solution is available.
+│ └ objective_bound    : 5.53331e+06
+├ Solution (result = 1)
+│ ├ primal_status        : FEASIBLE_POINT
+│ ├ dual_status          : NO_SOLUTION
+│ ├ objective_value      : 5.59057e+06
+│ └ relative_gap         : 1.02419e-02
+└ Work counters
+  ├ solve_time (sec)   : 1.76710e+01
+  ├ simplex_iterations : 57739
+  ├ barrier_iterations : 0
+  └ node_count         : 1
+
+
+Termination Status: OPTIMAL
+Acceptable solution found (Status: OPTIMAL).
+Step-6: record datas
+PART1: [unit-commitment] calculation result has been saved to: D:\GithubClonefiles\module_unitcommitment\output\pcm_com4_loadall_h72_20260814_193938\base\uc_ref\r01\output/details_schedule_results/pcm_simulation_results/intervels_[1]/res_schedule_commitment_result.txt
+  ✓ Interval 1 optimization completed successfully
+Extracting results from dictionary...
+details [unit_commtiemnt] scheduling results have been saved!
+
+================================================================================
+Step 6: Aggregating total scheduling costs...
+================================================================================
+  ✓ Sequential PCM (integrated) completed successfully
+  Total intervals processed: 1
+  Results saved to: D:\GithubClonefiles\module_unitcommitment\output\pcm_com4_loadall_h72_20260814_193938\base\uc_ref\r01\output\details_schedule_results/pcm_simulation_results/summary_scheduling_report/

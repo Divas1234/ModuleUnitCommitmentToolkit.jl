@@ -1,0 +1,21 @@
+================================================================================
+ADAPTIVE OVERLAP WINDOW STATISTICAL REPORT
+================================================================================
+Total Scheduling Intervals : 3
+Execution Window Per Set   : 24 hours
+Decay Factor (alpha)       : 0.25
+Decay Threshold (epsilon)  : 0.10
+Calibration Time Excluded  : 0.00 seconds
+Slow-Start Generators      : 66 units (max static min_up/down param: 10h)
+Steady-State Decay Window  : 9 hours
+Average Overlap Window     : 8.33 hours
+Max Overlap Window         : 9 hours
+Min Overlap Window         : 7 hours
+Total Subproblem Solve Time: 23.95 seconds
+--------------------------------------------------------------------------------
+PER-INTERVAL OVERLAP WINDOW BREAKDOWN:
+--------------------------------------------------------------------------------
+Interval 1 | Start Hour   1 | Exec: 24h | Steady:  9h | UnitDwell:  0h | Ramp: false ( 0h) | Limiting: steady           | Final Overlap:  9h | Total Solved: 33h | Solve: 16.82s
+Interval 2 | Start Hour  25 | Exec: 24h | Steady:  6h | UnitDwell:  7h | Ramp: false ( 0h) | Limiting: unit_dwell       | Final Overlap:  7h | Total Solved: 31h | Solve: 3.54s
+Interval 3 | Start Hour  49 | Exec: 24h | Steady:  9h | UnitDwell:  0h | Ramp: false ( 0h) | Limiting: steady           | Final Overlap:  9h | Total Solved: 33h | Solve: 3.58s
+================================================================================

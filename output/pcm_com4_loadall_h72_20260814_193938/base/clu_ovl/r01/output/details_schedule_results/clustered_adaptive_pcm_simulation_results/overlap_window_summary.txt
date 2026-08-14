@@ -1,0 +1,23 @@
+================================================================================
+CLUSTERED ADAPTIVE OVERLAP WINDOW STATISTICAL REPORT
+================================================================================
+Total Scheduling Intervals : 3
+Execution Window Per Set   : 24 hours
+Clustered UC Mode          : ENABLED
+Decay Factor (alpha)       : 0.25
+Decay Threshold (epsilon)  : 0.10
+Calibration Time Excluded  : 0.00 seconds
+Slow-Start Generators      : 66 units (max static min_up/down param: 10h)
+Steady-State Decay Window  : 9 hours
+Average Overlap Window     : 6.67 hours
+Max Overlap Window         : 12 hours
+Min Overlap Window         : 4 hours
+Average Overlap Selection Time : 0.633 seconds
+Total Subproblem Solve Time: 41.80 seconds
+--------------------------------------------------------------------------------
+PER-INTERVAL OVERLAP WINDOW BREAKDOWN:
+--------------------------------------------------------------------------------
+Interval 1 | Start Hour   1 | Exec: 24h | Steady:  4h | UnitDwell:  0h | Ramp: false ( 0h) | Limiting: steady           | Final Overlap:  4h | Select Time: 1.775s | Solve Time: 17.82s
+Interval 2 | Start Hour  25 | Exec: 24h | Steady:  4h | UnitDwell:  3h | Ramp: false ( 0h) | Limiting: steady           | Final Overlap:  4h | Select Time: 0.123s | Solve Time: 9.59s
+Interval 3 | Start Hour  49 | Exec: 24h | Steady: 12h | UnitDwell:  1h | Ramp: false ( 0h) | Limiting: steady           | Final Overlap: 12h | Select Time: 0.000s | Solve Time: 14.39s
+================================================================================

@@ -1,0 +1,462 @@
+Set parameter Username
+Set parameter LicenseID to value 2826524
+Academic license - for non-commercial use only - expires 2027-05-22
+Set parameter Username
+Set parameter LicenseID to value 2826524
+Academic license - for non-commercial use only - expires 2027-05-22
+Set parameter MIPGap to value 0.03
+Set parameter Threads to value 2
+Set parameter TimeLimit to value 600
+Set parameter MIPGap to value 0.03
+Set parameter Threads to value 2
+Set parameter TimeLimit to value 600
+Gurobi Optimizer version 13.0.2 build v13.0.2rc1 (win64 - Windows 11+.0 (29639.2))
+
+CPU model: 13th Gen Intel(R) Core(TM) i7-13700F, instruction set [SSE2|AVX|AVX2]
+Thread count: 16 physical cores, 24 logical processors, using up to 2 threads
+
+Non-default parameters:
+TimeLimit  600
+MIPGap  0.03
+Threads  2
+
+Optimize a model with 68681 rows, 43362 columns and 608023 nonzeros (Min)
+Model fingerprint: 0x75b3e1cc
+Model has 32175 linear objective coefficients
+Variable types: 32538 continuous, 10824 integer (10824 binary)
+Coefficient statistics:
+  Matrix range     [4e-02, 4e+02]
+  Objective range  [1e+00, 1e+15]
+  Bounds range     [0e+00, 0e+00]
+  RHS range        [2e-02, 3e+02]
+Warning: Model contains large objective coefficients
+         Consider reformulating model or setting NumericFocus parameter
+         to avoid numerical issues.
+
+Presolve removed 33823 rows and 19208 columns
+Presolve time: 0.45s
+Presolved: 34858 rows, 24154 columns, 137204 nonzeros
+Variable types: 14224 continuous, 9930 integer (9930 binary)
+Found heuristic solution: objective 8221894.4063
+Found heuristic solution: objective 6570577.7439
+Deterministic concurrent LP optimizer: primal and dual simplex
+Showing primal log only...
+
+Concurrent spin time: 0.03s
+
+Solved with dual simplex
+
+Use crossover to convert LP symmetric solution to basic solution...
+Crossover time: 0.04 seconds (0.04 work units)
+
+Root relaxation: objective 2.145782e+06, 9269 iterations, 0.62 seconds (0.80 work units)
+
+    Nodes    |    Current Node    |     Objective Bounds      |     Work
+ Expl Unexpl |  Obj  Depth IntInf | Incumbent    BestBd   Gap | It/Node Time
+
+     0     0 2145781.64    0  995 6570577.74 2145781.64  67.3%     -    1s
+H    0     0                    2592462.9547 2145781.64  17.2%     -    1s
+     0     0 2159442.70    0  730 2592462.95 2159442.70  16.7%     -    3s
+H    0     0                    2361828.7837 2159510.87  8.57%     -    3s
+     0     0 2159981.80    0  717 2361828.78 2159981.80  8.55%     -    3s
+     0     0 2160147.43    0  641 2361828.78 2160147.43  8.54%     -    3s
+     0     0 2160239.84    0  628 2361828.78 2160239.84  8.54%     -    3s
+     0     0 2160255.22    0  631 2361828.78 2160255.22  8.53%     -    3s
+     0     0 2160255.27    0  632 2361828.78 2160255.27  8.53%     -    3s
+     0     0 2169220.37    0  630 2361828.78 2169220.37  8.16%     -    4s
+H    0     0                    2360314.6139 2169280.31  8.09%     -    4s
+     0     0 2169931.99    0  563 2360314.61 2169931.99  8.07%     -    4s
+     0     0 2170040.17    0  524 2360314.61 2170040.17  8.06%     -    4s
+     0     0 2170045.44    0  515 2360314.61 2170045.44  8.06%     -    4s
+     0     0 2170046.35    0  518 2360314.61 2170046.35  8.06%     -    5s
+     0     0 2174606.22    0  378 2360314.61 2174606.22  7.87%     -    6s
+H    0     0                    2195435.5265 2174607.91  0.95%     -    6s
+
+Cutting planes:
+  Learned: 194
+  Gomory: 22
+  Lift-and-project: 6
+  Implied bound: 127
+  MIR: 222
+  Flow cover: 364
+  RLT: 68
+  Relax-and-lift: 605
+
+Explored 1 nodes (17738 simplex iterations) in 6.06 seconds (9.32 work units)
+Thread count was 2 (of 24 available processors)
+
+Solution count 6: 2.19544e+06 2.36031e+06 2.36183e+06 ... 8.22189e+06
+
+Optimal solution found (tolerance 3.00e-02)
+Best objective 2.195435526453e+06, best bound 2.174607912068e+06, gap 0.9487%
+
+User-callback calls 845, time in user-callback 0.00 sec
+Set parameter Username
+Set parameter LicenseID to value 2826524
+Academic license - for non-commercial use only - expires 2027-05-22
+Set parameter MIPGap to value 0.03
+Set parameter Threads to value 2
+Set parameter TimeLimit to value 600
+Set parameter MIPGap to value 0.03
+Set parameter Threads to value 2
+Set parameter TimeLimit to value 600
+Gurobi Optimizer version 13.0.2 build v13.0.2rc1 (win64 - Windows 11+.0 (29639.2))
+
+CPU model: 13th Gen Intel(R) Core(TM) i7-13700F, instruction set [SSE2|AVX|AVX2]
+Thread count: 16 physical cores, 24 logical processors, using up to 2 threads
+
+Non-default parameters:
+TimeLimit  600
+MIPGap  0.03
+Threads  2
+
+Optimize a model with 64548 rows, 40734 columns and 571014 nonzeros (Min)
+Model fingerprint: 0x9357b0d8
+Model has 30225 linear objective coefficients
+Variable types: 30566 continuous, 10168 integer (10168 binary)
+Coefficient statistics:
+  Matrix range     [4e-02, 4e+02]
+  Objective range  [1e+00, 1e+15]
+  Bounds range     [0e+00, 0e+00]
+  RHS range        [2e-02, 4e+02]
+Warning: Model contains large objective coefficients
+         Consider reformulating model or setting NumericFocus parameter
+         to avoid numerical issues.
+
+Presolve removed 32289 rows and 18287 columns
+Presolve time: 0.38s
+Presolved: 32259 rows, 22447 columns, 128773 nonzeros
+Variable types: 13237 continuous, 9210 integer (9210 binary)
+Found heuristic solution: objective 1.559912e+07
+Found heuristic solution: objective 7795462.4013
+Deterministic concurrent LP optimizer: primal and dual simplex
+Showing primal log only...
+
+Concurrent spin time: 0.01s
+
+Solved with dual simplex
+
+Use crossover to convert LP symmetric solution to basic solution...
+Crossover time: 0.03 seconds (0.03 work units)
+
+Root relaxation: objective 2.548725e+06, 9647 iterations, 0.50 seconds (0.66 work units)
+
+    Nodes    |    Current Node    |     Objective Bounds      |     Work
+ Expl Unexpl |  Obj  Depth IntInf | Incumbent    BestBd   Gap | It/Node Time
+
+     0     0 2548725.26    0  475 7795462.40 2548725.26  67.3%     -    1s
+H    0     0                    2659919.9687 2548725.26  4.18%     -    1s
+     0     0 2556699.02    0  424 2659919.97 2556699.02  3.88%     -    1s
+H    0     0                    2597639.8529 2556800.14  1.57%     -    1s
+
+Cutting planes:
+  Learned: 2
+  Gomory: 29
+  Cover: 1
+  Implied bound: 106
+  MIR: 38
+  Flow cover: 30
+  RLT: 105
+  Relax-and-lift: 12
+
+Explored 1 nodes (12274 simplex iterations) in 1.95 seconds (3.36 work units)
+Thread count was 2 (of 24 available processors)
+
+Solution count 4: 2.59764e+06 2.65992e+06 7.79546e+06 1.55991e+07 
+
+Optimal solution found (tolerance 3.00e-02)
+Best objective 2.597639852933e+06, best bound 2.556800139444e+06, gap 1.5722%
+
+User-callback calls 476, time in user-callback 0.00 sec
+Set parameter Username
+Set parameter LicenseID to value 2826524
+Academic license - for non-commercial use only - expires 2027-05-22
+Set parameter MIPGap to value 0.03
+Set parameter Threads to value 2
+Set parameter TimeLimit to value 600
+Set parameter MIPGap to value 0.03
+Set parameter Threads to value 2
+Set parameter TimeLimit to value 600
+Gurobi Optimizer version 13.0.2 build v13.0.2rc1 (win64 - Windows 11+.0 (29639.2))
+
+CPU model: 13th Gen Intel(R) Core(TM) i7-13700F, instruction set [SSE2|AVX|AVX2]
+Thread count: 16 physical cores, 24 logical processors, using up to 2 threads
+
+Non-default parameters:
+TimeLimit  600
+MIPGap  0.03
+Threads  2
+
+Optimize a model with 68681 rows, 43362 columns and 608023 nonzeros (Min)
+Model fingerprint: 0xbf4216b0
+Model has 32175 linear objective coefficients
+Variable types: 32538 continuous, 10824 integer (10824 binary)
+Coefficient statistics:
+  Matrix range     [4e-02, 4e+02]
+  Objective range  [1e+00, 1e+15]
+  Bounds range     [0e+00, 0e+00]
+  RHS range        [2e-02, 4e+02]
+Warning: Model contains large objective coefficients
+         Consider reformulating model or setting NumericFocus parameter
+         to avoid numerical issues.
+
+Presolve removed 33786 rows and 19168 columns
+Presolve time: 0.40s
+Presolved: 34895 rows, 24194 columns, 137475 nonzeros
+Variable types: 14246 continuous, 9948 integer (9948 binary)
+Found heuristic solution: objective 3.654229e+07
+Found heuristic solution: objective 2.707201e+07
+Deterministic concurrent LP optimizer: primal and dual simplex
+Showing primal log only...
+
+Concurrent spin time: 0.00s
+
+Solved with dual simplex
+
+Use crossover to convert LP symmetric solution to basic solution...
+Crossover time: 0.04 seconds (0.03 work units)
+
+Root relaxation: objective 1.467377e+06, 10842 iterations, 0.67 seconds (0.92 work units)
+
+    Nodes    |    Current Node    |     Objective Bounds      |     Work
+ Expl Unexpl |  Obj  Depth IntInf | Incumbent    BestBd   Gap | It/Node Time
+
+     0     0 1467377.28    0  511 2.7072e+07 1467377.28  94.6%     -    1s
+H    0     0                    1619483.3282 1467377.28  9.39%     -    1s
+H    0     0                    1619483.3279 1467377.28  9.39%     -    1s
+H    0     0                    1514449.8842 1467377.28  3.11%     -    1s
+H    0     0                    1501467.0911 1467377.28  2.27%     -    1s
+
+Explored 1 nodes (10858 simplex iterations) in 1.54 seconds (2.61 work units)
+Thread count was 2 (of 24 available processors)
+
+Solution count 5: 1.50147e+06 1.51445e+06 1.61948e+06 ... 3.65423e+07
+
+Optimal solution found (tolerance 3.00e-02)
+Best objective 1.501467091113e+06, best bound 1.467377280881e+06, gap 2.2704%
+
+User-callback calls 377, time in user-callback 0.00 sec
+	→ The renewable energy scenarios module loaded.
+	→ Input data module loaded and ready for UC modeling.
+	→ The [JULIA] environment_config has been loaded.
+	→ Constraint modules included and functions exported.
+	→ Objective functions module loaded and exported.
+	→ Utility functions module loaded and exported.
+	→ all boundary conditions validated.
+
+================================================================================
+EXPORTING ADAPTIVE OVERLAP WINDOW STATISTICS
+================================================================================
+
+Reading project input data...
+Step-1: Loading packages and functions...
+  Reading data from: D:\GithubClonefiles\module_unitcommitment\data\data_118_clustered_pcm.xlsx
+  Reading frequency parameters...
+  Reading energy storage system data...
+  Reading generator, network, and load data...
+  Reading data center data...
+  Reading hydroelectric power data...
+  ✓ All data successfully loaded from Excel file.
+Step-2: imput data are loaded
+  PCM load profile: smooth
+  PCM random seed: 20260809
+  Training case signature: 80bf4ed96d2b0b4a642786ebfe57371ba616f4ee3f44f310d05ad2ae4266bf7a
+  Training cache: HIT (49 samples; no retraining required)
+  Load curve horizon used for statistics: 168 h
+  Wind scenario horizon used for statistics: 168 h
+  Steady-state overlap mode: ml_prediction
+  Calibration / training time excluded from subproblem solve times: 0.00 s
+  Training cache hit: D:\GithubClonefiles\module_unitcommitment\output\ml_trainningdata_res\overlap_training_cache\80bf4ed96d2b0b4a642786ebfe57371ba616f4ee3f44f310d05ad2ae4266bf7a\offline_training_dataset.csv
+Training Decision Tree on: D:\GithubClonefiles\module_unitcommitment\output\ml_trainningdata_res\overlap_training_cache\80bf4ed96d2b0b4a642786ebfe57371ba616f4ee3f44f310d05ad2ae4266bf7a\offline_training_dataset.csv
+Model training complete. Trained Tree Structure:
+Split: X_switch_ratio <= 0.5648
+  L:     Split: L_norm <= 0.3755
+      L:         Split: L_norm <= 0.3633
+          L:             => Prediction: 8.67
+          R:             => Prediction: 12.0
+      R:         Split: L_norm <= 0.4185
+          L:             => Prediction: 5.54
+          R:             => Prediction: 8.25
+  R:     => Prediction: 2.0
+R^2 score on training data: 0.3031
+[AdaptiveOverlap][RampCriterion] start=1 no ramp/uncertainty event in lookahead; T_ramp=0
+[AdaptiveOverlap] interval=1 start=1 mode=ml_prediction
+  boundary criterion: U_norm=0.4072, T_dwell_rem=0.0, X_delta_norm=0.2978, X_switch_ratio=0.1667
+  steady-state criterion: L_norm=0.3596, sigma_load=16.9839, R_wind_max=0.0734, T_ml=9
+  physical criteria: T_unit_start=0, ramp_event=false, T_ramp=0
+  final criterion: max(T_ml=9, T_unit=0, T_ramp=0)=9; clamped_final=9, solved_horizon=33
+Step-3: Creating dispatching model (Refactored & Modularized)
+	 Variables defined.
+DEBUG set_objective_economic!: NT=33, NG=108, ND=91, NW=20, NS=1, K=3, size(refcost)=(108,), size(eachslope)=(3, 108)
+objective_function
+	MILP economic objective set
+subject to.
+	 constraints: 1) minimum shutup/shutdown time limits			 done
+	 constraints: 2) binary variable logic					 done
+	 constraints: 3) shutup/shutdown cost					 done
+	 constraints: 4) loadcurtailments and spoliedwinds			 done
+	 constraints: 5) generatos power limits					 done
+	 constraints: 6) system reserves limits					 done
+	 constraints: 7) power balance constraints				 done
+	 constraints: 8) ramp-up/ramp-down constraints				 done
+	 constraints: 9) piece linearization constraints			 done
+	 constraints: 10) transmissionline limits skipped (is_NetWorkCon != 1 or Gsdf missing or NL=0)
+	 constraints: 11) stroges system constraints skipped (NC=0 or variables not defined)
+	 constraints: 12) data centra constraints skipped (is_ConsiderDataCentra != 1)
+	 constraints: 13) frequency control constraints skipped (is_ConsiderFrequencyControl != 1)
+	 constraints: 14) hydro power limits					 done
++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+Step-4: starting Gurobi solver
+Step-5: Gurobi solver finished
++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+assert_is_solved_and_feasible(scuc) = nothing
+solution_summary(scuc) = solution_summary(; result = 1, verbose = false)
+├ solver_name          : Gurobi
+├ Termination
+│ ├ termination_status : OPTIMAL
+│ ├ result_count       : 6
+│ ├ raw_status         : Model was solved to optimality (subject to tolerances), and an optimal solution is available.
+│ └ objective_bound    : 2.17461e+06
+├ Solution (result = 1)
+│ ├ primal_status        : FEASIBLE_POINT
+│ ├ dual_status          : NO_SOLUTION
+│ ├ objective_value      : 2.19544e+06
+│ └ relative_gap         : 9.48678e-03
+└ Work counters
+  ├ solve_time (sec)   : 6.06400e+00
+  ├ simplex_iterations : 17738
+  ├ barrier_iterations : 0
+  └ node_count         : 1
+
+
+Termination Status: OPTIMAL
+Acceptable solution found (Status: OPTIMAL).
+Step-6: record datas
+PART1: [unit-commitment] calculation result has been saved to: D:\GithubClonefiles\module_unitcommitment\output\pcm_com4_loadall_h72_20260814_193938\smooth\ovl\r01\output/details_schedule_results/pcm_simulation_results/intervels_[1]/res_schedule_commitment_result.txt
+PART1: [unit-commitment] calculation result has been saved to: D:\GithubClonefiles\module_unitcommitment\output\pcm_com4_loadall_h72_20260814_193938\smooth\ovl\r01\output/details_schedule_results/pcm_simulation_results/intervels_[1]/res_schedule_commitment_result.txt
+[AdaptiveOverlap][RampCriterion] start=25 no ramp/uncertainty event in lookahead; T_ramp=0
+[AdaptiveOverlap] interval=2 start=25 mode=ml_prediction
+  boundary criterion: U_norm=0.338, T_dwell_rem=7.0, X_delta_norm=0.5665, X_switch_ratio=0.463
+  steady-state criterion: L_norm=0.3841, sigma_load=27.6923, R_wind_max=0.0677, T_ml=6
+  physical criteria: T_unit_start=7, ramp_event=false, T_ramp=0
+  final criterion: max(T_ml=6, T_unit=7, T_ramp=0)=7; clamped_final=7, solved_horizon=31
+Step-3: Creating dispatching model (Refactored & Modularized)
+	 Variables defined.
+DEBUG set_objective_economic!: NT=31, NG=108, ND=91, NW=20, NS=1, K=3, size(refcost)=(108,), size(eachslope)=(3, 108)
+objective_function
+	MILP economic objective set
+subject to.
+	 constraints: 1) minimum shutup/shutdown time limits			 done
+	 constraints: 2) binary variable logic					 done
+	 constraints: 3) shutup/shutdown cost					 done
+	 constraints: 4) loadcurtailments and spoliedwinds			 done
+	 constraints: 5) generatos power limits					 done
+	 constraints: 6) system reserves limits					 done
+	 constraints: 7) power balance constraints				 done
+	 constraints: 8) ramp-up/ramp-down constraints				 done
+	 constraints: 9) piece linearization constraints			 done
+	 constraints: 10) transmissionline limits skipped (is_NetWorkCon != 1 or Gsdf missing or NL=0)
+	 constraints: 11) stroges system constraints skipped (NC=0 or variables not defined)
+	 constraints: 12) data centra constraints skipped (is_ConsiderDataCentra != 1)
+	 constraints: 13) frequency control constraints skipped (is_ConsiderFrequencyControl != 1)
+	 constraints: 14) hydro power limits					 done
++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+Step-4: starting Gurobi solver
+Step-5: Gurobi solver finished
++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+assert_is_solved_and_feasible(scuc) = nothing
+solution_summary(scuc) = solution_summary(; result = 1, verbose = false)
+├ solver_name          : Gurobi
+├ Termination
+│ ├ termination_status : OPTIMAL
+│ ├ result_count       : 4
+│ ├ raw_status         : Model was solved to optimality (subject to tolerances), and an optimal solution is available.
+│ └ objective_bound    : 2.55680e+06
+├ Solution (result = 1)
+│ ├ primal_status        : FEASIBLE_POINT
+│ ├ dual_status          : NO_SOLUTION
+│ ├ objective_value      : 2.59764e+06
+│ └ relative_gap         : 1.57219e-02
+└ Work counters
+  ├ solve_time (sec)   : 1.96300e+00
+  ├ simplex_iterations : 12274
+  ├ barrier_iterations : 0
+  └ node_count         : 1
+
+
+Termination Status: OPTIMAL
+Acceptable solution found (Status: OPTIMAL).
+Step-6: record datas
+PART1: [unit-commitment] calculation result has been saved to: D:\GithubClonefiles\module_unitcommitment\output\pcm_com4_loadall_h72_20260814_193938\smooth\ovl\r01\output/details_schedule_results/pcm_simulation_results/intervels_[2]/res_schedule_commitment_result.txt
+PART1: [unit-commitment] calculation result has been saved to: D:\GithubClonefiles\module_unitcommitment\output\pcm_com4_loadall_h72_20260814_193938\smooth\ovl\r01\output/details_schedule_results/pcm_simulation_results/intervels_[2]/res_schedule_commitment_result.txt
+[AdaptiveOverlap][RampCriterion] start=49 no ramp/uncertainty event in lookahead; T_ramp=0
+[AdaptiveOverlap] interval=3 start=49 mode=ml_prediction
+  boundary criterion: U_norm=0.6011, T_dwell_rem=0.0, X_delta_norm=0.045, X_switch_ratio=0.0278
+  steady-state criterion: L_norm=0.312, sigma_load=22.5644, R_wind_max=0.0675, T_ml=9
+  physical criteria: T_unit_start=0, ramp_event=false, T_ramp=0
+  final criterion: max(T_ml=9, T_unit=0, T_ramp=0)=9; clamped_final=9, solved_horizon=33
+Step-3: Creating dispatching model (Refactored & Modularized)
+	 Variables defined.
+DEBUG set_objective_economic!: NT=33, NG=108, ND=91, NW=20, NS=1, K=3, size(refcost)=(108,), size(eachslope)=(3, 108)
+objective_function
+	MILP economic objective set
+subject to.
+	 constraints: 1) minimum shutup/shutdown time limits			 done
+	 constraints: 2) binary variable logic					 done
+	 constraints: 3) shutup/shutdown cost					 done
+	 constraints: 4) loadcurtailments and spoliedwinds			 done
+	 constraints: 5) generatos power limits					 done
+	 constraints: 6) system reserves limits					 done
+	 constraints: 7) power balance constraints				 done
+	 constraints: 8) ramp-up/ramp-down constraints				 done
+	 constraints: 9) piece linearization constraints			 done
+	 constraints: 10) transmissionline limits skipped (is_NetWorkCon != 1 or Gsdf missing or NL=0)
+	 constraints: 11) stroges system constraints skipped (NC=0 or variables not defined)
+	 constraints: 12) data centra constraints skipped (is_ConsiderDataCentra != 1)
+	 constraints: 13) frequency control constraints skipped (is_ConsiderFrequencyControl != 1)
+	 constraints: 14) hydro power limits					 done
++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+Step-4: starting Gurobi solver
+Step-5: Gurobi solver finished
++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+assert_is_solved_and_feasible(scuc) = nothing
+solution_summary(scuc) = solution_summary(; result = 1, verbose = false)
+├ solver_name          : Gurobi
+├ Termination
+│ ├ termination_status : OPTIMAL
+│ ├ result_count       : 5
+│ ├ raw_status         : Model was solved to optimality (subject to tolerances), and an optimal solution is available.
+│ └ objective_bound    : 1.46738e+06
+├ Solution (result = 1)
+│ ├ primal_status        : FEASIBLE_POINT
+│ ├ dual_status          : NO_SOLUTION
+│ ├ objective_value      : 1.50147e+06
+│ └ relative_gap         : 2.27043e-02
+└ Work counters
+  ├ solve_time (sec)   : 1.54500e+00
+  ├ simplex_iterations : 10858
+  ├ barrier_iterations : 0
+  └ node_count         : 1
+
+
+Termination Status: OPTIMAL
+Acceptable solution found (Status: OPTIMAL).
+Step-6: record datas
+PART1: [unit-commitment] calculation result has been saved to: D:\GithubClonefiles\module_unitcommitment\output\pcm_com4_loadall_h72_20260814_193938\smooth\ovl\r01\output/details_schedule_results/pcm_simulation_results/intervels_[3]/res_schedule_commitment_result.txt
+PART1: [unit-commitment] calculation result has been saved to: D:\GithubClonefiles\module_unitcommitment\output\pcm_com4_loadall_h72_20260814_193938\smooth\ovl\r01\output/details_schedule_results/pcm_simulation_results/intervels_[3]/res_schedule_commitment_result.txt
+  ✓ Per-interval overlap statistics exported to CSV: D:\GithubClonefiles\module_unitcommitment\output\pcm_com4_loadall_h72_20260814_193938\smooth\ovl\r01\output\details_schedule_results\adaptive_pcm_simulation_results\overlap_window_statistics.csv
+  ✓ Human-readable summary report exported to TXT: D:\GithubClonefiles\module_unitcommitment\output\pcm_com4_loadall_h72_20260814_193938\smooth\ovl\r01\output\details_schedule_results\adaptive_pcm_simulation_results\overlap_window_summary.txt
+================================================================================
+
+
+Per-Interval Overlap Summary Dataframe:
+3×14 DataFrame
+ Row │ Interval_ID  Start_Hour  Execution_Window_h  Steady_State_Overlap_h  Unit_Dwell_Overlap_h  Ramp_Event_Detected  Ramp_Overlap_h  Raw_Max_Overlap_h  Limiting_Factor  Final_Adaptive_Overlap_h  Total_Solved_Horizon_h  Overlap_SelectionTime_sec  Subproblem_SolveTime_sec  Optimization_Status
+     │ Int64        Int64       Int64               Int64                   Int64                 Bool                 Int64           Int64              String           Int64                     Int64                   Float64                    Float64                   String
+─────┼────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+   1 │           1           1                  24                       9                     0                false               0                  9  steady                                  9                      33                      1.694                    16.823  OK
+   2 │           2          25                  24                       6                     7                false               0                  7  unit_dwell                              7                      31                      0.124                     3.545  OK
+   3 │           3          49                  24                       9                     0                false               0                  9  steady                                  9                      33                      0.0                       3.583  OK

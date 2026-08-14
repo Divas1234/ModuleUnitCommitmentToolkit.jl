@@ -1,0 +1,110 @@
+Set parameter Username
+Set parameter LicenseID to value 2826524
+Academic license - for non-commercial use only - expires 2027-05-22
+Set parameter Username
+Set parameter LicenseID to value 2826524
+Academic license - for non-commercial use only - expires 2027-05-22
+Set parameter Username
+Set parameter LicenseID to value 2826524
+Academic license - for non-commercial use only - expires 2027-05-22
+Set parameter Username
+Set parameter LicenseID to value 2826524
+Academic license - for non-commercial use only - expires 2027-05-22
+Set parameter Username
+Set parameter LicenseID to value 2826524
+Academic license - for non-commercial use only - expires 2027-05-22
+Set parameter Username
+Set parameter LicenseID to value 2826524
+Academic license - for non-commercial use only - expires 2027-05-22
+Set parameter Username
+Set parameter LicenseID to value 2826524
+Academic license - for non-commercial use only - expires 2027-05-22
+Set parameter Username
+Set parameter LicenseID to value 2826524
+Academic license - for non-commercial use only - expires 2027-05-22
+Set parameter Username
+Set parameter LicenseID to value 2826524
+Academic license - for non-commercial use only - expires 2027-05-22
+Set parameter Username
+Set parameter LicenseID to value 2826524
+Academic license - for non-commercial use only - expires 2027-05-22
+	→ The renewable energy scenarios module loaded.
+	→ Input data module loaded and ready for UC modeling.
+	→ The [JULIA] environment_config has been loaded.
+	→ Constraint modules included and functions exported.
+	→ Objective functions module loaded and exported.
+	→ Utility functions module loaded and exported.
+	→ all boundary conditions validated.
+  PCM random seed: 20260809
+
+================================================================================
+Step 1: Reading input data from Excel file...
+================================================================================
+Step-1: Loading packages and functions...
+  Reading data from: D:\GithubClonefiles\module_unitcommitment\data\data_118_clustered_pcm.xlsx
+  Reading frequency parameters...
+  Reading energy storage system data...
+  Reading generator, network, and load data...
+  Reading data center data...
+  Reading hydroelectric power data...
+  ✓ All data successfully loaded from Excel file.
+
+================================================================================
+Step 2: Formatting input data for optimization model...
+================================================================================
+Step-2: imput data are loaded
+  PCM load profile: smooth
+  PCM network constraints: disabled
+
+================================================================================
+Step 3: Generating wind power scenarios...
+================================================================================
+
+================================================================================
+Step 4: Configuring sequential scheduling parameters...
+================================================================================
+  Formulation: clustered
+  Scheduling intervals: 3
+  Time periods per interval: 24
+  Total planning horizon: 72 periods
+
+================================================================================
+Step 5: Running sequential unit commitment optimization...
+================================================================================
+
+--------------------------------------------------------------------------------
+Processing scheduling interval 1 of 3...
+--------------------------------------------------------------------------------
+Step-3: Creating dispatching model (Refactored & Modularized)
+  Clustered PCM: 108 physical units -> 31 equivalent units (71.3% state reduction; 108 units in non-singleton clusters)
+  ✓ True clustered UC completed (31 virtual units)
+  ✓ Interval 1 optimization completed successfully
+Extracting results from dictionary...
+details [unit_commtiemnt] scheduling results have been saved!
+
+--------------------------------------------------------------------------------
+Processing scheduling interval 2 of 3...
+--------------------------------------------------------------------------------
+Step-3: Creating dispatching model (Refactored & Modularized)
+  Clustered PCM: 108 physical units -> 32 equivalent units (70.4% state reduction; 106 units in non-singleton clusters)
+  ✓ True clustered UC completed (32 virtual units)
+  ✓ Interval 2 optimization completed successfully
+Extracting results from dictionary...
+details [unit_commtiemnt] scheduling results have been saved!
+
+--------------------------------------------------------------------------------
+Processing scheduling interval 3 of 3...
+--------------------------------------------------------------------------------
+Step-3: Creating dispatching model (Refactored & Modularized)
+  Clustered PCM: 108 physical units -> 32 equivalent units (70.4% state reduction; 106 units in non-singleton clusters)
+  ✓ True clustered UC completed (32 virtual units)
+  ✓ Interval 3 optimization completed successfully
+Extracting results from dictionary...
+details [unit_commtiemnt] scheduling results have been saved!
+
+================================================================================
+Step 6: Aggregating total scheduling costs...
+================================================================================
+  ✓ Sequential PCM (clustered) completed successfully
+  Total intervals processed: 3
+  Results saved to: D:\GithubClonefiles\module_unitcommitment\output\pcm_com4_loadall_h72_20260814_193938\smooth\clu\r01\output\details_schedule_results/pcm_simulation_results/summary_scheduling_report/

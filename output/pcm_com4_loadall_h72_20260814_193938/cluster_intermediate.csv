@@ -1,0 +1,24 @@
+profile,method,run,interval,attempt,physical_units,equivalent_units,state_reduction_pct,non_singleton_units,status,failure_stage,diagnostic
+baseline,clustered_pcm,1,1,1,108,31,71.3,108,completed,,✓ True clustered UC completed (31 virtual units)
+baseline,clustered_pcm,1,2,1,108,36,66.7,99,completed,,✓ True clustered UC completed (36 virtual units)
+baseline,clustered_pcm,1,3,1,108,33,69.4,105,completed,,✓ True clustered UC completed (33 virtual units)
+baseline,clustered_pcm,1,0,1,108,31,71.3,108,completed,,✓ True clustered UC completed (31 virtual units)
+baseline,clustered_pcm,1,0,2,108,35,67.6,102,completed,,✓ True clustered UC completed (35 virtual units)
+baseline,clustered_pcm,1,0,3,108,36,66.7,103,completed,,✓ True clustered UC completed (36 virtual units)
+smooth,clustered_pcm,1,1,1,108,31,71.3,108,completed,,✓ True clustered UC completed (31 virtual units)
+smooth,clustered_pcm,1,2,1,108,32,70.4,106,completed,,✓ True clustered UC completed (32 virtual units)
+smooth,clustered_pcm,1,3,1,108,32,70.4,106,completed,,✓ True clustered UC completed (32 virtual units)
+smooth,clustered_pcm,1,0,1,108,31,71.3,108,completed,,✓ True clustered UC completed (31 virtual units)
+smooth,clustered_pcm,1,0,2,108,33,69.4,105,completed,,✓ True clustered UC completed (33 virtual units)
+smooth,clustered_pcm,1,0,3,108,34,68.5,102,completed,,✓ True clustered UC completed (34 virtual units)
+extreme_ramp,clustered_pcm,1,1,1,108,31,71.3,108,completed,,✓ True clustered UC completed (31 virtual units)
+extreme_ramp,clustered_pcm,1,2,1,108,34,68.5,105,attempted,,
+extreme_ramp,clustered_pcm,1,2,2,108,34,68.5,105,attempted,,
+extreme_ramp,clustered_pcm,1,2,3,108,34,68.5,105,failed,cluster_master,INFEASIBLE
+extreme_ramp,clustered_pcm,1,0,1,108,31,71.3,108,completed,,✓ True clustered UC completed (31 virtual units)
+extreme_ramp,clustered_pcm,1,0,2,108,36,66.7,100,attempted,,
+extreme_ramp,clustered_pcm,1,0,3,108,36,66.7,100,attempted,,
+extreme_ramp,clustered_pcm,1,0,4,108,36,66.7,100,failed,cluster_master,INFEASIBLE
+extreme_ramp,clustered_pcm,1,0,5,108,31,71.3,108,attempted,,
+extreme_ramp,clustered_pcm,1,0,6,108,31,71.3,108,attempted,,
+extreme_ramp,clustered_pcm,1,0,7,108,31,71.3,108,completed,,✓ True clustered UC completed (31 virtual units)

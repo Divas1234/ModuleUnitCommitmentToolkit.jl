@@ -1,0 +1,110 @@
+Set parameter Username
+Set parameter LicenseID to value 2826524
+Academic license - for non-commercial use only - expires 2027-05-22
+Set parameter Username
+Set parameter LicenseID to value 2826524
+Academic license - for non-commercial use only - expires 2027-05-22
+Set parameter Username
+Set parameter LicenseID to value 2826524
+Academic license - for non-commercial use only - expires 2027-05-22
+Set parameter Username
+Set parameter LicenseID to value 2826524
+Academic license - for non-commercial use only - expires 2027-05-22
+Set parameter Username
+Set parameter LicenseID to value 2826524
+Academic license - for non-commercial use only - expires 2027-05-22
+Set parameter Username
+Set parameter LicenseID to value 2826524
+Academic license - for non-commercial use only - expires 2027-05-22
+Set parameter Username
+Set parameter LicenseID to value 2826524
+Academic license - for non-commercial use only - expires 2027-05-22
+Set parameter Username
+Set parameter LicenseID to value 2826524
+Academic license - for non-commercial use only - expires 2027-05-22
+Set parameter Username
+Set parameter LicenseID to value 2826524
+Academic license - for non-commercial use only - expires 2027-05-22
+Set parameter Username
+Set parameter LicenseID to value 2826524
+Academic license - for non-commercial use only - expires 2027-05-22
+	→ The renewable energy scenarios module loaded.
+	→ Input data module loaded and ready for UC modeling.
+	→ The [JULIA] environment_config has been loaded.
+	→ Constraint modules included and functions exported.
+	→ Objective functions module loaded and exported.
+	→ Utility functions module loaded and exported.
+	→ all boundary conditions validated.
+
+================================================================================
+RUNNING CLUSTERED ADAPTIVE OVERLAP WINDOW PCM SIMULATION
+================================================================================
+
+Reading project input data...
+Step-1: Loading packages and functions...
+  Reading data from: D:\GithubClonefiles\module_unitcommitment\data\data_118_clustered_pcm.xlsx
+  Reading frequency parameters...
+  Reading energy storage system data...
+  Reading generator, network, and load data...
+  Reading data center data...
+  Reading hydroelectric power data...
+  ✓ All data successfully loaded from Excel file.
+Step-2: imput data are loaded
+  PCM load profile: smooth
+  PCM random seed: 20260809
+  Training case signature: 7ba9aca2ac880c0ae44ecb223a2d27fc39e875d9186bd1a0307a29c244b53d4f
+  Training cache: HIT (49 samples; no retraining required)
+  Load curve horizon used: 168 h
+  Wind scenario horizon used: 168 h
+  Steady-state overlap mode: ml_prediction
+  Calibration / training time: 0.00 s
+  Training cache hit: D:\GithubClonefiles\module_unitcommitment\output\ml_trainningdata_res\overlap_training_cache\7ba9aca2ac880c0ae44ecb223a2d27fc39e875d9186bd1a0307a29c244b53d4f\offline_training_dataset.csv
+Training Decision Tree on: D:\GithubClonefiles\module_unitcommitment\output\ml_trainningdata_res\overlap_training_cache\7ba9aca2ac880c0ae44ecb223a2d27fc39e875d9186bd1a0307a29c244b53d4f\offline_training_dataset.csv
+Model training complete. Trained Tree Structure:
+Split: X_delta_norm <= 0.1977
+  L:     Split: L_norm <= 0.3936
+      L:         Split: L_norm <= 0.3358
+          L:             => Prediction: 12.0
+          R:             => Prediction: 5.44
+      R:         Split: X_switch_ratio <= 0.0417
+          L:             => Prediction: 7.71
+          R:             => Prediction: 10.75
+  R:     => Prediction: 2.0
+R^2 score on training data: 0.5165
+[AdaptiveOverlap][RampCriterion] start=1 no ramp/uncertainty event in lookahead; T_ramp=0
+[AdaptiveOverlap] interval=1 start=1 mode=ml_prediction
+  boundary criterion: U_norm=0.4072, T_dwell_rem=0.0, X_delta_norm=0.2978, X_switch_ratio=0.1667
+  steady-state criterion: L_norm=0.3596, sigma_load=16.9839, R_wind_max=0.0734, T_ml=2
+  physical criteria: T_unit_start=0, ramp_event=false, T_ramp=0
+  final criterion: max(T_ml=2, T_unit=0, T_ramp=0)=2; clamped_final=2, solved_horizon=26
+Step-3: Creating dispatching model (Refactored & Modularized)
+  Clustered PCM: 108 physical units -> 31 equivalent units (71.3% state reduction; 108 units in non-singleton clusters)
+  ✓ True clustered UC completed (31 virtual units)
+PART1: [unit-commitment] calculation result has been saved to: D:\GithubClonefiles\module_unitcommitment\output\pcm_com4_loadall_h72_20260814_193938\smooth\clu_ovl\r01\output/details_schedule_results/pcm_simulation_results/intervels_[1]/res_schedule_commitment_result.txt
+  Interval 1 | Overlap Selection Time: 1.400 s | Selected Overlap:  2h (Steady:  2h, Unit:  0h, Ramp:  0h) | Solve Time: 18.82 s
+[AdaptiveOverlap][RampCriterion] start=25 no ramp/uncertainty event in lookahead; T_ramp=0
+[AdaptiveOverlap] interval=2 start=25 mode=ml_prediction
+  boundary criterion: U_norm=0.2964, T_dwell_rem=5.0, X_delta_norm=0.608, X_switch_ratio=0.4815
+  steady-state criterion: L_norm=0.3841, sigma_load=27.6923, R_wind_max=0.0677, T_ml=2
+  physical criteria: T_unit_start=5, ramp_event=false, T_ramp=0
+  final criterion: max(T_ml=2, T_unit=5, T_ramp=0)=5; clamped_final=5, solved_horizon=29
+Step-3: Creating dispatching model (Refactored & Modularized)
+  Clustered PCM: 108 physical units -> 33 equivalent units (69.4% state reduction; 105 units in non-singleton clusters)
+  ✓ True clustered UC completed (33 virtual units)
+PART1: [unit-commitment] calculation result has been saved to: D:\GithubClonefiles\module_unitcommitment\output\pcm_com4_loadall_h72_20260814_193938\smooth\clu_ovl\r01\output/details_schedule_results/pcm_simulation_results/intervels_[2]/res_schedule_commitment_result.txt
+  Interval 2 | Overlap Selection Time: 0.141 s | Selected Overlap:  5h (Steady:  2h, Unit:  5h, Ramp:  0h) | Solve Time: 10.81 s
+[AdaptiveOverlap][RampCriterion] start=49 no ramp/uncertainty event in lookahead; T_ramp=0
+[AdaptiveOverlap] interval=3 start=49 mode=ml_prediction
+  boundary criterion: U_norm=0.5596, T_dwell_rem=7.0, X_delta_norm=0.0866, X_switch_ratio=0.0463
+  steady-state criterion: L_norm=0.312, sigma_load=22.5644, R_wind_max=0.0675, T_ml=12
+  physical criteria: T_unit_start=7, ramp_event=false, T_ramp=0
+  final criterion: max(T_ml=12, T_unit=7, T_ramp=0)=12; clamped_final=12, solved_horizon=36
+Step-3: Creating dispatching model (Refactored & Modularized)
+  Clustered PCM: 108 physical units -> 34 equivalent units (68.5% state reduction; 102 units in non-singleton clusters)
+  ✓ True clustered UC completed (34 virtual units)
+PART1: [unit-commitment] calculation result has been saved to: D:\GithubClonefiles\module_unitcommitment\output\pcm_com4_loadall_h72_20260814_193938\smooth\clu_ovl\r01\output/details_schedule_results/pcm_simulation_results/intervels_[3]/res_schedule_commitment_result.txt
+  Interval 3 | Overlap Selection Time: 0.000 s | Selected Overlap: 12h (Steady: 12h, Unit:  7h, Ramp:  0h) | Solve Time: 24.82 s
+  ✓ Report exported to CSV: D:\GithubClonefiles\module_unitcommitment\output\pcm_com4_loadall_h72_20260814_193938\smooth\clu_ovl\r01\output\details_schedule_results\clustered_adaptive_pcm_simulation_results\overlap_window_statistics.csv
+  ✓ Report exported to TXT: D:\GithubClonefiles\module_unitcommitment\output\pcm_com4_loadall_h72_20260814_193938\smooth\clu_ovl\r01\output\details_schedule_results\clustered_adaptive_pcm_simulation_results\overlap_window_summary.txt
+================================================================================
+

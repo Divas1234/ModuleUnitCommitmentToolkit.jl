@@ -2,7 +2,10 @@
 # 通过 PCM_METHOD 选择 standard、clustered_pcm、adaptive_overlap 或 clustered_adaptive_overlap。
 method=lowercase(get(ENV, "PCM_METHOD", "standard"))
 
-if method in ("standard", "single", "single_unit", "integrated_uc", "uc_reference")
+if method in ("integrated_uc", "uc_reference")
+	include("integrated_pcm/main.jl")
+
+elseif method in ("standard", "single", "single_unit")
 	include("standard_pcm/main.jl")
 
 elseif method in ("clustered_pcm", "clustered", "cluster")
