@@ -1,2 +1,0 @@
-timestamp,method,load_profile,status,solver,wall_time_sec,allocated_mb,gc_time_sec,peak_rss_mb,input_file,window_hours,intervals,physical_units,virtual_units,commitment_integer_variables,cluster_attempts,cluster_successes,cluster_fallbacks,total_cost,failure
-2026-08-09T23:05:52.678,standard,baseline,OK,gurobi,34.691686667,9428.180755615234,3.034577079,1668.828125,/Users/yuanyiping/Documents/GitHub/02 Ongoing/module_unitcommitment/data/data_118_clustered_pcm.xlsx,24,1,108,31,7776,0,0,0,1.7048056206405847e6,

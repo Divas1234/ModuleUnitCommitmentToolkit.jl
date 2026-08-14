@@ -99,6 +99,41 @@
 					"label": ""
 				}
 			]
+		},
+		{
+			"path": "tools/pcm/clustered_pcm/master.jl",
+			"bookmarks": [
+				{
+					"line": 72,
+					"column": 10,
+					"label": ""
+				},
+				{
+					"line": 197,
+					"column": 5,
+					"label": ""
+				},
+				{
+					"line": 205,
+					"column": 0,
+					"label": ""
+				},
+				{
+					"line": 233,
+					"column": 6,
+					"label": ""
+				}
+			]
+		},
+		{
+			"path": "tools/pcm/clustered_pcm/adapter.jl",
+			"bookmarks": [
+				{
+					"line": 52,
+					"column": 0,
+					"label": ""
+				}
+			]
 		}
 	]
 }

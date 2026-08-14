@@ -1,4 +1,0 @@
-profile,method,run,interval,attempt,physical_units,equivalent_units,state_reduction_pct,non_singleton_units,status,failure_stage,diagnostic
-baseline,clustered_pcm,1,1,1,1080,31,97.1,1080,completed,,✓ True clustered UC completed (31 virtual units)
-smooth,clustered_pcm,1,1,1,1080,31,97.1,1080,completed,,✓ True clustered UC completed (31 virtual units)
-extreme_ramp,clustered_pcm,1,1,1,1080,31,97.1,1080,failed,cluster_master,INFEASIBLE
