@@ -2,26 +2,47 @@
 
 ```text
 tools/pcm/
-├── standard/                 # 常规固定窗口 PCM / 单机 SCUC 主流程
-│   ├── pcm_main.jl
+├── standard_pcm/             # 常规固定窗口 PCM / 单机 SCUC
+│   ├── main.jl
 │   └── period_scuc.jl
-├── adaptive_overlap/         # 自适应交叠窗方法
+├── clustered_overlap_pcm/    # 单机/聚类自适应交叠窗统一实现
 │   ├── core/                 # 按工业职责拆分的交叠窗核心组件
 │   ├── runners/              # 可执行仿真流程
 │   ├── analysis/             # 性能比较和准则评估
 │   ├── data_tools/           # 离线样本与负荷数据工具
-│   ├── docs/                 # 方法说明
+│   ├── STEADY_STATE_OVERLAP.md # 稳态交叠窗说明
 │   └── paths.jl              # 项目相对路径统一定义
 ├── clustered_pcm/            # 同质聚类、驻留解群与网络再调度
 │   ├── clustered_pcm.jl
 │   ├── adapter.jl
-│   ├── master.jl
+│   ├── clustered_solver.jl
 │   └── network_dispatch.jl
-├── main.jl                   # 三种方法的唯一程序入口
-└── period_scuc.jl            # 旧 include 使用的模型兼容入口
+├── integrated_pcm/           # 完整时域 UC 参考入口
+├── benchmark/                # 批量实验编排、单进程计量、双规模对比
+├── config/                   # 运行配置与负荷模式
+├── results/                  # 统一结果清单导出
+├── rolling_pcm_driver.jl     # 固定窗 PCM 公共滚动流程
+├── main.jl                   # 单次仿真的唯一入口
+└── run_pcm_suite.jl          # 多方案批量实验入口
 ```
 
 新增代码应放入对应方法目录，不再继续堆放到 `tools/pcm` 根目录。
+
+固定窗方法采用策略注入：`standard_pcm/main.jl` 注入物理单机窗求解器，
+`clustered_pcm/main.jl` 注入聚类主问题与物理解群求解器；两者共同调用
+`rolling_pcm_driver.jl` 管理数据、滚动边界、结果累计与落盘，方法入口之间不再互相包含。
+
+## 性能模式与并行
+
+- `PCM_PERFORMANCE_MODE=fast|balanced`：PCM 默认使用 `fast`；一体化 UC 参考基准保持严格默认配置。
+- `PCM_SOLVER_THREADS=4`：限制每个 Gurobi 模型的内部线程数。
+- `PCM_BENCHMARK_MAX_PARALLEL=2`：并行运行相互独立的方法、负荷场景或重复实验。
+- `PCM_MIP_GAP`、`PCM_CLUSTER_OUTPUT_BINS`：可覆盖性能模式提供的求解精度和聚类分箱默认值。
+- `PCM_OVERLAP_REFERENCE_MODE=load_following|economic_solve`：fast 使用轻量参考，balanced 使用逐窗物理参考 UC。
+- `PCM_CLUSTER_REFERENCE_REPAIR=true|false`：是否因成本差超限额外执行物理单机重求；物理解群可行性校核始终保留。
+
+118 系统建议使用“2 个独立进程 × 每模型 2–4 个 Gurobi 线程”。滚动窗口存在状态依赖，不能并行求解；
+并行仅用于相互独立的实验和模型内部求解，避免破坏前后窗边界条件。
 
 ## 常规固定窗口 PCM
 
@@ -44,7 +65,7 @@ $env:PCM_METHOD='adaptive_overlap'
 julia --project=. tools/pcm/main.jl
 ```
 
-## 三方案统一基准与结果对比
+## 多方案统一基准与结果对比
 
 使用统一输入、负荷曲线、滚动区间和独立 Julia 进程，依次运行 standard、clustered_pcm 和 adaptive_overlap，并生成逐次计量、聚合统计、相对 standard 指标及 Markdown 报告：
 
@@ -53,7 +74,7 @@ $env:PCM_BENCHMARK_RUNS='3'
 $env:PCM_BENCHMARK_PROFILES='baseline,smooth,extreme_ramp'
 $env:PCM_OVERLAP_MODE='ml_prediction'
 $env:PCM_SOLVER='gurobi'
-julia --project=pkg tools/pcm/benchmark_three_methods.jl
+julia --project=pkg tools/pcm/run_pcm_suite.jl
 ```
 
 输出目录默认为 `output/pcm_benchmark/three_method_<timestamp>/`，主要文件为：
@@ -76,7 +97,7 @@ $env:PCM_BENCHMARK_METHODS='standard,clustered_pcm,adaptive_overlap'
 $env:PCM_BENCHMARK_RUNS='1'
 $env:PCM_INTERVALS='1'
 $env:PCM_WINDOW_HOURS='24'
-julia --project=pkg tools/pcm/benchmark_two_scales.jl
+julia --project=pkg tools/pcm/benchmark/scale_runner.jl
 ```
 
 未设置上述两个环境变量时，双规模脚本默认运行三种负荷模式和三套 PCM 方法；每个规模单独写入子目录。
@@ -95,14 +116,14 @@ julia --project=pkg tools/pcm/benchmark_two_scales.jl
 $env:MODULE_UC_DATA_FILE='data/data_118_clustered_pcm.xlsx'
 $env:PCM_LOAD_PROFILE='smooth'
 $env:PCM_SOLVER='gurobi'
-julia --project=pkg tools/pcm/adaptive_overlap/data_tools/offline_dataset_generator.jl
+julia --project=pkg tools/pcm/clustered_overlap_pcm/data_tools/offline_dataset_generator.jl
 ```
 
 训练数据会按算例文件内容哈希、机组/网络规模、负荷模式、求解器、滚动窗口、训练模式和负荷/风电曲线指纹保存到 `output/pcm_training_cache/overlap_training_cache/<signature>/`。后续运行 adaptive_overlap 时，终端会打印 `Training cache: HIT` 并直接复用；算例、负荷模式或关键配置变化时打印 `MISS`，不会错误复用旧数据。需要强制重训时设置 `PCM_FORCE_TRAINING=1`。大规模算例可设置 `PCM_TRAINING_MODE=fast_max_overlap`，对当前 case 的四个扰动场景实际求解特征，并以当前最大交叠标注训练样本，避免逐一扫掠 0–12 h。
 
 自适应在线决策默认在终端打印关键判据：边界状态、稳态特征、预测交叠、驻留约束、爬坡事件和最终 `max(...)` 决策。可设置 `PCM_OVERLAP_VERBOSE=0` 关闭。
 
-`adaptive_overlap/core` 采用“入口 + 单一职责组件”的组织方式：
+`clustered_overlap_pcm/core` 采用“入口 + 单一职责组件”的组织方式：
 
 - `pcm_overlap_core.jl`：唯一实际装载入口；使用 IDE 可索引的显式依赖顺序加载核心功能。
 - `pcm_dependencies.jl`：数据结构与标准 PCM 求解器的静态依赖契约，支持 core 独立加载和 IDE 跳转。

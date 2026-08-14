@@ -10,8 +10,13 @@ function estimate_initial_status(units, NG, NT, onoffinit, units_initial_startup
 
     for i ∈ 1:NG
         # Calculate minimum up/down time limits
-        Lupmin[i] = min(NT, Int64(units.min_shutup_time[i, 1] - units_initial_startup_time[i, 1] + 1) * onoffinit[i])
-        Ldownmin[i] = min(NT, Int64(units.min_shutdown_time[i, 1] - units_initial_shutdown_time[i, 1] + 1) * (1 - onoffinit[i]))
+        # A zero duration in the input workbook means "history unavailable".
+        # Do not invent a just-started/just-stopped event at the first horizon.
+        # Rolling PCM boundaries always provide a positive reconstructed duration.
+        elapsed_up = units_initial_startup_time[i, 1]
+        elapsed_down = units_initial_shutdown_time[i, 1]
+        Lupmin[i] = elapsed_up > 0 ? min(NT, max(0, ceil(Int, units.min_shutup_time[i, 1] - elapsed_up)) * onoffinit[i]) : 0
+        Ldownmin[i] = elapsed_down > 0 ? min(NT, max(0, ceil(Int, units.min_shutdown_time[i, 1] - elapsed_down)) * (1 - onoffinit[i])) : 0
     end
     return Lupmin, Ldownmin
 end
@@ -28,12 +33,20 @@ function add_unit_operation_constraints!(scuc::Model, NT, NG, units, onoffinit)
     units_initial_shutdown_time = units.t_1
     Lupmin, Ldownmin = estimate_initial_status(units, NG, NT, onoffinit, units_initial_startup_time, units_initial_shutdown_time)
 
-    units_minuptime_constr = Vector{ConType}()
-    units_mindowntime_constr = Vector{ConType}()
+    # Initial-residence equalities and rolling minimum-time inequalities have
+    # different MOI set types, so their shared reporting containers must be
+    # heterogeneous.
+    units_minuptime_constr = JuMP.ConstraintRef[]
+    units_mindowntime_constr = JuMP.ConstraintRef[]
 
     # Min up/down time
     for i ∈ 1:NG
-        for t ∈ Int64(max(1, Lupmin[i])):NT
+        # Initial units must honour the residence time that remains at the
+        # rolling boundary before they may change state.
+        for t ∈ 1:Int(Lupmin[i])
+            push!(units_minuptime_constr, @constraint(scuc, x[i, t] == 1))
+        end
+        for t ∈ 1:NT
             # base_name_con₁ = "units_min_up_time" * "_" * string(i) * "_" * string(t)
             LB = Int64(max(t - units.min_shutup_time[i, 1] + 1, 1))
             con = @constraint(scuc, sum(u[i, r] for r ∈ LB:t) <= x[i, t])
@@ -41,9 +54,12 @@ function add_unit_operation_constraints!(scuc::Model, NT, NG, units, onoffinit)
             push!(units_minuptime_constr, con)
         end
 
-        for t ∈ Int64(max(1, Ldownmin[i])):NT
+        for t ∈ 1:Int(Ldownmin[i])
+            push!(units_mindowntime_constr, @constraint(scuc, x[i, t] == 0))
+        end
+        for t ∈ 1:NT
             # base_name_con₂ = "units_min_down_time" * "_" * string(i) * "_" * string(t)
-            LB = Int64(max(t - units.min_shutup_time[i, 1] + 1, 1))
+            LB = Int64(max(t - units.min_shutdown_time[i, 1] + 1, 1))
             con = @constraint(scuc, sum(v[i, r] for r ∈ LB:t) <= (1 - x[i, t]))
             # push!(units_mindowntime_constr, con)
             push!(units_mindowntime_constr, con)
@@ -99,18 +115,14 @@ function add_ramp_constraints!(scuc::Model, NT, NG, NS, units, onoffinit)
     ramp_down = units.ramp_down
     shut_up = units.shut_up
     shut_down = units.shut_down
-    p_max = units.p_max
-    p_min = units.p_min
-
     units_upramp_constr = @constraint(scuc, [s = 1:NS, t = 1:NT],
         pg₀[(1 + (s - 1) * NG):(s * NG), t] - ((t == 1) ? units.p_0[:, 1] : pg₀[(1 + (s - 1) * NG):(s * NG), t - 1]) .<=
         ramp_up[:, 1] .* ((t == 1) ? onoffinit[:, 1] : x[:, t - 1]) +
-        shut_up[:, 1] .* ((t == 1) ? ones(NG, 1) : u[:, t - 1]) +
-        p_max[:, 1] .* (ones(NG, 1) - ((t == 1) ? onoffinit[:, 1] : x[:, t - 1])))
+        shut_up[:, 1] .* u[:, t])
 
     units_downramp_constr = @constraint(scuc, [s = 1:NS, t = 1:NT],
         ((t == 1) ? units.p_0[:, 1] : pg₀[(1 + (s - 1) * NG):(s * NG), t - 1]) - pg₀[(1 + (s - 1) * NG):(s * NG), t] .<=
-        ramp_down[:, 1] .* x[:, t] + shut_down[:, 1] .* v[:, t] + p_max[:, 1] .* (x[:, t]))
+        ramp_down[:, 1] .* x[:, t] + shut_down[:, 1] .* v[:, t])
     println("\t constraints: 8) ramp-up/ramp-down constraints\t\t\t\t done")
     return scuc, units_upramp_constr, units_downramp_constr
 end

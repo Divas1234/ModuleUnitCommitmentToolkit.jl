@@ -1,7 +1,7 @@
 using Test
 using DataFrames
 
-include("../tools/pcm/benchmark_three_methods.jl")
+include("../tools/pcm/benchmark/suite_runner.jl")
 using .PCMThreeMethodBenchmark
 
 @testset "three-method PCM benchmark aggregation" begin
@@ -12,12 +12,34 @@ using .PCMThreeMethodBenchmark
     @test normalize_solver("Gurobi") == "gurobi"
     @test normalize_solver("auto") == "auto"
     @test_throws ArgumentError normalize_solver("cbc")
+    @test profile_dir_name("baseline") == "base"
+    @test profile_dir_name("extreme_ramp") == "ramp"
+    @test method_dir_name("clustered_adaptive_overlap") == "clu_ovl"
+    @test run_dir_name(1) == "r01"
+    @test benchmark_run_dir("out", "baseline", "standard", 1) == joinpath("out", "base", "std", "r01")
+    @test benchmark_batch_name(["standard", "clustered_pcm"], ["baseline"]; horizon_hours = 72, timestamp = "20260811_150000") ==
+          "pcm_com2_loadnormal_h72_20260811_150000"
+    @test benchmark_batch_name(["standard"], ["extreme_ramp"]; timestamp = "20260811_150000") ==
+          "pcm_com1_loadextreme_h72_20260811_150000"
+    @test benchmark_batch_name(["integrated_uc", "standard", "clustered_pcm"], ["baseline"]; timestamp = "20260811_150000") ==
+          "pcm_com2_loadnormal_h72_20260811_150000"
+    @test benchmark_batch_name(["integrated_uc"], ["baseline"]; timestamp = "20260811_150000") ==
+          "pcm_com0_loadnormal_h72_20260811_150000"
+    @test benchmark_output_root("repo", ["integrated_uc"], ["baseline"]; timestamp = "20260811_150000") ==
+          abspath(joinpath("repo", "output", "test_res", "pcm_com0_loadnormal_h72_20260811_150000"))
+    @test benchmark_output_root("repo", ["integrated_uc", "standard", "clustered_pcm", "adaptive_overlap", "clustered_adaptive_overlap"],
+        ["baseline"]; timestamp = "20260811_150000") ==
+          abspath(joinpath("repo", "output", "pcm_com4_loadnormal_h72_20260811_150000"))
+    @test_throws ArgumentError benchmark_batch_name(["standard"], ["baseline", "smooth"])
 
     raw = DataFrame(
         profile = ["smooth", "smooth", "smooth", "smooth"],
         method = ["standard", "standard", "clustered_pcm", "adaptive_overlap"],
         status = ["OK", "OK", "OK", "OK"],
         wall_time_sec = [10.0, 12.0, 5.0, 20.0],
+        simulation_time_sec = [8.0, 10.0, 4.0, 15.0],
+        offline_training_time_sec = zeros(4),
+        offline_preprocess_time_sec = zeros(4),
         allocated_mb = [100.0, 120.0, 60.0, 200.0],
         peak_rss_mb = [80.0, 90.0, 50.0, 150.0],
         total_cost = [100.0, 102.0, 110.0, 105.0],
@@ -38,7 +60,7 @@ using .PCMThreeMethodBenchmark
 
     comparison = add_relative_metrics(summary)
     clustered = only(comparison[(comparison.profile .== "smooth") .& (comparison.method .== "clustered_pcm"), :])
-    @test clustered.speedup_vs_standard ≈ 2.2
+    @test clustered.speedup_vs_standard ≈ 2.25
     @test clustered.cost_delta_pct ≈ (110.0 / 101.0 - 1.0) * 100
     @test clustered.integer_reduction_pct ≈ (1.0 - 2232.0 / 7776.0) * 100
     @test clustered.state_reduction_pct ≈ (1.0 - 31.0 / 108.0) * 100

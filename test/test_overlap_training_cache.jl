@@ -1,7 +1,7 @@
 using Test
 using DataFrames
 
-include("../tools/pcm/adaptive_overlap/core/training_data_cache.jl")
+include("../tools/pcm/clustered_overlap_pcm/core/training_data_cache.jl")
 using .AdaptiveOverlapTrainingCache
 
 @testset "adaptive overlap training-data cache" begin
@@ -30,6 +30,12 @@ using .AdaptiveOverlapTrainingCache
             dimensions = Dict("NB" => 118, "NG" => 108, "ND" => 91, "NL" => 186, "NH" => 0),
             load_curve = reshape(collect(1.0:12.0), 3, 4), wind_curve = reshape(collect(1.0:4.0), 1, 4))
         @test case_signature(changed_profile) != case_signature(expected)
+        clustered = build_case_metadata(; input_file, load_profile = "smooth", solver = "gurobi",
+            network_constraints = "0", window_hours = 24, intervals = 3, min_overlap = 2, max_overlap = 12,
+            dimensions = Dict("NB" => 118, "NG" => 108, "ND" => 91, "NL" => 186, "NH" => 0),
+            load_curve = reshape(collect(1.0:12.0), 3, 4), wind_curve = reshape(collect(1.0:4.0), 1, 4),
+            formulation = "clustered")
+        @test case_signature(clustered) != case_signature(expected)
         @test load_cached_dataset(dir; expected_metadata = changed_profile) === nothing
         @test load_cached_dataset(dir; expected_metadata = expected, min_samples = 3) === nothing
     end

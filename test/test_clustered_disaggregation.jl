@@ -30,6 +30,23 @@ aspairs(q, m) = [p=>m[p.id] for p ∈ q.paths]
     units=mkunits()
     m=assign_paths_to_physical_units(c, paths, units)
     @test m!==nothing
+
+    # Boundary-aware matching must give an immediate shutdown path to the unit
+    # that can actually ramp from its initial output to zero.
+    boundary_units = [
+        PhysicalUnitData(id = 1, cluster = 1, bus = 1, p_min = 10.0, p_max = 100.0,
+            ramp_up = 20.0, ramp_down = 20.0, startup_ramp = 100.0, shutdown_ramp = 30.0,
+            initial_on = true, initial_duration = 3, initial_power = 80.0),
+        PhysicalUnitData(id = 2, cluster = 1, bus = 1, p_min = 10.0, p_max = 100.0,
+            ramp_up = 20.0, ramp_down = 20.0, startup_ramp = 100.0, shutdown_ramp = 30.0,
+            initial_on = true, initial_duration = 3, initial_power = 20.0),
+    ]
+    boundary_q = check_cluster_trajectory_feasibility(c, [1], [0], [1],
+        [InitialUnitState(unit = i, on = true, duration = 3) for i ∈ 1:2])
+    boundary_map = assign_paths_to_physical_units(c, boundary_q.paths, boundary_units)
+    shutdown_path = only(p for p ∈ boundary_q.paths if p.z[1] == 1)
+    @test boundary_map[shutdown_path.id] == 2
+
     r=solve_unit_disaggregation(s, aspairs(q, m), units; network_data = NetworkData(buses = [1], fixed_injection = reshape(-s.power, 1, :)))
     @test r.feasible
     @test validate_disaggregation(r, s, units).valid

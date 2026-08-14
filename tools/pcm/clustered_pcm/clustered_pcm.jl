@@ -2,9 +2,9 @@
 #
 # 文件分工：
 # - adapter.jl：旧 PCM 数据/结果与聚类数据结构之间的适配层；
-# - master.jl：同质化聚类以及聚合 U/Y/Z/P/R 主问题；
+# - clustered_solver.jl：同质化聚类以及聚合 U/Y/Z/P/R 求解器；
 # - network_dispatch.jl：固定启停状态后的物理单机网络再调度。
 include("adapter.jl")
 include("network_dispatch.jl")
 include("costs.jl")
-include("master.jl")
+include("clustered_solver.jl")

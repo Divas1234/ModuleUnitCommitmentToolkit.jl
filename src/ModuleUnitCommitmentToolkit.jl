@@ -35,8 +35,8 @@ module SequentialPCM
     using ..ModuleUnitCommitmentToolkit: config, unit, transmissionline, load, data_centra, wind
     const hydro = Any
 
-    include("../tools/pcm/standard/period_scuc.jl")
-    include("../tools/pcm/adaptive_overlap/core/pcm_overlap_core.jl")
+    include("../tools/pcm/standard_pcm/period_scuc.jl")
+    include("../tools/pcm/clustered_overlap_pcm/core/pcm_overlap_core.jl")
 end
 
 export SequentialPCM

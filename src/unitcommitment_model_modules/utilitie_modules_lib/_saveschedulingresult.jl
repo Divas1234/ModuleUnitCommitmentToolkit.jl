@@ -15,9 +15,12 @@ function save_powerbalance_scheduled_results(units, winds, config_param, results
         if config_param.is_ConsiderBESS == 1
             bench_pss_charge_p⁺ = results["pss_charge_p⁺"]
             bench_pss_charge_p⁻ = results["pss_charge_p⁻"]
+            # qc 是逐时储能能量/SOC；此前仅保存充放电功率，结果清单不完整。
+            bench_pss_Qc = get(results, "pss_Qc", nothing)
         else
             bench_pss_charge_p⁺ = nothing
             bench_pss_charge_p⁻ = nothing
+            bench_pss_Qc = nothing
         end
 
         if config_param.is_HydroUnitCon == 1
@@ -54,14 +57,14 @@ function save_powerbalance_scheduled_results(units, winds, config_param, results
     if results !== nothing && bench_p₀ !== nothing # Check if variables are valid
         flag = 1 # mac path identification
         savebalance_result(units, winds, bench_x₀, bench_p₀, bench_pᵨ, bench_pᵩ, bench_pss_charge_p⁺,
-            bench_pss_charge_p⁻, bench_ph, flag, pcm_scheduling_intervels_id)
+            bench_pss_charge_p⁻, bench_pss_Qc, bench_ph, flag, pcm_scheduling_intervels_id)
     else
         println("Skipping saving results due to optimization failure.")
     end
 end
 
 function savebalance_result(
-        units, winds, bench_x₀, bench_p₀, bench_pᵨ, bench_pᵩ, bench_pss_charge_p⁺, bench_pss_charge_p⁻, bench_ph, flag, pcm_scheduling_intervels_id)
+        units, winds, bench_x₀, bench_p₀, bench_pᵨ, bench_pᵩ, bench_pss_charge_p⁺, bench_pss_charge_p⁻, bench_pss_Qc, bench_ph, flag, pcm_scheduling_intervels_id)
     # @show DataFrame(bench_p₀[1:3,:],:auto)
     tem_NG, tem_NT = size(bench_p₀)
     thermalunits_output = zeros(tem_NT, 1)
@@ -138,6 +141,7 @@ function savebalance_result(
     if config_param.is_ConsiderBESS == 1
         write_result(outdir, "details_bess_charging_output.csv", round.(bench_pss_charge_p⁺; digits = 5))
         write_result(outdir, "details_bess_discharging_output.csv", round.(bench_pss_charge_p⁻; digits = 5))
+        bench_pss_Qc !== nothing && write_result(outdir, "details_bess_soc.csv", round.(bench_pss_Qc; digits = 5))
     end
     if config_param.is_HydroUnitCon == 1
         write_result(outdir, "details_hydros_output.csv", round.(bench_ph; digits = 5))
@@ -172,20 +176,10 @@ function write_result(outdir, filename, data)
 end
 
 function creat_outputfilepath(pcm_scheduling_intervels_id, flag)
-    filepath = pwd()
-    if Sys.iswindows()
-        if flag == 1
-            filepath = "D:/GithubClonefiles/module_unitcommitment/output/details_schedule_results/"
-        elseif flag == 2
-            filepath = "D:/GithubClonefiles/module_unitcommitment/output/"
-        else
-            flag == 3
-            filepath = "D:/GithubClonefiles/module_unitcommitment/output/"
-        end
-    else
-        filepath = joinpath(pwd(), "output", "details_schedule_results") * "/"
-        mkpath(dirname(filepath))
-    end
+    # 允许每次模拟把结果隔离到独立目录；未设置时仍落到当前项目的 output。
+    output_root = normpath(get(ENV, "MODULE_UC_OUTPUT_DIR", joinpath(pwd(), "output")))
+    filepath = flag == 1 ? joinpath(output_root, "details_schedule_results") * "/" : output_root * "/"
+    mkpath(filepath)
 
     # Determine output directory and file prefix
     if pcm_scheduling_intervels_id == 0

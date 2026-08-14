@@ -20,7 +20,7 @@ end
     clusters = [ClusterSpec(id = 1, unit_indices = [1, 2], min_up = 4, min_down = 3)]
 
     initial = _pcm_initial_states(clusters[1], units)
-    @test [state.duration for state in initial] == [3, 1]
+    @test [state.duration for state in initial] == [1, 2]
 
     coeffs = clustered_pcm_cost_coefficients(units, clusters)
     @test coeffs.startup == [100.0]

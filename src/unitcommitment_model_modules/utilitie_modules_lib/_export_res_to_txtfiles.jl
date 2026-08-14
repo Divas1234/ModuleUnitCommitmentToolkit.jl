@@ -37,11 +37,8 @@ function exported_scheduling_cost(NS::Int64, NT::Int64, NB::Int64, NG::Int64, ND
 
     # Set output directory for results
     # output_dir = joinpath(pwd(), "output")
-    if Sys.iswindows()
-        output_dir = "D:/GithubClonefiles/module_unitcommitment/output/"
-    elseif Sys.isapple()
-        output_dir = joinpath(pwd(), "output") * "/"
-    end
+    # 跨平台输出根目录。基准程序通过环境变量为每次运行分配独立目录。
+    output_dir = normpath(get(ENV, "MODULE_UC_OUTPUT_DIR", joinpath(pwd(), "output"))) * "/"
 
     if interval_scheduling_id != 0
         # output_dir = joinpath(output_dir, "pcm_simulation_results")
