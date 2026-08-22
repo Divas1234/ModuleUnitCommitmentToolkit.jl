@@ -11,14 +11,16 @@ function solve_and_extract_results(
     println("Step-5: Gurobi solver finished")
     println("+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++\n")
 
-    # Check termination status
-    @show assert_is_solved_and_feasible(scuc)
+    # A time-limited MIP can still carry a feasible incumbent.  The assertion
+    # helper rejects that valid production case before the status branch below,
+    # so gate extraction on both an accepted status and actual primal values.
     @show solution_summary(scuc)
     println("\n")
     status = termination_status(scuc)
+    primal_available = has_values(scuc)
     println("Termination Status: ", status)
 
-    if status == MOI.OPTIMAL || status == MOI.LOCALLY_SOLVED || status == MOI.TIME_LIMIT || status == MOI.OBJECTIVE_LIMIT # Added OBJECTIVE_LIMIT as acceptable status
+    if (status == MOI.OPTIMAL || status == MOI.LOCALLY_SOLVED || status == MOI.TIME_LIMIT || status == MOI.OBJECTIVE_LIMIT) && primal_available
         println("Acceptable solution found (Status: $status).")
 
         # Extract values

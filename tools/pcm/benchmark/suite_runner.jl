@@ -320,9 +320,16 @@ function run_one(; project_root = PROJECT_ROOT, julia_project = joinpath(project
 	log_path = joinpath(run_dir, "run.log")
 	resume_existing = lowercase(strip(get(ENV, "PCM_BENCHMARK_RESUME", "false"))) in ("1", "true", "yes", "on")
 	if resume_existing && isfile(metrics_path)
-		println("[$(now())] profile=$(profile) method=$(method) run=$(run_number) RESUME existing metrics")
 		metrics = CSV.read(metrics_path, DataFrame)
-		return _run_row(metrics, profile, method, run_number, run_dir)
+		status = nrow(metrics) > 0 && :status in propertynames(metrics) ? uppercase(strip(string(metrics.status[1]))) : ""
+		if status == "OK"
+			println("[$(now())] profile=$(profile) method=$(method) run=$(run_number) RESUME successful metrics")
+			return _run_row(metrics, profile, method, run_number, run_dir)
+		end
+		# A failed/partial result is a checkpoint, not a completed experiment.
+		# Re-run it after a code or solver-policy fix while preserving successful
+		# methods in the same batch directory.
+		println("[$(now())] profile=$(profile) method=$(method) run=$(run_number) RESUME retry status=$(isempty(status) ? "UNKNOWN" : status)")
 	end
 	command = `$(Base.julia_cmd()) --project=$(julia_project) $(joinpath(project_root, "tools", "pcm", "benchmark", "method_worker.jl"))`
 	integrated_reference = lowercase(method) == "integrated_uc"
