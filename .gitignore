@@ -103,6 +103,7 @@ secrets.*
 *.key
 *.p12
 *.crt
+tools/monitoring/email_config.json
 
 # Benchmark/generated artifacts
 docs/benchmarks/**/logs/
