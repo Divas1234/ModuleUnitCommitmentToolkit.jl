@@ -66,8 +66,12 @@ node_modules/
 .worktrees/
 
 # Runtime outputs
-output/
-**/output/
+output/*
+!output/ml_trainningdata_res/
+!output/ml_trainningdata_res/**
+!output/*.csv
+!output/comparison/
+!output/comparison/*.csv
 out/
 **/out/
 logs/
