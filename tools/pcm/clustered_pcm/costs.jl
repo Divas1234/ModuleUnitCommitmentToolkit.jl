@@ -42,7 +42,7 @@ if !isdefined(@__MODULE__, :_CLUSTERED_PCM_COSTS_INCLUDED)
 		# coefficient so costs remain comparable across PCM methods.
 		# 与二阶段物理调度采用一致的高弃风价值。旧值仅略高于燃料边际
 		# 成本，主问题会主动选择二阶段无法经济消纳风电的承诺轨迹。
-		auto_floor=max(maximum(coeffs.eachslope; init=0.0)*c₀+1.0, 1e6)
+		auto_floor=max(maximum(coeffs.eachslope; init = 0.0)*c₀+1.0, 1e6)
 		configured_floor=parse(Float64, get(ENV, "PCM_CLUSTER_WIND_PENALTY_FLOOR", string(auto_floor)))
 		wind_penalty = max(base_wind_penalty, configured_floor)
 		C, T = size(U)
