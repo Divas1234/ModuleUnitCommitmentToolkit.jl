@@ -1,0 +1,5 @@
+timestamp,method,load_profile,status,solver,wall_time_sec,allocated_mb,simulation_time_sec,offline_training_time_sec,offline_preprocess_time_sec,gc_time_sec,peak_rss_mb,input_file,window_hours,intervals,physical_units,virtual_units,commitment_integer_variables,cluster_attempts,cluster_successes,extended_integer_variables,cluster_fallbacks,total_cost,failure
+2026-08-22T09:41:36.561,standard,extreme_ramp,FAILED,gurobi,,,,0.0,0.0,,1995.4921875,D:\GithubClonefiles\module_unitcommitment\data\data_118_clustered_pcm.xlsx,24,3,108,31,7776,0,0,0,0,0.0,"LoadError: Optimization failed for interval 2
+in expression starting at D:\GithubClonefiles\module_unitcommitment\tools\pcm\rolling_pcm_driver.jl:70
+in expression starting at D:\GithubClonefiles\module_unitcommitment\tools\pcm\standard_pcm\main.jl:14
+in expression starting at D:\GithubClonefiles\module_unitcommitment\tools\pcm\main.jl:5"

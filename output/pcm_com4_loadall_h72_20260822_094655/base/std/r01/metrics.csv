@@ -1,0 +1,9 @@
+timestamp,method,load_profile,status,solver,wall_time_sec,allocated_mb,simulation_time_sec,offline_training_time_sec,offline_preprocess_time_sec,gc_time_sec,peak_rss_mb,input_file,window_hours,intervals,physical_units,virtual_units,commitment_integer_variables,cluster_attempts,cluster_successes,extended_integer_variables,cluster_fallbacks,total_cost,failure
+2026-08-22T09:57:16.708,standard,baseline,FAILED,gurobi,,,,0.0,0.0,,4960.26953125,D:\GithubClonefiles\module_unitcommitment\data\data_118_clustered_pcm_10x.xlsx,24,3,1080,31,77760,0,0,0,0,0.0,"LoadError: Optimization failed for interval 3
+in expression starting at D:\GithubClonefiles\module_unitcommitment\tools\pcm\rolling_pcm_driver.jl:70
+in expression starting at D:\GithubClonefiles\module_unitcommitment\tools\pcm\standard_pcm\main.jl:14
+in expression starting at D:\GithubClonefiles\module_unitcommitment\tools\pcm\main.jl:5"
+2026-08-30T15:36:59.771,standard,baseline,FAILED,gurobi,,,,0.0,0.0,,5402.59765625,D:\GithubClonefiles\module_unitcommitment\data\data_118_clustered_pcm_10x.xlsx,24,3,1080,31,77760,0,0,0,0,0.0,"LoadError: Optimization failed for interval 3
+in expression starting at D:\GithubClonefiles\module_unitcommitment\tools\pcm\rolling_pcm_driver.jl:70
+in expression starting at D:\GithubClonefiles\module_unitcommitment\tools\pcm\standard_pcm\main.jl:14
+in expression starting at D:\GithubClonefiles\module_unitcommitment\tools\pcm\main.jl:5"
