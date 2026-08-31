@@ -1,0 +1,14 @@
+Category,File,Exists,Description
+result,full_horizon_storage_charging.csv,false,全时段储能充电功率（启用储能时）
+result,full_horizon_storage_discharging.csv,false,全时段储能放电功率（启用储能时）
+result,full_horizon_storage_state_of_charge.csv,false,全时段储能荷电状态（模型提供 SOC 时）
+result,full_horizon_thermal_dispatch.csv,true,全时段逐机组出力计划
+result,full_horizon_unit_commitment.csv,true,全时段逐机组开停机决策
+result,interval_boundary_unit_state.csv,true,窗口边界剩余机组开停状态及连续状态时长
+result,overlap_window_details.csv,true,逐窗 T-steady、unit-dwell、ramp-overlap 与最终交叠时长
+result,scheduling_cost_by_interval_and_total.csv,true,逐窗与全时段调度成本
+process,output\details_schedule_results\pcm_simulation_results\intervels_[1],true,第 1 个 PCM 子问题原始计算结果
+process,output\details_schedule_results\pcm_simulation_results\intervels_[2],true,第 2 个 PCM 子问题原始计算结果
+process,output\details_schedule_results\pcm_simulation_results\intervels_[3],true,第 3 个 PCM 子问题原始计算结果
+process,run.log,true,完整计算过程日志
+performance,metrics.csv,true,耗时、内存、成本与状态指标
