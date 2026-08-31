@@ -1,0 +1,27 @@
+================================================================================
+CLUSTERED ADAPTIVE OVERLAP WINDOW STATISTICAL REPORT
+================================================================================
+Total Scheduling Intervals : 7
+Execution Window Per Set   : 24 hours
+Clustered UC Mode          : ENABLED
+Decay Factor (alpha)       : 0.25
+Decay Threshold (epsilon)  : 0.10
+Calibration Time Excluded  : 8453.42 seconds
+Slow-Start Generators      : 66 units (max static min_up/down param: 10h)
+Steady-State Decay Window  : 9 hours
+Average Overlap Window     : 5.43 hours
+Max Overlap Window         : 7 hours
+Min Overlap Window         : 4 hours
+Average Overlap Selection Time : 0.114 seconds
+Total Subproblem Solve Time: 68.40 seconds
+--------------------------------------------------------------------------------
+PER-INTERVAL OVERLAP WINDOW BREAKDOWN:
+--------------------------------------------------------------------------------
+Interval 1 | Start Hour   1 | Exec: 24h | Steady:  6h | UnitDwell:  0h | Ramp: false ( 0h) | Limiting: steady           | Final Overlap:  6h | Select Time: 0.658s | Solve Time: 9.19s
+Interval 2 | Start Hour  25 | Exec: 24h | Steady:  2h | UnitDwell:  5h | Ramp: false ( 0h) | Limiting: unit_dwell       | Final Overlap:  5h | Select Time: 0.137s | Solve Time: 7.74s
+Interval 3 | Start Hour  49 | Exec: 24h | Steady:  6h | UnitDwell:  7h | Ramp: false ( 0h) | Limiting: unit_dwell       | Final Overlap:  7h | Select Time: 0.000s | Solve Time: 14.42s
+Interval 4 | Start Hour  73 | Exec: 24h | Steady:  2h | UnitDwell:  4h | Ramp: false ( 0h) | Limiting: unit_dwell       | Final Overlap:  4h | Select Time: 0.001s | Solve Time: 8.85s
+Interval 5 | Start Hour  97 | Exec: 24h | Steady:  6h | UnitDwell:  6h | Ramp: false ( 0h) | Limiting: steady+unit_dwell | Final Overlap:  6h | Select Time: 0.000s | Solve Time: 10.57s
+Interval 6 | Start Hour 121 | Exec: 24h | Steady:  2h | UnitDwell:  4h | Ramp: false ( 0h) | Limiting: unit_dwell       | Final Overlap:  4h | Select Time: 0.000s | Solve Time: 6.02s
+Interval 7 | Start Hour 145 | Exec: 24h | Steady:  6h | UnitDwell:  3h | Ramp: false ( 0h) | Limiting: steady           | Final Overlap:  6h | Select Time: 0.000s | Solve Time: 11.61s
+================================================================================

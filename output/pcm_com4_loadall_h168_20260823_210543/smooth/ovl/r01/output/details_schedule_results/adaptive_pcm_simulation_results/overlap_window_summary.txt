@@ -1,0 +1,25 @@
+================================================================================
+ADAPTIVE OVERLAP WINDOW STATISTICAL REPORT
+================================================================================
+Total Scheduling Intervals : 7
+Execution Window Per Set   : 24 hours
+Decay Factor (alpha)       : 0.25
+Decay Threshold (epsilon)  : 0.10
+Calibration Time Excluded  : 3160.45 seconds
+Slow-Start Generators      : 66 units (max static min_up/down param: 10h)
+Steady-State Decay Window  : 9 hours
+Average Overlap Window     : 9.57 hours
+Max Overlap Window         : 12 hours
+Min Overlap Window         : 4 hours
+Total Subproblem Solve Time: 39.06 seconds
+--------------------------------------------------------------------------------
+PER-INTERVAL OVERLAP WINDOW BREAKDOWN:
+--------------------------------------------------------------------------------
+Interval 1 | Start Hour   1 | Exec: 24h | Steady:  7h | UnitDwell:  0h | Ramp: false ( 0h) | Limiting: steady           | Final Overlap:  7h | Total Solved: 31h | Solve: 7.13s
+Interval 2 | Start Hour  25 | Exec: 24h | Steady:  2h | UnitDwell:  4h | Ramp: false ( 0h) | Limiting: unit_dwell       | Final Overlap:  4h | Total Solved: 28h | Solve: 3.82s
+Interval 3 | Start Hour  49 | Exec: 24h | Steady: 12h | UnitDwell:  7h | Ramp: false ( 0h) | Limiting: steady           | Final Overlap: 12h | Total Solved: 36h | Solve: 5.80s
+Interval 4 | Start Hour  73 | Exec: 24h | Steady: 10h | UnitDwell:  2h | Ramp: false ( 0h) | Limiting: steady           | Final Overlap: 10h | Total Solved: 34h | Solve: 4.60s
+Interval 5 | Start Hour  97 | Exec: 24h | Steady: 12h | UnitDwell:  7h | Ramp: false ( 0h) | Limiting: steady           | Final Overlap: 12h | Total Solved: 36h | Solve: 6.91s
+Interval 6 | Start Hour 121 | Exec: 24h | Steady: 10h | UnitDwell:  3h | Ramp: false ( 0h) | Limiting: steady           | Final Overlap: 10h | Total Solved: 34h | Solve: 5.02s
+Interval 7 | Start Hour 145 | Exec: 24h | Steady: 12h | UnitDwell:  5h | Ramp: false ( 0h) | Limiting: steady           | Final Overlap: 12h | Total Solved: 36h | Solve: 5.78s
+================================================================================

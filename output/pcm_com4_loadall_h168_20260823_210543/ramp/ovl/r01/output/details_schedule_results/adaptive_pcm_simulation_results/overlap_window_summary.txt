@@ -1,0 +1,25 @@
+================================================================================
+ADAPTIVE OVERLAP WINDOW STATISTICAL REPORT
+================================================================================
+Total Scheduling Intervals : 7
+Execution Window Per Set   : 24 hours
+Decay Factor (alpha)       : 0.25
+Decay Threshold (epsilon)  : 0.10
+Calibration Time Excluded  : 4361.47 seconds
+Slow-Start Generators      : 66 units (max static min_up/down param: 10h)
+Steady-State Decay Window  : 9 hours
+Average Overlap Window     : 12.00 hours
+Max Overlap Window         : 12 hours
+Min Overlap Window         : 12 hours
+Total Subproblem Solve Time: 56.63 seconds
+--------------------------------------------------------------------------------
+PER-INTERVAL OVERLAP WINDOW BREAKDOWN:
+--------------------------------------------------------------------------------
+Interval 1 | Start Hour   1 | Exec: 24h | Steady: 12h | UnitDwell:  0h | Ramp:  true (12h) | Limiting: steady+ramp      | Final Overlap: 12h | Total Solved: 36h | Solve: 18.11s
+Interval 2 | Start Hour  25 | Exec: 24h | Steady:  7h | UnitDwell:  4h | Ramp:  true (12h) | Limiting: ramp             | Final Overlap: 12h | Total Solved: 36h | Solve: 5.23s
+Interval 3 | Start Hour  49 | Exec: 24h | Steady: 11h | UnitDwell:  0h | Ramp:  true (12h) | Limiting: ramp             | Final Overlap: 12h | Total Solved: 36h | Solve: 5.68s
+Interval 4 | Start Hour  73 | Exec: 24h | Steady: 10h | UnitDwell:  5h | Ramp:  true (12h) | Limiting: ramp             | Final Overlap: 12h | Total Solved: 36h | Solve: 5.62s
+Interval 5 | Start Hour  97 | Exec: 24h | Steady: 12h | UnitDwell:  0h | Ramp:  true (12h) | Limiting: steady+ramp      | Final Overlap: 12h | Total Solved: 36h | Solve: 6.33s
+Interval 6 | Start Hour 121 | Exec: 24h | Steady:  7h | UnitDwell:  2h | Ramp:  true (12h) | Limiting: ramp             | Final Overlap: 12h | Total Solved: 36h | Solve: 8.90s
+Interval 7 | Start Hour 145 | Exec: 24h | Steady: 11h | UnitDwell:  0h | Ramp:  true (12h) | Limiting: ramp             | Final Overlap: 12h | Total Solved: 36h | Solve: 6.77s
+================================================================================

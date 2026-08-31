@@ -1,0 +1,8 @@
+Interval_ID,Start_Hour,Execution_Window_h,Steady_State_Overlap_h,Unit_Dwell_Overlap_h,Ramp_Event_Detected,Ramp_Overlap_h,Raw_Max_Overlap_h,Limiting_Factor,Final_Adaptive_Overlap_h,Total_Solved_Horizon_h,Overlap_SelectionTime_sec,Subproblem_SolveTime_sec,Reference_Cost_Gap_pct,Reference_Repair_Applied,Optimization_Status
+1,1,24,12,0,false,0,12,steady,12,36,0.6640000343322754,15.956000089645386,0.0,false,OK
+2,25,24,6,6,false,0,6,steady+unit_dwell,6,30,0.1380000114440918,10.963000059127808,0.0,false,OK
+3,49,24,12,1,false,0,12,steady,12,36,0.0,13.601999998092651,0.0,false,OK
+4,73,24,6,3,false,0,6,steady,6,30,0.0009999275207519531,9.38700008392334,0.0,false,OK
+5,97,24,8,2,false,0,8,steady,8,32,0.0,11.671000003814697,0.0,false,OK
+6,121,24,4,4,false,0,4,steady+unit_dwell,4,28,0.0009999275207519531,7.300999879837036,0.0,false,OK
+7,145,24,12,1,false,0,12,steady,12,36,0.0009999275207519531,13.618000030517578,0.0,false,OK

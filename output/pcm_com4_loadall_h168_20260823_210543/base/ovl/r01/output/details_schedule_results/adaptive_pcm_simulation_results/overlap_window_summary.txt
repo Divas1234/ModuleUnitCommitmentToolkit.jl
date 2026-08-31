@@ -1,0 +1,25 @@
+================================================================================
+ADAPTIVE OVERLAP WINDOW STATISTICAL REPORT
+================================================================================
+Total Scheduling Intervals : 7
+Execution Window Per Set   : 24 hours
+Decay Factor (alpha)       : 0.25
+Decay Threshold (epsilon)  : 0.10
+Calibration Time Excluded  : 3468.94 seconds
+Slow-Start Generators      : 66 units (max static min_up/down param: 10h)
+Steady-State Decay Window  : 9 hours
+Average Overlap Window     : 9.43 hours
+Max Overlap Window         : 12 hours
+Min Overlap Window         : 7 hours
+Total Subproblem Solve Time: 43.59 seconds
+--------------------------------------------------------------------------------
+PER-INTERVAL OVERLAP WINDOW BREAKDOWN:
+--------------------------------------------------------------------------------
+Interval 1 | Start Hour   1 | Exec: 24h | Steady: 10h | UnitDwell:  0h | Ramp: false ( 0h) | Limiting: steady           | Final Overlap: 10h | Total Solved: 34h | Solve: 10.75s
+Interval 2 | Start Hour  25 | Exec: 24h | Steady:  9h | UnitDwell:  6h | Ramp: false ( 0h) | Limiting: steady           | Final Overlap:  9h | Total Solved: 33h | Solve: 4.67s
+Interval 3 | Start Hour  49 | Exec: 24h | Steady: 12h | UnitDwell:  1h | Ramp: false ( 0h) | Limiting: steady           | Final Overlap: 12h | Total Solved: 36h | Solve: 5.02s
+Interval 4 | Start Hour  73 | Exec: 24h | Steady:  9h | UnitDwell:  4h | Ramp: false ( 0h) | Limiting: steady           | Final Overlap:  9h | Total Solved: 33h | Solve: 7.87s
+Interval 5 | Start Hour  97 | Exec: 24h | Steady: 10h | UnitDwell:  1h | Ramp: false ( 0h) | Limiting: steady           | Final Overlap: 10h | Total Solved: 34h | Solve: 5.43s
+Interval 6 | Start Hour 121 | Exec: 24h | Steady:  9h | UnitDwell:  1h | Ramp: false ( 0h) | Limiting: steady           | Final Overlap:  9h | Total Solved: 33h | Solve: 5.45s
+Interval 7 | Start Hour 145 | Exec: 24h | Steady:  7h | UnitDwell:  1h | Ramp: false ( 0h) | Limiting: steady           | Final Overlap:  7h | Total Solved: 31h | Solve: 4.40s
+================================================================================

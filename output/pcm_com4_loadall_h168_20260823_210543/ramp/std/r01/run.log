@@ -1,0 +1,286 @@
+Set parameter Username
+Set parameter LicenseID to value 2826524
+Academic license - for non-commercial use only - expires 2027-05-22
+Set parameter Username
+Set parameter LicenseID to value 2826524
+Academic license - for non-commercial use only - expires 2027-05-22
+Set parameter MIPGap to value 0.03
+Set parameter Threads to value 4
+Set parameter MIPGap to value 0.03
+Set parameter Threads to value 4
+Gurobi Optimizer version 13.0.2 build v13.0.2rc1 (win64 - Windows 11+.0 (29648.2))
+
+CPU model: 13th Gen Intel(R) Core(TM) i7-13700F, instruction set [SSE2|AVX|AVX2]
+Thread count: 16 physical cores, 24 logical processors, using up to 4 threads
+
+Non-default parameters:
+MIPGap  0.03
+Threads  4
+
+Optimize a model with 49952 rows, 31536 columns and 441352 nonzeros (Min)
+Model fingerprint: 0x5a244d68
+Model has 23400 linear objective coefficients
+Variable types: 23664 continuous, 7872 integer (7872 binary)
+Coefficient statistics:
+  Matrix range     [4e-02, 4e+02]
+  Objective range  [1e+00, 1e+15]
+  Bounds range     [0e+00, 0e+00]
+  RHS range        [1e-02, 3e+02]
+Warning: Model contains large objective coefficients
+         Consider reformulating model or setting NumericFocus parameter
+         to avoid numerical issues.
+
+Presolve removed 25601 rows and 14277 columns
+Presolve time: 0.35s
+Presolved: 24351 rows, 17259 columns, 102637 nonzeros
+Variable types: 10245 continuous, 7014 integer (7014 binary)
+Found heuristic solution: objective 1.110930e+07
+Found heuristic solution: objective 1.066393e+07
+Deterministic concurrent LP optimizer: primal and dual simplex
+Showing primal log only...
+
+Concurrent spin time: 0.00s
+
+Solved with dual simplex
+
+Use crossover to convert LP symmetric solution to basic solution...
+Crossover time: 0.03 seconds (0.02 work units)
+
+Root relaxation: objective 2.313842e+06, 13843 iterations, 0.67 seconds (0.78 work units)
+
+    Nodes    |    Current Node    |     Objective Bounds      |     Work
+ Expl Unexpl |  Obj  Depth IntInf | Incumbent    BestBd   Gap | It/Node Time
+
+     0     0 2313841.81    0 1024 1.0664e+07 2313841.81  78.3%     -    1s
+H    0     0                    2586426.4761 2313841.81  10.5%     -    1s
+H    0     0                    2584891.4761 2313841.81  10.5%     -    1s
+H    0     0                    2555455.6869 2313841.81  9.45%     -    1s
+     0     0 2320694.55    0  666 2555455.69 2320694.55  9.19%     -    2s
+H    0     0                    2440982.8136 2320757.45  4.93%     -    2s
+     0     0 2320757.45    0  675 2440982.81 2320757.45  4.93%     -    2s
+     0     0 2320757.45    0  661 2440982.81 2320757.45  4.93%     -    2s
+     0     0 2327744.00    0  451 2440982.81 2327744.00  4.64%     -    2s
+H    0     0                    2424370.1676 2327866.67  3.98%     -    2s
+H    0     0                    2398985.0102 2328018.09  2.96%     -    2s
+     0     0 2328018.09    0  396 2398985.01 2328018.09  2.96%     -    2s
+
+Cutting planes:
+  Learned: 6
+  Gomory: 74
+  Implied bound: 74
+  MIR: 186
+  Flow cover: 174
+  Relax-and-lift: 138
+
+Explored 1 nodes (17095 simplex iterations) in 3.01 seconds (3.64 work units)
+Thread count was 4 (of 24 available processors)
+
+Solution count 8: 2.39899e+06 2.42437e+06 2.44098e+06 ... 1.11093e+07
+
+Optimal solution found (tolerance 3.00e-02)
+Best objective 2.398985010159e+06, best bound 2.328018088415e+06, gap 2.9582%
+
+User-callback calls 507, time in user-callback 0.00 sec
+Set parameter Username
+Set parameter LicenseID to value 2826524
+Academic license - for non-commercial use only - expires 2027-05-22
+Set parameter MIPGap to value 0.03
+Set parameter Threads to value 4
+Set parameter MIPGap to value 0.03
+Set parameter Threads to value 4
+Gurobi Optimizer version 13.0.2 build v13.0.2rc1 (win64 - Windows 11+.0 (29648.2))
+
+CPU model: 13th Gen Intel(R) Core(TM) i7-13700F, instruction set [SSE2|AVX|AVX2]
+Thread count: 16 physical cores, 24 logical processors, using up to 4 threads
+
+Non-default parameters:
+MIPGap  0.03
+Threads  4
+
+Optimize a model with 50021 rows, 31536 columns and 441421 nonzeros (Min)
+Model fingerprint: 0xeda59b38
+Model has 23400 linear objective coefficients
+Variable types: 23664 continuous, 7872 integer (7872 binary)
+Coefficient statistics:
+  Matrix range     [4e-02, 4e+02]
+  Objective range  [1e+00, 1e+15]
+  Bounds range     [0e+00, 0e+00]
+  RHS range        [2e-02, 4e+02]
+Warning: Model contains large objective coefficients
+         Consider reformulating model or setting NumericFocus parameter
+         to avoid numerical issues.
+
+Presolve removed 20033 rows and 10927 columns
+Presolve time: 0.04s
+
+Explored 0 nodes (0 simplex iterations) in 0.06 seconds (0.10 work units)
+Thread count was 1 (of 24 available processors)
+
+Solution count 0
+
+Model is infeasible or unbounded
+Best objective -, best bound -, gap -
+
+User-callback calls 46, time in user-callback 0.00 sec
+ERROR: LoadError: LoadError: Optimization failed for interval 2
+in expression starting at D:\GithubClonefiles\module_unitcommitment\.worktrees\108_168h\tools\pcm\rolling_pcm_driver.jl:70
+in expression starting at D:\GithubClonefiles\module_unitcommitment\.worktrees\108_168h\tools\pcm\standard_pcm\main.jl:14
+in expression starting at D:\GithubClonefiles\module_unitcommitment\.worktrees\108_168h\tools\pcm\main.jl:5
+Stacktrace:
+ [1] error(s::String)
+   @ Base .\error.jl:44
+ [2] top-level scope
+   @ D:\GithubClonefiles\module_unitcommitment\.worktrees\108_168h\tools\pcm\benchmark\method_worker.jl:55
+ [3] include(mod::Module, _path::String)
+   @ Base .\Base.jl:306
+ [4] exec_options(opts::Base.JLOptions)
+   @ Base .\client.jl:317
+ [5] _start()
+   @ Base .\client.jl:550
+in expression starting at D:\GithubClonefiles\module_unitcommitment\.worktrees\108_168h\tools\pcm\benchmark\method_worker.jl:55
+	→ The renewable energy scenarios module loaded.
+	→ Input data module loaded and ready for UC modeling.
+	→ The [JULIA] environment_config has been loaded.
+	→ Constraint modules included and functions exported.
+	→ Objective functions module loaded and exported.
+	→ Utility functions module loaded and exported.
+	→ all boundary conditions validated.
+  PCM random seed: 20260809
+
+================================================================================
+Step 1: Reading input data from Excel file...
+================================================================================
+Step-1: Loading packages and functions...
+  Reading data from: D:\GithubClonefiles\module_unitcommitment\.worktrees\108_168h\data\data_118_clustered_pcm.xlsx
+  Reading frequency parameters...
+  Reading energy storage system data...
+  Reading generator, network, and load data...
+  Reading data center data...
+  Reading hydroelectric power data...
+  ✓ All data successfully loaded from Excel file.
+
+================================================================================
+Step 2: Formatting input data for optimization model...
+================================================================================
+Step-2: imput data are loaded
+  PCM load profile: extreme_ramp
+  PCM network constraints: disabled
+
+================================================================================
+Step 3: Generating wind power scenarios...
+================================================================================
+
+================================================================================
+Step 4: Configuring sequential scheduling parameters...
+================================================================================
+  Formulation: standard
+  Scheduling intervals: 7
+  Time periods per interval: 24
+  Total planning horizon: 168 periods
+
+================================================================================
+Step 5: Running sequential unit commitment optimization...
+================================================================================
+
+--------------------------------------------------------------------------------
+Processing scheduling interval 1 of 7...
+--------------------------------------------------------------------------------
+Step-3: Creating dispatching model (Refactored & Modularized)
+	 Variables defined.
+DEBUG set_objective_economic!: NT=24, NG=108, ND=91, NW=20, NS=1, K=3, size(refcost)=(108,), size(eachslope)=(3, 108)
+objective_function
+	MILP economic objective set
+subject to.
+	 constraints: 1) minimum shutup/shutdown time limits			 done
+	 constraints: 2) binary variable logic					 done
+	 constraints: 3) shutup/shutdown cost					 done
+	 constraints: 4) loadcurtailments and spoliedwinds			 done
+	 constraints: 5) generatos power limits					 done
+	 constraints: 6) system reserves limits					 done
+	 constraints: 7) power balance constraints				 done
+	 constraints: 8) ramp-up/ramp-down constraints				 done
+	 constraints: 9) piece linearization constraints			 done
+	 constraints: 10) transmissionline limits skipped (is_NetWorkCon != 1 or Gsdf missing or NL=0)
+	 constraints: 11) stroges system constraints skipped (NC=0 or variables not defined)
+	 constraints: 12) data centra constraints skipped (is_ConsiderDataCentra != 1)
+	 constraints: 13) frequency control constraints skipped (is_ConsiderFrequencyControl != 1)
+	 constraints: 14) hydro power limits					 done
++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+Step-4: starting Gurobi solver
+Step-5: Gurobi solver finished
++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+solution_summary(scuc) = solution_summary(; result = 1, verbose = false)
+├ solver_name          : Gurobi
+├ Termination
+│ ├ termination_status : OPTIMAL
+│ ├ result_count       : 8
+│ ├ raw_status         : Model was solved to optimality (subject to tolerances), and an optimal solution is available.
+│ └ objective_bound    : 2.32802e+06
+├ Solution (result = 1)
+│ ├ primal_status        : FEASIBLE_POINT
+│ ├ dual_status          : NO_SOLUTION
+│ ├ objective_value      : 2.39899e+06
+│ └ relative_gap         : 2.95821e-02
+└ Work counters
+  ├ solve_time (sec)   : 3.00500e+00
+  ├ simplex_iterations : 17095
+  ├ barrier_iterations : 0
+  └ node_count         : 1
+
+
+Termination Status: OPTIMAL
+Acceptable solution found (Status: OPTIMAL).
+Step-6: record datas
+PART1: [unit-commitment] calculation result has been saved to: D:\GithubClonefiles\module_unitcommitment\.worktrees\108_168h\output\pcm_com4_loadall_h168_20260823_210543\ramp\std\r01\output/details_schedule_results/pcm_simulation_results/intervels_[1]/res_schedule_commitment_result.txt
+  ✓ Interval 1 optimization completed successfully
+Extracting results from dictionary...
+details [unit_commtiemnt] scheduling results have been saved!
+
+--------------------------------------------------------------------------------
+Processing scheduling interval 2 of 7...
+--------------------------------------------------------------------------------
+Step-3: Creating dispatching model (Refactored & Modularized)
+	 Variables defined.
+DEBUG set_objective_economic!: NT=24, NG=108, ND=91, NW=20, NS=1, K=3, size(refcost)=(108,), size(eachslope)=(3, 108)
+objective_function
+	MILP economic objective set
+subject to.
+	 constraints: 1) minimum shutup/shutdown time limits			 done
+	 constraints: 2) binary variable logic					 done
+	 constraints: 3) shutup/shutdown cost					 done
+	 constraints: 4) loadcurtailments and spoliedwinds			 done
+	 constraints: 5) generatos power limits					 done
+	 constraints: 6) system reserves limits					 done
+	 constraints: 7) power balance constraints				 done
+	 constraints: 8) ramp-up/ramp-down constraints				 done
+	 constraints: 9) piece linearization constraints			 done
+	 constraints: 10) transmissionline limits skipped (is_NetWorkCon != 1 or Gsdf missing or NL=0)
+	 constraints: 11) stroges system constraints skipped (NC=0 or variables not defined)
+	 constraints: 12) data centra constraints skipped (is_ConsiderDataCentra != 1)
+	 constraints: 13) frequency control constraints skipped (is_ConsiderFrequencyControl != 1)
+	 constraints: 14) hydro power limits					 done
++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+Step-4: starting Gurobi solver
+Step-5: Gurobi solver finished
++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+solution_summary(scuc) = solution_summary(; result = 1, verbose = false)
+├ solver_name          : Gurobi
+├ Termination
+│ ├ termination_status : INFEASIBLE_OR_UNBOUNDED
+│ ├ result_count       : 0
+│ └ raw_status         : Model was proven to be either infeasible or unbounded. To obtain a more definitive conclusion, set the DualReductions parameter to 0 and reoptimize.
+├ Solution (result = 1)
+│ ├ primal_status        : NO_SOLUTION
+│ └ dual_status          : NO_SOLUTION
+└ Work counters
+  ├ solve_time (sec)   : 6.10001e-02
+  ├ simplex_iterations : 0
+  ├ barrier_iterations : 0
+  └ node_count         : 0
+
+
+Termination Status: INFEASIBLE_OR_UNBOUNDED
+Solver did not find an acceptable solution. Status: INFEASIBLE_OR_UNBOUNDED
+Optimization failed, returning nothing.
