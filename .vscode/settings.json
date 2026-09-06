@@ -300,7 +300,7 @@
     "powershell.buttons.showPanelMovementButtons": true,
     "powershell.codeFormatting.autoCorrectAliases": true,
     "powershell.codeFormatting.avoidSemicolonsAsLineTerminators": true,
-    "editor.scrollbar.horizontalScrollbarSize": 88,
+    "editor.scrollbar.horizontalScrollbarSize": 10,
     "editor.scrollbar.verticalScrollbarSize": 5,
     "editor.wordWrapColumn": 150,
     "vim.textwidth": 1,
