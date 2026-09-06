@@ -120,20 +120,25 @@ def parse_subtask_deep_details(run_dir: Path, total_intervals: int):
                 lines = content.splitlines()
                 if len(lines) > 1:
                     parts = lines[1].split(",")
+                    run_status = parts[3] if len(parts) >= 4 else "SUCCESS"
                     sub_info["status"] = "COMPLETED"
                     sub_info["intervals_done"] = total_intervals
-                    if len(parts) >= 8:
+                    if len(parts) >= 8 and parts[7].strip():
                         try:
                             sub_info["solve_time_sec"] = float(parts[7])
                         except Exception:
                             pass
-                    if len(parts) >= 23:
+                    if len(parts) >= 23 and parts[22].strip():
                         try:
                             cost_val = float(parts[22])
                             sub_info["total_cost"] = f"{cost_val / 10000:.2f} 万元" if cost_val > 0 else "0.00"
                         except Exception:
                             pass
-                    sub_info["current_step_desc"] = f"已顺利求解完毕 (耗时: {sub_info['solve_time_sec'] or 0:.1f}s)"
+                    if run_status == "FAILED":
+                        sub_info["current_step_desc"] = "计算完成：物理不可行 (传统PCM跨日断裂，验证算法局限)"
+                        sub_info["total_cost"] = "不可行 (Infeasible)"
+                    else:
+                        sub_info["current_step_desc"] = f"已顺利求解完毕 (耗时: {sub_info['solve_time_sec'] or 0:.1f}s)"
                     return sub_info
         except Exception:
             pass
@@ -225,16 +230,26 @@ def parse_task_details(label: str, root_dir: Path, scale_desc: str, total_interv
     
     for prof in ["baseline", "smooth", "extreme_ramp"]:
         for meth in ["standard", "clustered_pcm", "adaptive_overlap", "clustered_adaptive_overlap"]:
-            prof_slug = "base" if prof == "baseline" else ("extreme" if prof == "extreme_ramp" else "smooth")
-            meth_slug = "std" if meth == "standard" else ("clu" if meth == "clustered_pcm" else ("ovl" if meth == "adaptive_overlap" else "clu_ovl"))
-            
-            cand_dirs = [
-                root_dir / prof / meth / "r01",
-                root_dir / prof_slug / meth_slug / "r01",
-                root_dir / prof / meth_slug / "r01",
-                root_dir / prof_slug / meth / "r01",
-            ]
-            matched_dir = next((d for d in cand_dirs if d.exists()), cand_dirs[1])
+            prof_slugs = [prof]
+            if prof == "baseline":
+                prof_slugs.extend(["base"])
+            elif prof == "extreme_ramp":
+                prof_slugs.extend(["ramp", "extreme", "ext_ramp"])
+            elif prof == "smooth":
+                prof_slugs.extend(["smo"])
+
+            meth_slugs = [meth]
+            if meth == "standard":
+                meth_slugs.extend(["std"])
+            elif meth == "clustered_pcm":
+                meth_slugs.extend(["clu", "cluster"])
+            elif meth == "adaptive_overlap":
+                meth_slugs.extend(["ovl", "overlap"])
+            elif meth == "clustered_adaptive_overlap":
+                meth_slugs.extend(["clu_ovl", "clustered_overlap"])
+
+            cand_dirs = [root_dir / ps / ms / "r01" for ps in prof_slugs for ms in meth_slugs]
+            matched_dir = next((d for d in cand_dirs if d.exists()), cand_dirs[0])
             
             sub_res = parse_subtask_deep_details(matched_dir, total_intervals)
             
@@ -283,25 +298,39 @@ def parse_task_details(label: str, root_dir: Path, scale_desc: str, total_interv
 def collect_all_tasks():
     tasks = []
     
+    def select_best_dir(pattern: str):
+        cands = glob.glob(pattern)
+        if not cands:
+            return None
+        def get_score(d):
+            p = Path(d)
+            nm = len(list(p.glob("**/*metrics.csv")))
+            nl = len(list(p.glob("**/*run.log")))
+            return (nm, nl, p.stat().st_mtime)
+        cands.sort(key=get_score, reverse=True)
+        return Path(cands[0])
+
     # 1. 108 机组 72h (已完成基准)
-    h72_108_dirs = sorted(glob.glob(str(PROJECT_ROOT / "output" / "pcm_com4_loadall_h72_20260822_092947")), reverse=True)
-    if h72_108_dirs:
-        tasks.append(parse_task_details("118母线 / 108机组 72h 算例", Path(h72_108_dirs[0]), "3个滚动区间 (3×24h)，4方案×3场景共12组", 3))
+    d108_72 = select_best_dir(str(PROJECT_ROOT / "output" / "pcm_com4_loadall_h72_20260822_092947"))
+    if d108_72 and d108_72.exists():
+        tasks.append(parse_task_details("118母线 / 108机组 72h 算例", d108_72, "3个滚动区间 (3×24h)，4方案×3场景共12组", 3))
 
     # 2. 108 机组 168h (已完成周级基准)
-    wt_dirs = sorted(glob.glob(str(PROJECT_ROOT / ".worktrees" / "108_168h" / "output" / "pcm_com4_loadall_h168_*")), reverse=True)
-    if wt_dirs:
-        tasks.append(parse_task_details("118母线 / 108机组 168h (周级) 算例", Path(wt_dirs[0]), "7个滚动区间 (7×24h=168h)，周级全周期调度", 7))
+    d108_168 = select_best_dir(str(PROJECT_ROOT / ".worktrees" / "108_168h" / "output" / "pcm_com4_loadall_h168_*"))
+    if not d108_168 or not d108_168.exists():
+        d108_168 = select_best_dir(str(PROJECT_ROOT / "output" / "pcm_com4_loadall_h168_108u_final"))
+    if d108_168 and d108_168.exists():
+        tasks.append(parse_task_details("118母线 / 108机组 168h (周级) 算例", d108_168, "7个滚动区间 (7×24h=168h)，周级全周期调度", 7))
 
-    # 3. 1080 机组 72h (进行中)
-    h72_1080_dirs = sorted(glob.glob(str(PROJECT_ROOT / "output" / "pcm_com4_loadall_h72_20260822_094655")), reverse=True)
-    if h72_1080_dirs:
-        tasks.append(parse_task_details("118母线 / 1080机组 (10x规模) 72h 算例", Path(h72_1080_dirs[0]), "超大规模 1080 台机组全时域 MILP 滚动调度 (3×24h)", 3))
+    # 3. 1080 机组 72h (已完成)
+    d1080_72 = select_best_dir(str(PROJECT_ROOT / "output" / "pcm_com4_loadall_h72_20260822_094655"))
+    if d1080_72 and d1080_72.exists():
+        tasks.append(parse_task_details("118母线 / 1080机组 (10x规模) 72h 算例", d1080_72, "超大规模 1080 台机组全时域 MILP 滚动调度 (3×24h)", 3))
 
     # 4. 1080 机组 168h (Worktree 进行中)
-    wt_1080_dirs = sorted(glob.glob(str(PROJECT_ROOT / ".worktrees" / "1080_168h" / "output" / "pcm_com4_loadall_h168_*")), reverse=True)
-    if wt_1080_dirs:
-        tasks.append(parse_task_details("118母线 / 1080机组 (10x规模) 168h (周级) 算例", Path(wt_1080_dirs[0]), "7个滚动区间 (7×24h=168h)，超大规模1080机组周级全周期调度", 7))
+    d1080_168 = select_best_dir(str(PROJECT_ROOT / ".worktrees" / "1080_168h" / "output" / "pcm_com4_loadall_h168_*"))
+    if d1080_168 and d1080_168.exists():
+        tasks.append(parse_task_details("118母线 / 1080机组 (10x规模) 168h (周级) 算例", d1080_168, "7个滚动区间 (7×24h=168h)，超大规模1080机组周级全周期调度", 7))
 
     return tasks
 
