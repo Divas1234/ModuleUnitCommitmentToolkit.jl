@@ -263,7 +263,7 @@
     "guides.stack.style": "dotted",
     "guides.normal.width": 0.25,
     "guides.stack.width": 0.5,
-    "editor.fontSize": 16,
+    "editor.fontSize": 14,
     "vim.highlightedyank.enable": true,
     "editor.formatOnPaste": false,
     "editor.formatOnSave": false,
