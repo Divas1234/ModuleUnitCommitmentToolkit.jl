@@ -35,7 +35,7 @@ function add_reserve_constraints!(scuc::Model, NT, NG, NC, NS, units, loads, win
     pc⁺ = check_var_exists(scuc, "pc⁺") ? scuc[:pc⁺] : nothing # Storage might not exist
     pc⁻ = check_var_exists(scuc, "pc⁻") ? scuc[:pc⁻] : nothing # Storage might not exist
     ph = check_var_exists(scuc, "ph") ? scuc[:ph] : nothing
-    tem_NH = ph !== nothing ? size(ph, 1) : 0
+    tem_NH = ph !== nothing ? div(size(ph, 1), NS) : 0
 
     wind_pmax = winds.p_max
     alpha_res = config_param.is_Alpha
@@ -79,7 +79,7 @@ function add_power_balance_constraints!(scuc::Model, NT, NG, ND, NC, NW, NS, loa
     pc⁺ = check_var_exists(scuc, "pc⁺") ? scuc[:pc⁺] : nothing # Storage might not exist
     pc⁻ = check_var_exists(scuc, "pc⁻") ? scuc[:pc⁻] : nothing # Storage might not exist
     ph = check_var_exists(scuc, "ph") ? scuc[:ph] : nothing
-    tem_NH = ph !== nothing ? size(ph, 1) : 0
+    tem_NH = ph !== nothing ? div(size(ph, 1), NS) : 0
     # pc⁺ = scuc[:pc⁺]
     # pc⁻ = scuc[:pc⁻]
 

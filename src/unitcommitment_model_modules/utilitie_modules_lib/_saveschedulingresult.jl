@@ -66,7 +66,8 @@ end
 function savebalance_result(
         units, winds, bench_x₀, bench_p₀, bench_pᵨ, bench_pᵩ, bench_pss_charge_p⁺, bench_pss_charge_p⁻, bench_pss_Qc, bench_ph, flag, pcm_scheduling_intervels_id)
     # @show DataFrame(bench_p₀[1:3,:],:auto)
-    tem_NG, tem_NT = size(bench_p₀)
+    tem_NG = length(units.index)
+    tem_NT = size(bench_p₀, 2)
     thermalunits_output = zeros(tem_NT, 1)
     for i ∈ 1:tem_NT
         thermalunits_output[i, 1] = sum(bench_p₀[1:tem_NG, i])
@@ -75,7 +76,7 @@ function savebalance_result(
     # Plots.plot(thermalunits_output)
     # @show DataFrame(bench_pᵩ[1:3,:],:auto)
 
-    tem_NW = size(bench_pᵩ, 1)
+    tem_NW = length(winds.index)
     windunits_output = zeros(tem_NT, 1)
     for i ∈ 1:tem_NT
         windunits_output[i, 1] = sum(winds.p_max) * winds.scenarios_curve[1, i] - sum(bench_pᵩ[1:tem_NW, i])

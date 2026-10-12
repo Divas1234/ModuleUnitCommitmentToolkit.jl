@@ -97,19 +97,16 @@ if results !== nothing
 	save_powerbalance_scheduled_results(units, winds, config_param, results)
 	println("\n✓ Simulation completed successfully!")
 	println("  Results saved to: output/details_schedule_results/")
-	save_powerbalance_scheduled_results(units, winds, config_param, results)
-	println("\n✓ Simulation completed successfully!")
-	println("  Results saved to: output/details_schedule_results/")
 	if log_file !== nothing
 		println("  Execution log saved to: $log_file")
 		stop_execution_log!()
 	end
 else
 	println("\n✗ Simulation failed. Please check the error messages above.")
-	exit(1)
-	println("\n✗ Simulation failed. Please check the error messages above.")
 	if log_file !== nothing
 		stop_execution_log!()
 	end
-	exit(1)
+	if !isinteractive()
+		exit(1)
+	end
 end

@@ -13,18 +13,17 @@ using Dates
 mutable struct ExecutionLoggerState
 	active::Bool
 	log_filepath::String
-	log_io::Union{IOStream, Nothing}
 	orig_stdout::Any
 	orig_stderr::Any
 	stdout_wr::Any
 	stderr_wr::Any
-	stdout_task::Union{Task, Nothing}
-	stderr_task::Union{Task, Nothing}
+	tee_out_proc::Any
+	tee_err_proc::Any
 	start_time::DateTime
 end
 
 const _LOGGER_STATE = ExecutionLoggerState(
-	false, "", nothing, nothing, nothing, nothing, nothing, nothing, nothing, Dates.now()
+	false, "", nothing, nothing, nothing, nothing, nothing, nothing, Dates.now()
 )
 
 """
@@ -32,7 +31,7 @@ const _LOGGER_STATE = ExecutionLoggerState(
 
 Start recording all console output (Julia `stdout`/`stderr` and C library output
 such as Gurobi solver logs) to an automatically named timestamped `.log` file
-in `output/log/`, while simultaneously displaying output in the terminal.
+in `output/log/`, while simultaneously displaying output in the terminal in real time.
 
 # Arguments
 - `is_record_log::Union{Bool, Integer}`: Explicit flag to enable (`1` or `true`)
@@ -52,7 +51,7 @@ function start_execution_log!(
 	end
 
 	if _LOGGER_STATE.active
-		return _LOGGER_STATE.log_filepath
+		stop_execution_log!()
 	end
 
 	mkpath(log_dir)
@@ -60,17 +59,17 @@ function start_execution_log!(
 	log_filename = "$(prefix)_$(timestamp).log"
 	log_filepath = abspath(joinpath(log_dir, log_filename))
 
-	log_io = open(log_filepath, "w")
 	start_dt = Dates.now()
 
 	# Write log file header
-	println(log_io, "="^80)
-	println(log_io, "Execution Log Started : $(Dates.format(start_dt, "yyyy-mm-dd HH:MM:SS"))")
-	println(log_io, "Log File              : $log_filepath")
-	println(log_io, "Working Directory     : $(pwd())")
-	println(log_io, "Julia Version         : $(VERSION)")
-	println(log_io, "="^80)
-	flush(log_io)
+	open(log_filepath, "w") do log_io
+		println(log_io, "="^80)
+		println(log_io, "Execution Log Started : $(Dates.format(start_dt, "yyyy-mm-dd HH:MM:SS"))")
+		println(log_io, "Log File              : $log_filepath")
+		println(log_io, "Working Directory     : $(pwd())")
+		println(log_io, "Julia Version         : $(VERSION)")
+		println(log_io, "="^80)
+	end
 
 	orig_out = stdout
 	orig_err = stderr
@@ -78,60 +77,25 @@ function start_execution_log!(
 	out_rd, out_wr = redirect_stdout()
 	err_rd, err_wr = redirect_stderr()
 
-	io_lock = ReentrantLock()
-
-	out_task = @async begin
-		try
-			while !eof(out_rd)
-				data = readavailable(out_rd)
-				if !isempty(data)
-					write(orig_out, data)
-					flush(orig_out)
-					lock(io_lock) do
-						if isopen(log_io)
-							write(log_io, data)
-							flush(log_io)
-						end
-					end
-				end
-			end
-		catch
-			# Ignore pipe closure errors during shutdown
-		end
-	end
-
-	err_task = @async begin
-		try
-			while !eof(err_rd)
-				data = readavailable(err_rd)
-				if !isempty(data)
-					write(orig_err, data)
-					flush(orig_err)
-					lock(io_lock) do
-						if isopen(log_io)
-							write(log_io, data)
-							flush(log_io)
-						end
-					end
-				end
-			end
-		catch
-			# Ignore pipe closure errors during shutdown
-		end
-	end
+	# Spawn OS-level `tee -a` processes so C-level solver output (Gurobi) streams
+	# in real time even while Julia's main thread is inside a blocking ccall.
+	tee_out_proc = run(pipeline(`tee -a $log_filepath`; stdin = out_rd, stdout = orig_out); wait = false)
+	tee_err_proc = run(pipeline(`tee -a $log_filepath`; stdin = err_rd, stdout = orig_err); wait = false)
+	close(out_rd)
+	close(err_rd)
 
 	_LOGGER_STATE.active = true
 	_LOGGER_STATE.log_filepath = log_filepath
-	_LOGGER_STATE.log_io = log_io
 	_LOGGER_STATE.orig_stdout = orig_out
 	_LOGGER_STATE.orig_stderr = orig_err
 	_LOGGER_STATE.stdout_wr = out_wr
 	_LOGGER_STATE.stderr_wr = err_wr
-	_LOGGER_STATE.stdout_task = out_task
-	_LOGGER_STATE.stderr_task = err_task
+	_LOGGER_STATE.tee_out_proc = tee_out_proc
+	_LOGGER_STATE.tee_err_proc = tee_err_proc
 	_LOGGER_STATE.start_time = start_dt
 
 	println("📝 Execution log recording started: $log_filepath")
+	flush(stdout)
 	return log_filepath
 end
 
@@ -174,15 +138,15 @@ function stop_execution_log!()
 	catch
 	end
 
-	if _LOGGER_STATE.stdout_task !== nothing
+	if _LOGGER_STATE.tee_out_proc !== nothing
 		try
-			wait(_LOGGER_STATE.stdout_task)
+			wait(_LOGGER_STATE.tee_out_proc)
 		catch
 		end
 	end
-	if _LOGGER_STATE.stderr_task !== nothing
+	if _LOGGER_STATE.tee_err_proc !== nothing
 		try
-			wait(_LOGGER_STATE.stderr_task)
+			wait(_LOGGER_STATE.tee_err_proc)
 		catch
 		end
 	end
@@ -190,19 +154,19 @@ function stop_execution_log!()
 	end_dt = Dates.now()
 	elapsed_sec = round((end_dt - _LOGGER_STATE.start_time).value / 1000.0; digits = 2)
 
-	if _LOGGER_STATE.log_io !== nothing && isopen(_LOGGER_STATE.log_io)
-		println(_LOGGER_STATE.log_io, "\n" * "="^80)
-		println(_LOGGER_STATE.log_io, "Execution Log Finished: $(Dates.format(end_dt, "yyyy-mm-dd HH:MM:SS"))")
-		println(_LOGGER_STATE.log_io, "Total Elapsed Time    : $(elapsed_sec) seconds")
-		println(_LOGGER_STATE.log_io, "="^80)
-		flush(_LOGGER_STATE.log_io)
-		close(_LOGGER_STATE.log_io)
+	try
+		open(log_filepath, "a") do log_io
+			println(log_io, "\n" * "="^80)
+			println(log_io, "Execution Log Finished: $(Dates.format(end_dt, "yyyy-mm-dd HH:MM:SS"))")
+			println(log_io, "Total Elapsed Time    : $(elapsed_sec) seconds")
+			println(log_io, "="^80)
+		end
+	catch
 	end
 
 	_LOGGER_STATE.active = false
-	_LOGGER_STATE.log_io = nothing
-	_LOGGER_STATE.stdout_task = nothing
-	_LOGGER_STATE.stderr_task = nothing
+	_LOGGER_STATE.tee_out_proc = nothing
+	_LOGGER_STATE.tee_err_proc = nothing
 
 	return log_filepath
 end

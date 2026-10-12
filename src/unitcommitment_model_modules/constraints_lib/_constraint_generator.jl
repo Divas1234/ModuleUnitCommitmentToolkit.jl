@@ -160,9 +160,9 @@ end
 # 	@variable(scuc, sh[1:(NH * NS), 1:NT] >= 0) # hydro storage
 # end
 function add_hydros_constraints!(scuc::Model, NT, NH, NS, hydros)
-    # Check if PWL variables exist
-    if isempty(scuc[:ph])
-        return println("\t constraints: 9) hydro decision variables skipped (pgₖ not defined)",)
+    # Check if hydro variables exist
+    if !check_var_exists(scuc, "ph") || isempty(scuc[:ph])
+        return println("\t constraints: 14) hydro decision variables skipped (ph not defined)",)
     end
 
     ph = scuc[:ph]

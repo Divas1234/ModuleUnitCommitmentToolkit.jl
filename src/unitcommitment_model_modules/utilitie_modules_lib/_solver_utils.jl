@@ -7,6 +7,7 @@ function solve_and_extract_results(
         scuc::Model, NT, NG, ND, NC, NW, NS, ND2, NH, scenarios_prob, eachslope, refcost, config_param, interval_scheduling_id = 0)
     println("+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++",)
     println("Step-4: starting Gurobi solver")
+    flush(stdout)
     optimize!(scuc)
     println("Step-5: Gurobi solver finished")
     println("+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++\n",)

@@ -21,7 +21,7 @@ function add_transmission_constraints!(scuc::Model, NT, NG, ND, NC, NW, NL, NS, 
         Δpw = scuc[:Δpw]
 
         ph = check_var_exists(scuc, "ph") ? scuc[:ph] : nothing
-        tem_NH = ph !== nothing ? size(ph, 1) : 0
+        tem_NH = ph !== nothing ? div(size(ph, 1), NS) : 0
 
         # Check if storage variables exist before accessing them
         # pc⁺ = scuc[:pc⁺]
@@ -42,7 +42,7 @@ function add_transmission_constraints!(scuc::Model, NT, NG, ND, NC, NW, NL, NS, 
                 push!(transmissionline_powerflow_upbound_constr,
                     @constraint(scuc, [s = 1:NS, t = 1:NT],
                         sum(subGsdf_units[i] * pg₀[i + (s - 1) * NG, t] for i ∈ 1:NG) +
-                        ((isnothing(ph) && tem_NH == 0) ? 0 : sum(subGsdf_hydros[h] * ph[h, t] for h ∈ 1:tem_NH)) +
+                        ((isnothing(ph) && tem_NH == 0) ? 0 : sum(subGsdf_hydros[h] * ph[h + (s - 1) * tem_NH, t] for h ∈ 1:tem_NH)) +
                         sum(subGsdf_winds[w] * (winds.scenarios_curve[s, t] * winds.p_max[w, 1] - Δpw[(s - 1) * NW + w, t]) for w ∈ 1:NW) -
                         sum(subGsdf_loads[d] * (loads.load_curve[d, t] - Δpd[(s - 1) * ND + d, t]) for d ∈ 1:ND) + sum(
                         # Check if NC > 0, storage variables exist, and subGsdf_psses is valid before summing storage contribution
@@ -51,7 +51,7 @@ function add_transmission_constraints!(scuc::Model, NT, NG, ND, NC, NW, NL, NS, 
                 push!(transmissionline_powerflow_downbound_constr,
                     @constraint(scuc, [s = 1:NS, t = 1:NT],
                         sum(subGsdf_units[i] * pg₀[i + (s - 1) * NG, t] for i ∈ 1:NG) +
-                        ((isnothing(ph) && tem_NH == 0) ? 0 : sum(subGsdf_hydros[h] * ph[h, t] for h ∈ 1:tem_NH)) +
+                        ((isnothing(ph) && tem_NH == 0) ? 0 : sum(subGsdf_hydros[h] * ph[h + (s - 1) * tem_NH, t] for h ∈ 1:tem_NH)) +
                         sum(subGsdf_winds[w] * (winds.scenarios_curve[s, t] * winds.p_max[w, 1] - Δpw[(s - 1) * NW + w, t]) for w ∈ 1:NW) -
                         sum(subGsdf_loads[d] * (loads.load_curve[d, t] - Δpd[(s - 1) * ND + d, t]) for d ∈ 1:ND) + sum(
                         # Check if NC > 0, storage variables exist, and subGsdf_psses is valid before summing storage contribution
@@ -93,7 +93,7 @@ function add_transmission_constraints!(scuc::Model, NT, NG, ND, NC, NW, NL, NS, 
             end
             dc_p = scuc[:dc_p]
             ph = check_var_exists(scuc, "ph") ? scuc[:ph] : nothing
-            tem_NH = ph !== nothing ? size(ph, 1) : 0
+            tem_NH = ph !== nothing ? div(size(ph, 1), NS) : 0
 
             for l ∈ 1:NL
                 subGsdf_units = Gsdf[l, units.locatebus]
@@ -101,10 +101,11 @@ function add_transmission_constraints!(scuc::Model, NT, NG, ND, NC, NW, NL, NS, 
                 subGsdf_loads = Gsdf[l, loads.locatebus]
                 # Ensure stroges.locatebus is valid and Gsdf has correct dimensions
                 subGsdf_psses = (NC > 0 && isempty(stroges[:locatebus])) ? Gsdf[l, stroges.locatebus] : [] # Handle NC=0 or missing locatebus
+                subGsdf_hydros = (tem_NH > 0) ? Gsdf[l, hydros.locatebus] : []
 
                 up_constr = @constraint(scuc, [s = 1:NS, t = 1:NT],
                     sum(subGsdf_units[i] * pg₀[i + (s - 1) * NG, t] for i ∈ 1:NG) +
-                    ((isnothing(ph) && tem_NH == 0) ? 0 : sum(subGsdf_hydros[h] * ph[h, t] for h ∈ 1:tem_NH)) +
+                    ((isnothing(ph) && tem_NH == 0) ? 0 : sum(subGsdf_hydros[h] * ph[h + (s - 1) * tem_NH, t] for h ∈ 1:tem_NH)) +
                     sum(subGsdf_winds[w] * (winds.scenarios_curve[s, t] * winds.p_max[w, 1] - Δpw[(s - 1) * NW + w, t]) for w ∈ 1:NW) -
                     sum(subGsdf_loads[d] * (loads.load_curve[d, t] - Δpd[(s - 1) * ND + d, t]) for d ∈ 1:ND) -
                     sum(subGsdf_dc[c] * dc_p[i + (s - 1) * ND2, t] for c ∈ 1:ND2) +
@@ -112,7 +113,7 @@ function add_transmission_constraints!(scuc::Model, NT, NG, ND, NC, NW, NL, NS, 
                          subGsdf_psses[c] * (pc⁻[(s - 1) * NC + c, t] - pc⁺[(s - 1) * NC + c, t]) : 0.0) for c ∈ 1:NC) <= lines.p_max[l, 1])
                 down_constr = @constraint(scuc, [s = 1:NS, t = 1:NT],
                     sum(subGsdf_units[i] * pg₀[i + (s - 1) * NG, t] for i ∈ 1:NG) +
-                    ((isnothing(ph) && tem_NH == 0) ? 0 : sum(subGsdf_hydros[h] * ph[h, t] for h ∈ 1:tem_NH)) +
+                    ((isnothing(ph) && tem_NH == 0) ? 0 : sum(subGsdf_hydros[h] * ph[h + (s - 1) * tem_NH, t] for h ∈ 1:tem_NH)) +
                     sum(subGsdf_winds[w] * (winds.scenarios_curve[s, t] * winds.p_max[w, 1] - Δpw[(s - 1) * NW + w, t]) for w ∈ 1:NW) -
                     sum(subGsdf_loads[d] * (loads.load_curve[d, t] - Δpd[(s - 1) * ND + d, t]) for d ∈ 1:ND) -
                     sum(subGsdf_dc[c] * dc_p[i + (s - 1) * ND2, t] for c ∈ 1:ND2) +
