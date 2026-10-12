@@ -1,5 +1,8 @@
 using Pkg
-Pkg.activate("d:/GithubClonefiles/module_unitcommitment/pkg")
+
+# Resolve the project root relative to this script so the file works on Windows and macOS/Linux.
+const PROJECT_ROOT = normpath(joinpath(@__DIR__, "..", ".."))
+Pkg.activate(joinpath(PROJECT_ROOT, "pkg"))
 
 using XLSX
 using Statistics
@@ -8,10 +11,10 @@ using CSV
 using DataFrames
 
 # Include legacy data loaders and SCUC modeling components
-include("d:/GithubClonefiles/module_unitcommitment/src/renewableresource_modules/stochasticsimulation.jl")
-include("d:/GithubClonefiles/module_unitcommitment/src/read_inputdata_modules/readdatas.jl")
-include("period_scuc.jl")
-include("adaptive_period_scuc.jl")
+include(joinpath(PROJECT_ROOT, "src", "renewableresource_modules", "stochasticsimulation.jl"))
+include(joinpath(PROJECT_ROOT, "src", "read_inputdata_modules", "readdatas.jl"))
+include(joinpath(@__DIR__, "period_scuc.jl"))
+include(joinpath(@__DIR__, "adaptive_period_scuc.jl"))
 
 function run_criteria_evaluation()
     println("="^80)

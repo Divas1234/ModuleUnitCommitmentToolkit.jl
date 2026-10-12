@@ -1,7 +1,5 @@
 using JuMP
 
-export define_decision_variables!
-
 """
     define_decision_variables!(scuc::Model, NT, NG, ND, NC, ND2, NS, NW, NH, config_param)
 
@@ -58,7 +56,6 @@ like data centers and frequency control.
 # Returns
 - `scuc::Model`: Modified model with all variables defined
 """
-
 function define_decision_variables!(
     scuc::Model,
     NT,
@@ -110,7 +107,9 @@ function define_decision_variables!(
     # ========================================================================
     # Optional Variables: Data Centers
     # ========================================================================
-    if config_param.is_ConsiderDataCentra == 1
+    is_enabled(flag) = flag === true || flag == 1
+
+    if is_enabled(config_param.is_ConsiderDataCentra)
         @variable(scuc, dc_p[1:(ND2*NS), 1:NT] >= 0)    # Data center power consumption
         @variable(scuc, dc_f[1:(ND2*NS), 1:NT] >= 0)    # Data center frequency
         @variable(scuc, dc_v²[1:(ND2*NS), 1:NT] >= 0)   # Data center voltage squared
@@ -122,7 +121,7 @@ function define_decision_variables!(
     # ========================================================================
     # Optional Variables: Frequency Control
     # ========================================================================
-    if config_param.is_ConsiderFrequencyControl == 1
+    if is_enabled(config_param.is_ConsiderFrequencyControl)
         @variable(scuc, Δf_nadir[1:NS] >= 0)      # Frequency nadir deviation
         @variable(scuc, Δf_qss[1:NS] >= 0)       # Quasi-steady-state frequency deviation
         @variable(scuc, Δp_imbalance[1:NS] >= 0) # Power imbalance
@@ -131,7 +130,7 @@ function define_decision_variables!(
     # ========================================================================
     # Optional Variables: Hydroelectric Units
     # ========================================================================
-    if config_param.is_HydroUnitCon == 1
+    if is_enabled(config_param.is_HydroUnitCon)
         @variable(scuc, ph[1:(NH*NS), 1:NT] >= 0) # Hydro power output
     end
 

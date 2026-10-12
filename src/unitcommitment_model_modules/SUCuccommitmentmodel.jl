@@ -59,6 +59,7 @@ function SUC_scucmodel(NT::Int64, NB::Int64, NG::Int64, ND::Int64, NC::Int64, ND
     # --- Model Creation ---
     Δp_contingency = define_contingency_size(units, NG)
     scuc = Model(Gurobi.Optimizer)
+    # scuc = Model(Cplex.Optimizer) #if cplex solver is acquireed
     # set_silent(scuc)
     # --- Define Variables ---
     # Define decision variables for the optimization model

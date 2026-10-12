@@ -1,5 +1,7 @@
 using Pkg
-Pkg.activate("d:/GithubClonefiles/module_unitcommitment/pkg")
+
+repo_root = normpath(joinpath(@__DIR__, "..", ".."))
+Pkg.activate(joinpath(repo_root, "pkg"))
 
 using XLSX
 using Statistics
@@ -7,11 +9,12 @@ using Printf
 using CSV
 using DataFrames
 
-# Include legacy data loaders and SCUC modeling components
-include("d:/GithubClonefiles/module_unitcommitment/src/renewableresource_modules/stochasticsimulation.jl")
-include("d:/GithubClonefiles/module_unitcommitment/src/read_inputdata_modules/readdatas.jl")
-include("period_scuc.jl")
-include("adaptive_period_scuc.jl")
+# Include legacy data loaders and SCUC modeling components using paths relative
+# to this script so it works on any machine or OS.
+include(joinpath(repo_root, "src", "renewableresource_modules", "stochasticsimulation.jl"))
+include(joinpath(repo_root, "src", "read_inputdata_modules", "readdatas.jl"))
+include(joinpath(@__DIR__, "period_scuc.jl"))
+include(joinpath(@__DIR__, "adaptive_period_scuc.jl"))
 
 function run_offline_dataset_generation()
     println("="^80)

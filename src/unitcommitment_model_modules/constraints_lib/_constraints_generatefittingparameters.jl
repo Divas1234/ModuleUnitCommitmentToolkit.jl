@@ -14,7 +14,7 @@ function generatefreq_fittingparameters(units, winds, NG, NW, NN, flag_method_ty
 			NG,
 			NW,
 			flag_method_type,
-			whitenoise_parameter[n],
+			whitenoise_parameter[n]
 		)
 	end
 	return fittingparameter_vector, whitenoise_parameter, whitenoise_parameter_probability
@@ -26,7 +26,7 @@ function generate_fitting_parameters(
 		NG,
 		NW,
 		flag_method_type,
-		whitenoise_parameter,
+		whitenoise_parameter
 )
 	Set_f_nadir, set_H, set_δp, set_Dg, set_Fg, set_Kg, set_Rg, sampleStatues = montecalrosimulation(units, winds, NG, NW, flag_method_type, whitenoise_parameter)
 
@@ -35,7 +35,7 @@ function generate_fitting_parameters(
 		transpose(set_H),
 		transpose(set_Fg ./ set_Rg),
 		transpose(1 ./ set_Rg),
-		transpose(Set_f_nadir),
+		transpose(Set_f_nadir)
 	),
 	)
 

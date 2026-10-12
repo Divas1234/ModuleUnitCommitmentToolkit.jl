@@ -37,7 +37,7 @@ function add_reserve_constraints!(
 		loads,
 		winds,
 		config_param,
-		hydros = nothing,
+		hydros = nothing
 )
 	# Check if variables exist
 	if isempty(scuc[:sr⁺])
@@ -100,7 +100,7 @@ function add_power_balance_constraints!(
 		loads,
 		winds,
 		config_param,
-		ND2 = nothing,
+		ND2 = nothing
 ) # Added ND2
 	# Check if variables exist
 	if isempty(scuc[:pg₀])
