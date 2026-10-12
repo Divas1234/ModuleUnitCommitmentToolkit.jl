@@ -271,7 +271,7 @@
     "editor.formatOnType": false,
     "terminal.integrated.fontLigatures.enabled": true,
     "terminal.integrated.fontFamily": "Julia Mono, Hack Nerd font Mono, Geist Mono, Maple Mono, Fira Code, Hack Nerd Font, MesloLGS NF, Hack Nerd Font",
-    "terminal.integrated.fontSize": 14,
+    "terminal.integrated.fontSize": 12,
     "git.terminalGitEditor": true,
     "terminal.integrated.suggest.enabled": true,
     "terminal.integrated.smoothScrolling": true,
@@ -371,5 +371,6 @@
         "^##([ \\t]?)\\+"
     ],
     "julia.inlayHints.runtime.enabled": false,
-    "editor.scrollbar.horizontal": "auto"
+    "editor.scrollbar.horizontal": "auto",
+    "editor.minimap.autohide": "none"
 }
