@@ -32,6 +32,7 @@ include("_export_res_to_txtfiles.jl")
 include("_saveschedulingresult.jl")
 include("_convert_datatype.jl")
 include("_reorginze_constr.jl")
+include("_execution_logger.jl")
 
 export define_decision_variables!,
     solve_and_extract_results,
@@ -42,6 +43,8 @@ export define_decision_variables!,
     savebalance_result,
     convert_constraints_type_to_vector,
     check_constrainsref_type,
-    reorginze_constraints_sets
+    reorginze_constraints_sets,
+    start_execution_log!,
+    stop_execution_log!
 
 println("\t→ Utility functions module loaded and exported.")
