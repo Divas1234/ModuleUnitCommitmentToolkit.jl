@@ -13,6 +13,21 @@
 # Output: Results are saved to the `output/` directory.
 # ============================================================================
 
+# ============================================================================
+# Step 0: Execution Log Configuration
+# ============================================================================
+include("src/unitcommitment_model_modules/utilitie_modules_lib/_execution_logger.jl")
+
+# Explicit flag to control whether execution process and Gurobi solver logs are saved:
+#   1 (or true)  = Enable log recording to `output/log/mf_YYYYMMDD_HHMMSS.log`
+#   0 (or false) = Disable log recording
+is_SaveExecutionLog = 1
+log_file = start_execution_log!(
+	is_SaveExecutionLog;
+	log_dir = joinpath(@__DIR__, "output", "log"),
+	prefix = "mf"
+)
+
 include("src/environment_config.jl")
 include("src/renewableresource_modules/stochasticsimulation.jl")
 include("src/read_inputdata_modules/readdatas.jl")
@@ -34,8 +49,17 @@ println("\n" * "="^80)
 println("Step 2: Formatting input data for optimization model...")
 println("="^80)
 
-config_param, units, lines, loads, stroges, NB, NG, NL, ND, NT, NC, ND2, NH, DataCentras, hydros = forminputdata(
-    DataGen, DataBranch, DataLoad, LoadCurve, GenCost, UnitsFreqParam, StrogeData, Datacentra_Data, HydroData, HydroCurve)
+config_param, units, lines, loads, stroges, NB, NG, NL, ND, NT, NC, ND2, NH, DataCentras,
+hydros = forminputdata(DataGen,
+	DataBranch,
+	DataLoad,
+	LoadCurve,
+	GenCost,
+	UnitsFreqParam,
+	StrogeData,
+	Datacentra_Data,
+	HydroData,
+	HydroCurve)
 
 # Override time periods if needed (default: 24 hours)
 NT = 24
@@ -60,7 +84,8 @@ println("="^80)
 scenarios_prob = 1.0 / winds.scenarios_nums
 
 # Solve the optimization problem
-results = SUC_scucmodel(NT, NB, NG, ND, NC, ND2, units, loads, winds, lines, DataCentras, config_param, stroges, scenarios_prob, NL, hydros, NH)
+results = SUC_scucmodel(NT, NB, NG, ND, NC, ND2, units, loads, winds, lines, DataCentras, config_param, stroges,
+	scenarios_prob, NL, hydros, NH)
 # ============================================================================
 # Step 5: Save scheduling results
 # ============================================================================
@@ -69,10 +94,22 @@ println("Step 5: Saving scheduling results...")
 println("="^80)
 
 if results !== nothing
-    save_powerbalance_scheduled_results(units, winds, config_param, results)
-    println("\n✓ Simulation completed successfully!")
-    println("  Results saved to: output/details_schedule_results/")
+	save_powerbalance_scheduled_results(units, winds, config_param, results)
+	println("\n✓ Simulation completed successfully!")
+	println("  Results saved to: output/details_schedule_results/")
+	save_powerbalance_scheduled_results(units, winds, config_param, results)
+	println("\n✓ Simulation completed successfully!")
+	println("  Results saved to: output/details_schedule_results/")
+	if log_file !== nothing
+		println("  Execution log saved to: $log_file")
+		stop_execution_log!()
+	end
 else
-    println("\n✗ Simulation failed. Please check the error messages above.")
-    exit(1)
+	println("\n✗ Simulation failed. Please check the error messages above.")
+	exit(1)
+	println("\n✗ Simulation failed. Please check the error messages above.")
+	if log_file !== nothing
+		stop_execution_log!()
+	end
+	exit(1)
 end
