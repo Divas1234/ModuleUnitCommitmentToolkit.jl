@@ -1,0 +1,2 @@
+timestamp,method,load_profile,status,wall_time_sec,allocated_mb,gc_time_sec,peak_rss_mb,input_file,window_hours,intervals,physical_units,virtual_units,commitment_integer_variables,cluster_attempts,cluster_successes,cluster_fallbacks,total_cost,failure
+2026-08-09T19:54:45.754,adaptive_overlap,smooth,OK,45.776744041,34466.86706542969,3.705875156,2472.90625,data/data_118_clustered_pcm.xlsx,24,3,108,28,7776,0,0,0,,
