@@ -164,12 +164,41 @@ function stop_execution_log!()
 	catch
 	end
 
+	# Strip ANSI color codes and VS Code / terminal shell integration sequences (OSC 633, CSI, etc.)
+	try
+		_sanitize_log_file!(log_filepath)
+	catch
+	end
+
 	_LOGGER_STATE.active = false
 	_LOGGER_STATE.tee_out_proc = nothing
 	_LOGGER_STATE.tee_err_proc = nothing
 
 	return log_filepath
 end
+
+"""
+    _sanitize_log_file!(filepath::AbstractString)
+
+Strip terminal control characters such as ANSI escape codes and terminal OSC
+sequences (e.g., VS Code Shell Integration `OSC 633`) so that saved logs remain
+clean and human-readable in plain text viewers.
+"""
+function _sanitize_log_file!(filepath::AbstractString)
+	if !isfile(filepath)
+		return
+	end
+	raw = read(filepath, String)
+	# Strip OSC sequences: \e\] ... (\a | \e\\)
+	cleaned = replace(raw, r"\x1b\][^\x07\x1b]*(?:\x07|\x1b\\)" => "")
+	# Strip ANSI CSI sequences: \e\[ ... [@-~]
+	cleaned = replace(cleaned, r"\x1b\[[0-?]*[ -/]*[@-~]" => "")
+	# Strip other standard escape sequences: \e[@-Z\\-_]
+	cleaned = replace(cleaned, r"\x1b[@-Z\\-_]" => "")
+	# Write sanitized content back
+	write(filepath, cleaned)
+end
+
 
 # Ensure log is properly flushed and closed on normal or abnormal exit
 atexit(() -> begin
