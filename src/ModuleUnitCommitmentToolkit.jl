@@ -1,5 +1,3 @@
-__precompile__(false)
-
 module ModuleUnitCommitmentToolkit
 
 # Environment config and utilities
@@ -26,16 +24,4 @@ include("solver_interface.jl")
 export SUC_scucmodel,
     load_runtime_config!, runtime_config_entries, UCInputSpec, UCSolveRequest, UCSolveResult, BendersSetup, print_uc_result, solve_uc
 
-# Include PCM tools in a submodule to enable LSP indexing and definition navigation (gd)
-module SequentialPCM
-    using ..ModuleUnitCommitmentToolkit: config, unit, transmissionline, load, data_centra, wind
-    const hydro = Any
-
-    include("../tools/pcm/period_scuc.jl")
-    include("../tools/pcm/adaptive_period_scuc.jl")
 end
-
-export SequentialPCM
-
-end
-

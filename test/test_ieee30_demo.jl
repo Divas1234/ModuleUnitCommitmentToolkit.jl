@@ -1,0 +1,20 @@
+@testset "IEEE 30-bus frequency and data-center demo" begin
+    demo_path = joinpath(@__DIR__, "..", "examples", "unified_api", "07_ieee30_frequency_datacenter_uc.jl")
+    @test isfile(demo_path)
+    if isfile(demo_path)
+        source = read(demo_path, String)
+        @test occursin("const CASE_NAME = :ieee30", source)
+        @test occursin("MODEL_CONSIDER_FREQUENCY_CONTROL", source)
+        @test occursin("MODEL_CONSIDER_DATA_CENTER", source)
+        @test occursin("generate_frequency_parameters", source)
+        @test occursin("data_centers", source)
+        @test occursin("UC_FREQUENCY_CONTINGENCY_FRACTION", source)
+        @test occursin("UC_WIND_PENETRATION", source)
+        @test occursin("thermal_capacity_pu", source)
+        @test occursin("using DataFrames", source)
+        @test occursin("using CSV", source)
+        @test occursin("show_and_write_dataframe", source)
+        @test occursin("INPUT_OUTPUT_DIR", source)
+        @test occursin("CSV.write", source)
+    end
+end

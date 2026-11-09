@@ -1,0 +1,25 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="980" height="520" viewBox="0 0 980 520">
+<rect width="100%" height="100%" fill="white"/>
+<text x="490.0" y="32" text-anchor="middle" font-family="Arial" font-size="22">Runtime comparison</text>
+<line x1="72" y1="448" x2="908" y2="448" stroke="#333"/>
+<line x1="72" y1="72" x2="72" y2="448" stroke="#333"/>
+<rect x="98.47333333333336" y="171.25035440884602" width="86.38666666666667" height="276.749645591154" fill="#1f77b4"/>
+<text x="141.66666666666669" y="163.25035440884602" text-anchor="middle" font-family="Arial" font-size="12">7.79</text>
+<text x="141.66666666666669" y="466" text-anchor="middle" font-family="Arial" font-size="11">benchmark_uc-20</text>
+<rect x="237.80666666666667" y="319.3974104526982" width="86.38666666666667" height="128.6025895473018" fill="#1f77b4"/>
+<text x="281.0" y="311.3974104526982" text-anchor="middle" font-family="Arial" font-size="12">3.62</text>
+<text x="281.0" y="466" text-anchor="middle" font-family="Arial" font-size="11">benders-20</text>
+<rect x="377.14" y="288.4816179945185" width="86.38666666666667" height="159.51838200548153" fill="#1f77b4"/>
+<text x="420.3333333333333" y="280.4816179945185" text-anchor="middle" font-family="Arial" font-size="12">4.49</text>
+<text x="420.3333333333333" y="466" text-anchor="middle" font-family="Arial" font-size="11">ccg-20</text>
+<rect x="516.4733333333334" y="72.0" width="86.38666666666667" height="376.0" fill="#1f77b4"/>
+<text x="559.6666666666667" y="64.0" text-anchor="middle" font-family="Arial" font-size="12">10.58</text>
+<text x="559.6666666666667" y="466" text-anchor="middle" font-family="Arial" font-size="11">benchmark_uc-50</text>
+<rect x="655.8066666666666" y="396.829033172668" width="86.38666666666667" height="51.17096682733201" fill="#1f77b4"/>
+<text x="699.0" y="388.829033172668" text-anchor="middle" font-family="Arial" font-size="12">1.44</text>
+<text x="699.0" y="466" text-anchor="middle" font-family="Arial" font-size="11">benders-50</text>
+<rect x="795.14" y="267.4446649655042" width="86.38666666666667" height="180.5553350344958" fill="#1f77b4"/>
+<text x="838.3333333333334" y="259.4446649655042" text-anchor="middle" font-family="Arial" font-size="12">5.08</text>
+<text x="838.3333333333334" y="466" text-anchor="middle" font-family="Arial" font-size="11">ccg-50</text>
+<text x="18" y="260.0" text-anchor="middle" transform="rotate(-90 18,260.0)" font-family="Arial" font-size="13">seconds</text>
+</svg>

@@ -28,8 +28,6 @@ env/
 *.jl.*.cov
 *.jl.mem
 .julia/
-.julia_depot/
-**/.julia_depot/
 .pkg/
 **/.pkg/
 .Pkg/

@@ -1,0 +1,161 @@
+Set parameter Username
+Set parameter LicenseID to value 2754784
+Academic license - for non-commercial use only - expires 2026-12-14
+Set parameter Username
+Set parameter LicenseID to value 2754784
+Academic license - for non-commercial use only - expires 2026-12-14
+Set parameter Username
+Set parameter LicenseID to value 2754784
+Academic license - for non-commercial use only - expires 2026-12-14
+Set parameter Username
+Set parameter LicenseID to value 2754784
+Academic license - for non-commercial use only - expires 2026-12-14
+Set parameter Username
+Set parameter LicenseID to value 2754784
+Academic license - for non-commercial use only - expires 2026-12-14
+Set parameter Username
+Set parameter LicenseID to value 2754784
+Academic license - for non-commercial use only - expires 2026-12-14
+Set parameter Username
+Set parameter LicenseID to value 2754784
+Academic license - for non-commercial use only - expires 2026-12-14
+Set parameter Username
+Set parameter LicenseID to value 2754784
+Academic license - for non-commercial use only - expires 2026-12-14
+Step-1: Pkgs and functions are loaded
+Step-2: imput data are loaded
+Initializing Benders Master Problem construction...
+	 MILP_type objective_function 						 done
+	 constraints: 1) minimum shutup/shutdown time limits			 done
+	 constraints: 2) binary variable logic					 done
+	 constraints: 3) shutup/shutdown cost					 done
+	 constraints: master supply adequacy cuts				 done
+Initializing Benders Subproblem (Recourse) construction...
+	 LP_type subproblem objective_function 					 done
+Objective function has been set.
+	 constraints: 4) loadcurtailments and spoliedwinds			 done
+	 constraints: 5) generatos power limits					 done
+	 constraints: 6) system reserves limits					 done
+	 constraints: 7) power balance constraints				 done
+	 constraints: 8) ramp-up/ramp-down constraints				 done
+	 constraints: 9) piece linearization constraints			 done
+	 constraints: 10) transmissionline limits for basline			 done
+	 constraints: 11) stroges system constraints skipped (NC=0 or variables not defined)
+Initializing Benders Subproblem (Recourse) construction...
+	 LP_type subproblem objective_function 					 done
+Objective function has been set.
+	 constraints: 4) loadcurtailments and spoliedwinds			 done
+	 constraints: 5) generatos power limits					 done
+	 constraints: 6) system reserves limits					 done
+	 constraints: 7) power balance constraints				 done
+	 constraints: 8) ramp-up/ramp-down constraints				 done
+	 constraints: 9) piece linearization constraints			 done
+	 constraints: 10) transmissionline limits for basline			 done
+	 constraints: 11) stroges system constraints skipped (NC=0 or variables not defined)
+Initializing Benders Subproblem (Recourse) construction...
+	 LP_type subproblem objective_function 					 done
+Objective function has been set.
+	 constraints: 4) loadcurtailments and spoliedwinds			 done
+	 constraints: 5) generatos power limits					 done
+	 constraints: 6) system reserves limits					 done
+	 constraints: 7) power balance constraints				 done
+	 constraints: 8) ramp-up/ramp-down constraints				 done
+	 constraints: 9) piece linearization constraints			 done
+	 constraints: 10) transmissionline limits for basline			 done
+	 constraints: 11) stroges system constraints skipped (NC=0 or variables not defined)
+Initializing Benders Subproblem (Recourse) construction...
+	 LP_type subproblem objective_function 					 done
+Objective function has been set.
+	 constraints: 4) loadcurtailments and spoliedwinds			 done
+	 constraints: 5) generatos power limits					 done
+	 constraints: 6) system reserves limits					 done
+	 constraints: 7) power balance constraints				 done
+	 constraints: 8) ramp-up/ramp-down constraints				 done
+	 constraints: 9) piece linearization constraints			 done
+	 constraints: 10) transmissionline limits for basline			 done
+	 constraints: 11) stroges system constraints skipped (NC=0 or variables not defined)
+Initializing Benders Subproblem (Recourse) construction...
+	 LP_type subproblem objective_function 					 done
+Objective function has been set.
+	 constraints: 4) loadcurtailments and spoliedwinds			 done
+	 constraints: 5) generatos power limits					 done
+	 constraints: 6) system reserves limits					 done
+	 constraints: 7) power balance constraints				 done
+	 constraints: 8) ramp-up/ramp-down constraints				 done
+	 constraints: 9) piece linearization constraints			 done
+	 constraints: 10) transmissionline limits for basline			 done
+	 constraints: 11) stroges system constraints skipped (NC=0 or variables not defined)
+Initializing Benders Subproblem (Recourse) construction...
+	 LP_type subproblem objective_function 					 done
+Objective function has been set.
+	 constraints: 4) loadcurtailments and spoliedwinds			 done
+	 constraints: 5) generatos power limits					 done
+	 constraints: 6) system reserves limits					 done
+	 constraints: 7) power balance constraints				 done
+	 constraints: 8) ramp-up/ramp-down constraints				 done
+	 constraints: 9) piece linearization constraints			 done
+	 constraints: 10) transmissionline limits for basline			 done
+	 constraints: 11) stroges system constraints skipped (NC=0 or variables not defined)
+Initializing Benders Subproblem (Recourse) construction...
+	 LP_type subproblem objective_function 					 done
+Objective function has been set.
+	 constraints: 4) loadcurtailments and spoliedwinds			 done
+	 constraints: 5) generatos power limits					 done
+	 constraints: 6) system reserves limits					 done
+	 constraints: 7) power balance constraints				 done
+	 constraints: 8) ramp-up/ramp-down constraints				 done
+	 constraints: 9) piece linearization constraints			 done
+	 constraints: 10) transmissionline limits for basline			 done
+	 constraints: 11) stroges system constraints skipped (NC=0 or variables not defined)
+[ Info: Generating batch subproblems for multi-cut scenarios
+[ Info: Batch subproblem dictionary successfully created with 6 independent entries.
+Starting (Strengthen) Benders decomposition algorithm
+iteration start ...
+
+====================================================
+ITER 	 LOWER_bound 	    UPPER_bound   	 GAP
+----------------------------------------------------
+1              260            1.14871e+06    0.999774       
+2              6270.69        1.14871e+06    0.994541       
+3              7896.09        1.14871e+06    0.993126       
+4              11354.7        1.14871e+06    0.990115       
+5              15076.2        1.14871e+06    0.986876       
+6              46159.6        1.14871e+06    0.959816       
+7              52314.9        1.14871e+06    0.954458       
+8              52314.9        1.14871e+06    0.954458       
+9              58974.4        1.14871e+06    0.94866        
+10             59287.4        1.14871e+06    0.948388       
+11             59761.9        1.14871e+06    0.947975       
+12             66981.6        1.14871e+06    0.94169        
+13             66981.6        1.14871e+06    0.94169        
+14             66981.6        1.14871e+06    0.94169        
+15             67456.1        1.14871e+06    0.941277       
+16             74675.7        367369         0.796728       
+17             309768         367369         0.156793       
+18             309934         367369         0.156341       
+19             309936         367369         0.156336       
+20             310237         367369         0.155516       
+21             310780         367369         0.154038       
+22             310928         367369         0.153635       
+23             311260         367369         0.152733       
+24             319609         367369         0.130005       
+25             319902         367369         0.129209       
+26             329547         367369         0.102955       
+27             333392         367369         0.0924886      
+28             339286         367369         0.0764429      
+29             339756         367369         0.0751657      
+30             348531         367369         0.051278       
+31             352303         363958         0.0320226      
+32             356613         363958         0.0201824      
+33             359614         362834         0.00887471     
+34             360878         362817         0.00534432     
+35             362221         362817         0.0016407      
+36             362531         362817         0.000788553    
+
+
+====================================================
+Convergence achieved - Optimal solution found
+FINAL UPPER BOUND: 362816.65312500286
+FINAL LOWER BOUND: 362530.5531250027
+FINAL GAP:         0.0007885525582553441
+====================================================

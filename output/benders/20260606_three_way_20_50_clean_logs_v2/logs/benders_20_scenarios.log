@@ -1,0 +1,12 @@
+Starting (Strengthen) Benders decomposition algorithm
+ITER 	 LOWER_bound 	    UPPER_bound   	 GAP
+1              350            1.13977e+06    0.999693
+2              101483         1.13977e+06    0.910962
+3              110716         1.13977e+06    0.902861
+4              111939         1.13977e+06    0.901788
+5              121172         1.13977e+06    0.893687
+FINAL STATUS:       maximum_iterations
+FINAL ITERATIONS:   5
+FINAL UPPER BOUND:  1.139769560248672e6
+FINAL LOWER BOUND:  121172.24657890643
+FINAL GAP:          0.8936870655210664

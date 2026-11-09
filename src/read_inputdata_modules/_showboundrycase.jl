@@ -1,8 +1,7 @@
 using Printf
 using UnicodePlots
 
-function boundrycondition(
-		NB::Int64,
+function boundrycondition(NB::Int64,
 		NL::Int64,
 		NG::Int64,
 		NT::Int64,
@@ -12,8 +11,7 @@ function boundrycondition(
 		lines::transmissionline,
 		winds::wind,
 		stroges::pss,
-		config_param::config
-)
+		config_param::config)
 	# (Assuming this code is inside a function, e.g., showboundrycase)
 	# Consider defining Base.show methods for custom structs (units, loads, etc.)
 	# for better encapsulation and reusability of display logic.
@@ -77,9 +75,9 @@ function boundrycondition(
 	println("  load_curve (ND x NT):")
 	# Basic matrix print - adjust formatting as needed
 	# Could use PrettyTables.jl for nicer output if it's a dependency
-	for i ∈ 1:ND
+	for i in 1:ND
 		print("    Load ", i, ": ")
-		for j ∈ 1:NT
+		for j in 1:NT
 			@printf("%8.3f ", loads.load_curve[i, j]) # Adjust format width as needed
 		end
 		println() # Newline after each load's curve
@@ -130,31 +128,15 @@ function plt_unicodeplot(winds = nothing, loads = nothing, flag = 0)
 	xdata = collect(1:1:24)
 	if flag == 0
 		NS = size(winds.scenarios_curve, 1)
-		plt = lineplot(
-			xdata,
-			winds.scenarios_curve[1, :];
-			height = 10,
-			xlim = (0, 25),
-			title = "stochastic realization of renewable resource",
-			name = "wind farms",
-			xlabel = "t / h",
-			ylabel = "output / p.u."
-		)
-		for i ∈ 2:NS
+		plt = lineplot(xdata, winds.scenarios_curve[1, :]; height = 10, xlim = (0, 25), title = "stochastic realization of renewable resource",
+			name = "wind farms", xlabel = "t / h", ylabel = "output / p.u.")
+		for i in 2:NS
 			lineplot!(plt, xdata, winds.scenarios_curve[i, :])
 		end
 	else
 		# ND = size( loads.load_curve,1)
-		plt = lineplot(
-			xdata,
-			loads.load_curve[1, :];
-			height = 10,
-			xlim = (0, 25),
-			title = "sequential demand curve",
-			name = "loads",
-			xlabel = "t / h",
-			ylabel = "output / p.u."
-		)
+		plt = lineplot(xdata, loads.load_curve[1, :]; height = 10, xlim = (0, 25), title = "sequential demand curve",
+			name = "loads", xlabel = "t / h", ylabel = "output / p.u.")
 	end
 	return plt
 end
