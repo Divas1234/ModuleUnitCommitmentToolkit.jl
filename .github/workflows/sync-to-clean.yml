@@ -11,6 +11,7 @@ jobs:
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
+          persist-credentials: false
       - name: Push to clean repo
         run: |
-          git -c http.extraheader="" push --force "https://${{ secrets.SYNC_TOKEN }}@github.com/Divas1234/ModuleUnitCommitmentToolkit.jl.git" HEAD:refs/heads/main
+          git push --force "https://x-access-token:${{ secrets.SYNC_TOKEN }}@github.com/Divas1234/ModuleUnitCommitmentToolkit.jl.git" HEAD:refs/heads/main
