@@ -206,10 +206,8 @@ withenv("MODEL_CONSIDER_BESS" => "0", "MODEL_CONSIDER_FREQUENCY_CONTROL" => "0",
     # Check whether the objective values match within numerical tolerance.
     if abs(val_extensive - val_benders) < 1e-2 && abs(val_extensive - val_ccg) < 1e-2
         println("SUCCESS: All three solving methods converge to the identical optimal objective!")
-        println("成功：三种求解方法均收敛于完全相同的最优目标函数值！")
     else
         println("WARNING: Objective variance detected between methods.")
-        println("警告：检测到不同求解方法之间存在目标函数值偏差。")
     end
     return println("=======================================================")
 end

@@ -1,6 +1,6 @@
-# JuliaHub / General Registry 发布说明
+# JuliaHub / General Registry publishing notes
 
-当前仓库根目录已经是标准 Julia 包结构：
+The repository root is already a standard Julia package:
 
 ```text
 Project.toml
@@ -9,7 +9,7 @@ test/runtests.jl
 LICENSE
 ```
 
-包元数据如下：
+Package metadata:
 
 ```text
 name   = ModuleUnitCommitmentToolkit
@@ -17,55 +17,54 @@ uuid   = ac5da903-c047-492f-9e2d-d451e318368d
 version = 0.1.0
 ```
 
-## 发布前检查
+## Pre-release checks
 
-1. 在仓库根目录运行 `Pkg.test()`，确认所有测试通过。
-2. 确认 `Project.toml` 的所有直接依赖都有带上界的 `[compat]` 条目。
-3. 确认 `src/ModuleUnitCommitmentToolkit.jl` 与包名完全一致。
-4. 确认顶层存在 OSI-approved license；本项目使用 MIT License。
-5. 将当前提交推送到 GitHub，并创建 `v0.1.0` tag。
-6. 发布前复核 [`THIRD_PARTY_NOTICES.md`](../THIRD_PARTY_NOTICES.md)，尤其是
-   Gurobi 外部许可证、PowerSystems BSD-3-Clause 声明，以及 `ref/`、`data/`
-   算例和数据的来源授权。
+1. Run `Pkg.test()` from the repository root and confirm that every test passes.
+2. Confirm that every direct dependency in `Project.toml` has an upper-bounded `[compat]` entry.
+3. Confirm that `src/ModuleUnitCommitmentToolkit.jl` matches the package name exactly.
+4. Confirm that an OSI-approved license exists at the top level. This project uses the MIT License.
+5. Push the current commit to GitHub and create a `v0.1.0` tag.
+6. Review [`THIRD_PARTY_NOTICES.md`](../THIRD_PARTY_NOTICES.md) before publishing, especially the
+   Gurobi external license, the PowerSystems BSD-3-Clause notice, and the source
+   authorization for cases and data under `ref/` and `data/`.
 
-Julia General 的自动合并规则要求公共包仓库 URL 以包名结尾，即：
+Julia General's automerge rule requires a public package repository URL to end with the package name:
 
 ```text
 https://github.com/Divas1234/ModuleUnitCommitmentToolkit.jl
 ```
 
-GitHub 仓库已重命名为 `ModuleUnitCommitmentToolkit.jl`，远程地址为：
+The GitHub repository has been renamed to `ModuleUnitCommitmentToolkit.jl`. Its remote URL is:
 
 ```text
 https://github.com/Divas1234/ModuleUnitCommitmentToolkit.jl.git
 ```
 
-该命名符合公共 General registry 对包仓库 URL 的约定。
+That name matches the General registry convention for public package repository URLs.
 
-## JuliaHub 注册流程
+## JuliaHub registration
 
-JuliaHub 当前通过 Registrator 创建 General registry 注册请求：
+JuliaHub currently creates General registry requests through Registrator:
 
-1. 登录 JuliaHub 的 Packages 页面并打开 Registrator。
-2. 授权 Registrator 检查 GitHub 仓库的提交权限。
-3. 填写包 URL、tag `v0.1.0` 和发布说明。
-4. Registrator 创建 General registry pull request。
-5. 等待 registry CI 和 General 维护者合并。
-6. JuliaHub 会周期性同步已注册版本；同步完成后，用户即可使用：
+1. Sign in to the JuliaHub Packages page and open Registrator.
+2. Authorize Registrator to inspect commit permissions on the GitHub repository.
+3. Enter the package URL, the `v0.1.0` tag, and the release notes.
+4. Registrator opens a General registry pull request.
+5. Wait for registry CI and a General maintainer to merge it.
+6. JuliaHub periodically syncs registered versions. After the sync, users can run:
 
    ```julia
    using Pkg
    Pkg.add("ModuleUnitCommitmentToolkit")
    ```
 
-## GitHub 注册评论方式
+## GitHub registration comment
 
-正确的 JuliaRegistrator GitHub App 安装入口为：
+Install the JuliaRegistrator GitHub App from:
 
 <https://github.com/apps/juliateam-registrator/installations/new>
 
-安装 App 后，也可以在包含 `Project.toml` 版本 `0.1.0` 的
-提交或 pull request 中评论：
+After the app is installed, comment on the commit or pull request that contains `Project.toml` version `0.1.0`:
 
 ```text
 @JuliaRegistrator register
@@ -77,4 +76,4 @@ Release notes:
 - DataFrame-based input and result reports with CSV snapshots.
 ```
 
-注册动作需要 GitHub/JuliaHub 登录权限，不能仅通过本地 `Pkg` 命令完成。
+Registration requires a GitHub or JuliaHub login. It cannot be completed with a local `Pkg` command alone.

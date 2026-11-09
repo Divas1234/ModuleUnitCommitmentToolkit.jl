@@ -367,7 +367,7 @@ async function apiFetch(url, options){
   request.headers = headers;
   let response = await fetch(url, request);
   if (response.status === 401 && !GUI_TOKEN) {
-    const token = window.prompt('GUI token required:');
+    const token = window.prompt('Enter the GUI token (kept only in this page):');
     if (token) {
       GUI_TOKEN = token.trim();
       headers.Authorization = 'Bearer ' + GUI_TOKEN;
@@ -513,9 +513,9 @@ function renderRunSuccess(task, state){
   var path = getRunResultPath(task, state || {});
   var taskName = taskLabel(task);
   var suffix = path
-    ? '结果已具体保存在：<br><code>' + escapeHTML(path) + '</code>'
-    : '结果路径暂未返回，请查看下方 Output 日志。';
-  el.innerHTML = '<strong>&#127881; 任务 ' + escapeHTML(taskName) + ' 运行成功！</strong><br>' + suffix;
+    ? 'Results saved to:<br><code>' + escapeHTML(path) + '</code>'
+    : 'The result path was not returned. Check the Output log below.';
+  el.innerHTML = '<strong>&#127881; Task ' + escapeHTML(taskName) + ' completed.</strong><br>' + suffix;
   el.style.display = 'block';
 }
 
@@ -1235,7 +1235,7 @@ function renderSettings(){{
       panelNote('ieee14','Built-in IEEE 14 benchmark selected. Use this lightweight case for fast validation runs.')
     ]);
   html+=settingsCard('model','Model Settings','Network topology, constraint architecture, relaxation coefficients, BESS, and frequency model parameters.',
-    '网络模型拓扑/约束架构','settings-model-formulation',[['dc','DC-OPF (直流潮流)'],['ac','AC-OPF (交流潮流)'],['linearized','Grid Linearization (网格线性化)']],[
+    'Network topology / constraint architecture','settings-model-formulation',[['dc','DC-OPF (DC power flow)'],['ac','AC-OPF (AC power flow)'],['linearized','Grid Linearization (linearized network)']],[
       panelHtml('dc',modelBase,'DC-OPF and system-level model switches.'),
       panelHtml('ac',modelFrequency,'AC-OPF placeholder mapped to frequency/security related controls available in this project.'),
       panelHtml('linearized',modelLinear,'Piecewise and grid linearization parameters.')

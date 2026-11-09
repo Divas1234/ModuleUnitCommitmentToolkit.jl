@@ -51,11 +51,9 @@ The toolkit provides a modular helper function `generate_frequency_parameters` w
 
 ```julia
 # Automatically generate baseline parameters for all units in a large system
-# 自动为大规模系统中的所有发电机组生成调频参数字典
 frequency_params = generate_frequency_parameters(sys)
 
 # Optional: Apply specific manual overrides for key generators
-# 用户可提供特定关键机组的自定义参数覆盖
 custom_overrides = Dict(
     "Gen-Coal-1" => (H = 6.5, D = 0.08, K = 0.95, F = 0.3, T = 7.0, R = 0.05),
     "Gen-Nuclear-3" => (H = 8.0, D = 0.10, K = 0.0, F = 0.0, T = 0.0, R = 1.0)

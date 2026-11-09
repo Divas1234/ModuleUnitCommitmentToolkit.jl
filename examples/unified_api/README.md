@@ -1,6 +1,6 @@
-# 统一接口示例
+# Unified interface examples
 
-本目录中的程序全部围绕包级统一入口编写：
+Every program in this directory is written against the package-level unified entry point:
 
 ```julia
 using ModuleUnitCommitmentToolkit
@@ -14,30 +14,28 @@ result = solve_uc(
 )
 ```
 
-调用方只需要设置两个指示参数：
+Callers set two selector arguments:
 
-| 参数 | 可选值 | 含义 |
+| Argument | Accepted values | Meaning |
 |---|---|---|
-| `algorithm` | `:benchmark`、`:benders`、`:ccg` | 选择内部算法模块 |
-| `input` | `:excel`、`:powersystems`、`:powersystems_csv` | 选择统一数据入口 |
+| `algorithm` | `:benchmark`, `:benders`, `:ccg` | Selects the internal algorithm module |
+| `input` | `:excel`, `:powersystems`, `:powersystems_csv` | Selects the unified data entry |
 
-算法模块由 `solve_uc` 延迟加载，调用方不需要自己管理 `include` 顺序。推荐业务代码
-使用 `solve_uc` 或显式构造 `UCSolveRequest`；只有需要访问 Benders 中间模型时，才使用
-`tools/benders/setup.jl` 的低层接口。
+`solve_uc` loads algorithm modules lazily. Callers do not manage `include` order. Application code should call `solve_uc` or construct a `UCSolveRequest`. Use the lower-level interface in `tools/benders/setup.jl` only when the Benders intermediate models are needed.
 
-## 示例文件
+## Example files
 
-| 文件 | 内容 | 是否执行优化 |
+| File | Contents | Runs optimization |
 |---|---|---:|
-| `01_excel_single_solve.jl` | Excel 数据 + 单次统一求解 | 是 |
-| `02_input_spec_and_data.jl` | 使用 `UCInputSpec` 加载并检查命名数据 | 否 |
-| `03_three_algorithm_comparison.jl` | 同一数据入口依次调用三种算法 | 是 |
-| `04_powersystems_native.jl` | PowerSystems 原生系统 + 数据中心参数 | 是 |
-| `05_benders_named_setup.jl` | Benders 新命名字段和旧位置解构兼容层 | 是 |
-| `06_powersystems_case_catalog.jl` | 6/30/118 总线及大算例目录、桥接和可选求解 | 默认否 |
-| `07_ieee30_frequency_datacenter_uc.jl` | IEEE 30 节点 + 频率问题 + 数据中心挂载的完整 UC | 默认是 |
+| `01_excel_single_solve.jl` | Excel data and one unified solve | Yes |
+| `02_input_spec_and_data.jl` | Load and inspect named data with `UCInputSpec` | No |
+| `03_three_algorithm_comparison.jl` | Call the three algorithms from the same data entry | Yes |
+| `04_powersystems_native.jl` | Native PowerSystems system plus data-center parameters | Yes |
+| `05_benders_named_setup.jl` | Benders named fields and the legacy positional compatibility layer | Yes |
+| `06_powersystems_case_catalog.jl` | 6/30/118-bus and large-case catalog, bridge, and optional solve | No by default |
+| `07_ieee30_frequency_datacenter_uc.jl` | Full UC for IEEE 30-bus with frequency response and a data center | Yes by default |
 
-从仓库根目录执行：
+Run them from the repository root:
 
 ```bash
 julia --project=. examples/unified_api/01_excel_single_solve.jl
@@ -47,7 +45,7 @@ julia --project=. examples/unified_api/06_powersystems_case_catalog.jl
 UC_HORIZON=4 julia --project=. examples/unified_api/07_ieee30_frequency_datacenter_uc.jl
 ```
 
-选择不同 PowerSystems 算例时只需改变环境变量，数据入口保持不变：
+Changing the PowerSystems case only requires a different environment variable. The data entry stays the same:
 
 ```bash
 UC_CASE=ieee30 julia --project=. examples/unified_api/06_powersystems_case_catalog.jl
@@ -55,34 +53,21 @@ UC_CASE=ieee118 UC_RUN_SOLVE=1 UC_ALGORITHM=benchmark \
   julia --project=. examples/unified_api/06_powersystems_case_catalog.jl
 ```
 
-程序支持的稳定别名由 `powersystems_case_catalog()` 和
-`list_powersystems_cases()` 返回。核心别名包括 `ieee6`、`ieee30` 和 `ieee118`；此外还
-提供 `ieee14`、`ieee24`、`c_sys5_all_components`、`rts_gmlc`、`activsg2000` 和
-`activsg10k`。118-bus 入口使用安装依赖内的 `PowerSystemsTestData/118-Bus` 数据资产，
-外部精确 IEEE-118 文件仍可直接传入文件路径。
+Stable aliases come from `powersystems_case_catalog()` and `list_powersystems_cases()`. Core aliases are `ieee6`, `ieee30`, and `ieee118`. The catalog also provides `ieee14`, `ieee24`, `c_sys5_all_components`, `rts_gmlc`, `activsg2000`, and `activsg10k`. The 118-bus entry uses the `PowerSystemsTestData/118-Bus` asset shipped with the installed dependency. An external exact IEEE-118 file can still be passed as a file path.
 
-如果是在已经执行过 `using ModuleUnitCommitmentToolkit` 的 Julia REPL 中测试，更新源码后
-请先退出并重新启动 Julia，再重新执行上述代码。`UCSolveRequest` 是带字段的公开结构体，
-字段变更不能在同一个已加载模块中热替换；否则可能看到旧版本“不支持 `verbosity`”的错误。
+If a Julia REPL has already executed `using ModuleUnitCommitmentToolkit`, quit and restart Julia after updating the source, then run the example again. `UCSolveRequest` is a public struct with fields. A field change cannot be hot-swapped inside an already loaded module; otherwise an older session can report that `verbosity` is unsupported.
 
-PowerSystems 示例需要 `PowerSystemCaseBuilder` 的内置算例和可用的 Gurobi 环境：
+The PowerSystems examples need the built-in `PowerSystemCaseBuilder` cases and a working Gurobi environment:
 
 ```bash
 julia --project=. examples/unified_api/04_powersystems_native.jl
 ```
 
-### IEEE 30 节点频率-数据中心 UC
+### IEEE 30-bus frequency and data-center UC
 
-`07_ieee30_frequency_datacenter_uc.jl` 是一个更完整的业务侧示例：它固定读取 `:ieee30`
-算例，打印 30 个母线、6 台常规机组、1 台风电、41 条线路和 21 个负荷的系统边界，为
-常规机组配置 `H/D/K/F/T/R`，为按渗透率计算容量的风电配置 `Fcmode/Kw/Rw/Mw/Dw/Tw`，
-并把一个 20 MW 数据中心挂载到 5 号母线。默认风电渗透率和故障扰动幅度均为 5%，可通过
-`UC_WIND_PENETRATION` 与 `UC_FREQUENCY_CONTINGENCY_FRACTION` 调整。随后程序通过
-`load_uc_data` 打印统一数据维度和有效 config，再用 `UCSolveRequest` 统一调用
-`benchmark`、`benders` 或 `ccg`。
+`07_ieee30_frequency_datacenter_uc.jl` is a fuller application example. It always reads `:ieee30`, prints the system boundary of 30 buses, 6 conventional units, 1 wind unit, 41 branches, and 21 loads, assigns `H/D/K/F/T/R` to the conventional units, assigns `Fcmode/Kw/Rw/Mw/Dw/Tw` to wind capacity derived from the penetration rate, and attaches a 20 MW data center to bus 5. The default wind penetration and contingency size are both 5 percent. Change them with `UC_WIND_PENETRATION` and `UC_FREQUENCY_CONTINGENCY_FRACTION`. The script then prints unified data dimensions and the effective config through `load_uc_data`, and calls `benchmark`, `benders`, or `ccg` through `UCSolveRequest`.
 
-示例中的输入不再只依赖长文本日志：每张输入表都会先转换为 `DataFrame`，在终端以表格
-形式打印，并在求解前写入显式输出根目录：
+Input reporting is no longer only a long text log. Each input table is converted to a `DataFrame`, printed as a table, and written under an explicit output root before the solve:
 
 ```text
 output/examples/powersystems/ieee30/<algorithm>/<run_id>/
@@ -99,40 +84,34 @@ output/examples/powersystems/ieee30/<algorithm>/<run_id>/
 │   ├── 10_effective_config.csv
 │   ├── 11_unified_wind_parameters.csv
 │   └── 12_wind_availability.csv
-└── benchmark_uc/<run_id>/scheduling/   # 或 benders/、ccg/
+└── benchmark_uc/<run_id>/scheduling/   # or benders/ or ccg/
 ```
 
-其中 `02_thermal_generators.csv` 特别同时保留 PowerSystems 原始 `source_p_max_pu`、
-机组 `rating_pu` 和桥接后的 `uc_p_max_pu`，便于检查零上限回退逻辑；`10_effective_config.csv`
-是 `load_uc_data` 实际得到的模型配置，不是仅由调用方声明的配置草稿。
+`02_thermal_generators.csv` keeps the original PowerSystems `source_p_max_pu`, the unit `rating_pu`, and the bridged `uc_p_max_pu`, so the zero-limit fallback can be checked. `10_effective_config.csv` is the model configuration actually returned by `load_uc_data`, not a draft declared only by the caller.
 
-建议先用 4 小时窗口验证接口和模型链路：
+Validate the interface and model path with a 4-hour window first:
 
 ```bash
 UC_HORIZON=4 UC_ALGORITHM=benchmark \
   julia --project=. examples/unified_api/07_ieee30_frequency_datacenter_uc.jl
 ```
 
-只检查 PowerSystems 桥接、频率参数和数据中心数据，不启动优化：
+Inspect the PowerSystems bridge, frequency parameters, and data-center data without starting the optimization:
 
 ```bash
 UC_HORIZON=4 UC_RUN_SOLVE=0 \
   julia --project=. examples/unified_api/07_ieee30_frequency_datacenter_uc.jl
 ```
 
-该命令虽然跳过优化，但仍会完成全部输入 DataFrame 的终端展示和 CSV 快照写入；命令结束
-后直接打开最新的 `output/examples/powersystems/ieee30/benchmark/<run_id>/input/` 即可核对。
+That command skips the optimization, but it still prints every input `DataFrame` and writes the CSV snapshots. After it finishes, open the latest `output/examples/powersystems/ieee30/benchmark/<run_id>/input/` directory.
 
-`PowerSystems` 原生功率字段已经是 `SYSTEM_BASE` 标幺值；示例中的数据中心参数仍按 MW
-填写，由统一桥接层转换为模型内部标幺值。5% 事故容量和 5% 风电渗透率是便于教学
-smoke test 且能产生多机组开停机组合的标定值，正式研究应依据实际 N-1 事故和新能源
-规划比例重新设定这两个参数。
+Native `PowerSystems` power fields are already in `SYSTEM_BASE` per unit. Data-center parameters in the example are still entered in MW and converted to internal per unit by the unified bridge. The 5 percent contingency and 5 percent wind penetration are teaching values for a smoke test that produces a multi-unit commitment. A formal study should reset both parameters from the actual N-1 contingency and the planned renewable share.
 
-## 1. `solve_uc` 的两种调用形式
+## 1. Two ways to call `solve_uc`
 
-### 直接关键字调用
+### Keyword call
 
-适合脚本和简单服务调用。所有输入参数在一个地方声明：
+Use this for scripts and simple service calls. Every input argument is declared in one place:
 
 ```julia
 result = solve_uc(
@@ -147,9 +126,9 @@ result = solve_uc(
 )
 ```
 
-### 显式请求对象
+### Explicit request object
 
-适合需要记录请求、批量执行或在应用层传递参数的场景：
+Use this when the request must be recorded, batched, or passed through an application layer:
 
 ```julia
 request = UCSolveRequest(
@@ -166,13 +145,11 @@ request = UCSolveRequest(
 result = solve_uc(request)
 ```
 
-`UCSolveRequest` 会在构造时校验算法和数据入口。算法名称支持字符串及常用别名，例如
-`"extensive-form"` 会规范化为 `:benchmark`。
+`UCSolveRequest` validates the algorithm and data entry in its constructor. Algorithm names accept strings and common aliases. For example, `"extensive-form"` is normalized to `:benchmark`.
 
-## 2. 输出模式与结果展示
+## 2. Output modes and result display
 
-`solve_uc` 的默认输出模式是 `verbosity=:detailed`。数据配置完成后会先输出系统边界参数、
-有效 `config` 字段和 runtime 配置；求解完成后再输出分层优化结果：
+The default `solve_uc` output mode is `verbosity=:detailed`. After the data is configured, it prints system boundary parameters, the effective `config` fields, and the runtime configuration. After the solve, it prints a layered optimization report:
 
 ```text
 [Request]
@@ -189,16 +166,16 @@ result = solve_uc(request)
   output_dir      : /path/to/output
 ```
 
-四种模式的用途如下：
+The four modes are:
 
-| `verbosity` | 用途 | 终端行为 |
+| `verbosity` | Use | Terminal behavior |
 |---|---|---|
-| `:detailed` | 交互式运行，默认值 | 完整边界/配置报告和详细优化报告 |
-| `:summary` | 快速反馈 | 只打印统一分层摘要，隐藏内部日志 |
-| `:verbose` | 算法调试 | 保留底层算法的完整日志 |
-| `:silent` | 批处理、服务层或自定义报告 | 不自动打印，调用方自行处理返回值 |
+| `:detailed` | Interactive runs; the default | Full boundary and configuration report, plus a detailed optimization report |
+| `:summary` | Fast feedback | Unified layered summary only; internal logs are hidden |
+| `:verbose` | Algorithm debugging | Keeps the full lower-level algorithm log |
+| `:silent` | Batch jobs, services, or a custom report | Prints nothing; the caller handles the return value |
 
-批处理通常使用 `:silent`，需要标准格式时再显式调用 `print_uc_result`：
+Batch jobs usually use `:silent`, then call `print_uc_result` when a standard format is needed:
 
 ```julia
 result = solve_uc(
@@ -211,24 +188,21 @@ result = solve_uc(
 print_uc_result(result; detail = true)
 ```
 
-`verbosity` 只控制输出，不改变 `UCSolveResult`。算法专属字段仍通过
-`result.details` 或 `hasproperty(result, :field_name)` 访问。
+`verbosity` controls output only. It does not change `UCSolveResult`. Algorithm-specific fields are still available through `result.details` or `hasproperty(result, :field_name)`.
 
-调用 `print_uc_result(result; detail=true)` 时，结果各层会以 DataFrame 形式展示，并写入
-`result.output_dir/result/`：请求、状态、进度、输入维度、有效配置、模型求解信息、迭代历史、
-成本分解和算法诊断分别保存为编号 CSV，便于直接使用 DataFrames/CSV 做后处理。
+`print_uc_result(result; detail=true)` renders each layer as a `DataFrame` and writes it under `result.output_dir/result/`. The request, status, progress, input dimensions, effective configuration, solver information, iteration history, cost breakdown, and algorithm diagnostics are saved as numbered CSV files for post-processing with DataFrames or CSV.
 
-## 3. 结果对象
+## 3. Result object
 
-三种算法都会返回 `UCSolveResult`。结果对象有三个统一字段：
+All three algorithms return a `UCSolveResult`. The result has three shared fields:
 
 ```julia
-result.algorithm   # :benchmark、:benders 或 :ccg
-result.input       # :excel、:powersystems 或 :powersystems_csv
-result.output_dir  # 本次运行实际使用的输出根目录
+result.algorithm   # :benchmark, :benders, or :ccg
+result.input       # :excel, :powersystems, or :powersystems_csv
+result.output_dir  # output root actually used by this run
 ```
 
-算法自己的命名结果字段会通过结果对象直接访问：
+Named algorithm fields are also available on the result object:
 
 ```julia
 result.status
@@ -238,21 +212,18 @@ result.gap
 result.history
 ```
 
-也可以通过 `result.details` 获取完整的底层 `NamedTuple`：
+`result.details` returns the full underlying `NamedTuple`:
 
 ```julia
 println(keys(result.details))
 println(result[:upper_bound])
 ```
 
-不同算法的附加字段略有不同：benchmark 和 CCG 通常包含 `model`、`data`、`cost_summary`；
-Benders 通常包含 `history`、`iterations` 和 `incumbent`。业务层应优先依赖统一字段，
-访问算法专属字段前应使用 `hasproperty(result, :field_name)` 检查。
+Extra fields differ by algorithm. Benchmark and CCG usually include `model`, `data`, and `cost_summary`. Benders usually includes `history`, `iterations`, and `incumbent`. Application code should prefer the shared fields and call `hasproperty(result, :field_name)` before reading an algorithm-specific field.
 
-## 4. 标定参数的作用域
+## 4. Calibration scope
 
-`calibration` 可以是 `NamedTuple` 或字典。键名对应 TOML/ENV 参数，布尔值会自动转换为
-`0/1`。这些覆盖值只在当前 `solve_uc` 调用期间生效，不会污染后续调用：
+`calibration` may be a `NamedTuple` or a dictionary. Keys match TOML and `ENV` parameters, and Boolean values are converted to `0/1`. Overrides apply only to the current `solve_uc` call and do not leak into later calls:
 
 ```julia
 result = solve_uc(
@@ -270,35 +241,33 @@ result = solve_uc(
 )
 ```
 
-常用参数：
+Common parameters:
 
-| 算法 | 参数 | 用途 |
+| Algorithm | Parameter | Purpose |
 |---|---|---|
-| 公共模型 | `MODEL_CONSIDER_BESS` | 是否启用储能约束 |
-| 公共模型 | `MODEL_CONSIDER_FREQUENCY_CONTROL` | 是否启用调频约束 |
-| 公共模型 | `MODEL_CONSIDER_DATA_CENTER` | 是否启用数据中心约束 |
-| benchmark | `BENCHMARK_UC_USE_DRO` | 是否使用 DRO 场景概率 |
-| Benders | `BENDERS_MAX_ITERATIONS` | 最大分解迭代次数 |
-| Benders | `BENDERS_PARALLEL_SUBPROBLEMS` | 是否并行求解子问题 |
-| CCG | `CCG_INITIAL_SCENARIOS` | 初始场景数 |
-| CCG | `CCG_SCENARIOS_PER_ITERATION` | 每轮增加的场景数 |
-| CCG | `CCG_MAX_ITERATIONS` | 最大迭代次数 |
-| CCG | `CCG_GAP_TOL` | 收敛间隙阈值 |
+| Shared model | `MODEL_CONSIDER_BESS` | Enable storage constraints |
+| Shared model | `MODEL_CONSIDER_FREQUENCY_CONTROL` | Enable frequency-control constraints |
+| Shared model | `MODEL_CONSIDER_DATA_CENTER` | Enable data-center constraints |
+| benchmark | `BENCHMARK_UC_USE_DRO` | Use DRO scenario probabilities |
+| Benders | `BENDERS_MAX_ITERATIONS` | Maximum decomposition iterations |
+| Benders | `BENDERS_PARALLEL_SUBPROBLEMS` | Solve subproblems in parallel |
+| CCG | `CCG_INITIAL_SCENARIOS` | Number of initial scenarios |
+| CCG | `CCG_SCENARIOS_PER_ITERATION` | Scenarios added each round |
+| CCG | `CCG_MAX_ITERATIONS` | Maximum iterations |
+| CCG | `CCG_GAP_TOL` | Convergence gap tolerance |
 
-完整参数以 [`config/runtime_config.toml`](../../config/runtime_config.toml) 和
-[`docs/runtime_configuration.md`](../../docs/runtime_configuration.md) 为准。
+The full parameter list is in [`config/runtime_config.toml`](../../config/runtime_config.toml) and [`docs/runtime_configuration.md`](../../docs/runtime_configuration.md).
 
-## 5. 输出目录
+## 5. Output directory
 
-默认输出根目录为项目根目录下的 `output/`，不会因为调用方从其他目录启动而改变。可以
-通过环境变量设置全局输出目录：
+The default output root is `output/` under the project root. It does not change when the caller starts Julia from another directory. Set a global output directory with an environment variable:
 
 ```bash
 MODULE_UC_OUTPUT_DIR=/tmp/module-uc-output \
   julia --project=. examples/unified_api/01_excel_single_solve.jl
 ```
 
-也可以只对当前请求设置：
+Or set it for one request:
 
 ```julia
 result = solve_uc(
@@ -308,16 +277,15 @@ result = solve_uc(
 )
 ```
 
-`result.output_dir` 是调用方获取输出位置的唯一推荐方式，不要在业务代码中拼接算法
-内部目录名。`MODULE_UC_RUN_ID` 可以固定算法运行 ID，便于 CI 或批量实验复现：
+`result.output_dir` is the recommended way for a caller to find outputs. Do not concatenate internal algorithm directory names in application code. `MODULE_UC_RUN_ID` fixes the algorithm run id for CI or a batch experiment:
 
 ```bash
 MODULE_UC_RUN_ID=demo_001 julia --project=. examples/unified_api/01_excel_single_solve.jl
 ```
 
-## 6. PowerSystems 三种数据形式
+## 6. Three PowerSystems data forms
 
-### 已有 `System`
+### Existing `System`
 
 ```julia
 data = load_uc_data(
@@ -327,7 +295,7 @@ data = load_uc_data(
 )
 ```
 
-### 内置算例名称
+### Built-in case name
 
 ```julia
 result = solve_uc(
@@ -339,7 +307,7 @@ result = solve_uc(
 )
 ```
 
-### PowerSystems + 项目扩展 CSV
+### PowerSystems plus project extension CSV files
 
 ```julia
 result = solve_uc(
@@ -351,12 +319,11 @@ result = solve_uc(
 )
 ```
 
-`input=:powersystems_csv` 必须同时提供 `sys` 和 `case_dir`；`input=:powersystems` 则需要
-提供 `sys` 或 `case_name`，二者不能同时提供。
+`input=:powersystems_csv` requires both `sys` and `case_dir`. `input=:powersystems` requires `sys` or `case_name`, and those two cannot be supplied together.
 
-## 7. Benders 位置元组迁移
+## 7. Benders positional-tuple migration
 
-新代码使用命名字段：
+New code uses named fields:
 
 ```julia
 setup = main(; scenario_limit = 1)
@@ -368,13 +335,12 @@ NG = setup.NG
 NT = setup.NT
 ```
 
-`main` 返回的 `BendersSetup` 仍然支持旧的 20 项迭代解构，但只用于迁移旧程序：
+`BendersSetup` returned by `main` still supports the old 20-value iterator, but only for migrating old programs:
 
 ```julia
-# 兼容旧代码；不要在新代码中继续扩展这种位置接口。
+# Compatibility for old code. Do not extend this positional interface in new code.
 legacy_values = collect(setup)
 @assert length(legacy_values) == 20
 ```
 
-新业务逻辑应直接使用 `solve_uc(algorithm=:benders, ...)`；只有调试 cut、主问题或子问题
-模型时，才需要访问 `BendersSetup`。
+New application logic should call `solve_uc(algorithm=:benders, ...)`. Open `BendersSetup` only when debugging a cut, the master problem, or a subproblem.
