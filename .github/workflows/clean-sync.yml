@@ -1,0 +1,23 @@
+name: Sync Clean Repo
+
+on:
+  workflow_dispatch:
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout full history
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Push to clean repo
+        run: |
+          git remote add target "https://x-access-token:${{ secrets.SYNC_TOKEN }}@github.com/Divas1234/ModuleUnitCommitmentToolkit-empty.git"
+          git fetch --all --tags
+          git branch -r | grep 'origin/' | grep -v 'HEAD' | while read -r rbranch; do
+            bname="${rbranch#origin/}"
+            echo "Pushing $bname..."
+            git push --force "$rbranch":refs/heads/"$bname" target || true
+          done
+          git push --force --tags target || true
