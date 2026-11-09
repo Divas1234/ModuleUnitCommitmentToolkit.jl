@@ -339,7 +339,8 @@
     "dev",
     "debug",
     ".kilo",
-    ".github/workflows"
+    ".github/workflows",
+    "Tools/backup"
   ],
   "files.exclude": {
     "**/.git": true,
@@ -351,7 +352,8 @@
     "dev": true,
     "debug": true,
     ".kilo": true,
-    ".github/workflows": true
+    ".github/workflows": true,
+    "Tools/backup": true
   },
   "editor.codeLensFontFamily": "JuliaMono, Input,"
 }

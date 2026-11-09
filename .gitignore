@@ -57,6 +57,11 @@ Manifest.toml
 # Tooling/IDE
 .codegraph/
 
+# Local-only paths kept off GitHub
+.github/workflows/
+Tools/backup/
+dev/debug/
+
 # Node/local tool state
 node_modules/
 **/node_modules/
