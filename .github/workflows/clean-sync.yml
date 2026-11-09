@@ -14,10 +14,5 @@ jobs:
       - name: Push to clean repo
         run: |
           git remote add target "https://x-access-token:${{ secrets.SYNC_TOKEN }}@github.com/Divas1234/ModuleUnitCommitmentToolkit-empty.git"
-          git fetch --all --tags
-          git branch -r | grep 'origin/' | grep -v 'HEAD' | while read -r rbranch; do
-            bname="${rbranch#origin/}"
-            echo "Pushing $bname..."
-            git push --force "$rbranch":refs/heads/"$bname" target || true
-          done
-          git push --force --tags target || true
+          git fetch --tags origin
+          git push --tags target || true
