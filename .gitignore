@@ -85,9 +85,11 @@ logs/
 Rplots.pdf
 plotly/
 .plotly/
+*.html
 *.html.tmp
 *_cache.html
 *.svg.tmp
+gui/index.html
 
 # Excel and office temporary files
 ~$*.xlsx

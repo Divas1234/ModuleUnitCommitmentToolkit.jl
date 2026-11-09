@@ -1,0 +1,4 @@
+# Linguistic overrides: Keep repository classified primarily as Julia
+*.html linguist-generated=true
+gui/** linguist-generated=true
+gui/** linguist-vendored=true
