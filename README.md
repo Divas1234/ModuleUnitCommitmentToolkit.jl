@@ -1,84 +1,61 @@
 # ModuleUnitCommitmentToolkit
 
-`ModuleUnitCommitmentToolkit` is a Julia package for stochastic, network-constrained,
-and security-constrained unit commitment (UC). It provides one public solver entry point
-for Benchmark UC, Benders decomposition, and Column-and-Constraint Generation (CCG),
-along with one data entry point for Excel and PowerSystems inputs.
+`ModuleUnitCommitmentToolkit` is a Julia package for stochastic, network-constrained, and security-constrained unit commitment. One function, `solve_uc`, runs three algorithms on one data interface:
 
-The package is designed for reproducible research workflows: input data, effective model
-configuration, solver results, iteration history, cost breakdowns, and diagnostics are
-written to an explicit output directory in tabular form.
+| Algorithm | Selector | What it solves |
+| --- | --- | --- |
+| Benchmark | `:benchmark` | Extensive-form UC over the full scenario set. This is the reference solve. |
+| Benders | `:benders` | Multi-cut Benders decomposition. Commitment stays in the master; scenario recourse stays in the subproblems. |
+| CCG | `:ccg` | Column-and-constraint generation. The master grows by adding the worst unused renewable scenarios. |
 
-## Package status
+Renewable uncertainty can be treated as a Wasserstein distributionally robust problem inside Benchmark and CCG. That robust model is not a fourth solver. It is controlled by `CCG_DRO_ENABLED` and `CCG_DRO_RADIUS`, and documented in [`docs/algorithms/wasserstein_dro_ccg.md`](docs/algorithms/wasserstein_dro_ccg.md).
 
-- First public registration target: `v0.1.0`
-- Julia compatibility: `1.10` and later
+The same call accepts Excel workbooks or PowerSystems systems. Each run writes the input tables, the effective configuration, and the solver report to an explicit output directory.
+
+## Status
+
+- Version: `0.1.0`
+- Julia: `1.10` or later
 - License: MIT
-- Optimization backend: JuMP + Gurobi.jl (external Gurobi license required)
-- Main module: `ModuleUnitCommitmentToolkit`
+- Solver: JuMP with Gurobi. A separate Gurobi license is required.
+- Module: `ModuleUnitCommitmentToolkit`
 
 ## Installation
 
-After `v0.1.0` is merged into the Julia General Registry, install it with:
+After `v0.1.0` is in the Julia General registry:
 
 ```julia
 using Pkg
 Pkg.add("ModuleUnitCommitmentToolkit")
-
-using ModuleUnitCommitmentToolkit
 ```
 
-Before General Registry synchronization, install the release tag directly from GitHub:
-
-```julia
-using Pkg
-Pkg.add(
-    url = "https://github.com/Divas1234/ModuleUnitCommitmentToolkit.jl.git",
-    rev = "v0.1.0",
-)
-```
-
-For local development:
+Before that, install a checkout or a release tag:
 
 ```julia
 using Pkg
 Pkg.develop(path = "/path/to/ModuleUnitCommitmentToolkit.jl")
+
+# or a tagged release
+Pkg.add(url = "https://github.com/Divas1234/ModuleUnitCommitmentToolkit.jl.git", rev = "v0.1.0")
 ```
 
-## Requirements
-
-The package can be loaded without solving an optimization problem, but optimization runs
-require:
-
-1. Julia `1.10` or later;
-2. a working Gurobi installation;
-3. a valid Gurobi license visible to Julia. Gurobi is proprietary software;
-   this package does not grant or redistribute a Gurobi license;
-4. the package environment instantiated.
-
-From a checkout, instantiate the environment with:
+From a clone, instantiate the project and check Gurobi:
 
 ```bash
 julia --project=. -e 'using Pkg; Pkg.instantiate()'
-```
-
-Check the solver installation with:
-
-```bash
 julia --project=. -e 'using Gurobi; println(Gurobi.Env())'
 ```
 
-## Quick start: one unified solver entry point
+The package can be loaded without solving. An optimization run needs Julia 1.10+, a working Gurobi installation, and a license that Julia can see. This package does not distribute Gurobi.
 
-The recommended interface is `solve_uc`. Select the algorithm and data source with
-indicators; callers do not include or call algorithm implementation files directly.
+## Quick start
 
 ```julia
 using ModuleUnitCommitmentToolkit
 
 result = solve_uc(
     algorithm = :benchmark,       # :benchmark, :benders, or :ccg
-    input = :excel,               # :excel or :powersystems
+    input = :excel,               # :excel, :powersystems, or :powersystems_csv
     scenario_limit = 1,
     calibration = (
         MODEL_CONSIDER_BESS = false,
@@ -86,30 +63,19 @@ result = solve_uc(
         BENCHMARK_UC_USE_DRO = false,
     ),
     output_dir = "output/quickstart",
-    verbosity = :detailed,
+    verbosity = :summary,
 )
 
-println("status     = ", result.status)
-println("objective  = ", result.upper_bound)
-println("output_dir = ", result.output_dir)
+println(result.status)
+println(result.upper_bound)
+println(result.output_dir)
 ```
 
-`solve_uc` performs the following work internally:
+`solve_uc` validates the request, loads the data, applies calibration only for that call, dispatches to Benchmark, Benders, or CCG, and returns a `UCSolveResult`. Algorithm modules under `tools/` load on the first solve.
 
-1. validates the algorithm and input indicators;
-2. loads and normalizes the selected data source;
-3. applies the request-local calibration values;
-4. dispatches to Benchmark, Benders, or CCG;
-5. returns a named result object with common status, bounds, gap, history, and artifact fields.
-
-## Request object form
-
-For applications that build a request in one place and execute it later, use
-`UCSolveRequest`:
+Build the request first when it will be stored or reused:
 
 ```julia
-using ModuleUnitCommitmentToolkit
-
 request = UCSolveRequest(
     algorithm = :ccg,
     input = :excel,
@@ -118,41 +84,37 @@ request = UCSolveRequest(
         CCG_INITIAL_SCENARIOS = 1,
         CCG_SCENARIOS_PER_ITERATION = 1,
         CCG_MAX_ITERATIONS = 5,
+        CCG_DRO_ENABLED = false,
     ),
     output_dir = "output/ccg_demo",
-    verbosity = :summary,
+    verbosity = :silent,
 )
 
 result = solve_uc(request)
 print_uc_result(result; detail = true)
 ```
 
-Use `verbosity = :silent` in batch jobs and call `print_uc_result` explicitly when the
-application is ready to render the result.
+`"extensive-form"` is accepted and normalized to `:benchmark`.
 
-## PowerSystems example
+## PowerSystems
 
-PowerSystems data uses the same solver entry point. Only `input` and the system-specific
-arguments change:
+Only the input arguments change:
 
 ```julia
 using ModuleUnitCommitmentToolkit
 
 sys = build_system_from_powersystems(:ieee30)
-
 frequency_parameters = generate_frequency_parameters(sys)
-data_centers = [
-    (
-        bus = 10,
-        p_max = 20.0,
-        p_min = 0.0,
-        idle_power = 0.0,
-        server_energy = 0.0,
-        lambda = 0.0,
-        mu = 1.0,
-        workload = fill(0.0, 24),
-    ),
-]
+data_centers = [(
+    bus = 5,
+    p_max = 20.0,
+    p_min = 0.0,
+    idle_power = 0.0,
+    server_energy = 0.0,
+    lambda = 0.0,
+    mu = 1.0,
+    workload = fill(0.0, 24),
+)]
 
 result = solve_uc(
     algorithm = :benchmark,
@@ -165,69 +127,51 @@ result = solve_uc(
     calibration = (
         MODEL_CONSIDER_DATA_CENTER = true,
         MODEL_CONSIDER_FREQUENCY_CONTROL = true,
-        BENCHMARK_UC_USE_DRO = false,
     ),
     output_dir = "output/powersystems/ieee30/benchmark",
-    verbosity = :detailed,
+    verbosity = :summary,
 )
 ```
 
-The package includes aliases for common test systems, including `:ieee6`, `:ieee14`,
-`:ieee24`, `:ieee30`, `:ieee118`, `:rts_gmlc`, `:activsg2000`, and `:activsg10k` when
-the corresponding PowerSystems test data is available in the installed environment.
-Use `powersystems_case_catalog()` and `list_powersystems_cases()` to inspect the catalog.
+Stable case aliases include `:ieee6`, `:ieee14`, `:ieee24`, `:ieee30`, `:ieee118`, `:c_sys5_all_components`, `:rts_gmlc`, `:activsg2000`, and `:activsg10k` when the installed PowerSystems test data provides them. Inspect the catalog with `powersystems_case_catalog()` and `list_powersystems_cases()`.
 
-For a complete IEEE 30-bus example with wind penetration, frequency disturbance, data-center
-load, input snapshots, and detailed comments, see:
-
-[`examples/unified_api/07_ieee30_frequency_datacenter_uc.jl`](examples/unified_api/07_ieee30_frequency_datacenter_uc.jl)
-
-Run it with:
+The worked IEEE 30-bus example adds wind, frequency response, and a data center, then writes input snapshots before the solve:
 
 ```bash
-julia --project=. examples/unified_api/07_ieee30_frequency_datacenter_uc.jl
+UC_HORIZON=4 julia --project=. examples/unified_api/07_ieee30_frequency_datacenter_uc.jl
 ```
 
-Useful environment variables include `UC_ALGORITHM`, `UC_HORIZON`,
-`UC_SCENARIO_LIMIT`, `UC_WIND_PENETRATION`, and
-`UC_FREQUENCY_CONTINGENCY_FRACTION`.
+`UC_ALGORITHM`, `UC_HORIZON`, `UC_SCENARIO_LIMIT`, `UC_WIND_PENETRATION`, `UC_FREQUENCY_CONTINGENCY_FRACTION`, and `UC_RUN_SOLVE` control that example.
 
-## Calibration parameters
+## Calibration
 
-Calibration values are request-local. They are applied for the current solve and do not
-silently modify the user's global runtime configuration.
+Calibration values last for one `solve_uc` call. They do not rewrite the global environment for later calls.
 
-Common switches:
-
-| Parameter | Meaning |
+| Parameter | Effect |
 | --- | --- |
-| `MODEL_CONSIDER_DATA_CENTER` | Enable data-center load constraints |
-| `MODEL_CONSIDER_FREQUENCY_CONTROL` | Enable frequency-support constraints |
-| `MODEL_CONSIDER_BESS` | Enable battery constraints |
-| `MODEL_CONSIDER_WIND` | Enable wind-unit constraints |
-| `MODEL_NETWORK_CONSTRAINT` | Enable network constraints |
-| `MODEL_THERMAL_UNIT_CONSTRAINT` | Enable thermal-unit constraints |
+| `MODEL_CONSIDER_DATA_CENTER` | Data-center load constraints |
+| `MODEL_CONSIDER_FREQUENCY_CONTROL` | Frequency-support constraints |
+| `MODEL_CONSIDER_BESS` | Storage constraints |
+| `MODEL_CONSIDER_WIND` | Wind-unit constraints |
+| `MODEL_NETWORK_CONSTRAINT` | Network constraints |
+| `MODEL_THERMAL_UNIT_CONSTRAINT` | Thermal-unit constraints |
+| `BENCHMARK_UC_USE_DRO` | Use DRO scenario probabilities in the extensive form |
+| `BENDERS_MAX_ITERATIONS` | Benders iteration limit |
+| `BENDERS_PARALLEL_SUBPROBLEMS` | Solve Benders subproblems in parallel |
+| `CCG_INITIAL_SCENARIOS` | Scenarios in the first CCG master |
+| `CCG_SCENARIOS_PER_ITERATION` | Scenarios added after each separation |
+| `CCG_MAX_ITERATIONS` | CCG iteration limit |
+| `CCG_GAP_TOL` | CCG convergence tolerance |
+| `CCG_DRO_ENABLED` | Wasserstein worst-case distribution inside CCG |
+| `CCG_DRO_RADIUS` | Wasserstein radius. `0` recovers the empirical distribution |
 
-Algorithm controls:
+The full key list is in [`config/runtime_config.toml`](config/runtime_config.toml) and [`docs/runtime_configuration.md`](docs/runtime_configuration.md).
 
-| Algorithm | Typical parameters |
-| --- | --- |
-| Benchmark | `BENCHMARK_UC_USE_DRO` |
-| Benders | `BENDERS_MAX_ITERATIONS`, `BENDERS_PARALLEL_SUBPROBLEMS` |
-| CCG | `CCG_INITIAL_SCENARIOS`, `CCG_SCENARIOS_PER_ITERATION`, `CCG_MAX_ITERATIONS`, `CCG_GAP_TOL` |
+## Output
 
-The complete configuration reference is in
-[`docs/runtime_configuration.md`](docs/runtime_configuration.md).
+Set `output_dir` on the request, or set `MODULE_UC_OUTPUT_DIR`. Relative paths are resolved from the project root. `result.output_dir` is the path to read after the solve.
 
-## Structured outputs
-
-The output root is explicit. Set it per request with `output_dir`, or set the global
-`MODULE_UC_OUTPUT_DIR` environment variable. The solver does not need the caller's
-`pwd()` to locate output files.
-
-Each run contains separate `input/` and `result/` directories. Input tables are written
-before optimization, which makes it possible to audit the exact data and effective config
-used by a run. Result tables include:
+`print_uc_result(result; detail = true)` prints each section as a DataFrame and writes the same fields under `result.output_dir/result/`:
 
 - `01_request.csv`
 - `02_status.csv`
@@ -239,67 +183,73 @@ used by a run. Result tables include:
 - `08_cost_breakdown.csv`
 - `09_algorithm_diagnostics.csv`
 
-The same sections can be printed as DataFrames:
+Benchmark and CCG also write scheduling files under `<output_dir>/<algorithm>/<run_id>/scheduling/`. The Benders entry currently returns the in-memory result and the configured output directory.
 
-```julia
-print_uc_result(result; detail = true)
+## Repository layout
+
+```text
+src/                         package module and UC model
+tools/benchmark/             extensive-form reference solver
+tools/benders/               Benders master, subproblems, and cuts
+tools/ccg/                   CCG solver and Wasserstein DRO
+examples/unified_api/        runnable solve_uc examples
+data/data.xlsx               default Excel case
+config/runtime_config.toml   default runtime switches
+test/                        unit, interface, smoke, and GUI tests
+docs/                        API, configuration, and algorithm notes
+gui/                         optional local dashboard
 ```
 
-The result object exposes the resolved output directory:
+New application code should call `solve_uc` or `load_uc_data`. The `tools/` drivers remain available for algorithm debugging:
 
-```julia
-println(result.output_dir)
+```bash
+julia --project=. tools/benchmark/run_algorithm_comparison.jl
+julia --project=. tools/benders/driver.jl
+julia --project=. tools/ccg/driver.jl
 ```
 
-## Examples and documentation
+## Examples and further reading
 
-- [`examples/unified_api/README.md`](examples/unified_api/README.md): unified API examples;
-- [`examples/unified_api/01_excel_single_solve.jl`](examples/unified_api/01_excel_single_solve.jl): Excel solve;
-- [`examples/unified_api/03_three_algorithm_comparison.jl`](examples/unified_api/03_three_algorithm_comparison.jl): compare all three algorithms;
-- [`examples/unified_api/04_powersystems_native.jl`](examples/unified_api/04_powersystems_native.jl): native PowerSystems input;
-- [`examples/unified_api/07_ieee30_frequency_datacenter_uc.jl`](examples/unified_api/07_ieee30_frequency_datacenter_uc.jl): IEEE 30-bus extended example;
-- [`docs/api_reference.md`](docs/api_reference.md): public API and result fields;
-- [`docs/powersystems_algorithms_guide.md`](docs/powersystems_algorithms_guide.md): PowerSystems and algorithm notes;
-- [`docs/juliahub_publishing.md`](docs/juliahub_publishing.md): package registration workflow.
+- [`examples/unified_api/README.md`](examples/unified_api/README.md) — how to call the unified API
+- [`examples/unified_api/01_excel_single_solve.jl`](examples/unified_api/01_excel_single_solve.jl) — one Excel solve
+- [`examples/unified_api/03_three_algorithm_comparison.jl`](examples/unified_api/03_three_algorithm_comparison.jl) — Benchmark, Benders, and CCG on the same data
+- [`examples/unified_api/04_powersystems_native.jl`](examples/unified_api/04_powersystems_native.jl) — native PowerSystems input
+- [`docs/api_reference.md`](docs/api_reference.md) — public functions, fields, and command-line entry points
+- [`docs/powersystems_algorithms_guide.md`](docs/powersystems_algorithms_guide.md) — PowerSystems bridge and frequency parameters
+- [`docs/testing.md`](docs/testing.md) — what each test file covers
+- [`docs/juliahub_publishing.md`](docs/juliahub_publishing.md) — registry release steps
 
 ## Testing
 
-Run the package test suite:
+Run the same checks that CI runs, from the repository root:
 
 ```bash
-julia --project=. -e 'using Pkg; Pkg.test()'
+julia --project=. test/runtests.jl
+julia --project=. test/fast_interface.jl
+julia --project=. test/smoke_algorithms.jl
+python3 -m unittest discover -s test -p 'test_gui_security.py'
 ```
 
-The repository CI includes fast routing/data-entry tests and smoke tests for Benchmark,
-Benders, and CCG. The extended PowerSystems tests may require the corresponding test data
-and a configured Gurobi installation.
+`test/runtests.jl` covers data loading, the PowerSystems bridge, model helpers, DRO and CCG helpers, and Benders structures. `test/fast_interface.jl` checks request validation and result rendering without a full solve. `test/smoke_algorithms.jl` solves one Excel scenario with each algorithm and needs Gurobi. `test/test_gui_security.py` checks the local dashboard's bind address, token, and request limits.
 
-## Optional local dashboard
+`Pkg.test()` runs `test/runtests.jl`. The fast interface, smoke, and GUI checks are separate CI steps because they load the package as an external caller or use Python.
 
-The repository also contains an optional local HTML dashboard for inspecting generated
-experiment artifacts. It is not required for using the Julia package API:
+## Local dashboard
+
+The HTML dashboard is optional and is not part of the solver API:
 
 ```bash
 ./gui/start.sh
 ```
 
-The dashboard binds to `127.0.0.1` by default. Do not expose it on a remote interface unless
-authentication, origin restrictions, and request protection have been configured according
-to the repository's security guidance.
+It listens on `127.0.0.1` by default. A remote bind requires `MODULE_UC_GUI_ALLOW_REMOTE=1`, a bearer token, and an origin allow-list together.
 
-## Contributing
+## Development
 
-Please keep new integrations behind the unified `solve_uc` and `load_uc_data` entry points,
-add or update tests for new routes, and include a runnable example for new public behavior.
-Avoid adding a second package project directory; the root `Project.toml` is canonical.
+Keep new behavior behind `solve_uc` and `load_uc_data`. Add a test for a new route, and add an example under `examples/unified_api/` when the public behavior changes. The root `Project.toml` is the only package environment.
 
 ## License
 
-The project-owned source code is licensed under the MIT License. See
-[`LICENSE`](LICENSE) for the license text.
+Project source is under the MIT License. See [`LICENSE`](LICENSE).
 
-Third-party packages and solver components remain subject to their respective
-upstream licenses and terms. In particular, Gurobi is proprietary software;
-users must install it separately and provide a valid Gurobi license. This
-package does not redistribute third-party packages, solver binaries, or
-licenses.
+Gurobi, PowerSystems, and other dependencies keep their own licenses. Gurobi is proprietary: install it separately and supply a valid license. This package does not redistribute solver binaries or third-party licenses.

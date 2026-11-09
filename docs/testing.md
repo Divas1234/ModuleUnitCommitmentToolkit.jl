@@ -7,10 +7,10 @@ The project includes a lightweight Julia test suite in `test/`.
 From the repository root:
 
 ```bash
-julia test/runtests.jl
+julia --project=. test/runtests.jl
 ```
 
-The tests use the currently active Julia environment by default. To force activation of `.pkg/Project.toml`, run:
+That command uses the repository `Project.toml`. To force activation of `.pkg/Project.toml` instead, run:
 
 ```bash
 MODULE_UC_TEST_ACTIVATE_LOCAL_PROJECT=1 julia test/runtests.jl
@@ -63,5 +63,5 @@ On the current development setup, the full light suite runs in a few seconds and
 
 ```text
 Test Summary:         | Pass  Total
-module_unitcommitment |  236    236
+module_unitcommitment |  285    285
 ```

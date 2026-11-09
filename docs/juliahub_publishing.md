@@ -24,9 +24,9 @@ version = 0.1.0
 3. Confirm that `src/ModuleUnitCommitmentToolkit.jl` matches the package name exactly.
 4. Confirm that an OSI-approved license exists at the top level. This project uses the MIT License.
 5. Push the current commit to GitHub and create a `v0.1.0` tag.
-6. Review [`THIRD_PARTY_NOTICES.md`](../THIRD_PARTY_NOTICES.md) before publishing, especially the
-   Gurobi external license, the PowerSystems BSD-3-Clause notice, and the source
-   authorization for cases and data under `ref/` and `data/`.
+6. Review third-party terms before publishing, especially the Gurobi external license,
+   the PowerSystems BSD-3-Clause notice, and the source authorization for cases and
+   data under `ref/` and `data/`.
 
 Julia General's automerge rule requires a public package repository URL to end with the package name:
 
