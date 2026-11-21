@@ -198,17 +198,8 @@ function solve_benchmark_benders(; scenario_limit::Int64 = 20)
     end
 
     result = multiple_benders_decomposition_scuc(
-        scuc_masterproblem,
-        scuc_subproblem,
-        master_model_struct,
-        batch_sub_model_struct_dic,
-        winds,
-        config_param,
-        NG,
-        NT,
-        NW,
-        ND,
-        NL;
+        scuc_masterproblem, scuc_subproblem, master_model_struct, batch_sub_model_struct_dic, winds, config_param,
+        NG, NT, NW, ND, NL;
         jensen_subproblem_struct = jensen_subproblem_struct,
     )
 
