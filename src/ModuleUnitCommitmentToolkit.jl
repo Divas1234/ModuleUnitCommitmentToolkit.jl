@@ -21,6 +21,7 @@ using .ClusteredDisaggregation
 # Unified data/algorithm orchestration entry point. Heavy algorithm implementation
 # modules are loaded lazily on the first `solve_uc` call.
 include("core/solver_interface.jl")
+include("core/execution_diagnostics.jl")
 include("core/deprecations.jl")
 
 # Include PCM tools in a submodule for package-level access and LSP indexing
@@ -55,6 +56,7 @@ module SequentialPCM
         set_objective!,
         define_decision_variables!,
         validate_inputs,
+        ConType,
         calculate_gsdf,
         linearizationfuelcurve,
         calculate_initial_unit_status,
@@ -111,6 +113,10 @@ export SUC_scucmodel,
     BendersSetup,
     print_uc_result,
     solve_uc,
+    UCExampleOptions,
+    parse_example_run_args,
+    print_example_run_usage,
+    run_uc_example_workflow,
     uc_variable,
     has_uc_variable,
     LEGACY_NAMING_MIGRATION,
