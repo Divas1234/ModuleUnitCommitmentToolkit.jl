@@ -1,6 +1,6 @@
 using Test
 
-include("../tools/pcm/benchmark/scale_runner.jl")
+include("../../tools/pcm/benchmark/scale_runner.jl")
 using .PCMTwoScaleBenchmark
 
 @testset "two-scale benchmark layout" begin

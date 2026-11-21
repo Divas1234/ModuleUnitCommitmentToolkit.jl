@@ -1,5 +1,5 @@
 @testset "runtime config loader" begin
-    include(joinpath(PROJECT_ROOT, "src", "runtime_config.jl"))
+    include(joinpath(PROJECT_ROOT, "src", "core", "runtime_config.jl"))
 
     tmp_config = tempname() * ".toml"
     write(

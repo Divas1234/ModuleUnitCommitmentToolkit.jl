@@ -1,11 +1,11 @@
 module ModuleUnitCommitmentToolkit
 
-# Environment config and utilities
-include("environment_config.jl")
-include("runtime_config.jl")
-include("optimizer_config.jl")
-include("api_types.jl")
-include("output_reporting.jl")
+# Core infrastructure: environment, runtime config, optimizer, API types, reporting
+include("core/environment_config.jl")
+include("core/runtime_config.jl")
+include("core/optimizer_config.jl")
+include("core/api_types.jl")
+include("core/output_reporting.jl")
 
 # Renewable simulation
 include("renewables/stochastic_simulation.jl")
@@ -20,8 +20,8 @@ using .ClusteredDisaggregation
 
 # Unified data/algorithm orchestration entry point. Heavy algorithm implementation
 # modules are loaded lazily on the first `solve_uc` call.
-include("solver_interface.jl")
-include("deprecations.jl")
+include("core/solver_interface.jl")
+include("core/deprecations.jl")
 
 # Include PCM tools in a submodule for package-level access and LSP indexing
 module SequentialPCM

@@ -32,7 +32,7 @@ const PROJECT_ROOT = dirname(DOCS_DIR)
 
 # Include the core codebase components.
 # Include the core codebase components.
-include(joinpath(PROJECT_ROOT, "src", "environment_config.jl"))
+include(joinpath(PROJECT_ROOT, "src", "core", "environment_config.jl"))
 include(joinpath(PROJECT_ROOT, "src", "renewables", "stochastic_simulation.jl"))
 include(joinpath(PROJECT_ROOT, "src", "input_data", "readers.jl"))
 include(joinpath(PROJECT_ROOT, "src", "unit_commitment", "unit_commitment_model.jl"))

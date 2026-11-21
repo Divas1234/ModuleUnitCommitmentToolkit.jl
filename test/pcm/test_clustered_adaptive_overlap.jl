@@ -3,7 +3,7 @@ using DataFrames
 using CSV
 
 @testset "Clustered Adaptive Overlap PCM" begin
-    project_root = normpath(joinpath(@__DIR__, ".."))
+    project_root = normpath(joinpath(@__DIR__, "..", ".."))
     main_script = joinpath(project_root, "tools", "pcm", "main.jl")
 
     @testset "Method Dispatcher Selection" begin

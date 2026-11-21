@@ -8,7 +8,7 @@ if !isdefined(@__MODULE__, :_PERIOD_SCUC_MODULES_INCLUDED)
     #---------------------------------------------------------------------------------------------------
 
     if !isdefined(@__MODULE__, :Gurobi)
-        include("../../../src/environment_config.jl")
+        include("../../../src/core/environment_config.jl")
     end
     if !isdefined(@__MODULE__, :apply_scuc_constraints!)
         include("../../../src/unit_commitment/constraints/constraints.jl")

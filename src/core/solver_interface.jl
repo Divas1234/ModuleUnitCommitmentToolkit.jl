@@ -142,7 +142,7 @@ end
 
 function _ensure_uc_algorithm_modules!()
     if !_UC_ALGORITHM_MODULES_READY[]
-        project_root = normpath(joinpath(@__DIR__, ".."))
+        project_root = normpath(joinpath(@__DIR__, "..", ".."))
         include(_resolve_tools_path(project_root, "ccg", "solver.jl"))
         include(_resolve_tools_path(project_root, "benchmark", "benchmark_uc.jl"))
         _UC_ALGORITHM_MODULES_READY[] = true
@@ -456,7 +456,7 @@ function _solve_pcm_unified(request::UCSolveRequest)
         :pcm_clustered_adaptive => "clustered_adaptive_overlap",
         :pcm_integrated => "integrated_uc",
     )
-    project_root = normpath(joinpath(@__DIR__, ".."))
+    project_root = normpath(joinpath(@__DIR__, "..", ".."))
     pcm_entry = _resolve_tools_path(project_root, "pcm", "main.jl")
     env_pairs = Pair{String, String}["PCM_METHOD" => method_map[request.algorithm]]
     if request.input.data_file !== nothing

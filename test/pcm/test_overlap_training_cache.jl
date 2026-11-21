@@ -1,7 +1,7 @@
 using Test
 using DataFrames
 
-include("../tools/pcm/clustered_overlap/core/training_data_cache.jl")
+include("../../tools/pcm/clustered_overlap/core/training_data_cache.jl")
 using .AdaptiveOverlapTrainingCache
 
 @testset "adaptive overlap training-data cache" begin

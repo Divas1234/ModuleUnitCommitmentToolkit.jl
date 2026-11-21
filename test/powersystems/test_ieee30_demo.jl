@@ -1,5 +1,5 @@
 @testset "IEEE 30-bus frequency and data-center demo" begin
-    demo_path = joinpath(@__DIR__, "..", "examples", "unified_api", "07_ieee30_frequency_datacenter_uc.jl")
+    demo_path = joinpath(@__DIR__, "..", "..", "examples", "unified_api", "07_ieee30_frequency_datacenter_uc.jl")
     @test isfile(demo_path)
     if isfile(demo_path)
         source = read(demo_path, String)

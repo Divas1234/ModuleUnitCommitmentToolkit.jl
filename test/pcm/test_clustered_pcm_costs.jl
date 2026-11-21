@@ -1,7 +1,7 @@
 using Test
 
 if !isdefined(@__MODULE__, :check_var_exists)
-    include("../src/unit_commitment/validation/check_variable_exists.jl")
+    include("../../src/unit_commitment/validation/check_variable_exists.jl")
 end
 
 @testset "clustered PCM initial state and cost parity" begin

@@ -1,6 +1,6 @@
 using TOML
 
-const DEFAULT_RUNTIME_CONFIG_PATH = joinpath(dirname(@__DIR__), "config", "runtime_config.toml")
+const DEFAULT_RUNTIME_CONFIG_PATH = normpath(joinpath(@__DIR__, "..", "..", "config", "runtime_config.toml"))
 const _TRUTHY_ENV_VALUES = ("1", "true", "yes", "y", "on")
 
 """

@@ -1,5 +1,5 @@
 using Pkg
-Pkg.activate(@__DIR__)
+Pkg.activate(normpath(joinpath(@__DIR__, "..", "..")))
 using ModuleUnitCommitmentToolkit
 
 # Destructure directly from function call for clarity

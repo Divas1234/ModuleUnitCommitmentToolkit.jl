@@ -25,13 +25,13 @@ using JuMP
 using Gurobi
 
 # Include toolkit configurations and algorithms
-include("../src/environment_config.jl")
-include("../src/renewables/stochastic_simulation.jl")
-include("../src/input_data/readers.jl")
-include("../src/unit_commitment/unit_commitment_model.jl")
-include("../tools/benders/setup.jl")
-include("../tools/ccg/solver.jl")
-include("../tools/benchmark/benchmark_uc.jl")
+include("../../src/core/environment_config.jl")
+include("../../src/renewables/stochastic_simulation.jl")
+include("../../src/input_data/readers.jl")
+include("../../src/unit_commitment/unit_commitment_model.jl")
+include("../../tools/benders/setup.jl")
+include("../../tools/ccg/solver.jl")
+include("../../tools/benchmark/benchmark_uc.jl")
 
 println("======================================================================")
 println("Running PowerSystems native case & solving pipeline demo...")

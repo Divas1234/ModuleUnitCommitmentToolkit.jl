@@ -1,7 +1,7 @@
 using Test
 using DataFrames
 
-include("../tools/pcm/benchmark/suite_runner.jl")
+include("../../tools/pcm/benchmark/suite_runner.jl")
 using .PCMThreeMethodBenchmark
 
 @testset "three-method PCM benchmark aggregation" begin
