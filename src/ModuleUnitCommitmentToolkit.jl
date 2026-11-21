@@ -24,7 +24,30 @@ include("solver_interface.jl")
 
 # Include PCM tools in a submodule for package-level access and LSP indexing
 module SequentialPCM
-    using ..ModuleUnitCommitmentToolkit: config, unit, transmissionline, load, data_centra, wind
+    using ..ModuleUnitCommitmentToolkit:
+        UCConfig,
+        ThermalUnits,
+        TransmissionLines,
+        Loads,
+        StorageUnits,
+        DataCenters,
+        WindUnits,
+        config,
+        unit,
+        transmissionline,
+        load,
+        pss,
+        data_centra,
+        wind,
+        build_uc_model,
+        default_uc_optimizer,
+        uc_has_feasible_solution,
+        uc_require_feasible_solution!,
+        uc_env_bool,
+        uc_env_int,
+        uc_env_float,
+        uc_load_curtailment_penalty,
+        uc_wind_curtailment_penalty
     const hydro = Any
 
     include("../tools/pcm/standard/period_scuc.jl")
