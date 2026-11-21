@@ -1,3 +1,4 @@
+using DataFrames
 using Printf
 using UnicodePlots
 
@@ -11,19 +12,24 @@ function _print_kv(label::AbstractString, value)
     @printf("  %-36s %s\n", label * ":", value)
 end
 
-function _print_vector(label::AbstractString, value)
-    return _print_kv(label, collect(value))
+function _round4(x::Real)
+    return round(Float64(x); digits = 4)
 end
 
-function _print_matrix_rows(label::AbstractString, matrix, row_count::Int64, col_count::Int64)
-    println("  ", label, " (", row_count, " x ", col_count, "):")
-    for i in 1:row_count
-        @printf("    row %02d:", i)
-        for j in 1:col_count
-            @printf(" %10.4f", matrix[i, j])
-        end
-        println()
+function _print_df(
+    df::DataFrame;
+    title::Union{Nothing, AbstractString} = nothing,
+    allrows::Bool = true,
+    allcols::Bool = true,
+    display_cols::Int = 160,
+)
+    if title !== nothing
+        println("\n  [", title, "]")
     end
+    io = IOContext(stdout, :displaysize => (200, display_cols), :compact => true)
+    show(io, df; allrows = allrows, allcols = allcols, eltypes = false, truncate = 64)
+    println()
+    return nothing
 end
 
 function _check_dimension!(checks::Vector{Tuple{String, Bool}}, label::String, condition::Bool)
@@ -33,9 +39,11 @@ end
 
 function _print_checks(checks::Vector{Tuple{String, Bool}})
     _print_section("Consistency Checks")
-    for (label, ok) in checks
-        @printf("  [%s] %s\n", ok ? "OK" : "FAIL", label)
-    end
+    df = DataFrame(
+        status = [ok ? "OK" : "FAIL" for (_, ok) in checks],
+        check = [label for (label, _) in checks],
+    )
+    _print_df(df)
     if any(!ok for (_, ok) in checks)
         failed = [label for (label, ok) in checks if !ok]
         throw(ArgumentError("Boundary condition check failed: " * join(failed, "; ")))
@@ -60,11 +68,18 @@ function _print_runtime_configuration()
         println("  unable to read runtime config: ", sprint(showerror, error))
         Pair{String, String}[]
     end
+
+    keys_col = String[]
+    vals_col = String[]
+    src_col = String[]
     for entry in sort(entries; by = item -> item.first)
         key = entry.first
         configured_value = entry.second
-        effective_value = get(ENV, key, configured_value)
-        _print_kv(key, effective_value)
+        has_env = haskey(ENV, key)
+        effective_value = has_env ? ENV[key] : configured_value
+        push!(keys_col, key)
+        push!(vals_col, effective_value)
+        push!(src_col, has_env && effective_value != configured_value ? "ENV" : "toml")
     end
 
     configured_keys = Set(first.(entries))
@@ -73,11 +88,14 @@ function _print_runtime_configuration()
         key for key in keys(ENV) if
         any(startswith(key, prefix) for prefix in runtime_prefixes) && !(key in configured_keys)
     ])
-    isempty(overrides) || begin
-        println("  calibration/runtime overrides:")
-        for key in overrides
-            _print_kv("    " * key, ENV[key])
-        end
+    for key in overrides
+        push!(keys_col, key)
+        push!(vals_col, ENV[key])
+        push!(src_col, "ENV (extra)")
+    end
+
+    if !isempty(keys_col)
+        _print_df(DataFrame(key = keys_col, value = vals_col, source = src_col))
     end
     return nothing
 end
@@ -161,105 +179,183 @@ function boundrycondition(
     _check_dimension!(checks, "wind scenarios are finite and nonnegative", all(isfinite, winds.scenarios_curve) && all(winds.scenarios_curve .>= 0))
 
     _print_section("Test System Boundary Summary")
-    _print_kv("Buses (NB)", NB)
-    _print_kv("Transmission lines (NL)", NL)
-    _print_kv("Thermal generators (NG)", NG)
-    _print_kv("Loads (ND)", ND)
-    _print_kv("Time periods (NT)", NT)
-    _print_kv("Wind units (NW)", NW)
-    _print_kv("Wind scenarios (NS)", NS)
-    _print_kv("Storage units (NC)", length(storages.index))
-    _print_kv("Total generator Pmax", @sprintf("%.4f", sum(units.p_max)))
-    _print_kv("Total generator Pmin", @sprintf("%.4f", sum(units.p_min)))
-    _print_kv("Peak system load", @sprintf("%.4f", maximum(sum(loads.load_curve; dims = 1))))
-    _print_kv("Total wind capacity", @sprintf("%.4f", sum(winds.p_max)))
-    _print_kv("Wind availability min/max", @sprintf("%.4f / %.4f", minimum(winds.scenarios_curve), maximum(winds.scenarios_curve)))
+    summary_df = DataFrame(
+        metric = [
+            "Buses (NB)",
+            "Transmission lines (NL)",
+            "Thermal generators (NG)",
+            "Loads (ND)",
+            "Time periods (NT)",
+            "Wind units (NW)",
+            "Wind scenarios (NS)",
+            "Storage units (NC)",
+            "Data center sites (ND2)",
+            "Total generator Pmax",
+            "Total generator Pmin",
+            "Peak system load",
+            "Total wind capacity",
+            "Wind availability min / max",
+        ],
+        value = [
+            string(NB),
+            string(NL),
+            string(NG),
+            string(ND),
+            string(NT),
+            string(NW),
+            string(NS),
+            string(length(storages.index)),
+            string(data_centers === nothing ? 0 : length(data_centers.index)),
+            @sprintf("%.4f", sum(units.p_max)),
+            @sprintf("%.4f", sum(units.p_min)),
+            @sprintf("%.4f", maximum(sum(loads.load_curve; dims = 1))),
+            @sprintf("%.4f", sum(winds.p_max)),
+            @sprintf("%.4f / %.4f", minimum(winds.scenarios_curve), maximum(winds.scenarios_curve)),
+        ],
+    )
+    _print_df(summary_df)
 
     _print_section("Configuration Flags")
-    for field in fieldnames(config)
-        _print_kv(String(field), getfield(config_param, field))
-    end
+    cfg_fields = collect(fieldnames(config))
+    cfg_df = DataFrame(
+        flag = String.(cfg_fields),
+        value = [string(getfield(config_param, f)) for f in cfg_fields],
+    )
+    _print_df(cfg_df)
     _print_runtime_configuration()
 
     _print_section("Thermal Units")
-    _print_vector("index", units.index)
-    _print_vector("locatebus", units.locatebus)
-    _print_vector("p_max", units.p_max)
-    _print_vector("p_min", units.p_min)
-    _print_vector("ramp_up", units.ramp_up)
-    _print_vector("ramp_down", units.ramp_down)
-    _print_vector("startup ramp", units.startup_ramp)
-    _print_vector("shutdown ramp", units.shutdown_ramp)
-    _print_vector("min up time", units.min_up_time)
-    _print_vector("min down time", units.min_down_time)
-    _print_vector("initial status", units.x_0)
-    _print_vector("initial time", units.t_0)
-    _print_vector("initial power", units.p_0)
-    _print_vector("cost a", units.coeff_a)
-    _print_vector("cost b", units.coeff_b)
-    _print_vector("cost c", units.coeff_c)
-    _print_vector("cold startup cost 1", units.coeff_hot_startup)
-    _print_vector("cold startup cost 2", units.coeff_cold_startup)
-    _print_vector("cold shutdown cost 1", units.coeff_shutdown)
-    _print_vector("cold shutdown cost 2", units.cold_start_time_limit)
-    _print_vector("inertia H", units.Hg)
-    _print_vector("damping D", units.Dg)
-    _print_vector("governor gain K", units.Kg)
-    _print_vector("turbine fraction F", units.Fg)
-    _print_vector("time constant T", units.Tg)
-    _print_vector("droop R", units.Rg)
+    thermal_op_df = DataFrame(
+        id = collect(units.index),
+        bus = collect(units.locatebus),
+        p_max = _round4.(units.p_max),
+        p_min = _round4.(units.p_min),
+        ramp_up = _round4.(units.ramp_up),
+        ramp_dn = _round4.(units.ramp_down),
+        su_ramp = _round4.(units.startup_ramp),
+        sd_ramp = _round4.(units.shutdown_ramp),
+        min_up = _round4.(units.min_up_time),
+        min_dn = _round4.(units.min_down_time),
+        x0 = _round4.(units.x_0),
+        t0 = _round4.(units.t_0),
+        p0 = _round4.(units.p_0),
+    )
+    _print_df(thermal_op_df; title = "Capacity, Ramp & Initial Status")
+
+    thermal_cost_df = DataFrame(
+        id = collect(units.index),
+        a = _round4.(units.coeff_a),
+        b = _round4.(units.coeff_b),
+        c = _round4.(units.coeff_c),
+        su_hot = _round4.(units.coeff_hot_startup),
+        su_cold = _round4.(units.coeff_cold_startup),
+        sd_cost = _round4.(units.coeff_shutdown),
+        cold_t = _round4.(units.cold_start_time_limit),
+        H = _round4.(units.Hg),
+        D = _round4.(units.Dg),
+        K = _round4.(units.Kg),
+        F = _round4.(units.Fg),
+        T = _round4.(units.Tg),
+        R = _round4.(units.Rg),
+    )
+    _print_df(thermal_cost_df; title = "Cost & Frequency Response Parameters")
 
     _print_section("Loads")
-    _print_vector("index", loads.index)
-    _print_vector("locatebus", loads.locatebus)
-    _print_kv("load total by bus", vec(sum(loads.load_curve; dims = 2)))
-    _print_kv("load total by time", vec(sum(loads.load_curve; dims = 1)))
-    _print_matrix_rows("load_curve", loads.load_curve, ND, NT)
+    loads_summary_df = DataFrame(
+        id = collect(loads.index),
+        bus = collect(loads.locatebus),
+        total_load = _round4.(vec(sum(loads.load_curve; dims = 2))),
+        peak_load = _round4.(vec(maximum(loads.load_curve; dims = 2))),
+        min_load = _round4.(vec(minimum(loads.load_curve; dims = 2))),
+    )
+    _print_df(loads_summary_df; title = "Load Bus Summary")
+
+    load_curve_df = DataFrame(
+        hour = collect(1:NT),
+        system_total = _round4.(vec(sum(loads.load_curve; dims = 1))),
+    )
+    for d in 1:ND
+        load_curve_df[!, Symbol("load_$(loads.index[d])")] = _round4.(vec(loads.load_curve[d, :]))
+    end
+    _print_df(load_curve_df; title = "Load Curve by Hour ($(ND) loads x $(NT) hours)", allcols = (ND <= 10))
 
     _print_section("Transmission Lines")
-    _print_vector("index", lines.index)
-    _print_vector("from", lines.from)
-    _print_vector("to", lines.to)
-    _print_vector("reactance x", lines.x)
-    _print_vector("forward p_max", lines.p_max)
-    _print_vector("reverse p_min", lines.p_min)
+    lines_df = DataFrame(
+        id = collect(lines.index),
+        from = collect(lines.from),
+        to = collect(lines.to),
+        x = _round4.(lines.x),
+        p_max = _round4.(lines.p_max),
+        p_min = _round4.(lines.p_min),
+    )
+    _print_df(lines_df)
 
     _print_section("Wind Units and Scenarios")
-    _print_vector("index", winds.index)
-    _print_vector("locatebus", winds.locatebus)
-    _print_vector("installed capacity", winds.p_max)
-    _print_kv("scenario probability", winds.scenarios_prob)
-    _print_kv("scenario count", winds.scenarios_nums)
-    _print_kv("scenario mean availability", vec(sum(winds.scenarios_curve; dims = 1)) ./ NS)
-    _print_matrix_rows("wind scenario curves", winds.scenarios_curve, NS, NT)
+    wind_units_df = DataFrame(
+        id = collect(winds.index),
+        bus = collect(winds.locatebus),
+        p_max = _round4.(winds.p_max),
+    )
+    _print_df(wind_units_df; title = "Wind Units")
+
+    prob_vec = winds.scenarios_prob isa AbstractVector ? Float64.(winds.scenarios_prob) : fill(Float64(winds.scenarios_prob), NS)
+    wind_scen_summary_df = DataFrame(
+        scenario = collect(1:NS),
+        prob = _round4.(prob_vec[1:NS]),
+        min_avail = _round4.(vec(minimum(winds.scenarios_curve; dims = 2))),
+        mean_avail = _round4.(vec(sum(winds.scenarios_curve; dims = 2)) ./ NT),
+        max_avail = _round4.(vec(maximum(winds.scenarios_curve; dims = 2))),
+    )
+    _print_df(wind_scen_summary_df; title = "Wind Scenarios Summary (NS=$(NS))")
+
+    wind_curve_df = DataFrame(
+        hour = collect(1:NT),
+        mean_avail = _round4.(vec(sum(winds.scenarios_curve; dims = 1)) ./ NS),
+    )
+    for s in 1:NS
+        wind_curve_df[!, Symbol("s$(s)")] = _round4.(vec(winds.scenarios_curve[s, :]))
+    end
+    _print_df(wind_curve_df; title = "Wind Scenario Curves by Hour ($(NS) scenarios x $(NT) hours)", allcols = (NS <= 10))
 
     _print_section("Storage Units")
-    _print_vector("index", storages.index)
-    _print_vector("locatebus", storages.locatebus)
-    _print_vector("Q_max", storages.Q_max)
-    _print_vector("Q_min", storages.Q_min)
-    _print_vector("charge power limit", storages.p⁺)
-    _print_vector("discharge power limit", storages.p⁻)
-    _print_vector("initial energy", storages.P₀)
-    _print_vector("charge ramp/cost parameter", storages.γ⁺)
-    _print_vector("discharge ramp/cost parameter", storages.γ⁻)
-    _print_vector("charge efficiency", storages.η⁺)
-    _print_vector("discharge efficiency", storages.η⁻)
-    _print_vector("self-discharge", storages.δₛ)
+    storage_df = DataFrame(
+        id = collect(storages.index),
+        bus = collect(storages.locatebus),
+        Q_max = _round4.(storages.Q_max),
+        Q_min = _round4.(storages.Q_min),
+        p_chg = _round4.(storages.p⁺),
+        p_dis = _round4.(storages.p⁻),
+        P0 = _round4.(storages.P₀),
+        gamma_chg = _round4.(storages.γ⁺),
+        gamma_dis = _round4.(storages.γ⁻),
+        eta_chg = _round4.(storages.η⁺),
+        eta_dis = _round4.(storages.η⁻),
+        self_dis = _round4.(storages.δₛ),
+    )
+    _print_df(storage_df)
 
     if data_centers !== nothing
         _print_section("Data Centers")
-        _print_vector("index", data_centers.index)
-        _print_vector("locatebus", data_centers.locatebus)
-        _print_vector("p_max", data_centers.p_max)
-        _print_vector("p_min", data_centers.p_min)
-        _print_vector("voltage regulation", data_centers.voltage_regulation)
-        _print_vector("idle power", data_centers.idle_power)
-        _print_vector("server energy constant", data_centers.sv_constant)
-        _print_vector("arrival rate lambda", data_centers.λ)
-        _print_vector("service rate mu", data_centers.μ)
+        dc_df = DataFrame(
+            id = collect(data_centers.index),
+            bus = collect(data_centers.locatebus),
+            p_max = _round4.(data_centers.p_max),
+            p_min = _round4.(data_centers.p_min),
+            v_reg = _round4.(data_centers.voltage_regulation),
+            idle_p = _round4.(data_centers.idle_power),
+            sv_const = _round4.(data_centers.sv_constant),
+            lambda = _round4.(data_centers.λ),
+            mu = _round4.(data_centers.μ),
+        )
+        _print_df(dc_df; title = "Data Center Sites (ND2=$(length(data_centers.index)))")
+
         task_matrix = data_centers.computational_power_tasks
-        _print_matrix_rows("computational power tasks", task_matrix, size(task_matrix, 1), size(task_matrix, 2))
+        n_rows, n_cols = size(task_matrix)
+        task_df = DataFrame(hour = collect(1:n_rows))
+        for j in 1:n_cols
+            task_df[!, Symbol("task_$(j)")] = _round4.(vec(task_matrix[:, j]))
+        end
+        _print_df(task_df; title = "Computational Power Tasks ($(n_rows) x $(n_cols))", allcols = (n_cols <= 10))
     end
 
     if show_plots
