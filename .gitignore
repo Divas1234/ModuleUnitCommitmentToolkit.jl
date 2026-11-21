@@ -68,14 +68,14 @@ node_modules/
 .kilo/
 .worktrees/
 
-# Runtime outputs
-output/
-**/output/
+# Runtime outputs (top-level output/ and its logs are tracked)
 out/
 **/out/
 logs/
 **/logs/
+!output/logs/
 *.log
+!output/**/*.log
 *.time
 *.tmp
 *.temp
@@ -112,7 +112,8 @@ secrets.*
 # Benchmark/generated artifacts
 docs/benchmarks/**/logs/
 
-# macOS DMG / App packaging artifacts
+# macOS DMG / App packaging temporary build artifacts (Release/*.dmg is tracked)
 dist/
-Release/
-*.dmg
+Release/dmg_stage/
+Release/AppIcon.iconset/
+Release/icon_1024.png

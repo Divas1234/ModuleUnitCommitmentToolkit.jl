@@ -1,0 +1,10 @@
+component,value
+startup_cost,2040.0000602198963
+shutdown_cost,1990.0000602198963
+variable_fuel_cost,7936.550105903003
+no_load_cost,27206.37992651131
+reserve_up_cost,38.40000000000002
+reserve_down_cost,0.6780856386156242
+load_curtailment_cost,0.0
+wind_curtailment_cost,393869.73988710484
+total_cost,433081.74812559754

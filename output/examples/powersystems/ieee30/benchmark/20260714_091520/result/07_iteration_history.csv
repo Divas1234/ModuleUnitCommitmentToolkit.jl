@@ -1,0 +1,2 @@
+iteration,active_scenarios,lower_bound,upper_bound,gap,added_scenarios
+1,1,28280.999537536904,28283.321853921756,8.210903927221848e-5,Int64[]

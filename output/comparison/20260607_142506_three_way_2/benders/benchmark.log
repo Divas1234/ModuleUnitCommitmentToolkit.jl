@@ -1,0 +1,35 @@
+Starting (Strengthen) Benders decomposition algorithm
+ITER 	 LOWER_bound 	    UPPER_bound   	 GAP
+1              260            1.15102e+06    0.999774
+2              2290           1.15102e+06    0.99801
+3              2810           1.15102e+06    0.997559
+4              2810           302806         0.99072
+5              204374         302806         0.325066
+6              204700         302806         0.32399
+7              204711         302806         0.323954
+8              207895         302806         0.313439
+9              207895         302806         0.313439
+10             207895         302806         0.313439
+11             207895         302806         0.313439
+12             207895         302806         0.313439
+13             207895         302806         0.313439
+14             207895         302806         0.313439
+15             207895         302806         0.313439
+16             207895         302806         0.313439
+17             207895         302806         0.313439
+18             207895         302806         0.313439
+19             207895         302806         0.313439
+20             207895         302806         0.313439
+21             209322         302806         0.308727
+22             209322         302806         0.308727
+WARNING: Benders lower bound exceeded upper bound at iteration 23
+  LOWER_bound = 209321.8036007537
+  UPPER_bound = 193966.76468312196
+WARNING: Benders lower bound exceeded upper bound at iteration 24
+  LOWER_bound = 210879.16820431204
+  UPPER_bound = 193966.76468312196
+FINAL STATUS:       bound_inconsistency
+FINAL ITERATIONS:   24
+FINAL UPPER BOUND:  193966.76468312196
+FINAL LOWER BOUND:  210879.16820431204
+FINAL GAP:          0.08719227517524562

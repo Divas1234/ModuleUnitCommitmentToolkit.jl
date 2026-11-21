@@ -1,0 +1,470 @@
+========================================================================
+UC Example Run :: CCG  |  2026-11-21 13:22:42
+  Scenarios=2, Verbosity=verbose, Constraints=true, Integrity=true, SolverLog=true
+========================================================================
+
+[1/6] Active Constraint Modules Entering the Model
+------------------------------------------------------------------------
+  [ ON  ] Thermal Unit Operation (Min Up/Down, Binary Logic, Startup/Shutdown)
+  [ ON  ] Generator Power & Ramp-Up/Down Limits
+  [ ON  ] Piecewise Linear Fuel Cost (3 segments)
+  [ ON  ] Active Load & Load/Wind Curtailment Limits
+  [ ON  ] System Power Balance & Spinning Reserve Limits
+  [ ON  ] Stochastic Wind Integration (2 wind farms x 2 scenarios)
+  [ ON  ] Transmission Network DC-OPF Limits (7 lines)
+  [ OFF ] Battery Energy Storage / BESS Constraints (1 units)
+  [ OFF ] Data Center Flexible Load Constraints (8 sites)
+  [ OFF ] Frequency Security (Nadir / QSS / RoCoF) Constraints
+  [ ON  ] Multi-Cut Benders Disaggregation
+  [NONE ] Custom Constraint Hooks (register via register_uc_constraint_hook!)
+  Summary: 8/11 built-in constraint groups active.
+
+[2/6] Model & Input Integrity Verification
+------------------------------------------------------------------------
+  [PASS] Core validate_inputs(UCProblemData)
+  [PASS] Dimensions positive (NB=6, NG=3, NL=7, ND=3, NT=24, NS=2)
+  [PASS] Generator bounds valid (all p_max >= p_min)
+  [PASS] Transmission line limits non-negative
+  [PASS] Load curve finite and non-negative
+  [PASS] Wind scenarios finite and non-negative
+  [PASS] Generation adequacy (Total Pmax=3.40 >= Peak Load=3.29)
+  Integrity Score: 7/7 checks passed.
+
+[3/6] Starting Optimization
+------------------------------------------------------------------------
+  Start Time      : 2026-11-21 13:22:43
+  Optimizer       : Gurobi.Optimizer
+  Solver Output   : STREAMING LIVE + LOGGED (verbosity=:verbose)
+	-> Benders decomposition [batch] subproblems and master problem successfully loaded.
+	→ multicuts_libs have been loaded.
+Step-1: Pkgs and functions are loaded
+Step-2: imput data are loaded
+
+========================================================================================
+Test System Boundary Summary
+========================================================================================
+14×2 DataFrame
+ Row │ metric                       value
+─────┼──────────────────────────────────────────────
+   1 │ Buses (NB)                   6
+   2 │ Transmission lines (NL)      7
+   3 │ Thermal generators (NG)      3
+   4 │ Loads (ND)                   3
+   5 │ Time periods (NT)            24
+   6 │ Wind units (NW)              2
+   7 │ Wind scenarios (NS)          2
+   8 │ Storage units (NC)           1
+   9 │ Data center sites (ND2)      8
+  10 │ Total generator Pmax         3.4000
+  11 │ Total generator Pmin         1.1000
+  12 │ Peak system load             3.2861
+  13 │ Total wind capacity          5.0000
+  14 │ Wind availability min / max  0.3865 / 0.4855
+
+========================================================================================
+Configuration Flags
+========================================================================================
+19×2 DataFrame
+ Row │ flag                        value
+─────┼──────────────────────────────────────
+   1 │ is_network_con              1
+   2 │ is_thermal_unit_con         1
+   3 │ is_wind_unit_con            1
+   4 │ is_system_con               1
+   5 │ is_piecewise_linear         1
+   6 │ num_segments                3
+   7 │ alpha                       0.005
+   8 │ beta                        0.005
+   9 │ coal_price                  1
+  10 │ is_active_load              1
+  11 │ is_wind_integration         1
+  12 │ load_cutting_coefficient    100000.0
+  13 │ wind_cutting_coefficient    100000.0
+  14 │ max_iterations              50
+  15 │ calculation_precision       0.01
+  16 │ consider_data_center        0
+  17 │ consider_frequency_control  0
+  18 │ consider_bess               0
+  19 │ consider_multi_cuts         1
+
+========================================================================================
+Runtime Configuration (effective values)
+========================================================================================
+  config file:                         /Users/yuanyiping/Documents/GitHub/02 Ongoing/ModuleUnitCommitmentToolkit.jl/config/runtime_config.toml
+78×3 DataFrame
+ Row │ key                                           value           source
+─────┼──────────────────────────────────────────────────────────────────────
+   1 │ BENCHMARK_UC_USE_DRO                          0               toml
+   2 │ BENDERS_COLLECT_DUAL_COEFFS                   0               toml
+   3 │ BENDERS_COLLECT_DUAL_DETAILS                  0               toml
+   4 │ BENDERS_CONSIDER_BESS                         0               toml
+   5 │ BENDERS_CUT_VIOLATION_TOL                     1.0e-5          toml
+   6 │ BENDERS_ENABLE_JENSEN_CUT                     0               toml
+   7 │ BENDERS_ENABLE_STORAGE_LOGIC_CUTS             1               toml
+   8 │ BENDERS_FAST_DIRECT_SOLVE                     0               toml
+   9 │ BENDERS_FAST_MIP_GAP                          0.0001          toml
+  10 │ BENDERS_FAST_NUMERIC_FOCUS                    1               toml
+  11 │ BENDERS_JENSEN_CUT_TOL                        1.0e-5          toml
+  12 │ BENDERS_LOGIC_BINARY_TOL                      0.5             toml
+  13 │ BENDERS_LOGIC_POWER_TOL                       1.0e-7          toml
+  14 │ BENDERS_MAX_ITERATIONS                        100             toml
+  15 │ BENDERS_MAX_SCENARIO_CUTS_PER_ITERATION                       toml
+  16 │ BENDERS_MAX_STORAGE_LOGIC_CUTS_PER_ITERATION  5               toml
+  17 │ BENDERS_OPTIMALITY_CUT_MODE                   dual_safe       toml
+  18 │ BENDERS_PARALLEL_CUT_CANDIDATES               1               toml
+  19 │ BENDERS_PARALLEL_SUBPROBLEMS                  0               toml
+  20 │ BENDERS_SCENARIO_LIMIT                        2               toml
+  21 │ BENDERS_SHOW_MODEL_SUMMARY                    0               toml
+  22 │ BENDERS_SUBPROBLEM_SOLVER_THREADS             1               toml
+  23 │ BENDERS_VERBOSE_CUTS                          0               toml
+  24 │ BOUNDARY_SHOW_PLOTS                           0               toml
+  25 │ CCG_DRO_ENABLED                               0               toml
+  26 │ CCG_DRO_RADIUS                                0.05            toml
+  27 │ CCG_GAP_TOL                                   0.001           toml
+  28 │ CCG_INITIAL_POLICY                            netload         toml
+  29 │ CCG_INITIAL_SCENARIOS                         2               toml
+  30 │ CCG_MASTER_MIP_GAP                            0.0001          toml
+  31 │ CCG_MASTER_THREADS                            0               toml
+  32 │ CCG_MAX_ITERATIONS                            10              toml
+  33 │ CCG_NUMERIC_FOCUS                             1               toml
+  34 │ CCG_PARALLEL_RECOURSE                         0               toml
+  35 │ CCG_RECOURSE_MIP_GAP                          0.0001          toml
+  36 │ CCG_RECOURSE_THREADS                          1               toml
+  37 │ CCG_SCENARIOS_PER_ITERATION                   1               toml
+  38 │ CCG_SCENARIO_LIMIT                            2               toml
+  39 │ CCG_WASSERSTEIN_POWER                         1.0             toml
+  40 │ CONSIDER_BESS                                 0               toml
+  41 │ FREQUENCY_BASE_HZ                             50.0            toml
+  42 │ FREQUENCY_CONTINGENCY_FRACTION                0.25            toml
+  43 │ FREQUENCY_FCR_THRESHOLD                       0.025           toml
+  44 │ FREQUENCY_IMBALANCE_SCALING                   1.25            toml
+  45 │ FREQUENCY_NADIR_COEFFICIENT_BOUND             10.0            toml
+  46 │ FREQUENCY_NADIR_COEFFICIENT_REGULARIZATION    0.001           toml
+  47 │ FREQUENCY_NADIR_FITTING_METHOD                max_min_affine  toml
+  48 │ FREQUENCY_NADIR_FITTING_PARAMETERS                            toml
+  49 │ FREQUENCY_NADIR_FIT_BIG_M                     100.0           toml
+  50 │ FREQUENCY_NADIR_FIT_CONTINGENCY_FRACTION      1.0             toml
+  51 │ FREQUENCY_NADIR_FIT_TOLERANCE                 0.0             toml
+  52 │ FREQUENCY_NADIR_LIMIT_HZ                      0.5             toml
+  53 │ FREQUENCY_NADIR_LS_UNDERESTIMATE              1               toml
+  54 │ FREQUENCY_NADIR_MAX_CUTS                      4.0             toml
+  55 │ FREQUENCY_QSS_LIMIT_HZ                        0.5             toml
+  56 │ FREQUENCY_ROCOF_LIMIT_HZ_PER_S                4.5             toml
+  57 │ JULIA_SHOW_ASCII                              1               toml
+  58 │ MODEL_ALPHA                                   0.005           toml
+  59 │ MODEL_BETA                                    0.005           toml
+  60 │ MODEL_CALCULATION_PRECISION                   0.01            toml
+  61 │ MODEL_COAL_PRICE                              1               toml
+  62 │ MODEL_CONSIDER_BESS                           0               toml
+  63 │ MODEL_CONSIDER_DATA_CENTER                    0               toml
+  64 │ MODEL_CONSIDER_FREQUENCY_CONTROL              0               toml
+  65 │ MODEL_CONSIDER_MULTI_CUTS                     1               toml
+  66 │ MODEL_IS_ACTIVE_LOAD                          1               toml
+  67 │ MODEL_IS_NETWORK_CON                          1               toml
+  68 │ MODEL_IS_PIECE_LINEAR                         1               toml
+  69 │ MODEL_IS_SYSTEM_CON                           1               toml
+  70 │ MODEL_IS_THERMAL_UNIT_CON                     1               toml
+  71 │ MODEL_IS_WIND_INTEGRATION                     1               toml
+  72 │ MODEL_IS_WIND_UNIT_CON                        1               toml
+  73 │ MODEL_LOAD_CUTTING_COEFFICIENT                100000.0        toml
+  74 │ MODEL_MAX_ITERATIONS_NUM                      50              toml
+  75 │ MODEL_NUM_SEGMENTS                            3               toml
+  76 │ MODEL_WIND_CUTTING_COEFFICIENT                100000.0        toml
+  77 │ MODULE_UC_TEST_ACTIVATE_LOCAL_PROJECT         0               toml
+  78 │ PRINT_BOUNDARY_CONDITION                      1               toml
+
+========================================================================================
+Thermal Units
+========================================================================================
+
+  [Capacity, Ramp & Initial Status]
+3×13 DataFrame
+ Row │ id  bus  p_max  p_min  ramp_up  ramp_dn  su_ramp  sd_ramp  min_up  min_dn  x0   t0   p0
+─────┼──────────────────────────────────────────────────────────────────────────────────────────
+   1 │  1    1    2.2    0.9      0.5      0.5      0.9      0.9     4.0     4.0  1.0  4.0  1.5
+   2 │  2    2    1.0    0.1      0.4      0.4      0.1      0.1     2.0     3.0  0.0  3.0  0.0
+   3 │  3    6    0.2    0.1      0.4      0.4      0.1      0.1     2.0     3.0  0.0  3.0  0.0
+
+  [Cost & Frequency Response Parameters]
+3×14 DataFrame
+ Row │ id  a     b       c      su_hot  su_cold  sd_cost  cold_t  H    D      K     F     T    R
+─────┼──────────────────────────────────────────────────────────────────────────────────────────────
+   1 │  1   4.0  1350.0  176.9   560.0   1120.0    560.0    10.0  7.0  0.061  0.9   0.15  8.0  0.06
+   2 │  2  10.0  3260.0  129.9   350.0    750.0    350.0     8.0  5.5  0.121  0.95  0.35  7.0  0.06
+   3 │  3  50.0  1760.0  137.4   260.0    520.0    260.0     3.0  3.5  0.181  0.98  0.25  9.0  0.06
+
+========================================================================================
+Loads
+========================================================================================
+
+  [Load Bus Summary]
+3×5 DataFrame
+ Row │ id  bus  total_load  peak_load  min_load
+─────┼──────────────────────────────────────────
+   1 │  1    3     13.035      0.6572    0.4384
+   2 │  2    4     26.0699     1.3144    0.8768
+   3 │  3    5     26.0699     1.3144    0.8768
+
+  [Load Curve by Hour (3 loads x 24 hours)]
+24×5 DataFrame
+ Row │ hour  system_total  load_1  load_2  load_3
+─────┼────────────────────────────────────────────
+   1 │    1        2.1919  0.4384  0.8768  0.8768
+   2 │    2        2.3535  0.4707  0.9414  0.9414
+   3 │    3        2.3467  0.4693  0.9387  0.9387
+   4 │    4        2.3673  0.4735  0.9469  0.9469
+   5 │    5        2.3906  0.4781  0.9562  0.9562
+   6 │    6        2.4448  0.489   0.9779  0.9779
+   7 │    7        2.7339  0.5468  1.0936  1.0936
+   8 │    8        2.904   0.5808  1.1616  1.1616
+   9 │    9        2.8356  0.5671  1.1342  1.1342
+  10 │   10        2.812   0.5624  1.1248  1.1248
+  11 │   11        3.2861  0.6572  1.3144  1.3144
+  12 │   12        3.281   0.6562  1.3124  1.3124
+  13 │   13        3.2618  0.6524  1.3047  1.3047
+  14 │   14        3.236   0.6472  1.2944  1.2944
+  15 │   15        3.2686  0.6537  1.3074  1.3074
+  16 │   16        2.8779  0.5756  1.1512  1.1512
+  17 │   17        2.6     0.52    1.04    1.04
+  18 │   18        2.4674  0.4935  0.987   0.987
+  19 │   19        2.5597  0.5119  1.0239  1.0239
+  20 │   20        2.3735  0.4747  0.9494  0.9494
+  21 │   21        2.4331  0.4866  0.9732  0.9732
+  22 │   22        2.8314  0.5663  1.1326  1.1326
+  23 │   23        2.8305  0.5661  1.1322  1.1322
+  24 │   24        2.4875  0.4975  0.995   0.995
+
+========================================================================================
+Transmission Lines
+========================================================================================
+7×6 DataFrame
+ Row │ id  from  to  x      p_max  p_min
+─────┼───────────────────────────────────
+   1 │  1     1   2  0.17     2.0   -2.0
+   2 │  2     1   4  0.258    1.2   -1.2
+   3 │  3     2   4  0.197    1.2   -1.2
+   4 │  4     5   6  0.14     1.2   -1.2
+   5 │  5     3   6  0.018    1.2   -1.2
+   6 │  6     2   3  0.037    2.0   -2.0
+   7 │  7     4   5  0.037    1.2   -1.2
+
+========================================================================================
+Wind Units and Scenarios
+========================================================================================
+
+  [Wind Units]
+2×3 DataFrame
+ Row │ id  bus  p_max
+─────┼────────────────
+   1 │  1    1    2.5
+   2 │  2    1    2.5
+
+  [Wind Scenarios Summary (NS=2)]
+2×5 DataFrame
+ Row │ scenario  prob  min_avail  mean_avail  max_avail
+─────┼──────────────────────────────────────────────────
+   1 │        1   0.5     0.3865      0.4352     0.4855
+   2 │        2   0.5     0.3954      0.4427     0.476
+
+  [Wind Scenario Curves by Hour (2 scenarios x 24 hours)]
+24×4 DataFrame
+ Row │ hour  mean_avail  s1      s2
+─────┼──────────────────────────────────
+   1 │    1      0.4479  0.4368  0.459
+   2 │    2      0.445   0.4452  0.4449
+   3 │    3      0.4309  0.4448  0.417
+   4 │    4      0.4308  0.4233  0.4384
+   5 │    5      0.4173  0.4361  0.3985
+   6 │    6      0.391   0.3865  0.3954
+   7 │    7      0.4352  0.4407  0.4297
+   8 │    8      0.4275  0.4115  0.4436
+   9 │    9      0.4597  0.4603  0.4592
+  10 │   10      0.4584  0.4502  0.4665
+  11 │   11      0.4476  0.4333  0.462
+  12 │   12      0.4273  0.416   0.4386
+  13 │   13      0.4545  0.4547  0.4543
+  14 │   14      0.4284  0.4034  0.4534
+  15 │   15      0.4696  0.4748  0.4645
+  16 │   16      0.45    0.4451  0.455
+  17 │   17      0.4482  0.4415  0.4549
+  18 │   18      0.4286  0.4217  0.4356
+  19 │   19      0.4164  0.4157  0.4171
+  20 │   20      0.4311  0.4291  0.4332
+  21 │   21      0.4808  0.4855  0.476
+  22 │   22      0.4437  0.4388  0.4485
+  23 │   23      0.4463  0.4369  0.4556
+  24 │   24      0.4188  0.4125  0.425
+
+========================================================================================
+Storage Units
+========================================================================================
+1×12 DataFrame
+ Row │ id  bus  Q_max  Q_min  p_chg  p_dis  P0   gamma_chg  gamma_dis  eta_chg  eta_dis  self_dis
+─────┼────────────────────────────────────────────────────────────────────────────────────────────
+   1 │  1    1    1.0    0.1    1.0    0.1  0.2        0.6        0.6     0.85      1.0      0.05
+
+========================================================================================
+Data Centers
+========================================================================================
+
+  [Data Center Sites (ND2=8)]
+8×9 DataFrame
+ Row │ id  bus  p_max  p_min  v_reg  idle_p  sv_const  lambda  mu
+─────┼─────────────────────────────────────────────────────────────
+   1 │  1    1    1.0    0.1    1.0    0.05       0.3     0.5  1.0
+   2 │  2    1    1.0    0.1    1.0    0.05       0.3     0.2  1.0
+   3 │  3    1    1.0    0.1    1.0    0.05       0.3     0.1  1.0
+   4 │  4    1    1.0    0.1    1.0    0.05       0.3     0.3  1.0
+   5 │  5    1    1.0    0.1    1.0    0.05       0.3     0.4  1.0
+   6 │  6    1    1.0    0.1    1.0    0.05       0.3     0.4  1.0
+   7 │  7    1    1.0    0.1    1.0    0.05       0.3     0.5  1.0
+   8 │  8    1    1.0    0.1    1.0    0.05       0.3     0.2  1.0
+
+  [Computational Power Tasks (24 x 1)]
+24×2 DataFrame
+ Row │ hour  task_1
+─────┼──────────────
+   1 │    1     0.2
+   2 │    2     0.2
+   3 │    3     0.2
+   4 │    4     0.2
+   5 │    5     0.2
+   6 │    6     0.2
+   7 │    7     0.2
+   8 │    8     0.2
+   9 │    9     0.2
+  10 │   10     0.2
+  11 │   11     0.2
+  12 │   12     0.2
+  13 │   13     0.2
+  14 │   14     0.2
+  15 │   15     0.2
+  16 │   16     0.2
+  17 │   17     0.2
+  18 │   18     0.2
+  19 │   19     0.2
+  20 │   20     0.2
+  21 │   21     0.2
+  22 │   22     0.2
+  23 │   23     0.2
+  24 │   24     0.2
+
+========================================================================================
+Consistency Checks
+========================================================================================
+12×2 DataFrame
+ Row │ status  check
+─────┼───────────────────────────────────────────────────
+   1 │ OK      NG matches length(units.index)
+   2 │ OK      NL matches length(lines.index)
+   3 │ OK      ND matches length(loads.index)
+   4 │ OK      NW matches length(winds.index)
+   5 │ OK      NT matches load_curve columns
+   6 │ OK      ND matches load_curve rows
+   7 │ OK      NS matches wind scenario rows
+   8 │ OK      NT matches wind scenario columns
+   9 │ OK      generator p_max >= p_min
+  10 │ OK      line p_max >= 0
+  11 │ OK      load curve is finite and nonnegative
+  12 │ OK      wind scenarios are finite and nonnegative
+
+Boundary condition report completed successfully.
+
+Starting C&CG unit commitment solver
+candidate scenarios: 2
+initial scenarios:   [1, 2]
+DRO enabled:         false (wasserstein radius: 0.05)
+parallel recourse:   false (Julia threads: 1)
+====================================================
+ITER 	 ACTIVE 	 LOWER_bound 	 UPPER_bound 	 GAP 	 ADDED
+----------------------------------------------------
+Set parameter Username
+Set parameter LicenseID to value 2754784
+Academic license - for non-commercial use only - expires 2026-12-14
+	 Variables defined.
+objective_function
+	 MILP_type objective_function 						 done
+	 constraints: 1) minimum shutup/shutdown time limits			 done
+	 constraints: 2) binary variable logic					 done
+	 constraints: 3) shutup/shutdown cost					 done
+	 constraints: 4) loadcurtailments and spoliedwinds			 done
+	 constraints: 5) generatos power limits					 done
+	 constraints: 6) system reserves limits					 done
+	 constraints: 7) power balance constraints				 done
+	 constraints: 8) ramp-up/ramp-down constraints				 done
+	 constraints: 9) piece linearization constraints			 done
+	 constraints: 10) transmissionline limits for basline			 done
+Set parameter Username
+Set parameter LicenseID to value 2754784
+Academic license - for non-commercial use only - expires 2026-12-14
+	 Variables defined.
+	 constraints: 4) loadcurtailments and spoliedwinds			 done
+	 constraints: 5) generatos power limits					 done
+	 constraints: 6) system reserves limits					 done
+	 constraints: 7) power balance constraints				 done
+	 constraints: 8) ramp-up/ramp-down constraints				 done
+	 constraints: 9) piece linearization constraints			 done
+	 constraints: 10) transmissionline limits for basline			 done
+Set parameter Username
+Set parameter LicenseID to value 2754784
+Academic license - for non-commercial use only - expires 2026-12-14
+	 Variables defined.
+	 constraints: 4) loadcurtailments and spoliedwinds			 done
+	 constraints: 5) generatos power limits					 done
+	 constraints: 6) system reserves limits					 done
+	 constraints: 7) power balance constraints				 done
+	 constraints: 8) ramp-up/ramp-down constraints				 done
+	 constraints: 9) piece linearization constraints			 done
+	 constraints: 10) transmissionline limits for basline			 done
+1       2        270042          270042         1.2933e-15Int64[]
+UC scheduling results saved to: /Users/yuanyiping/Documents/GitHub/02 Ongoing/ModuleUnitCommitmentToolkit.jl/output/ccg/20261121_132258/scheduling
+
+====================================================
+C&CG convergence achieved
+FINAL ACTIVE SCENARIOS: [1, 2]
+FINAL UPPER BOUND:      270042.0261676849
+FINAL LOWER BOUND:      270042.0261676852
+FINAL GAP:              1.2933022701534758e-15
+====================================================
+  Finish Time     : 2026-11-21 13:22:59  (elapsed: 16.027 s)
+
+[4/6] Key Optimization Results
+------------------------------------------------------------------------
+  Algorithm       : ccg
+  Input Source    : excel
+  Status          : converged
+  Lower Bound     : 270042.0262
+  Upper Bound     : 270042.0262
+  Optimality Gap  : 1.293302e-15
+  Wall Time       : 16.027 s
+  Cost Breakdown  :
+    - startup_cost             : 2300.0000
+    - shutdown_cost            : 2250.0000
+    - variable_fuel_cost       : 10641.8312
+    - no_load_cost             : 24359.2600
+    - reserve_up_cost          : 34.8000
+    - reserve_down_cost        : 0.6781
+    - load_curtailment_cost    : 0.0000
+    - wind_curtailment_cost    : 230455.4569
+    - total_cost               : 270042.0262
+
+[5/6] Result Persistence & Saved Folders
+------------------------------------------------------------------------
+  Saved Timestamp : 2026-11-21 13:22:59
+  Output Root Dir : /Users/yuanyiping/Documents/GitHub/02 Ongoing/ModuleUnitCommitmentToolkit.jl/output
+  Target Folders (1):
+    - /Users/yuanyiping/Documents/GitHub/02 Ongoing/ModuleUnitCommitmentToolkit.jl/output/ccg/20261121_132258/scheduling
+  Saved Files (9):
+    - ccg/20261121_132258/scheduling/ccg_2_scenarios_curtailment_schedule.csv
+    - ccg/20261121_132258/scheduling/ccg_2_scenarios_generator_dispatch.csv
+    - ccg/20261121_132258/scheduling/ccg_2_scenarios_power_balance_summary.csv
+    - ccg/20261121_132258/scheduling/ccg_2_scenarios_reserve_schedule.csv
+    - ccg/20261121_132258/scheduling/ccg_2_scenarios_schedule_commitment_result.txt
+    - ccg/20261121_132258/scheduling/ccg_2_scenarios_schedule_cost_summary.csv
+    - ccg/20261121_132258/scheduling/ccg_2_scenarios_unit_commitment_status.csv
+    - ccg/20261121_132258/scheduling/ccg_2_scenarios_unit_startup_shutdown_costs.csv
+    - ccg/20261121_132258/scheduling/ccg_2_scenarios_unit_startup_shutdown_decisions.csv
+
+[6/6] Execution Log File
+------------------------------------------------------------------------
+  Log Path        : /Users/yuanyiping/Documents/GitHub/02 Ongoing/ModuleUnitCommitmentToolkit.jl/output/logs/ccg_example_20261121_132242.log

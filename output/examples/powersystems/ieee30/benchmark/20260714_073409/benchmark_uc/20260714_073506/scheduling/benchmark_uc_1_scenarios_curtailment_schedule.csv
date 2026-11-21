@@ -1,0 +1,5 @@
+scenario,time,load_1_curtailment,load_2_curtailment,load_3_curtailment,load_4_curtailment,load_5_curtailment,load_6_curtailment,load_7_curtailment,load_8_curtailment,load_9_curtailment,load_10_curtailment,load_11_curtailment,load_12_curtailment,load_13_curtailment,load_14_curtailment,load_15_curtailment,load_16_curtailment,load_17_curtailment,load_18_curtailment,load_19_curtailment,load_20_curtailment,load_21_curtailment,wind_1_curtailment
+1,1,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0
+1,2,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0038223766775651313
+1,3,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0
+1,4,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0

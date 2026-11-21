@@ -1,0 +1,5 @@
+algorithm,scenarios,status,iterations,lower_bound,upper_bound,gap,elapsed_seconds,max_ram_mb,log_path
+benders,2,converged,27,277019.25819701015,277181.0248636769,0.0005836137836121921,8.75,1273.14,/Users/yuanyiping/Documents/GitHub/02 Ongoing/module_unitcommitment-revised_ModuleUnitCommitmentTookits/output/benders/20260606_221948/logs/benders_2_scenarios.log
+ccg,2,completed,1,108813.97463349011,184827.04618505063,0.41126595441580677,3.392,1073.31,/Users/yuanyiping/Documents/GitHub/02 Ongoing/module_unitcommitment-revised_ModuleUnitCommitmentTookits/output/ccg/20260606_221948/logs/ccg_2_scenarios.log
+benders,6,converged,36,362530.5531250027,362816.65312500286,0.0007885525582553441,2.304,1224.59,/Users/yuanyiping/Documents/GitHub/02 Ongoing/module_unitcommitment-revised_ModuleUnitCommitmentTookits/output/benders/20260606_221948/logs/benders_6_scenarios.log
+ccg,6,completed,3,120005.85583163926,144403.10936546465,0.16895241134946967,1.425,1250.41,/Users/yuanyiping/Documents/GitHub/02 Ongoing/module_unitcommitment-revised_ModuleUnitCommitmentTookits/output/ccg/20260606_221948/logs/ccg_6_scenarios.log

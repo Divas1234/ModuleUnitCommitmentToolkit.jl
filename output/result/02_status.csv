@@ -1,0 +1,5 @@
+parameter,value
+status,converged
+upper_bound,270042.0261676849
+lower_bound,270042.0261676852
+gap,1.2933022701534758e-15

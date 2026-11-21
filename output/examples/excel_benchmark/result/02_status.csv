@@ -1,0 +1,5 @@
+parameter,value
+status,OPTIMAL
+upper_bound,364985.94772159203
+lower_bound,364985.94772159203
+gap,0.0
