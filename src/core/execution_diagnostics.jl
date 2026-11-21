@@ -308,11 +308,52 @@ function _print_artifact_report(log_lines::Vector{String}, output_dir::AbstractS
     return nothing
 end
 
+function _strip_ansi(s::AbstractString)
+    return replace(s, r"\e\[[0-9;]*[A-Za-z]" => "")
+end
+
+function _run_with_terminal_tee(fn::Function, log_lines::Vector{String})
+    orig_stdout = stdout
+    orig_stderr = stderr
+    pipe = Pipe()
+    Base.link_pipe!(pipe; reader_supports_async = true, writer_supports_async = true)
+    captured = IOBuffer()
+    reader = @async begin
+        try
+            while !eof(pipe.out)
+                chunk = String(readavailable(pipe.out))
+                isempty(chunk) && continue
+                write(orig_stdout, chunk)
+                flush(orig_stdout)
+                write(captured, _strip_ansi(chunk))
+            end
+        catch
+        end
+    end
+    result = try
+        redirect_stdout(pipe.in) do
+            redirect_stderr(pipe.in) do
+                fn()
+            end
+        end
+    finally
+        flush(pipe.in)
+        close(pipe.in)
+        wait(reader)
+        close(pipe.out)
+    end
+    body = String(take!(captured))
+    if !isempty(body)
+        append!(log_lines, split(chomp(body), '\n'))
+    end
+    return result
+end
+
 """
     run_uc_example_workflow(alg::AbstractUCAlgorithm, opts::UCExampleOptions; algo_name, input = :excel, calibration = NamedTuple(), optimizer = nothing)
 
 Execute a UC algorithm example with structured 6-stage terminal observability and
-optional persistent log file output.
+optional persistent log file output (capturing the full optimization process).
 """
 function run_uc_example_workflow(
     alg::AbstractUCAlgorithm,
@@ -347,10 +388,10 @@ function run_uc_example_workflow(
     _diag_emit(log_lines, "-"^72)
     _diag_emit(log_lines, "  Start Time      : $(_diag_timestamp())")
     _diag_emit(log_lines, "  Optimizer       : $(opt_name)")
-    _diag_emit(log_lines, "  Solver Output   : $(opts.show_solver_log ? "STREAMING LIVE (verbosity=:verbose)" : "COMPACT (pass --show-solver-log or --all-details for live solver trace)")")
+    _diag_emit(log_lines, "  Solver Output   : $(opts.show_solver_log ? "STREAMING LIVE + LOGGED (verbosity=:verbose)" : "COMPACT (pass --show-solver-log or --all-details for live solver trace)")")
 
     t0 = time()
-    result = solve_uc(
+    solve_call = () -> solve_uc(
         alg;
         input = input,
         scenario_limit = opts.scenario_limit,
@@ -359,6 +400,9 @@ function run_uc_example_workflow(
         optimizer = optimizer,
         extra_kwargs...,
     )
+    result = (resolved_log !== nothing && opts.show_solver_log) ?
+        _run_with_terminal_tee(solve_call, log_lines) :
+        solve_call()
     elapsed_sec = time() - t0
     _diag_emit(log_lines, @sprintf("  Finish Time     : %s  (elapsed: %.3f s)", _diag_timestamp(), elapsed_sec))
 
