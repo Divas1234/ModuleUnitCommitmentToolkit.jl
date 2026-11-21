@@ -10,6 +10,26 @@ function frequency_env_bool(name::String, default::Bool)
     return value in ("1", "true", "yes", "y", "on")
 end
 
+"""
+    frequency_model_mode() -> Symbol
+
+Return the active frequency-security modeling mode from `ENV["FREQUENCY_MODEL_MODE"]`:
+- `:legacy`    — original 3-feature commitment-sampling affine nadir fitting (default)
+- `:hd_region` — Inertia–Damping (H–D) Frequency Security Region linear cuts
+- `:hybrid`    — apply both legacy and H–D region constraints together
+"""
+function frequency_model_mode()
+    raw = lowercase(strip(get(ENV, "FREQUENCY_MODEL_MODE", "legacy")))
+    if raw in ("legacy", "classic", "affine")
+        return :legacy
+    elseif raw in ("hd_region", "hd", "frsr", "hd_estimation")
+        return :hd_region
+    elseif raw in ("hybrid", "both")
+        return :hybrid
+    end
+    throw(ArgumentError("Unsupported FREQUENCY_MODEL_MODE=$(raw); expected one of: legacy, hd_region, hybrid"))
+end
+
 function frequency_contingency_size(units, Δp_contingency)
     contingency_fraction = get(ENV, "FREQUENCY_CONTINGENCY_FRACTION", "")
     raw_contingency = if isempty(strip(contingency_fraction))

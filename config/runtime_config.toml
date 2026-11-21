@@ -134,6 +134,16 @@ FREQUENCY_NADIR_COEFFICIENT_BOUND = 10.0
 FREQUENCY_NADIR_COEFFICIENT_REGULARIZATION = 0.001
 # Set > 0 to enforce a hard maximum fitting error for the selected closest cut.
 FREQUENCY_NADIR_FIT_TOLERANCE = 0.0
+# Frequency-security modeling mode: "legacy" (3-feature affine fit),
+# "hd_region" (Inertia-Damping FRSR linear cuts), or "hybrid" (both).
+FREQUENCY_MODEL_MODE = "legacy"
+# H-D Frequency Security Region (FRSR) damping sweep & linearization settings.
+FREQUENCY_HD_DAMPING_MIN = 0.0
+FREQUENCY_HD_DAMPING_MAX = 15.0
+FREQUENCY_HD_DAMPING_POINTS = 61
+FREQUENCY_HD_MAX_CUTS = 6
+FREQUENCY_HD_CONVERTER_ENABLED = true
+FREQUENCY_HD_EXPORT_REPORT = false
 
 [test]
 MODULE_UC_TEST_ACTIVATE_LOCAL_PROJECT = false

@@ -14,6 +14,11 @@ function add_frequency_constraints!(scuc::Model, NT, NG, NC, NS, units, storages
         return nothing
     end
 
+    mode = frequency_model_mode()
+    if mode === :hd_region
+        return add_hd_frequency_constraints!(scuc, NT, NG, NC, NS, units, storages, config_param, Δp_contingency; winds = winds)
+    end
+
     x = scuc[:x]
     frequency_base_hz = frequency_env_float("FREQUENCY_BASE_HZ", 50.0)
     rocof_limit_hz_per_s = frequency_env_float("FREQUENCY_ROCOF_LIMIT_HZ_PER_S", 5.0)
@@ -67,5 +72,10 @@ function add_frequency_constraints!(scuc::Model, NT, NG, NC, NS, units, storages
     sfr_constr = add_sfr_reserve_constraints!(scuc, NT, NG, NS, units, x, frequency_nadir_limit, fcr_threshold)
 
     println("\t constraints: 13) frequency control constraints\t\t\t done")
-    return (rocof = rocof_constr, qss = qss_constr, nadir = nadir_constr, sfr = sfr_constr)
+    legacy_result = (mode = :legacy, rocof = rocof_constr, qss = qss_constr, nadir = nadir_constr, sfr = sfr_constr)
+    if mode === :hybrid
+        hd_result = add_hd_frequency_constraints!(scuc, NT, NG, NC, NS, units, storages, config_param, Δp_contingency; winds = winds)
+        return (mode = :hybrid, legacy = legacy_result, hd = hd_result)
+    end
+    return legacy_result
 end
