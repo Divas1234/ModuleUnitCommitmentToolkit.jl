@@ -58,7 +58,6 @@ Manifest.toml
 .codegraph/
 
 # Local-only paths kept off GitHub
-.github/workflows/
 Tools/backup/
 dev/debug/
 

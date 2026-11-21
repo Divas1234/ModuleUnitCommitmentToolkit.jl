@@ -1,0 +1,72 @@
+name: Release macOS DMG
+
+on:
+  push:
+    tags:
+      - "v*"
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Release tag (e.g. v1.14.0); defaults to Project.toml version"
+        required: false
+        default: ""
+
+permissions:
+  contents: write
+
+jobs:
+  build-and-publish-dmg:
+    name: Build & Publish macOS DMG
+    runs-on: macos-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Build GUI HTML dashboard
+        run: python3 gui/build_html.py
+
+      - name: Build and verify macOS DMG
+        run: |
+          chmod +x scripts/build_macos_dmg.sh
+          bash scripts/build_macos_dmg.sh
+          ls -lh Release/*.dmg
+
+      - name: Generate SHA-256 checksum
+        run: |
+          cd Release
+          shasum -a 256 ./*.dmg > SHA256SUMS.txt
+          cat SHA256SUMS.txt
+
+      - name: Determine release tag
+        id: meta
+        env:
+          INPUT_TAG: ${{ inputs.tag }}
+        run: |
+          if [ -n "$INPUT_TAG" ]; then
+            TAG="$INPUT_TAG"
+          elif [[ "${GITHUB_REF}" == refs/tags/* ]]; then
+            TAG="${GITHUB_REF#refs/tags/}"
+          else
+            VER="$(python3 -c 'import tomllib, pathlib; print(tomllib.loads(pathlib.Path("Project.toml").read_text())["version"])')"
+            TAG="v${VER}"
+          fi
+          echo "tag=${TAG}" >> "$GITHUB_OUTPUT"
+
+      - name: Upload DMG to GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ steps.meta.outputs.tag }}
+        run: |
+          DMG_FILE="$(find Release -maxdepth 1 -name '*.dmg' | head -n 1)"
+          if gh release view "$TAG" >/dev/null 2>&1; then
+            gh release upload "$TAG" "$DMG_FILE" Release/SHA256SUMS.txt --clobber
+          else
+            gh release create "$TAG" "$DMG_FILE" Release/SHA256SUMS.txt \
+              --title "ModuleUnitCommitmentToolkit ${TAG}" \
+              --generate-notes
+          fi

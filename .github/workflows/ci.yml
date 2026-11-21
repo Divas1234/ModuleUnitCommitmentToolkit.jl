@@ -1,0 +1,93 @@
+name: CI
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+  workflow_dispatch:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  workflow-and-shell-lint:
+    name: Workflow & Shell Lint
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Validate shell scripts syntax
+        run: |
+          bash -n gui/start.sh
+          bash -n scripts/build_macos_dmg.sh
+          bash -n scripts/run_ci_local.sh
+          bash -n scripts/run_benders_benchmarks.sh
+
+  gui-and-python:
+    name: GUI Tests & HTML Build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Compile-check Python GUI files
+        run: python3 -m py_compile gui/server.py gui/build_html.py test/gui/test_gui_security.py
+
+      - name: Run GUI security & server unit tests
+        run: python3 -m unittest discover -s test/gui -v
+
+      - name: Verify GUI HTML build
+        run: |
+          python3 gui/build_html.py
+          test -s gui/index.html
+
+  julia-syntax-and-metadata:
+    name: Julia Syntax & Project Metadata
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Julia
+        uses: julia-actions/setup-julia@v2
+        with:
+          version: "1"
+
+      - name: Validate Project.toml and parse all Julia source files
+        run: |
+          julia -e '
+            using TOML
+            proj = TOML.parsefile("Project.toml")
+            @assert haskey(proj, "name") && proj["name"] == "ModuleUnitCommitmentToolkit"
+            @assert haskey(proj, "version")
+            println("Project.toml OK: ", proj["name"], " v", proj["version"])
+
+            let checked = 0
+              for root_dir in ("src", "tools", "test", "gui", "scripts")
+                isdir(root_dir) || continue
+                for (dir, _, files) in walkdir(root_dir)
+                  for f in files
+                    endswith(f, ".jl") || continue
+                    path = joinpath(dir, f)
+                    src = read(path, String)
+                    Meta.parseall(src; filename = path)
+                    checked += 1
+                  end
+                end
+              end
+              println("Julia syntax check passed for ", checked, " files.")
+            end
+          '
