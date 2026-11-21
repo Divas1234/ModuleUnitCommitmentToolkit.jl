@@ -238,20 +238,37 @@ alert_error() {
   exit 1
 }
 
-PYTHON_BIN="$(command -v python3 || true)"
+# Pick a Python 3.11+ interpreter (tomllib is required; macOS /usr/bin/python3 is 3.9)
+PYTHON_BIN=""
+for cand in \
+  /opt/homebrew/bin/python3 \
+  /usr/local/bin/python3 \
+  /Library/Frameworks/Python.framework/Versions/Current/bin/python3 \
+  "$(command -v python3 || true)"; do
+  if [ -n "$cand" ] && [ -x "$cand" ]; then
+    if "$cand" -c 'import sys, tomllib; assert sys.version_info >= (3, 11)' >/dev/null 2>&1; then
+      PYTHON_BIN="$cand"
+      break
+    fi
+  fi
+done
 if [ -z "$PYTHON_BIN" ]; then
-  alert_error "未找到 Python 3（python3）。请先安装 Python 3（例如通过 Homebrew: brew install python）后再启动。"
+  alert_error "未找到 Python 3.11+ 环境（需要内置 tomllib）。请安装新版 Python 3（例如: brew install python）后再启动。"
 fi
 
 # Writable user workspace & output directories (works even when launched directly from read-only DMG or App Translocation)
 APP_SUPPORT="$HOME/Library/Application Support/${APP_NAME}"
 WORKSPACE="$APP_SUPPORT/workspace"
 OUTPUT_DIR="$HOME/Documents/${APP_NAME}_Output"
+if ! mkdir -p "$OUTPUT_DIR/logs" 2>/dev/null; then
+  OUTPUT_DIR="$APP_SUPPORT/output"
+  mkdir -p "$OUTPUT_DIR/logs"
+fi
 LOG_DIR="$OUTPUT_DIR/logs"
 PID_FILE="$APP_SUPPORT/gui_server.pid"
 PORT_FILE="$APP_SUPPORT/gui_server.port"
 
-mkdir -p "$APP_SUPPORT" "$OUTPUT_DIR" "$LOG_DIR"
+mkdir -p "$APP_SUPPORT"
 
 INSTALLED_STAMP=""
 [ -f "$APP_SUPPORT/INSTALLED_STAMP" ] && INSTALLED_STAMP="$(cat "$APP_SUPPORT/INSTALLED_STAMP")"
@@ -269,7 +286,7 @@ if [ "$INSTALLED_STAMP" != "$BUILD_STAMP" ] || [ ! -f "$WORKSPACE/gui/server.py"
   printf '%s\n' "$BUILD_STAMP" > "$APP_SUPPORT/INSTALLED_STAMP"
 fi
 
-# Link workspace/output -> ~/Documents/ModuleUnitCommitmentToolkit_Output
+# Link workspace/output -> OUTPUT_DIR
 if [ ! -L "$WORKSPACE/output" ]; then
   rm -rf "$WORKSPACE/output"
   ln -s "$OUTPUT_DIR" "$WORKSPACE/output"
@@ -298,24 +315,24 @@ if [ -z "$PORT" ]; then
   alert_error "端口 8080–8099 均已被占用，请释放一个端口后重试。"
 fi
 
-SERVER_LOG="$LOG_DIR/gui_server.log"
+SERVER_LOG="$APP_SUPPORT/gui_server.log"
 export MODULE_UC_GUI_HOST="127.0.0.1"
 export MODULE_UC_GUI_PORT="$PORT"
 export MODULE_UC_OUTPUT_DIR="$OUTPUT_DIR"
 
 cd "$WORKSPACE"
-nohup "$PYTHON_BIN" "$WORKSPACE/gui/server.py" >> "$SERVER_LOG" 2>&1 </dev/null &
+nohup "$PYTHON_BIN" -u "$WORKSPACE/gui/server.py" >> "$SERVER_LOG" 2>&1 </dev/null &
 SERVER_PID=$!
 echo "$SERVER_PID" > "$PID_FILE"
 echo "$PORT" > "$PORT_FILE"
 
-# Wait up to 8 seconds for server readiness
+# Wait up to 15 seconds for server readiness (direct localhost HTTP, bypassing system proxies)
 READY=0
-for _ in $(seq 1 40); do
+for _ in $(seq 1 75); do
   if ! kill -0 "$SERVER_PID" 2>/dev/null; then
     break
   fi
-  if "$PYTHON_BIN" -c "import urllib.request; urllib.request.urlopen('http://127.0.0.1:${PORT}/gui/', timeout=1)" >/dev/null 2>&1; then
+  if "$PYTHON_BIN" -c "import http.client; c = http.client.HTTPConnection('127.0.0.1', ${PORT}, timeout=1); c.request('GET', '/api/config'); r = c.getresponse(); assert r.status == 200" >/dev/null 2>&1; then
     READY=1
     break
   fi

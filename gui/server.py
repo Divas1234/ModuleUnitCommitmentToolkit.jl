@@ -734,13 +734,17 @@ class Handler(SimpleHTTPRequestHandler):
 
 if __name__ == '__main__':
     validate_server_config()
-    ok, msg = check_julia()
-    print(f"Julia check: {'OK' if ok else 'FAIL'} {msg}")
     # The dashboard exposes local config-write and process-launch endpoints.
     # Keep the default listener local unless deployment explicitly adds its own
     # authenticated front end.
     server = ThreadingHTTPServer((GUI_HOST, GUI_PORT), Handler)
-    print(f'Server running at http://{GUI_HOST}:{GUI_PORT}/gui/')
+    print(f'Server running at http://{GUI_HOST}:{GUI_PORT}/gui/', flush=True)
+
+    def _log_startup_julia_check():
+        ok, msg = check_julia()
+        print(f"Julia check: {'OK' if ok else 'FAIL'} {msg}", flush=True)
+
+    threading.Thread(target=_log_startup_julia_check, daemon=True).start()
     try:
         server.serve_forever()
     except KeyboardInterrupt:
