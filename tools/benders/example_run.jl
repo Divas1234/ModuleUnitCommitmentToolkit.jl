@@ -1,6 +1,6 @@
 #!/usr/bin/env julia
 """
-Runnable example: Benders Decomposition UC solver with explicit diagnostic parameters.
+Runnable example: Benders Decomposition UC solver.
 
 Usage:
   julia --project=. tools/benders/example_run.jl [scenario_limit] [--fast] [OPTIONS]
@@ -26,36 +26,17 @@ function main(
     log_file::Union{Nothing, String} = nothing,
     verbosity::Symbol = :summary,       # :summary | :detailed | :verbose
 )
-    opts = if isempty(args)
-        UCExampleOptions(
-            scenario_limit = scenario_limit,
-            fast_direct = fast_direct,
-            verbosity = show_solver_log ? :verbose : verbosity,
-            show_constraints = show_constraints,
-            show_integrity = show_integrity,
-            show_solver_log = show_solver_log,
-            show_results = show_results,
-            show_artifacts = show_artifacts,
-            save_log = save_log,
-            log_file = log_file,
-        )
-    else
-        parse_example_run_args(args; default_scenarios = scenario_limit)
-    end
-
-    if opts.help
-        print_example_run_usage("tools/benders/example_run.jl"; supports_fast = true)
-        return nothing
-    end
-
+    opts = resolve_uc_example_options(
+        args;
+        scenario_limit, fast_direct, show_constraints, show_integrity, show_solver_log,
+        show_results, show_artifacts, save_log, log_file, verbosity,
+    )
+    opts.help && return print_example_run_usage("tools/benders/example_run.jl"; supports_fast = true)
     return run_uc_example_workflow(
         BendersAlgorithm(fast_direct = opts.fast_direct),
         opts;
         algo_name = opts.fast_direct ? "benders_fast" : "benders",
         input = :excel,
-        # Optional overrides:
-        #   optimizer = HiGHS.Optimizer,
-        #   calibration = (MODEL_MAX_ITERATIONS_NUM = 30, MODEL_CALCULATION_PRECISION = 0.01),
     )
 end
 

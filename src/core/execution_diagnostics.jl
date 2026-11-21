@@ -130,6 +130,45 @@ function parse_example_run_args(args::AbstractVector{<:AbstractString}; default_
     return opts
 end
 
+"""
+    resolve_uc_example_options(args; scenario_limit = 2, fast_direct = false,
+        show_constraints = false, show_integrity = false, show_solver_log = false,
+        show_results = true, show_artifacts = true, save_log = true,
+        log_file = nothing, verbosity = :summary)
+
+Build a `UCExampleOptions` from explicit keyword defaults when `args` is empty,
+or parse CLI overrides from `args` (inheriting `scenario_limit` as default).
+"""
+function resolve_uc_example_options(
+    args::AbstractVector{<:AbstractString};
+    scenario_limit::Int = 2,
+    fast_direct::Bool = false,
+    show_constraints::Bool = false,
+    show_integrity::Bool = false,
+    show_solver_log::Bool = false,
+    show_results::Bool = true,
+    show_artifacts::Bool = true,
+    save_log::Bool = true,
+    log_file::Union{Nothing, String} = nothing,
+    verbosity::Symbol = :summary,
+)
+    if isempty(args)
+        return UCExampleOptions(
+            scenario_limit = scenario_limit,
+            fast_direct = fast_direct,
+            verbosity = show_solver_log ? :verbose : verbosity,
+            show_constraints = show_constraints,
+            show_integrity = show_integrity,
+            show_solver_log = show_solver_log,
+            show_results = show_results,
+            show_artifacts = show_artifacts,
+            save_log = save_log,
+            log_file = log_file,
+        )
+    end
+    return parse_example_run_args(args; default_scenarios = scenario_limit)
+end
+
 function _diag_emit(log_lines::Vector{String}, msg::AbstractString)
     println(msg)
     push!(log_lines, String(msg))

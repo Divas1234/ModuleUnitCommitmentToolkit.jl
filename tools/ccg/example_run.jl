@@ -1,7 +1,6 @@
 #!/usr/bin/env julia
 """
-Runnable example: Column-and-Constraint Generation (CCG / DRO-CCG) UC solver
-with explicit diagnostic parameters.
+Runnable example: Column-and-Constraint Generation (CCG / DRO-CCG) UC solver.
 
 Usage:
   julia --project=. tools/ccg/example_run.jl [scenario_limit] [OPTIONS]
@@ -26,36 +25,13 @@ function main(
     log_file::Union{Nothing, String} = nothing,
     verbosity::Symbol = :summary,       # :summary | :detailed | :verbose
 )
-    opts = if isempty(args)
-        UCExampleOptions(
-            scenario_limit = scenario_limit,
-            verbosity = show_solver_log ? :verbose : verbosity,
-            show_constraints = show_constraints,
-            show_integrity = show_integrity,
-            show_solver_log = show_solver_log,
-            show_results = show_results,
-            show_artifacts = show_artifacts,
-            save_log = save_log,
-            log_file = log_file,
-        )
-    else
-        parse_example_run_args(args; default_scenarios = scenario_limit)
-    end
-
-    if opts.help
-        print_example_run_usage("tools/ccg/example_run.jl")
-        return nothing
-    end
-
-    return run_uc_example_workflow(
-        CCGAlgorithm(),
-        opts;
-        algo_name = "ccg",
-        input = :excel,
-        # Optional overrides:
-        #   optimizer = HiGHS.Optimizer,
-        #   calibration = (CCG_MAX_ITER = 20, DRO_EPSILON = 0.05),
+    opts = resolve_uc_example_options(
+        args;
+        scenario_limit, show_constraints, show_integrity, show_solver_log,
+        show_results, show_artifacts, save_log, log_file, verbosity,
     )
+    opts.help && return print_example_run_usage("tools/ccg/example_run.jl")
+    return run_uc_example_workflow(CCGAlgorithm(), opts; algo_name = "ccg", input = :excel)
 end
 
 if abspath(PROGRAM_FILE) == @__FILE__
