@@ -1,5 +1,5 @@
 # Environment configuration is loaded by the Benders setup entry point.
-include(joinpath(@__DIR__, "..", "..", "..", "src", "unit_commitment", "unit_commitment_model.jl"))
+isdefined(@__MODULE__, :SUC_scucmodel) || include(joinpath(@__DIR__, "..", "..", "..", "src", "unit_commitment", "unit_commitment_model.jl"))
 
 """
 `bd_masterfunction(...)`

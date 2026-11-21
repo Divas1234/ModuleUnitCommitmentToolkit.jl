@@ -17,9 +17,9 @@ isdefined(@__MODULE__, :load_uc_data) || include(joinpath(BENDERS_PROJECT_ROOT, 
 # from this file rather than from the caller's current directory.
 
 # Load Benders decomposition formulation and cut-generation libraries.
-include("models/construct_models.jl")
-include("cuts/construct_cuts.jl")
-include("decomposition.jl")
+isdefined(@__MODULE__, :bd_masterfunction) || include("models/construct_models.jl")
+isdefined(@__MODULE__, :add_benders_multicuts_constraints!) || include("cuts/construct_cuts.jl")
+isdefined(@__MODULE__, :multiple_benders_decomposition_scuc) || include("decomposition.jl")
 
 ##
 """

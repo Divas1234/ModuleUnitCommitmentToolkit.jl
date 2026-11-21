@@ -4,8 +4,8 @@
 # Scenario subproblems evaluate recourse dispatch, curtailment, network, storage,
 # and auxiliary constraints under fixed commitment. Violated recourse estimates
 # are returned as feasibility, optimality, Jensen, or logic-dominance cuts.
-include("models/construct_models.jl")
-include("cuts/construct_cuts.jl")
+isdefined(@__MODULE__, :bd_masterfunction) || include("models/construct_models.jl")
+isdefined(@__MODULE__, :add_benders_multicuts_constraints!) || include("cuts/construct_cuts.jl")
 
 using Printf
 using DataStructures

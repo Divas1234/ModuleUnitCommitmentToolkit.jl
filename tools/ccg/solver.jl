@@ -7,9 +7,9 @@
 
 using DataStructures
 
-include(joinpath(@__DIR__, "..", "benders", "setup.jl"))
-include("dro_uncertainty.jl")
-include("helpers.jl")
+isdefined(@__MODULE__, :BENDERS_PROJECT_ROOT) || include(joinpath(@__DIR__, "..", "benders", "setup.jl"))
+isdefined(@__MODULE__, :ccg_dro_enabled) || include("dro_uncertainty.jl")
+isdefined(@__MODULE__, :choose_initial_ccg_scenarios) || include("helpers.jl")
 
 #%%%
 """
