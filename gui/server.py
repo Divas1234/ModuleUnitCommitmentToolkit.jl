@@ -12,7 +12,7 @@ import subprocess
 import threading
 import time
 import tomllib
-from http.server import HTTPServer, SimpleHTTPRequestHandler
+from http.server import ThreadingHTTPServer, SimpleHTTPRequestHandler
 from pathlib import Path
 from urllib.parse import urlparse
 
@@ -120,9 +120,34 @@ def julia_env():
 # Julia check
 # ---------------------------------------------------------------------------
 
+def _resolve_julia_bin():
+    """Locate the Julia executable, checking PATH and common macOS install locations."""
+    found = shutil.which("julia")
+    if found:
+        return found
+    candidates = [
+        Path.home() / ".juliaup" / "bin" / "julia",
+        Path("/opt/homebrew/bin/julia"),
+        Path("/usr/local/bin/julia"),
+    ]
+    apps_dir = Path("/Applications")
+    if apps_dir.exists():
+        for app in sorted(apps_dir.glob("Julia-*.app"), reverse=True):
+            candidates.append(app / "Contents" / "Resources" / "julia" / "bin" / "julia")
+    for cand in candidates:
+        if cand.is_file() and os.access(cand, os.X_OK):
+            return str(cand)
+    return None
+
+
+def _output_root():
+    override = os.environ.get("MODULE_UC_OUTPUT_DIR", "").strip()
+    return Path(override) if override else (ROOT / "output")
+
+
 def check_julia():
     """Return (ok, msg). Checks if `julia` is available and responsive."""
-    julia = shutil.which("julia")
+    julia = _resolve_julia_bin()
     if not julia:
         return False, "`julia` not found in PATH. Install Julia (https://julialang.org) and ensure it is on $PATH."
     try:
@@ -279,15 +304,16 @@ class RunManager:
         candidates = []
         summaries = []
 
+        out_root = _output_root()
         for rel in TASK_OUTPUT_DIRS.get(task, ()):
-            root = ROOT / "output" / rel
+            root = out_root / rel
             if not root.exists():
                 continue
             for path in root.rglob("*"):
                 if path.is_file() and path.suffix.lower() in (".log", ".csv", ".txt", ".md"):
                     candidates.append(path)
 
-        comparison_root = ROOT / "output" / "comparison"
+        comparison_root = out_root / "comparison"
         if task == "benchmark" and comparison_root.exists():
             for summary_path in comparison_root.glob("*/summary.csv"):
                 summaries.append({"path": str(summary_path), "mtime": summary_path.stat().st_mtime})
@@ -317,31 +343,32 @@ class RunManager:
         env = julia_env()
         env["PYTHON"] = ""
         env["JULIA_PKG_PRECOMPILE_AUTO"] = "0"
+        julia_bin = _resolve_julia_bin() or "julia"
 
         if task == "boundary":
             limit = str(params.get("scenario_limit", 5))
-            return ["julia", "gui/run_boundary.jl", limit], env
+            return [julia_bin, "--project=.", "gui/run_boundary.jl", limit], env
 
         if task == "benchmark":
             counts = params.get("scenario_counts", "2,6,10")
             env["BENCHMARK_SCENARIO_COUNTS"] = counts
-            return ["julia", "tools/benchmark/run_algorithm_comparison.jl"], env
+            return [julia_bin, "--project=.", "tools/benchmark/run_algorithm_comparison.jl"], env
 
         if task == "ccg":
             limit = str(params.get("scenario_limit", 20))
             env["CCG_SCENARIO_LIMIT"] = limit
-            return ["julia", "tools/ccg/driver.jl"], env
+            return [julia_bin, "--project=.", "tools/ccg/driver.jl"], env
 
         if task == "benders":
             limit = str(params.get("scenario_limit", 20))
             env["BENDERS_SCENARIO_LIMIT"] = limit
-            return ["julia", "tools/benders/driver.jl"], env
+            return [julia_bin, "--project=.", "tools/benders/driver.jl"], env
 
         if task == "benders_fast":
             limit = str(params.get("scenario_limit", 20))
             env["BENDERS_SCENARIO_LIMIT"] = limit
             env["BENDERS_FAST_DIRECT_SOLVE"] = "1"
-            return ["julia", "tools/benders/driver.jl"], env
+            return [julia_bin, "--project=.", "tools/benders/driver.jl"], env
 
         if task in ("pcm_standard", "pcm_clustered", "pcm_adaptive", "pcm_clustered_adaptive"):
             method_map = {
@@ -353,16 +380,16 @@ class RunManager:
             env["PCM_METHOD"] = method_map[task]
             if "pcm_profile" in params and params["pcm_profile"] != "all":
                 env["PCM_LOAD_PROFILE"] = params["pcm_profile"]
-            return ["julia", "--project=.", "tools/pcm/main.jl"], env
+            return [julia_bin, "--project=.", "tools/pcm/main.jl"], env
 
         if task == "pcm_suite":
             if "pcm_profile" in params and params["pcm_profile"] != "all":
                 env["PCM_SUITE_PROFILES"] = params["pcm_profile"]
-            return ["julia", "--project=.", "tools/pcm/benchmark/run_pcm_suite.jl"], env
+            return [julia_bin, "--project=.", "tools/pcm/benchmark/run_pcm_suite.jl"], env
 
         if task == "tests":
             env["MODULE_UC_TEST_ACTIVATE_LOCAL_PROJECT"] = "0"
-            return ["julia", "test/runtests.jl"], env
+            return [julia_bin, "--project=.", "test/runtests.jl"], env
 
         raise ValueError(f"Unknown task: {task}")
 
@@ -712,7 +739,7 @@ if __name__ == '__main__':
     # The dashboard exposes local config-write and process-launch endpoints.
     # Keep the default listener local unless deployment explicitly adds its own
     # authenticated front end.
-    server = HTTPServer((GUI_HOST, GUI_PORT), Handler)
+    server = ThreadingHTTPServer((GUI_HOST, GUI_PORT), Handler)
     print(f'Server running at http://{GUI_HOST}:{GUI_PORT}/gui/')
     try:
         server.serve_forever()

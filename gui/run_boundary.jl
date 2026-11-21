@@ -36,7 +36,7 @@ winds, NW = genscenario(WindsFreqParam, 1; scenario_limit = scenario_limit)
 
 NS = Int64(winds.scenarios_nums)
 
-maybe_print_boundarycondition(NB, NL, NG, NT, ND, units, loads, lines, winds, psses, config_param)
+maybe_print_boundarycondition(NB, NL, NG, NT, ND, units, loads, lines, winds, psses, config_param; data_centers = data_centers)
 
 refcost, eachslope = linearizationfuelcurve(units, NG)
 
@@ -116,8 +116,20 @@ load_total_by_bus = [round(sum(loads.load_curve[i, :]); digits = 2) for i in 1:N
 load_total_by_time = [round(sum(loads.load_curve[:, j]); digits = 2) for j in 1:NT]
 wind_scenario_mean = [round(sum(winds.scenarios_curve[:, j]) / NS; digits = 4) for j in 1:NT]
 
+data_centers_list = [
+    Dict(
+        "index" => data_centers.index[i],
+        "bus" => data_centers.locatebus[i],
+        "p_max" => data_centers.p_max[i],
+        "p_min" => data_centers.p_min[i],
+        "idle_power" => data_centers.idle_power[i],
+        "lambda" => data_centers.λ[i],
+        "mu" => data_centers.μ[i],
+    ) for i in 1:ND2
+]
+
 data = Dict(
-    "system" => Dict("NB" => NB, "NL" => NL, "NG" => NG, "NT" => NT, "ND" => ND, "NW" => NW, "NS" => NS, "NC" => length(psses.index)),
+    "system" => Dict("NB" => NB, "NL" => NL, "NG" => NG, "NT" => NT, "ND" => ND, "NW" => NW, "NS" => NS, "NC" => length(psses.index), "ND2" => ND2),
     "totals" => Dict(
         "total_pmax" => round(sum(units.p_max); digits = 2),
         "total_pmin" => round(sum(units.p_min); digits = 2),
@@ -128,6 +140,7 @@ data = Dict(
     "validation" => checks_list,
     "units" => units_data,
     "lines" => lines_data,
+    "data_centers" => data_centers_list,
     "load_totals" => Dict(
         "by_bus" => [Dict("bus" => i, "total_mw" => load_total_by_bus[i]) for i in 1:ND],
         "by_hour" => [Dict("hour" => j, "total_mw" => load_total_by_time[j]) for j in 1:NT],
