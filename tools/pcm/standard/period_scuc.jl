@@ -30,6 +30,34 @@ if !isdefined(@__MODULE__, :_PERIOD_SCUC_MODULES_INCLUDED)
     # 最近一次聚类主问题的真实整数变量数。与仅按 U/Y/Z 估算的
     # commitment 变量数分开记录，因为扩展凸包还包含状态流和出力弧变量。
     const PCM_CLUSTER_EXTENDED_INTEGER_VARIABLES = Ref(0)
+
+    function reset_pcm_cluster_stats!()
+        PCM_CLUSTER_ATTEMPTS[] = 0
+        PCM_CLUSTER_SUCCESSES[] = 0
+        PCM_CLUSTER_FALLBACKS[] = 0
+        PCM_CLUSTER_PREPROCESS_TIME_SEC[] = 0.0
+        PCM_CLUSTER_EXTENDED_INTEGER_VARIABLES[] = 0
+        return snapshot_pcm_cluster_stats()
+    end
+
+    function snapshot_pcm_cluster_stats()
+        if isdefined(@__MODULE__, :PCMRunStats)
+            return PCMRunStats(
+                PCM_CLUSTER_ATTEMPTS[],
+                PCM_CLUSTER_SUCCESSES[],
+                PCM_CLUSTER_FALLBACKS[],
+                PCM_CLUSTER_PREPROCESS_TIME_SEC[],
+                PCM_CLUSTER_EXTENDED_INTEGER_VARIABLES[],
+            )
+        end
+        return (
+            attempts = PCM_CLUSTER_ATTEMPTS[],
+            successes = PCM_CLUSTER_SUCCESSES[],
+            fallbacks = PCM_CLUSTER_FALLBACKS[],
+            preprocess_time_sec = PCM_CLUSTER_PREPROCESS_TIME_SEC[],
+            extended_integer_variables = PCM_CLUSTER_EXTENDED_INTEGER_VARIABLES[],
+        )
+    end
     #---------------------------------------------------------------------------------------------------
 
     """

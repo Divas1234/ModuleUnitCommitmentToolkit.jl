@@ -55,6 +55,51 @@ end
 
 Base.getindex(data::UCProblemData, name::Symbol) = getproperty(data, name)
 
+"""
+    AbstractUCAlgorithm
+
+Supertype for typed solver/algorithm specifications enabling Julia multiple dispatch
+via `solve_uc(alg::AbstractUCAlgorithm; kwargs...)`.
+"""
+abstract type AbstractUCAlgorithm end
+
+struct BenchmarkUCAlgorithm <: AbstractUCAlgorithm end
+
+struct BendersAlgorithm <: AbstractUCAlgorithm
+    fast_direct::Bool
+end
+BendersAlgorithm(; fast_direct::Bool = false) = BendersAlgorithm(fast_direct)
+
+struct CCGAlgorithm <: AbstractUCAlgorithm end
+
+struct PCMAlgorithm <: AbstractUCAlgorithm
+    method::Symbol
+    profile::Symbol
+    intervals::Union{Nothing, Int}
+    window_hours::Union{Nothing, Int}
+    performance_mode::Symbol
+end
+function PCMAlgorithm(;
+    method::Symbol = :standard,
+    profile::Symbol = :baseline,
+    intervals::Union{Nothing, Int} = nothing,
+    window_hours::Union{Nothing, Int} = nothing,
+    performance_mode::Symbol = :fast,
+)
+    method in (:standard, :clustered, :clustered_pcm, :adaptive_overlap, :clustered_adaptive_overlap, :integrated) ||
+        throw(ArgumentError("Unsupported PCM method: $(method)"))
+    return PCMAlgorithm(method, profile, intervals, window_hours, performance_mode)
+end
+
+"""Immutable snapshot of clustered PCM window execution statistics."""
+struct PCMRunStats
+    attempts::Int
+    successes::Int
+    fallbacks::Int
+    preprocess_time_sec::Float64
+    extended_integer_variables::Int
+end
+
 struct UCInputSpec
     source::Symbol
     scenario_limit::Int64

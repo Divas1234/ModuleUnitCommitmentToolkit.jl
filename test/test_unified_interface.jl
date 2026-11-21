@@ -124,4 +124,31 @@
     @test prob.psses === :s
     @test prob.DataCentras === :dc
     @test prob[:NT] == 24
+
+    # P1: AbstractUCAlgorithm hierarchy & PCM unified routing
+    @test :pcm_standard in registered_uc_algorithms()
+    @test :pcm_clustered in registered_uc_algorithms()
+    @test :pcm_adaptive_overlap in registered_uc_algorithms()
+    @test :pcm_clustered_adaptive in registered_uc_algorithms()
+    @test BenchmarkUCAlgorithm() isa AbstractUCAlgorithm
+    @test BendersAlgorithm(fast_direct = true).fast_direct == true
+    @test CCGAlgorithm() isa AbstractUCAlgorithm
+    pcm_alg = PCMAlgorithm(method = :clustered_adaptive_overlap, profile = :extreme_ramp, intervals = 3, window_hours = 24)
+    @test pcm_alg isa AbstractUCAlgorithm
+    @test_throws ArgumentError PCMAlgorithm(method = :nonexistent)
+
+    # P1: Canonical ASCII JuMP variable accessor (uc_variable / has_uc_variable)
+    m_probe = Model()
+    @variable(m_probe, pg₀[1:2, 1:2] >= 0)
+    @variable(m_probe, Δpd[1:2, 1:2] >= 0)
+    @test has_uc_variable(m_probe, :p_gen)
+    @test has_uc_variable(m_probe, :pg₀)
+    @test has_uc_variable(m_probe, :load_curtail)
+    @test !has_uc_variable(m_probe, :wind_curtail)
+    @test uc_variable(m_probe, :p_gen) === m_probe[:pg₀]
+    @test uc_variable(m_probe, :load_curtail) === m_probe[:Δpd]
+
+    # P1: Centralized deprecation registry
+    @test LEGACY_NAMING_MIGRATION[:boundrycondition] == :boundary_condition
+    @test LEGACY_NAMING_MIGRATION[:psses] == :storages
 end

@@ -21,6 +21,22 @@ const _UC_ALGORITHM_ALIASES = Dict{String, Symbol}(
     "benders" => :benders,
     "ccg" => :ccg,
     "column_constraint_generation" => :ccg,
+    "pcm_standard" => :pcm_standard,
+    "pcm_clustered" => :pcm_clustered,
+    "pcm_adaptive_overlap" => :pcm_adaptive_overlap,
+    "pcm_clustered_adaptive" => :pcm_clustered_adaptive,
+    "pcm_integrated" => :pcm_integrated,
+)
+
+const _BUILTIN_UC_ALGORITHMS = (
+    :benchmark,
+    :benders,
+    :ccg,
+    :pcm_standard,
+    :pcm_clustered,
+    :pcm_adaptive_overlap,
+    :pcm_clustered_adaptive,
+    :pcm_integrated,
 )
 
 function _normalize_algorithm_key(name)
@@ -52,7 +68,7 @@ function unregister_uc_algorithm!(name::Symbol)
     canonical = Symbol(_normalize_algorithm_key(name))
     delete!(_UC_ALGORITHM_REGISTRY, canonical)
     for (alias, target) in collect(_UC_ALGORITHM_ALIASES)
-        if target === canonical && !(canonical in (:benchmark, :benders, :ccg))
+        if target === canonical && !(canonical in _BUILTIN_UC_ALGORITHMS)
             delete!(_UC_ALGORITHM_ALIASES, alias)
         end
     end
@@ -65,7 +81,7 @@ end
 Return the sorted list of canonical algorithm names supported by `solve_uc`.
 """
 function registered_uc_algorithms()
-    return sort!(collect(union(Set((:benchmark, :benders, :ccg)), keys(_UC_ALGORITHM_REGISTRY))))
+    return sort!(collect(union(Set(_BUILTIN_UC_ALGORITHMS), keys(_UC_ALGORITHM_REGISTRY))))
 end
 
 const _UC_EXPORTER_REGISTRY = Dict{Symbol, Function}()
@@ -152,6 +168,11 @@ const _EXTRA_CALIBRATION_KEYS = Set{String}([
     "MODULE_UC_RUN_ID",
     "MODULE_UC_SEED_RNG",
     "MODULE_UC_VERBOSE_LOAD",
+    "PCM_METHOD",
+    "PCM_LOAD_PROFILE",
+    "PCM_INTERVALS",
+    "PCM_WINDOW_HOURS",
+    "PCM_PERFORMANCE_MODE",
 ])
 
 const _CALIBRATION_KEY_SUGGESTIONS = Dict{String, String}(
@@ -419,10 +440,85 @@ function _solve_uc_selected(request::UCSolveRequest)
                 horizon = input.horizon,
                 data_file = input.data_file,
             )
+        elseif algorithm in (:pcm_standard, :pcm_clustered, :pcm_adaptive_overlap, :pcm_clustered_adaptive, :pcm_integrated)
+            return _solve_pcm_unified(request)
         else
             return _solve_benders_unified(request)
         end
     end
+end
+
+function _solve_pcm_unified(request::UCSolveRequest)
+    method_map = Dict{Symbol, String}(
+        :pcm_standard => "standard",
+        :pcm_clustered => "clustered_pcm",
+        :pcm_adaptive_overlap => "adaptive_overlap",
+        :pcm_clustered_adaptive => "clustered_adaptive_overlap",
+        :pcm_integrated => "integrated_uc",
+    )
+    project_root = normpath(joinpath(@__DIR__, ".."))
+    pcm_entry = _resolve_tools_path(project_root, "pcm", "main.jl")
+    env_pairs = Pair{String, String}["PCM_METHOD" => method_map[request.algorithm]]
+    if request.input.data_file !== nothing
+        push!(env_pairs, "MODULE_UC_DATA_FILE" => request.input.data_file)
+    end
+    t0 = time()
+    withenv(env_pairs...) do
+        Base.include(Main, pcm_entry)
+    end
+    elapsed = time() - t0
+    return (status = "COMPLETED", method = method_map[request.algorithm], runtime_seconds = elapsed)
+end
+
+function _algorithm_to_request_args(alg::BenchmarkUCAlgorithm)
+    return (:benchmark, Pair{Symbol, Any}[])
+end
+
+function _algorithm_to_request_args(alg::BendersAlgorithm)
+    cal = alg.fast_direct ? Pair{Symbol, Any}[:BENDERS_FAST_DIRECT_SOLVE => 1] : Pair{Symbol, Any}[]
+    return (:benders, cal)
+end
+
+function _algorithm_to_request_args(alg::CCGAlgorithm)
+    return (:ccg, Pair{Symbol, Any}[])
+end
+
+function _algorithm_to_request_args(alg::PCMAlgorithm)
+    algo_sym = if alg.method === :standard
+        :pcm_standard
+    elseif alg.method in (:clustered, :clustered_pcm)
+        :pcm_clustered
+    elseif alg.method === :adaptive_overlap
+        :pcm_adaptive_overlap
+    elseif alg.method === :clustered_adaptive_overlap
+        :pcm_clustered_adaptive
+    else
+        :pcm_integrated
+    end
+    cal = Pair{Symbol, Any}[
+        :PCM_LOAD_PROFILE => String(alg.profile),
+        :PCM_PERFORMANCE_MODE => String(alg.performance_mode),
+    ]
+    alg.intervals !== nothing && push!(cal, :PCM_INTERVALS => alg.intervals)
+    alg.window_hours !== nothing && push!(cal, :PCM_WINDOW_HOURS => alg.window_hours)
+    return (algo_sym, cal)
+end
+
+"""
+    solve_uc(alg::AbstractUCAlgorithm; kwargs...)
+
+Typed multiple-dispatch entry point for `solve_uc` using concrete algorithm specs
+(`BenchmarkUCAlgorithm`, `BendersAlgorithm`, `CCGAlgorithm`, `PCMAlgorithm`).
+"""
+function solve_uc(alg::AbstractUCAlgorithm; calibration = NamedTuple(), kwargs...)
+    algo_sym, alg_cal = _algorithm_to_request_args(alg)
+    merged_cal = Dict{Symbol, Any}(alg_cal)
+    if calibration !== nothing
+        for (k, v) in pairs(calibration)
+            merged_cal[Symbol(k)] = v
+        end
+    end
+    return solve_uc(; algorithm = algo_sym, calibration = merged_cal, kwargs...)
 end
 
 function solve_uc(request::UCSolveRequest)

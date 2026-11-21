@@ -21,11 +21,13 @@ using .ClusteredDisaggregation
 # Unified data/algorithm orchestration entry point. Heavy algorithm implementation
 # modules are loaded lazily on the first `solve_uc` call.
 include("solver_interface.jl")
+include("deprecations.jl")
 
 # Include PCM tools in a submodule for package-level access and LSP indexing
 module SequentialPCM
     using ..ModuleUnitCommitmentToolkit:
         Gurobi,
+        PCMRunStats,
         UCConfig,
         ThermalUnits,
         TransmissionLines,
@@ -98,11 +100,20 @@ export SUC_scucmodel,
     WindUnits,
     UCInputSpec,
     UCProblemData,
+    AbstractUCAlgorithm,
+    BenchmarkUCAlgorithm,
+    BendersAlgorithm,
+    CCGAlgorithm,
+    PCMAlgorithm,
+    PCMRunStats,
     UCSolveRequest,
     UCSolveResult,
     BendersSetup,
     print_uc_result,
     solve_uc,
+    uc_variable,
+    has_uc_variable,
+    LEGACY_NAMING_MIGRATION,
     register_uc_algorithm!,
     unregister_uc_algorithm!,
     registered_uc_algorithms,

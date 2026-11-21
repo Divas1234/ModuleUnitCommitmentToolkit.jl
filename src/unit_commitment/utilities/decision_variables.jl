@@ -63,3 +63,45 @@ function define_decision_variables!(scuc::Model, NT, NG, ND, NC, ND2, NS, NW, co
     println("\t Variables defined.")
     return scuc # Return model with variables
 end
+
+const _UC_VARIABLE_ALIASES = Dict{Symbol, Symbol}(
+    :commitment => :x,
+    :startup => :u,
+    :shutdown => :v,
+    :p_gen => :pg₀,
+    :p_seg => :pgₖ,
+    :cost_startup => :su₀,
+    :cost_shutdown => :sd₀,
+    :reserve_up => :sr⁺,
+    :reserve_down => :sr⁻,
+    :load_curtail => :Δpd,
+    :wind_curtail => :Δpw,
+    :bess_charge_bin => :κ⁺,
+    :bess_discharge_bin => :κ⁻,
+    :bess_charge => :pc⁺,
+    :bess_discharge => :pc⁻,
+    :bess_soc => :qc,
+)
+
+"""
+    uc_variable(model::Model, name::Symbol)
+
+Retrieve a registered JuMP decision variable from `model` using either its canonical
+ASCII name (e.g. `:p_gen`, `:cost_startup`, `:load_curtail`, `:reserve_up`) or its
+internal mathematical symbol (e.g. `:pg₀`, `:su₀`, `:Δpd`, `:sr⁺`).
+"""
+function uc_variable(model::Model, name::Symbol)
+    sym = get(_UC_VARIABLE_ALIASES, name, name)
+    return model[sym]
+end
+
+"""
+    has_uc_variable(model::Model, name::Symbol) -> Bool
+
+Check whether `model` contains the decision variable identified by canonical ASCII
+or internal mathematical `name`.
+"""
+function has_uc_variable(model::Model, name::Symbol)
+    sym = get(_UC_VARIABLE_ALIASES, name, name)
+    return haskey(object_dictionary(model), sym)
+end
