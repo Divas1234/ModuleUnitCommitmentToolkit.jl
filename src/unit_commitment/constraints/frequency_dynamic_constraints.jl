@@ -3,9 +3,9 @@
 
 Adds linear frequency-security constraints to the UC model.
 """
-function add_frequency_constraints!(scuc::Model, NT, NG, NC, NS, units, stroges, config_param, Δp_contingency; winds = nothing)
-    if config_param.is_ConsiderFrequencyControl == 0
-        println("\t constraints: 13) frequency control constraints skipped (is_ConsiderFrequencyControl != 1)")
+function add_frequency_constraints!(scuc::Model, NT, NG, NC, NS, units, storages, config_param, Δp_contingency; winds = nothing)
+    if config_param.consider_frequency_control == 0
+        println("\t constraints: 13) frequency control constraints skipped (consider_frequency_control != 1)")
         return nothing
     end
 

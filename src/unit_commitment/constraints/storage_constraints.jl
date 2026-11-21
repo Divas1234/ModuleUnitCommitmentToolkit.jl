@@ -9,18 +9,18 @@ dynamics, efficiency losses, and cycle count restrictions.
 
   - `scuc`: The JuMP model.
   - `NT`, `NC`, `NS`: Number of time periods, storage units, and scenarios.
-  - `stroges`: Data structure containing storage technical parameters.
+  - `storages`: Data structure containing storage technical parameters.
 """
-function add_storage_constraints!(scuc::Model, NT, NC, NS, config_param, stroges; include_binary_logic::Bool = true)
+function add_storage_constraints!(scuc::Model, NT, NC, NS, config_param, storages; include_binary_logic::Bool = true)
 
     # Check if storage exists before defining constraints
     if NC == 0 || !check_var_exists(scuc, "pc⁺") # Check if variables were defined
-        println("\t constraints: 11) stroges system constraints skipped (NC=0 or variables not defined)")
+        println("\t constraints: 11) storages system constraints skipped (NC=0 or variables not defined)")
         return nothing # Skip if no storage units or variables missing
     end
 
-    if config_param.is_ConsiderBESS == 0
-        println("\t constraints: 11) stroges system constraints skipped (is_ConsiderBESS=0)")
+    if config_param.consider_bess == 0
+        println("\t constraints: 11) storages system constraints skipped (consider_bess=0)")
     else
         # Retrieve variable references
         κ⁺ = scuc[:κ⁺] # Charging status
@@ -31,18 +31,18 @@ function add_storage_constraints!(scuc::Model, NT, NC, NS, config_param, stroges
         α = scuc[:α]     # Auxiliary flag for cycle start
         β = scuc[:β]     # Auxiliary flag for cycle end
 
-        # Use get with defaults for robustness against missing fields in stroges struct
-        p_plus = stroges.p⁺
-        p_minus = stroges.p⁻
-        gamma_plus = stroges.γ⁺
-        gamma_minus = stroges.γ⁻
-        Q_max = stroges.Q_max
-        Q_min = stroges.Q_min
-        Q_initial = stroges.P₀
-        # stroges.Q₀
-        P_initial = stroges.P₀
-        eta_plus = stroges.η⁺
-        eta_minus = stroges.η⁻
+        # Use get with defaults for robustness against missing fields in storages struct
+        p_plus = storages.p⁺
+        p_minus = storages.p⁻
+        gamma_plus = storages.γ⁺
+        gamma_minus = storages.γ⁻
+        Q_max = storages.Q_max
+        Q_min = storages.Q_min
+        Q_initial = storages.P₀
+        # storages.Q₀
+        P_initial = storages.P₀
+        eta_plus = storages.η⁺
+        eta_minus = storages.η⁻
 
         # --- Charge and Discharge Power Limits ---
         # Ensures power is within physical limits and respects the binary status
@@ -116,7 +116,7 @@ function add_storage_constraints!(scuc::Model, NT, NC, NS, config_param, stroges
             nothing
         end
 
-        println("\t constraints: 11) stroges system constraints limits\t\t\t done")
+        println("\t constraints: 11) storages system constraints limits\t\t\t done")
         return (
             charge_power_limit = charge_power_limit,
             discharge_power_limit = discharge_power_limit,

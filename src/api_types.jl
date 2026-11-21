@@ -12,6 +12,26 @@ struct UCInputSpec
     frequency_parameters::Any
     data_centers::Any
     horizon::Int64
+    data_file::Union{Nothing, String}
+end
+
+function UCInputSpec(
+    source::Symbol,
+    scenario_limit::Int64,
+    sys::Any,
+    case_name::Union{Nothing, String},
+    case_category::Any,
+    case_dir::String,
+    data_center_buses::Vector{Int},
+    data_center_pmax::Vector{Float64},
+    frequency_parameters::Any,
+    data_centers::Any,
+    horizon::Int64,
+)
+    return UCInputSpec(
+        source, scenario_limit, sys, case_name, case_category, case_dir,
+        data_center_buses, data_center_pmax, frequency_parameters, data_centers, horizon, nothing,
+    )
 end
 
 struct UCSolveRequest
@@ -20,6 +40,17 @@ struct UCSolveRequest
     calibration::Any
     output_dir::Union{Nothing, String}
     verbosity::Symbol
+    optimizer::Any
+end
+
+function UCSolveRequest(
+    algorithm::Symbol,
+    input::UCInputSpec,
+    calibration::Any,
+    output_dir::Union{Nothing, String},
+    verbosity::Symbol,
+)
+    return UCSolveRequest(algorithm, input, calibration, output_dir, verbosity, nothing)
 end
 
 """Stable public result envelope; algorithm-specific fields live in `details`."""
@@ -70,8 +101,13 @@ struct BendersSetup
     NT::Int64
     NC::Int64
     ND2::Int64
-    DataCentras::Any
+    data_centers::Any
     data::Any
+end
+
+function Base.getproperty(setup::BendersSetup, name::Symbol)
+    name === :DataCentras && return getfield(setup, :data_centers)
+    return getfield(setup, name)
 end
 
 const _BENDERS_LEGACY_FIELDS = (
@@ -94,7 +130,7 @@ const _BENDERS_LEGACY_FIELDS = (
     :NT,
     :NC,
     :ND2,
-    :DataCentras,
+    :data_centers,
 )
 
 function Base.iterate(setup::BendersSetup, state::Int = 1)

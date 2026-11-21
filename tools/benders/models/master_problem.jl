@@ -29,8 +29,7 @@ function bd_masterfunction(
 )
     println("Initializing Benders Master Problem construction...")
     Δp_contingency = define_contingency_size(units, NG)
-    scuc_masterproblem = Model(Gurobi.Optimizer)
-    set_silent(scuc_masterproblem)
+    scuc_masterproblem = build_uc_model(; silent = true)
 
     # set_silent(scuc_masterproblem)
     # --- Define Variables ---
@@ -77,13 +76,13 @@ function bd_masterfunction(
     # add_power_balance_constraints!(scuc_masterproblem, NT, NG, ND, NC, NW, NS, loads, winds, config_param, ND2)
     # add_ramp_constraints!(scuc_masterproblem, NT, NG, NS, units, onoffinit)
     # add_pwl_constraints!(scuc_masterproblem, NT, NG, NS, units)
-    # add_transmission_constraints!(scuc_masterproblem, NT, NG, ND, NC, NW, NL, NS, units, loads, winds, lines, stroges, Gsdf, config_param, ND2, DataCentras)
-    # add_storage_constraints!(scuc_masterproblem, NT, NC, NS, config_param, stroges)
+    # add_transmission_constraints!(scuc_masterproblem, NT, NG, ND, NC, NW, NL, NS, units, loads, winds, lines, storages, Gsdf, config_param, ND2, data_centers)
+    # add_storage_constraints!(scuc_masterproblem, NT, NC, NS, config_param, storages)
     # Data-center response variables are operational recourse variables. They are
     # not introduced in the first-stage Benders master; the subproblem uses the
     # continuous response-weight relaxation so dual cuts are available.
-    # add_datacentra_constraints!(scuc_masterproblem, NT, NS, config_param, ND2, DataCentras)
-    # add_frequency_constraints!(scuc_masterproblem, NT, NG, NC, NS, units, stroges, config_param, Δp_contingency)
+    # add_datacentra_constraints!(scuc_masterproblem, NT, NS, config_param, ND2, data_centers)
+    # add_frequency_constraints!(scuc_masterproblem, NT, NG, NC, NS, units, storages, config_param, Δp_contingency)
 
     if get(ENV, "BENDERS_SHOW_MODEL_SUMMARY", "0") == "1"
         println("\n")
@@ -132,7 +131,7 @@ function bd_masterfunction(
 end
 
 function add_master_storage_binary_constraints!(scuc_masterproblem::Model, NT::Int64, NC::Int64, NS::Int64, config_param::config)
-    if config_param.is_ConsiderBESS == 0 || NC == 0
+    if config_param.consider_bess == 0 || NC == 0
         return nothing
     end
     κ⁺ = scuc_masterproblem[:κ⁺]
@@ -220,7 +219,7 @@ function define_masterproblem_decision_variables!(scuc_masterproblem::Model, NT,
     @variable(scuc_masterproblem, su₀[1:NG, 1:NT] >= 0)
     @variable(scuc_masterproblem, sd₀[1:NG, 1:NT] >= 0)
 
-    if config_param.is_ConsiderMultiCUTs == 1
+    if config_param.consider_multi_cuts == 1
         @variable(scuc_masterproblem, θ[1:NS] >= 0)
     else
         @variable(scuc_masterproblem, θ >= 0)
@@ -232,7 +231,7 @@ function define_masterproblem_decision_variables!(scuc_masterproblem::Model, NT,
     # @variable(scuc_masterproblem, Δpd[1:(ND * NS), 1:NT]>=0)
     # @variable(scuc_masterproblem, Δpw[1:(NW * NS), 1:NT]>=0)
 
-    if config_param.is_ConsiderBESS == 1 && NC > 0
+    if config_param.consider_bess == 1 && NC > 0
         @variable(scuc_masterproblem, κ⁺[1:(NC * NS), 1:NT], Bin)
         @variable(scuc_masterproblem, κ⁻[1:(NC * NS), 1:NT], Bin)
         @variable(scuc_masterproblem, α[1:(NC * NS), 1:NT], Bin)
@@ -246,7 +245,7 @@ function define_masterproblem_decision_variables!(scuc_masterproblem::Model, NT,
 
     # # Frequency control related variables (assuming these might be needed based on later constraints)
     # # Check if these are actually used/defined in the constraints file later
-    # if config_param.is_ConsiderFrequencyControl == 1 # Assuming flag exists
+    # if config_param.consider_frequency_control == 1 # Assuming flag exists
     # 	@variable(scuc_masterproblem, Δf_nadir[1:NS]>=0)
     # 	@variable(scuc_masterproblem, Δf_qss[1:NS]>=0)
     # 	@variable(scuc_masterproblem, Δp_imbalance[1:NS]>=0) # Placeholder, adjust as needed based on full constraints
@@ -263,11 +262,11 @@ Defines the master problem's objective function (minimizing startup/shutdown cos
 """
 function set_masterproblem_objective_economic!(scuc_masterproblem::Model, NT, NG, ND, NW, NS, units, config_param, scenarios_prob)
     # Economic parameters
-    c₀ = config_param.is_CoalPrice  # Reference fuel/coal price factor
+    c₀ = config_param.coal_price  # Reference fuel/coal price factor
 
     # Penalty weights for load shed and wind curtailment (often used in subproblem recourse)
-    load_curtailment_penalty = config_param.is_LoadsCuttingCoefficient * 1e4
-    wind_curtailment_penalty = config_param.is_WindsCuttingCoefficient * 1e0
+    load_curtailment_penalty = uc_load_curtailment_penalty(config_param)
+    wind_curtailment_penalty = uc_wind_curtailment_penalty(config_param)
 
     # Penalty coefficients for violations
     ρ⁺ = c₀ * 2
@@ -286,7 +285,7 @@ function set_masterproblem_objective_economic!(scuc_masterproblem::Model, NT, NG
     # @objective(scuc_masterproblem,
     # 	Min,
     # 	sum(sum(su₀[i, t] + sd₀[i, t] for i in 1:NG) for t in 1:NT) + pₛ * c₀ * sum(sum(sum(θ[((s - 1) * NG + 1):(s * NG), t] for t in 1:NT) for s in 1:NS)))
-    recourse_approx = config_param.is_ConsiderMultiCUTs == 1 ? sum(θ[s] for s in 1:NS) : θ
+    recourse_approx = config_param.consider_multi_cuts == 1 ? sum(θ[s] for s in 1:NS) : θ
     obj = @objective(scuc_masterproblem, Min, sum(sum(su₀[i, t] + sd₀[i, t] for i in 1:NG) for t in 1:NT) + recourse_approx)
 
     println("\t MILP_type objective_function \t\t\t\t\t\t done")

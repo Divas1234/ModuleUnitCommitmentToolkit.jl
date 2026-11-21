@@ -36,9 +36,7 @@ function fit_frequency_nadir_max_min_affine(X::Matrix{Float64}, y::Vector{Float6
     regularization = frequency_env_float("FREQUENCY_NADIR_COEFFICIENT_REGULARIZATION", 1.0e-3)
     fit_tolerance = frequency_env_float("FREQUENCY_NADIR_FIT_TOLERANCE", 0.0)
 
-    fit_model = Model(Gurobi.Optimizer)
-    set_silent(fit_model)
-    set_optimizer_attribute(fit_model, "OutputFlag", 0)
+    fit_model = build_uc_model(; silent = true, attributes = ("OutputFlag" => 0,))
 
     @variable(fit_model, -coefficient_bound <= coefficient[1:cut_count, 1:4] <= coefficient_bound)
     @variable(fit_model, coefficient_abs[1:cut_count, 1:4] >= 0.0)

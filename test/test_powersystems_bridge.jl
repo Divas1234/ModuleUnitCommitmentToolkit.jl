@@ -105,9 +105,9 @@
     @test data.units.Fg == [0.3]
     @test data.units.Tg == [0.25]
     @test data.units.Rg == [0.05]
-    @test data.DataCentras.p_max == [0.12]
-    @test data.DataCentras.p_min == [0.03]
-    @test size(data.DataCentras.computational_power_tasks) == (1, 4)
+    @test data.data_centers.p_max == [0.12]
+    @test data.data_centers.p_min == [0.03]
+    @test size(data.data_centers.computational_power_tasks) == (1, 4)
 
     # Test automatic frequency parameter generation
     # Test automatic frequency parameter generation.

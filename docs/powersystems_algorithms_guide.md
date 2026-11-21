@@ -230,7 +230,7 @@ config_param, units, loads, winds = setup.config_param, setup.units, setup.loads
 NG, NT, ND, NL = setup.NG, setup.NT, setup.ND, setup.NL
 
 # 2. Execute Benders iterations
-res_benders = multiple_bender_decomposition_scuc(
+res_benders = multiple_benders_decomposition_scuc(
     scuc_masterproblem,
     scuc_subproblem,
     master_model_struct,
@@ -298,7 +298,7 @@ The behavior of the algorithms, penalties, and solvers is controlled through the
 
 ## 7. Runnable Example Code
 
-A complete, runnable example script containing detailed bilingual (English/Chinese) comments is located at [docs/powersystems_example.jl](file:///Users/yuanyiping/Documents/GitHub/02%20Ongoing/module_unitcommitment-revised_ModuleUnitCommitmentTookits/docs/powersystems_example.jl). You can run it directly from the terminal:
+A complete, runnable example script containing detailed bilingual (English/Chinese) comments is located at [docs/powersystems_example.jl](powersystems_example.jl). You can run it directly from the terminal:
 
 ```bash
 julia --project=. docs/powersystems_example.jl

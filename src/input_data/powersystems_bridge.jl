@@ -400,7 +400,7 @@ end
 
 function _data_center_struct(data_centers, bus_to_index::Dict{Int, Int}, horizon::Int64, base_power::Float64)
     count = length(data_centers)
-    count == 0 && return data_centra(Int64[], Int64[], Float64[], Float64[], Float64[], Float64[], Float64[], Float64[], Float64[], zeros(0, horizon))
+    count == 0 && return DataCenters(Int64[], Int64[], Float64[], Float64[], Float64[], Float64[], Float64[], Float64[], Float64[], zeros(0, horizon))
 
     index = collect(Int64(1):Int64(count))
     locatebus = Int64[]
@@ -437,7 +437,7 @@ function _data_center_struct(data_centers, bus_to_index::Dict{Int, Int}, horizon
         push!(lambda, Float64(_field_or_default(center, :lambda, 0.0)))
         push!(mu, service_rate)
     end
-    return data_centra(index, locatebus, p_max, p_min, voltage_regulation, idle_power, server_energy, lambda, mu, workloads)
+    return DataCenters(index, locatebus, p_max, p_min, voltage_regulation, idle_power, server_energy, lambda, mu, workloads)
 end
 
 """
@@ -529,7 +529,7 @@ function extract_uc_data_from_powersystems(
         startup_cost_value = _finite_float(_field_or_default(operation_cost, :start_up, 0.0), 0.0)
         push!(hot_start, startup_cost_value);
         push!(cold_start, startup_cost_value);
-        push!(shutdown_cost, _finite_float(_field_or_default(operation_cost, :shut_down, 0.0), 0.0));
+        push!(shutdown_cost, _finite_float(_field_or_default(operation_cost, :shutdown_ramp, 0.0), 0.0));
         push!(cold_time, 1.0)
         name = get_name(generator)
         push!(inertia, _frequency_value(frequency_parameters, name, index, :H, 5.0));
@@ -671,7 +671,7 @@ function _load_native_powersystems_system(sys::System; scenario_limit::Int64, fr
         loads = loads,
         winds = winds,
         psses = psses,
-        DataCentras = data_center_data,
+        data_center_units = data_center_data,
         NB = NB,
         NG = NG,
         NL = NL,

@@ -13,7 +13,7 @@ using Pkg
 const PROJECT_ROOT = normpath(joinpath(@__DIR__, "..", ".."))
 Pkg.activate(PROJECT_ROOT)
 
-# The low-level Benders example needs main and multiple_bender_decomposition_scuc.
+# The low-level Benders example needs main and multiple_benders_decomposition_scuc.
 # Production application code should use solve_uc instead of these includes.
 include(joinpath(PROJECT_ROOT, "tools", "benders", "setup.jl"))
 
@@ -49,7 +49,7 @@ println("legacy compatibility values = ", length(legacy_values))
 # Low-level Benders solving still requires models and dimensions in the algorithm signature.
 # The named object improves setup readability and compatibility migration.
 result = withenv("BENDERS_MAX_ITERATIONS" => MAX_ITERATIONS, "BENDERS_PARALLEL_SUBPROBLEMS" => "0") do
-    return multiple_bender_decomposition_scuc(
+    return multiple_benders_decomposition_scuc(
         master_model,
         sub_model,
         master_struct,

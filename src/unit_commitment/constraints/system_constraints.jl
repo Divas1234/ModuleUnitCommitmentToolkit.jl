@@ -66,8 +66,8 @@ function add_reserve_constraints!(scuc::Model, NT, NG, NC, NS, units, loads, win
     pc⁻ = check_var_exists(scuc, "pc⁻") ? scuc[:pc⁻] : nothing # Storage might not exist
 
     wind_pmax = winds.p_max
-    alpha_res = config_param.is_Alpha
-    beta_res = config_param.is_Belta
+    alpha_res = config_param.alpha
+    beta_res = config_param.beta
     load_curve = loads.load_curve
     unit_pmax = units.p_max
 
@@ -128,7 +128,7 @@ function add_power_balance_constraints!(scuc::Model, NT, NG, ND, NC, NW, NS, loa
     load_curve = loads.load_curve
 
     # Base power balance without data centers
-    if config_param.is_ConsiderBESS == 0
+    if config_param.consider_bess == 0
         common_balance = @expression(
             scuc,
             [s = 1:NS, t = 1:NT],
@@ -157,7 +157,7 @@ function add_power_balance_constraints!(scuc::Model, NT, NG, ND, NC, NW, NS, loa
     end
 
     sys_balance_constr = []
-    dc_enabled = config_param.is_ConsiderDataCentra == 1 && ND2 > 0 && check_var_exists(scuc, "dc_p")
+    dc_enabled = config_param.consider_data_center == 1 && ND2 > 0 && check_var_exists(scuc, "dc_p")
     if dc_enabled
         dc_p = scuc[:dc_p]
         # Add data center load if considered
@@ -165,8 +165,8 @@ function add_power_balance_constraints!(scuc::Model, NT, NG, ND, NC, NW, NS, loa
     else
         # Constraint without data center load
         push!(sys_balance_constr, @constraint(scuc, [s = 1:NS, t = 1:NT], common_balance[s, t] == 0))
-        if config_param.is_ConsiderDataCentra == 1
-            println("Warning: is_ConsiderDataCentra is true, but ND2 is 0 or dc_p missing. Data center load ignored.")
+        if config_param.consider_data_center == 1
+            println("Warning: consider_data_center is true, but ND2 is 0 or dc_p missing. Data center load ignored.")
         end
     end
     println("\t constraints: 7) power balance constraints\t\t\t\t done")

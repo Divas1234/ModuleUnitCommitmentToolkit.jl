@@ -15,6 +15,7 @@ using Distributions
 
 const MOI = MathOptInterface
 
+include(joinpath(PROJECT_ROOT, "src", "runtime_config.jl"))
 include(joinpath(PROJECT_ROOT, "src", "renewables", "renewables.jl"))
 include(joinpath(PROJECT_ROOT, "src", "input_data", "readers.jl"))
 include(joinpath(PROJECT_ROOT, "src", "unit_commitment", "constraints", "constraints.jl"))
@@ -23,14 +24,12 @@ include(joinpath(PROJECT_ROOT, "src", "unit_commitment", "utilities", "decision_
 include(joinpath(PROJECT_ROOT, "tools", "benders", "models", "scuc_model.jl"))
 include(joinpath(PROJECT_ROOT, "tools", "benders", "models", "batch_subproblems.jl"))
 
-function ccg_env_bool(name::String, default::Bool)
-    value = lowercase(strip(get(ENV, name, default ? "1" : "0")))
-    return value in ("1", "true", "yes", "y", "on")
-end
+ccg_env_bool(name::String, default::Bool) = uc_env_bool(name, default)
 
 include(joinpath(PROJECT_ROOT, "tools", "ccg", "dro_uncertainty.jl"))
 include(joinpath(PROJECT_ROOT, "tools", "ccg", "ccg_helpers.jl"))
 include(joinpath(PROJECT_ROOT, "src", "api_types.jl"))
+include(joinpath(PROJECT_ROOT, "src", "output_reporting.jl"))
 include(joinpath(PROJECT_ROOT, "src", "solver_interface.jl"))
 
 @testset "module_unitcommitment" begin

@@ -89,22 +89,22 @@ The `[model]` section maps directly to the `config` struct in `src/input_data/fo
 
 | TOML key | Struct field |
 |---|---|
-| `MODEL_IS_NETWORK_CON` | `is_NetWorkCon` |
-| `MODEL_IS_THERMAL_UNIT_CON` | `is_ThermalUnitCon` |
-| `MODEL_IS_WIND_UNIT_CON` | `is_WindUnitCon` |
-| `MODEL_IS_SYSTEM_CON` | `is_SysticalCon` |
-| `MODEL_IS_PIECE_LINEAR` | `is_PieceLinear` |
-| `MODEL_NUM_SEGMENTS` | `is_NumSeg` |
-| `MODEL_ALPHA` | `is_Alpha` |
-| `MODEL_BETA` | `is_Belta` |
-| `MODEL_COAL_PRICE` | `is_CoalPrice` |
-| `MODEL_IS_ACTIVE_LOAD` | `is_ActiveLoad` |
-| `MODEL_IS_WIND_INTEGRATION` | `is_WindIntegration` |
-| `MODEL_LOAD_CUTTING_COEFFICIENT` | `is_LoadsCuttingCoefficient` |
-| `MODEL_WIND_CUTTING_COEFFICIENT` | `is_WindsCuttingCoefficient` |
-| `MODEL_MAX_ITERATIONS_NUM` | `is_MaxIterationsNum` |
-| `MODEL_CALCULATION_PRECISION` | `is_CalculPrecision` |
-| `MODEL_CONSIDER_DATA_CENTER` | `is_ConsiderDataCentra` |
-| `MODEL_CONSIDER_FREQUENCY_CONTROL` | `is_ConsiderFrequencyControl` |
-| `MODEL_CONSIDER_BESS` | `is_ConsiderBESS` |
-| `MODEL_CONSIDER_MULTI_CUTS` | `is_ConsiderMultiCUTs` |
+| `MODEL_IS_NETWORK_CON` | `is_network_con` |
+| `MODEL_IS_THERMAL_UNIT_CON` | `is_thermal_unit_con` |
+| `MODEL_IS_WIND_UNIT_CON` | `is_wind_unit_con` |
+| `MODEL_IS_SYSTEM_CON` | `is_system_con` |
+| `MODEL_IS_PIECE_LINEAR` | `is_piecewise_linear` |
+| `MODEL_NUM_SEGMENTS` | `num_segments` |
+| `MODEL_ALPHA` | `alpha` |
+| `MODEL_BETA` | `beta` |
+| `MODEL_COAL_PRICE` | `coal_price` |
+| `MODEL_IS_ACTIVE_LOAD` | `is_active_load` |
+| `MODEL_IS_WIND_INTEGRATION` | `is_wind_integration` |
+| `MODEL_LOAD_CUTTING_COEFFICIENT` | `load_cutting_coefficient` |
+| `MODEL_WIND_CUTTING_COEFFICIENT` | `wind_cutting_coefficient` |
+| `MODEL_MAX_ITERATIONS_NUM` | `max_iterations` |
+| `MODEL_CALCULATION_PRECISION` | `calculation_precision` |
+| `MODEL_CONSIDER_DATA_CENTER` | `consider_data_center` |
+| `MODEL_CONSIDER_FREQUENCY_CONTROL` | `consider_frequency_control` |
+| `MODEL_CONSIDER_BESS` | `consider_bess` |
+| `MODEL_CONSIDER_MULTI_CUTS` | `consider_multi_cuts` |

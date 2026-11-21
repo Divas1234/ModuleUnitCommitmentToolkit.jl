@@ -152,9 +152,9 @@ Calibration values last for one `solve_uc` call. They do not rewrite the global 
 | `MODEL_CONSIDER_DATA_CENTER` | Data-center load constraints |
 | `MODEL_CONSIDER_FREQUENCY_CONTROL` | Frequency-support constraints |
 | `MODEL_CONSIDER_BESS` | Storage constraints |
-| `MODEL_CONSIDER_WIND` | Wind-unit constraints |
-| `MODEL_NETWORK_CONSTRAINT` | Network constraints |
-| `MODEL_THERMAL_UNIT_CONSTRAINT` | Thermal-unit constraints |
+| `MODEL_IS_WIND_UNIT_CON` | Wind-unit constraints |
+| `MODEL_IS_NETWORK_CON` | Network constraints |
+| `MODEL_IS_THERMAL_UNIT_CON` | Thermal-unit constraints |
 | `BENCHMARK_UC_USE_DRO` | Use DRO scenario probabilities in the extensive form |
 | `BENDERS_MAX_ITERATIONS` | Benders iteration limit |
 | `BENDERS_PARALLEL_SUBPROBLEMS` | Solve Benders subproblems in parallel |

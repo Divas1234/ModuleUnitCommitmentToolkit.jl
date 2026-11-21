@@ -11,7 +11,7 @@ using Printf
 using DataStructures
 
 """
-`multiple_bender_decomposition_scuc(...)`
+`multiple_benders_decomposition_scuc(...)`
 
 Execute the multi-cut Benders decomposition algorithm for two-stage stochastic SCUC.
 
@@ -33,7 +33,7 @@ against cycling or dominated binary storage states.
 - `NL::Int64`: Number of transmission lines.
 """
 
-function multiple_bender_decomposition_scuc(
+function multiple_benders_decomposition_scuc(
     scuc_masterproblem::Model,
     scuc_subproblem::Model,
     master_model_struct::SCUC_Model,
@@ -78,7 +78,7 @@ function multiple_bender_decomposition_scuc(
     for iteration in 1:MAXIMUM_ITERATIONS
         optimize!(scuc_masterproblem)
 
-        assert_is_solved_and_feasible(scuc_masterproblem)
+        uc_require_feasible_solution!(scuc_masterproblem; context = "Benders master")
 
         # The master objective is a lower bound because recourse is represented
         # by accumulated cuts rather than the complete scenario response.
@@ -93,7 +93,7 @@ function multiple_bender_decomposition_scuc(
 
         # Evaluate recourse under the incumbent commitment. Multi-cut mode solves
         # every scenario separately so each scenario can generate its own theta cut.
-        ret_dic = if (config_param.is_ConsiderMultiCUTs == 1)
+        ret_dic = if (config_param.consider_multi_cuts == 1)
             batch_solve_subproblem_with_feasibility_cut(
                 batch_scuc_subproblem_dic,
                 x⁽⁰⁾,
@@ -121,7 +121,7 @@ function multiple_bender_decomposition_scuc(
         # changed without rebuilding the batch dictionary.
         batch_subproblem_nummber = length(ret_dic)
         if (
-            if (config_param.is_ConsiderMultiCUTs == 1)
+            if (config_param.consider_multi_cuts == 1)
                 batch_subproblem_nummber == NS
             else
                 batch_subproblem_nummber == Int64(1)
@@ -224,7 +224,7 @@ function multiple_bender_decomposition_scuc(
             break
         end
 
-        if config_param.is_ConsiderMultiCUTs == 1
+        if config_param.consider_multi_cuts == 1
             # Candidate generation separates cut discovery from cut admission. This
             # keeps cut caps, violation tolerances, and parallel evaluation localized
             # in the cut library instead of spreading policy through the loop.
@@ -1102,3 +1102,6 @@ function scale_duals(duals; scale_factor = 1e3, min_magnitude = 1e-10)
     end
     return scaled_duals
 end
+
+# Backward-compatible alias for legacy callers
+const multiple_bender_decomposition_scuc = multiple_benders_decomposition_scuc

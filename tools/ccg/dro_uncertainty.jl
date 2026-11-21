@@ -128,10 +128,10 @@ function worst_case_probabilities(costs::Vector{Float64}, nominal_probability::V
     length(costs) == 1 && return probability
     radius <= eps(Float64) && return probability
 
-    model = Model(Gurobi.Optimizer)
-    set_silent(model)
-    set_optimizer_attribute(model, "OutputFlag", 0)
-    set_optimizer_attribute(model, "Threads", 1)
+    model = build_uc_model(;
+        silent = true,
+        attributes = ("OutputFlag" => 0, "Threads" => 1),
+    )
 
     scenario_count = length(costs)
     @variable(model, transport[1:scenario_count, 1:scenario_count] >= 0)
@@ -179,9 +179,9 @@ function set_dro_ccg_master_objective!(
     haskey(JuMP.object_dictionary(model), :x) ||
         throw(ArgumentError("DRO objective requires decision variables to be defined before calling set_dro_ccg_master_objective!"))
 
-    c0 = data.config_param.is_CoalPrice
-    load_curtailment_penalty = data.config_param.is_LoadsCuttingCoefficient * 1e10
-    wind_curtailment_penalty = data.config_param.is_WindsCuttingCoefficient * 1e0
+    c0 = data.config_param.coal_price
+    load_curtailment_penalty = uc_load_curtailment_penalty(data.config_param)
+    wind_curtailment_penalty = uc_wind_curtailment_penalty(data.config_param)
     reserve_cost_positive = 2 * c0
     reserve_cost_negative = 2 * c0
     refcost, eachslope = linearizationfuelcurve(data.units, data.NG)

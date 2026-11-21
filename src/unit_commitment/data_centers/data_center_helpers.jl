@@ -5,8 +5,8 @@ Return a `data_center_count x time_count` workload matrix. The current Excel
 case provides one shared `time_count x 1` curve, while the reference model also
 supports center-specific matrices.
 """
-function data_center_workload_profile(DataCentras, time_count::Int, data_center_count::Int; scale::Float64 = 10.0)
-    tasks = Matrix{Float64}(DataCentras.computational_power_tasks)
+function data_center_workload_profile(data_centers, time_count::Int, data_center_count::Int; scale::Float64 = 10.0)
+    tasks = Matrix{Float64}(data_centers.computational_power_tasks)
     if size(tasks) == (time_count, data_center_count)
         return tasks' .* scale
     elseif size(tasks) == (data_center_count, time_count)
@@ -31,15 +31,15 @@ Normalize workload inputs and warn when raw data is tighter than the nominal
 non-responsive workload. This is diagnostic only; feasibility is still governed
 by the optimization constraints.
 """
-function validate_data_center_configuration(DataCentras, time_count::Int, data_center_count::Int)
-    workload = data_center_workload_profile(DataCentras, time_count, data_center_count)
+function validate_data_center_configuration(data_centers, time_count::Int, data_center_count::Int)
+    workload = data_center_workload_profile(data_centers, time_count, data_center_count)
     estimated_power = zeros(Float64, data_center_count, time_count)
     for t in 1:time_count
-        estimated_power[:, t] = DataCentras.idale .+ DataCentras.sv_constant ./ DataCentras.μ .* workload[:, t]
+        estimated_power[:, t] = data_centers.idle_power .+ data_centers.sv_constant ./ data_centers.μ .* workload[:, t]
     end
     required_peak = vec(maximum(estimated_power; dims = 2))
-    if any(DataCentras.p_max .< required_peak)
-        @warn "Some data center p_max values are below the nominal workload peak" p_max = DataCentras.p_max required_peak = required_peak
+    if any(data_centers.p_max .< required_peak)
+        @warn "Some data center p_max values are below the nominal workload peak" p_max = data_centers.p_max required_peak = required_peak
     end
     return workload
 end

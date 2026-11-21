@@ -16,7 +16,7 @@ This function defines the subproblem for the Bender's decomposition algorithm. I
 - `winds::wind`: Wind power data structure.
 - `loads::load`: Load data structure.
 - `lines::transmissionline`: Transmission line data structure.
-- `DataCentras::data_centra`: Data center data structure.
+- `data_centers::DataCenters`: Data center data structure.
 - `psses::pss`: Pumped storage system data structure.
 - `scenarios_prob::Float64`: Probability of each scenario.
 - `config_param::config`: Configuration parameters.
@@ -52,7 +52,7 @@ function bd_subfunction(
     winds::wind,
     loads::load,
     lines::transmissionline,
-    DataCentras::data_centra,
+    data_centers::DataCenters,
     psses::pss,
     scenarios_prob::Float64,
     config_param::config,
@@ -70,8 +70,7 @@ function bd_subfunction(
     @assert scenarios_prob >= 0&&scenarios_prob <= 1 "Scenario probability must be between 0 and 1."
 
     # Create the subproblem model
-    scuc_subproblem = Model(Gurobi.Optimizer)
-    set_silent(scuc_subproblem)
+    scuc_subproblem = build_uc_model(; silent = true)
 
     # Define decision variables
     # scuc_subproblem, x, u, v, su₀, sd₀, pg₀, pgₖ, sr⁺, sr⁻, Δpd, Δpw, κ⁺, κ⁻, pc⁺, pc⁻, qc, pss_sumchargeenergy,
@@ -103,7 +102,7 @@ function bd_subfunction(
     # Define contingency size
     contingency_size = define_contingency_size(units, NG)
 
-    NS_copy = (config_param.is_ConsiderMultiCUTs == 1) ? Int64(1) : NS
+    NS_copy = (config_param.consider_multi_cuts == 1) ? Int64(1) : NS
 
     # Add constraints using the unified modular activator
     constrs = apply_scuc_constraints!(
@@ -121,7 +120,7 @@ function bd_subfunction(
         loads,
         winds,
         lines,
-        DataCentras,
+        data_centers,
         psses,
         config_param,
         onoffinit,
@@ -249,7 +248,7 @@ function define_subproblem_decision_variables!(
 )
     # Multi-cut mode solves one scenario per cloned subproblem; single-cut mode
     # keeps the aggregated stochastic recourse model.
-    NS_copy = (config_param.is_ConsiderMultiCUTs == 1) ? Int64(1) : NS
+    NS_copy = (config_param.consider_multi_cuts == 1) ? Int64(1) : NS
 
     # --- Unit Status Variables (Fixed during subproblem solving) ---
     @variable(scuc_subproblem, x[1:NG, 1:NT]) # Commitment
@@ -274,7 +273,7 @@ function define_subproblem_decision_variables!(
     @variable(scuc_subproblem, Δpw[1:(NW * NS_copy), 1:NT]>=0)
 
     # --- Energy Storage & Flexible Resource Variables ---
-    if config_param.is_ConsiderBESS == 1
+    if config_param.consider_bess == 1
         @variable(scuc_subproblem, 0 <= κ⁺[1:(NC * NS_copy), 1:NT] <= 1) # Charge status linked to master binary
         @variable(scuc_subproblem, 0 <= κ⁻[1:(NC * NS_copy), 1:NT] <= 1) # Discharge status linked to master binary
         @variable(scuc_subproblem, pc⁺[1:(NC * NS_copy), 1:NT]>=0)# Charge power
@@ -295,7 +294,7 @@ function define_subproblem_decision_variables!(
         α, β = Matrix{VariableRef}(undef, 0, 0), Matrix{VariableRef}(undef, 0, 0)
     end
 
-    if config_param.is_ConsiderDataCentra == 1
+    if config_param.consider_data_center == 1
         # Benders subproblems must remain LPs for dual-based cut generation. The
         # benchmark and CCG paths use binary response weights; here we solve the
         # convex relaxation of the same response grid.
@@ -304,7 +303,7 @@ function define_subproblem_decision_variables!(
 
     # # Frequency control related variables (assuming these might be needed based on later constraints)
     # # Check if these are actually used/defined in the constraints file later
-    # if config_param.is_ConsiderFrequencyControl == 1 # Assuming flag exists
+    # if config_param.consider_frequency_control == 1 # Assuming flag exists
     # 	@variable(scuc_subproblem, Δf_nadir[1:NS]>=0)
     # 	@variable(scuc_subproblem, Δf_qss[1:NS]>=0)
     # 	@variable(scuc_subproblem, Δp_imbalance[1:NS]>=0) # Placeholder, adjust as needed based on full constraints
@@ -356,14 +355,14 @@ function set_subproblem_objective_economic!(
     @assert scenarios_prob >= 0&&scenarios_prob <= 1 "Scenario probability must be between 0 and 1."
 
     # Cost parameters
-    c₀ = config_param.is_CoalPrice  # Base cost of coal
+    c₀ = config_param.coal_price  # Base cost of coal
 
     # Penalty coefficients for load and wind curtailment
-    load_curtailment_penalty = config_param.is_LoadsCuttingCoefficient * 1e4
-    wind_curtailment_penalty = config_param.is_WindsCuttingCoefficient * 1e0
+    load_curtailment_penalty = uc_load_curtailment_penalty(config_param)
+    wind_curtailment_penalty = uc_wind_curtailment_penalty(config_param)
     reserve_shortage_penalty = max(load_curtailment_penalty / 100, c₀ * 1e0)
 
-    NS_copy = (config_param.is_ConsiderMultiCUTs == 1) ? Int64(1) : NS
+    NS_copy = (config_param.consider_multi_cuts == 1) ? Int64(1) : NS
     pₛ = scenarios_prob
 
     # Constants for reserve cost (can be adjusted based on market conditions)

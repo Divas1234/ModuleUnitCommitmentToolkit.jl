@@ -26,9 +26,7 @@ function generate_fitting_parameters(units, winds, NG, NW, flag_method_type, whi
     new_res = sortslices(res; dims = 1, lt = (x, y) -> isless(x[1], y[1]))
     R = kmeans(transpose(new_res), 10; maxiter = 200, display = :iter)
 
-    PWL_model = Model(Gurobi.Optimizer)
-    set_optimizer_attribute(PWL_model, "OutputFlag", 0)
-    set_silent(PWL_model)
+    PWL_model = build_uc_model(; silent = true, attributes = ("OutputFlag" => 0,))
     coeffi_num = Int32(4)
     dataset = transpose(R.centers)
     bigM = 1e4

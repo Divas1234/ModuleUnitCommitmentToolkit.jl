@@ -1,6 +1,40 @@
 using TOML
 
 const DEFAULT_RUNTIME_CONFIG_PATH = joinpath(dirname(@__DIR__), "config", "runtime_config.toml")
+const _TRUTHY_ENV_VALUES = ("1", "true", "yes", "y", "on")
+
+"""
+    uc_env_bool(name, default)
+
+Read a boolean environment variable using consistent truthy spellings
+(`1`, `true`, `yes`, `y`, `on`, case-insensitive).
+"""
+function uc_env_bool(name::AbstractString, default::Bool)
+    value = lowercase(strip(get(ENV, String(name), default ? "1" : "0")))
+    return value in _TRUTHY_ENV_VALUES
+end
+
+"""
+    uc_env_int(name, default)
+
+Read an `Int64` environment variable with a fallback default.
+"""
+function uc_env_int(name::AbstractString, default::Int64)
+    raw = strip(get(ENV, String(name), ""))
+    isempty(raw) && return default
+    return parse(Int64, raw)
+end
+
+"""
+    uc_env_float(name, default)
+
+Read a `Float64` environment variable with a fallback default.
+"""
+function uc_env_float(name::AbstractString, default::Float64)
+    raw = strip(get(ENV, String(name), ""))
+    isempty(raw) && return default
+    return parse(Float64, raw)
+end
 
 """
 	runtime_config_value_to_env(value)
@@ -76,7 +110,7 @@ from the loaded scenario count" instead of forcing a literal empty string.
 function load_runtime_config!(;
     config_path::AbstractString = get(ENV, "MODULE_UC_CONFIG_FILE", DEFAULT_RUNTIME_CONFIG_PATH),
     override::Bool = false,
-    verbose::Bool = get(ENV, "MODULE_UC_CONFIG_VERBOSE", "0") in ("1", "true", "yes", "on"),
+    verbose::Bool = uc_env_bool("MODULE_UC_CONFIG_VERBOSE", false),
 )
     entries = runtime_config_entries(config_path)
     applied = String[]

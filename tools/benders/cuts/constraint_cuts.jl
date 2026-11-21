@@ -403,7 +403,7 @@ end
 # 		sum(
 # 		dual_con_gen_ramp_up_constr[g, t] * (
 # 			units.ramp_up[:, 1] .* ((t == 1) ? onoffinit[:, 1] : x[:, t - 1]) +
-# 			units.shut_up[:, 1] .* ((t == 1) ? ones(NG, 1) : u[:, t - 1]) +
+# 			units.startup_ramp[:, 1] .* ((t == 1) ? ones(NG, 1) : u[:, t - 1]) +
 # 			units.p_max[:, 1] .* (ones(NG, 1) - ((t == 1) ? onoffinit[:, 1] : x[:, t - 1]))
 # 		) for g in 1:NG, t in 2:NT
 # 	))
@@ -414,13 +414,13 @@ end
 # 		sum(
 # 		dual_con_gen_ramp_down_constr[g, t] * (
 # 			units.ramp_down[:, 1] .* x[:, t] +
-# 			units.shut_down[:, 1] .* v[:, t] + units.p_max[:, 1] .* (x[:, t])
+# 			units.shutdown_ramp[:, 1] .* v[:, t] + units.p_max[:, 1] .* (x[:, t])
 # 		) for g in 1:NG, t in 2:NT
 # 	))
 
 # 	#NOTE - Network powerflow constraints
 # 	# Calculate the coefficient for the network powerflow constraints
-# 	coefficient_term_nw_constr = (config_param.is_NetWorkCon == 0) ? 0.0 :
+# 	coefficient_term_nw_constr = (config_param.is_network_con == 0) ? 0.0 :
 # 								 sum((dual_nw_powerflow_up_constr[l, t] + dual_nw_powerflow_dw_constr[l, t]) * lines.p_max[l, 1] for l in 1:NL, t in 1:NT)
 
 # 	#NOTE - Combine all cuts

@@ -121,19 +121,19 @@ withenv(
     master_model_struct = setup.master_struct
     batch_sub_model_struct_dic = setup.batch_subproblems
     config_param, units, loads, winds = setup.config_param, setup.units, setup.loads, setup.winds
-    NB, NG, NL, ND, NS, NT, NC, ND2, DataCentras = setup.NB, setup.NG, setup.NL, setup.ND, setup.NS, setup.NT, setup.NC, setup.ND2, setup.DataCentras
+    NB, NG, NL, ND, NS, NT, NC, ND2, data_centers = setup.NB, setup.NG, setup.NL, setup.ND, setup.NS, setup.NT, setup.NC, setup.ND2, setup.data_centers
     psses = setup.psses
 
     # 2. Build auxiliary Jensen cuts structure if multi-cut mode is active
     NW = Int64(length(winds.index))
-    jensen_subproblem_struct = if get(ENV, "BENDERS_ENABLE_JENSEN_CUT", "0") == "1" && config_param.is_ConsiderMultiCUTs == 1
-        build_jensen_subproblem_for_mean_scenario(NT, NB, NL, NG, ND, NC, ND2, NW, units, winds, loads, lines, DataCentras, psses, config_param)
+    jensen_subproblem_struct = if get(ENV, "BENDERS_ENABLE_JENSEN_CUT", "0") == "1" && config_param.consider_multi_cuts == 1
+        build_jensen_subproblem_for_mean_scenario(NT, NB, NL, NG, ND, NC, ND2, NW, units, winds, loads, lines, data_centers, psses, config_param)
     else
         nothing
     end
 
     # 3. Solve using Benders decomposition loop
-    res_benders = multiple_bender_decomposition_scuc(
+    res_benders = multiple_benders_decomposition_scuc(
         scuc_masterproblem, scuc_subproblem, master_model_struct, batch_sub_model_struct_dic,
         winds, config_param, NG, NT, NW, ND, NL;
         jensen_subproblem_struct = jensen_subproblem_struct,

@@ -47,7 +47,7 @@ end
 function add_data_center_power_constraints!(
     model::Model,
     variables,
-    DataCentras,
+    data_centers,
     workload::AbstractMatrix,
     scenario_count::Int,
     time_count::Int,
@@ -56,7 +56,7 @@ function add_data_center_power_constraints!(
     @constraint(
         model,
         [s = 1:scenario_count, t = 1:time_count, dc = 1:data_center_count],
-        variables.power[(s - 1) * data_center_count + dc, t] <= DataCentras.p_max[dc]
+        variables.power[(s - 1) * data_center_count + dc, t] <= data_centers.p_max[dc]
     )
     @constraint(
         model,
@@ -70,8 +70,8 @@ function add_data_center_power_constraints!(
         model,
         [s = 1:scenario_count, t = 1:time_count, dc = 1:data_center_count],
         variables.power[(s - 1) * data_center_count + dc, t] ==
-        DataCentras.idale[dc] +
-        DataCentras.sv_constant[dc] / DataCentras.μ[dc] * workload[dc, t] * variables.fv2lambda[(s - 1) * data_center_count + dc, t]
+        data_centers.idle_power[dc] +
+        data_centers.sv_constant[dc] / data_centers.μ[dc] * workload[dc, t] * variables.fv2lambda[(s - 1) * data_center_count + dc, t]
     )
     return nothing
 end
@@ -215,8 +215,8 @@ Attach the data-center response model. The formulation is shared by benchmark
 UC, CCG, and Benders; the variable declaration controls whether the grid weights
 are binary (exact MIP) or continuous (Benders LP relaxation).
 """
-function add_data_center_response_constraints!(model::Model, DataCentras, config_param, scenario_count::Int, time_count::Int, data_center_count::Int)
-    if config_param.is_ConsiderDataCentra != 1 || data_center_count <= 0
+function add_data_center_response_constraints!(model::Model, data_centers, config_param, scenario_count::Int, time_count::Int, data_center_count::Int)
+    if config_param.consider_data_center != 1 || data_center_count <= 0
         return nothing
     end
 
@@ -224,9 +224,9 @@ function add_data_center_response_constraints!(model::Model, DataCentras, config
     variables = data_center_variable_refs(model)
     num_breakpoints = size(variables.weight_fv2_plus, 3)
     response_grid = build_data_center_response_grid(num_breakpoints, data_center_count)
-    workload = validate_data_center_configuration(DataCentras, time_count, data_center_count)
+    workload = validate_data_center_configuration(data_centers, time_count, data_center_count)
 
-    add_data_center_power_constraints!(model, variables, DataCentras, workload, scenario_count, time_count, data_center_count)
+    add_data_center_power_constraints!(model, variables, data_centers, workload, scenario_count, time_count, data_center_count)
     add_data_center_grid_bound_constraints!(model, variables, response_grid, scenario_count, time_count, data_center_count)
     add_square_difference_reconstruction_constraints!(model, variables, scenario_count, time_count, data_center_count)
     add_convex_grid_reconstruction_constraints!(model, variables, response_grid, scenario_count, time_count, data_center_count, num_breakpoints)

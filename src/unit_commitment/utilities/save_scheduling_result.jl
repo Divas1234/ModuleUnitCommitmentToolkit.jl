@@ -15,7 +15,7 @@ function save_details_scheduled_results(config_param, results)
         bench_su_cost = results["su_cost"]
         bench_sd_cost = results["sd_cost"]
 
-        if config_param.is_ConsiderBESS == 1
+        if config_param.consider_bess == 1
             bench_pss_charge_p⁺ = results["pss_charge_p⁺"]
             bench_pss_charge_p⁻ = results["pss_charge_p⁻"]
         else
@@ -23,7 +23,7 @@ function save_details_scheduled_results(config_param, results)
             bench_pss_charge_p⁻ = nothing
         end
 
-        if config_param.is_ConsiderDataCentra == 1
+        if config_param.consider_data_center == 1
             # Extract Data Centra results if they exist
             dc_p = get(results, "dc_p", nothing)
             dc_fv² = get(results, "dc_fv²", nothing)
@@ -165,7 +165,7 @@ function savebalance_result(bench_p₀, bench_pᵨ, bench_pᵩ, bench_pss_charge
     # Plots.plot(forceloadcurtailment)
     # @show bench_pss_charge_p⁺[1,:]
     BESScharging_output, BESSdischarging_output = zeros(24, 1), zeros(24, 1)
-    if config_param.is_ConsiderBESS == 1
+    if config_param.consider_bess == 1
         for i in 1:24
             BESScharging_output[i, 1] = sum(bench_pss_charge_p⁺[1, i])
         end

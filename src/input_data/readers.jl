@@ -67,6 +67,7 @@ function load_uc_data(;
     frequency_parameters = frequency_params_override,
     data_centers = NamedTuple[],
     horizon::Int64 = 24,
+    data_file::Union{Nothing, AbstractString} = nothing,
 )
     input_source = _normalize_input_source(input, use_powersystems, sys, case_name, case_dir)
     if input_source == :powersystems
@@ -85,7 +86,7 @@ function load_uc_data(;
             throw(ArgumentError("sys or case_name is required when input=:powersystems"))
         end
         if isempty(case_dir)
-            config_param, units, lines, loads, psses, NB, NG, NL, ND, NT, NC, ND2, DataCentras, WindsFreqParam, bus_to_idx =
+            config_param, units, lines, loads, psses, NB, NG, NL, ND, NT, NC, ND2, data_center_units, WindsFreqParam, bus_to_idx =
                 extract_uc_data_from_powersystems(
                     sys,
                     data_center_buses = data_center_buses,
@@ -101,14 +102,15 @@ function load_uc_data(;
         sys === nothing && throw(ArgumentError("sys is required when input=:powersystems_csv"))
         isempty(case_dir) && throw(ArgumentError("case_dir is required when input=:powersystems_csv"))
         case_name === nothing || throw(ArgumentError("case_name cannot be used with input=:powersystems_csv"))
-        config_param, units, lines, loads, psses, winds, NB, NG, NL, ND, NT, NC, ND2, DataCentras =
+        config_param, units, lines, loads, psses, winds, NB, NG, NL, ND, NT, NC, ND2, data_center_units =
             read_powersystems_case(sys, case_dir; scenario_limit = scenario_limit)
         NW = length(winds.locatebus)
         NS = Int64(winds.scenarios_nums)
     else
-        UnitsFreqParam, WindsFreqParam, StrogeData, DataGen, GenCost, DataBranch, LoadCurve, DataLoad, datacentra_Data = readxlssheet()
-        config_param, units, lines, loads, psses, NB, NG, NL, ND, NT, NC, ND2, DataCentras =
-            forminputdata(DataGen, DataBranch, DataLoad, LoadCurve, GenCost, UnitsFreqParam, StrogeData, datacentra_Data)
+        resolved_excel = data_file === nothing ? unit_commitment_data_file() : String(data_file)
+        UnitsFreqParam, WindsFreqParam, storage_data, DataGen, GenCost, DataBranch, LoadCurve, DataLoad, data_center_data = readxlssheet(resolved_excel)
+        config_param, units, lines, loads, psses, NB, NG, NL, ND, NT, NC, ND2, data_center_units =
+            forminputdata(DataGen, DataBranch, DataLoad, LoadCurve, GenCost, UnitsFreqParam, storage_data, data_center_data; horizon = horizon)
         winds, NW = genscenario(WindsFreqParam, 1; scenario_limit = scenario_limit)
         NS = Int64(winds.scenarios_nums)
     end
@@ -120,7 +122,7 @@ function load_uc_data(;
         loads = loads,
         winds = winds,
         psses = psses,
-        DataCentras = DataCentras,
+        data_centers = data_center_units,
         NB = NB,
         NG = NG,
         NL = NL,
@@ -134,4 +136,6 @@ function load_uc_data(;
     )
 end
 
-println("\t\u2192 inputdata was written and reformatted for UC modeling.")
+if lowercase(strip(get(ENV, "MODULE_UC_VERBOSE_LOAD", "0"))) in ("1", "true", "yes", "y", "on")
+    println("\t\u2192 inputdata was written and reformatted for UC modeling.")
+end

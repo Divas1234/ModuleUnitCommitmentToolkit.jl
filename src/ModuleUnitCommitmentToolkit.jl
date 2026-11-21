@@ -3,6 +3,7 @@ module ModuleUnitCommitmentToolkit
 # Environment config and utilities
 include("environment_config.jl")
 include("runtime_config.jl")
+include("optimizer_config.jl")
 include("api_types.jl")
 include("output_reporting.jl")
 
@@ -22,6 +23,47 @@ include("solver_interface.jl")
 # Public package-level entry points. Algorithm drivers under `tools/` remain the
 # implementation and compatibility layer behind the unified entry point.
 export SUC_scucmodel,
-    load_runtime_config!, runtime_config_entries, UCInputSpec, UCSolveRequest, UCSolveResult, BendersSetup, print_uc_result, solve_uc
+    load_uc_data,
+    config_from_env,
+    load_runtime_config!,
+    runtime_config_entries,
+    uc_env_bool,
+    uc_env_int,
+    uc_env_float,
+    uc_load_curtailment_penalty,
+    uc_wind_curtailment_penalty,
+    known_uc_calibration_keys,
+    default_uc_optimizer,
+    set_default_uc_optimizer!,
+    with_uc_optimizer,
+    build_uc_model,
+    uc_has_feasible_solution,
+    uc_require_feasible_solution!,
+    UCConfig,
+    ThermalUnits,
+    TransmissionLines,
+    Loads,
+    StorageUnits,
+    DataCenters,
+    WindUnits,
+    UCInputSpec,
+    UCSolveRequest,
+    UCSolveResult,
+    BendersSetup,
+    print_uc_result,
+    solve_uc,
+    register_uc_algorithm!,
+    unregister_uc_algorithm!,
+    registered_uc_algorithms,
+    register_uc_constraint_hook!,
+    registered_uc_constraint_hooks,
+    clear_uc_constraint_hooks!,
+    register_uc_variable_hook!,
+    registered_uc_variable_hooks,
+    clear_uc_variable_hooks!,
+    register_uc_objective_hook!,
+    registered_uc_objective_hooks,
+    clear_uc_objective_hooks!,
+    clear_all_uc_hooks!
 
 end

@@ -47,9 +47,9 @@ end
     ENV["MODEL_LOAD_CUTTING_COEFFICIENT"] = "123.5"
     ENV["MODEL_CONSIDER_MULTI_CUTS"] = "0"
     cfg = config_from_env()
-    @test cfg.is_ConsiderBESS == 1
-    @test cfg.is_LoadsCuttingCoefficient == 123.5
-    @test cfg.is_ConsiderMultiCUTs == 0
+    @test cfg.consider_bess == 1
+    @test cfg.load_cutting_coefficient == 123.5
+    @test cfg.consider_multi_cuts == 0
 
     for (key, value) in old_values
         if value === nothing

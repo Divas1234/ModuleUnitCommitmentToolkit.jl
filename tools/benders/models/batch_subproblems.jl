@@ -28,14 +28,14 @@ function get_batch_scuc_subproblems_for_scenario(
 )
 
     # batch_scuc_subproblem_dic = OrderedDict{Int64, Any}()
-    batch_scuc_model_strcuture_dic = OrderedDict{Int64, SCUC_Model}()
+    batch_scuc_model_structure_dict = OrderedDict{Int64, SCUC_Model}()
 
-    @assert config_param.is_ConsiderMultiCUTs == 1
+    @assert config_param.consider_multi_cuts == 1
 
     for s in 1:NS
         # Deep copy both the JuMP model and the tracking structure to ensure scenario independence
         ref_subproblem_struct = deepcopy(sub_model_struct)
-        set_optimizer(ref_subproblem_struct.model, Gurobi.Optimizer)
+        set_optimizer(ref_subproblem_struct.model, default_uc_optimizer())
         set_silent(ref_subproblem_struct.model)
 
         # Extract the wind curve for the current scenario
@@ -50,10 +50,10 @@ function get_batch_scuc_subproblems_for_scenario(
         # Ensure the reformatted constraint dictionary (used for Benders cut generation) is synced
         ref_subproblem_struct.reformated_constraints._smaller_than[:key_winds_curt_constr] = modified_constr
 
-        batch_scuc_model_strcuture_dic[s] = ref_subproblem_struct
+        batch_scuc_model_structure_dict[s] = ref_subproblem_struct
     end
 
-    return batch_scuc_model_strcuture_dic
+    return batch_scuc_model_structure_dict
 end
 
 function get_batch_scuc_subproblems_for_scenario(
@@ -69,12 +69,12 @@ function get_batch_scuc_subproblems_for_scenario(
     winds::wind,
     loads::load,
     lines::transmissionline,
-    DataCentras::data_centra,
+    data_centers::DataCenters,
     psses::pss,
     scenarios_prob::Float64,
     config_param::config,
 )
-    @assert config_param.is_ConsiderMultiCUTs == 1
+    @assert config_param.consider_multi_cuts == 1
 
     batch_scuc_model_structure_dic = OrderedDict{Int64, SCUC_Model}()
     for s in 1:Int64(winds.scenarios_nums)
@@ -93,7 +93,7 @@ function get_batch_scuc_subproblems_for_scenario(
             scenario_winds,
             loads,
             lines,
-            DataCentras,
+            data_centers,
             psses,
             scenarios_prob,
             config_param,
@@ -172,12 +172,12 @@ function build_jensen_subproblem_for_mean_scenario(
     winds::wind,
     loads::load,
     lines::transmissionline,
-    DataCentras::data_centra,
+    data_centers::DataCenters,
     psses::pss,
     config_param::config,
 )
     mean_winds = build_mean_scenario_wind(winds, 1.0)
     _, jensen_subproblem_struct =
-        bd_subfunction(NT, NB, NL, NG, ND, NC, ND2, Int64(1), NW, units, mean_winds, loads, lines, DataCentras, psses, 1.0, config_param)
+        bd_subfunction(NT, NB, NL, NG, ND, NC, ND2, Int64(1), NW, units, mean_winds, loads, lines, data_centers, psses, 1.0, config_param)
     return jensen_subproblem_struct
 end

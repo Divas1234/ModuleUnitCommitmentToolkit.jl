@@ -15,7 +15,7 @@ println("Running Benchmark UC comparison with PowerSystems...")
 println("====================================================")
 
 # 1. Read Excel data to construct identical PowerSystems System
-UnitsFreqParam, WindsFreqParam, StrogeData, DataGen, GenCost, DataBranch, LoadCurve, DataLoad, datacentra_Data = readxlssheet()
+UnitsFreqParam, WindsFreqParam, storage_data, DataGen, GenCost, DataBranch, LoadCurve, DataLoad, data_center_data = readxlssheet()
 
 # 2. Build PowerSystems System
 sys = System(100.0) # 100 MVA Base Power
@@ -133,24 +133,24 @@ for w in 1:size(WindsFreqParam, 1)
 end
 
 # Add Storages
-NC = size(StrogeData, 1)
+NC = size(storage_data, 1)
 for k in 1:NC
-    id = Int(StrogeData[k, 1])
-    bus_id = Int(StrogeData[k, 2])
+    id = Int(storage_data[k, 1])
+    bus_id = Int(storage_data[k, 2])
     storage = EnergyReservoirStorage(;
         name = "Storage$id",
         available = true,
         bus = buses[bus_id],
         prime_mover_type = PrimeMovers.BA,
         storage_technology_type = StorageTech.OTHER_CHEM,
-        storage_capacity = StrogeData[k, 3],
-        storage_level_limits = (min = StrogeData[k, 4], max = StrogeData[k, 3]),
-        initial_storage_capacity_level = StrogeData[k, 7],
-        rating = StrogeData[k, 6],
+        storage_capacity = storage_data[k, 3],
+        storage_level_limits = (min = storage_data[k, 4], max = storage_data[k, 3]),
+        initial_storage_capacity_level = storage_data[k, 7],
+        rating = storage_data[k, 6],
         active_power = 0.0,
-        input_active_power_limits = (min = 0.0, max = StrogeData[k, 5]),
-        output_active_power_limits = (min = 0.0, max = StrogeData[k, 6]),
-        efficiency = (in = StrogeData[k, 10], out = StrogeData[k, 11]),
+        input_active_power_limits = (min = 0.0, max = storage_data[k, 5]),
+        output_active_power_limits = (min = 0.0, max = storage_data[k, 6]),
+        efficiency = (in = storage_data[k, 10], out = storage_data[k, 11]),
         reactive_power = 0.0,
         reactive_power_limits = nothing,
         base_power = 100.0,
@@ -199,10 +199,10 @@ CSV.write(joinpath(case_dir, "frequency_parameters.csv"), df_freq)
 # storage_uc.csv
 df_storage = DataFrame(
     storage_name = ["Storage$i" for i in 1:NC],
-    initial_soc = StrogeData[:, 7],
-    charge_ramp = StrogeData[:, 8],
-    discharge_ramp = StrogeData[:, 9],
-    self_discharge = StrogeData[:, 12],
+    initial_soc = storage_data[:, 7],
+    charge_ramp = storage_data[:, 8],
+    discharge_ramp = storage_data[:, 9],
+    self_discharge = storage_data[:, 12],
 )
 CSV.write(joinpath(case_dir, "storage_uc.csv"), df_storage)
 
@@ -225,17 +225,17 @@ df_ren = DataFrame(
 CSV.write(joinpath(case_dir, "renewable_profiles.csv"), df_ren)
 
 # data_centers.csv
-ND2 = size(datacentra_Data, 1)
+ND2 = size(data_center_data, 1)
 df_dc = DataFrame(
     data_center_name = ["DC$i" for i in 1:ND2],
-    bus_name = ["Bus $(Int(datacentra_Data[i, 2]))" for i in 1:ND2],
-    p_max = datacentra_Data[:, 3] * 100.0,
-    p_min = datacentra_Data[:, 4] * 100.0,
-    voltage_regulation = datacentra_Data[:, 5],
-    idale = datacentra_Data[:, 6] * 100.0,
-    sv_constant = datacentra_Data[:, 7] * 100.0,
-    λ = datacentra_Data[:, 8],
-    μ = datacentra_Data[:, 9],
+    bus_name = ["Bus $(Int(data_center_data[i, 2]))" for i in 1:ND2],
+    p_max = data_center_data[:, 3] * 100.0,
+    p_min = data_center_data[:, 4] * 100.0,
+    voltage_regulation = data_center_data[:, 5],
+    idle_power = data_center_data[:, 6] * 100.0,
+    sv_constant = data_center_data[:, 7] * 100.0,
+    λ = data_center_data[:, 8],
+    μ = data_center_data[:, 9],
 )
 CSV.write(joinpath(case_dir, "data_centers.csv"), df_dc)
 

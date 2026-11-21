@@ -24,11 +24,11 @@ include(joinpath(_ROOT, "src", "input_data", "formatted_data.jl"))
 include(joinpath(_ROOT, "src", "unit_commitment", "utilities", "linearization.jl"))
 
 println("Reading input data...")
-UnitsFreqParam, WindsFreqParam, StrogeData, DataGen, GenCost, DataBranch, LoadCurve, DataLoad, datacentra_Data = readxlssheet()
+UnitsFreqParam, WindsFreqParam, storage_data, DataGen, GenCost, DataBranch, LoadCurve, DataLoad, data_center_data = readxlssheet()
 
 println("Building system topology...")
-config_param, units, lines, loads, psses, NB, NG, NL, ND, NT, NC, ND2, DataCentras =
-    forminputdata(DataGen, DataBranch, DataLoad, LoadCurve, GenCost, UnitsFreqParam, StrogeData, datacentra_Data)
+config_param, units, lines, loads, psses, NB, NG, NL, ND, NT, NC, ND2, data_centers =
+    forminputdata(DataGen, DataBranch, DataLoad, LoadCurve, GenCost, UnitsFreqParam, storage_data, data_center_data)
 
 println("Generating wind scenarios...\n")
 scenario_limit = parse(Int64, length(ARGS) >= 1 ? ARGS[1] : get(ENV, "CCG_SCENARIO_LIMIT", "5"))
@@ -91,13 +91,13 @@ units_data = [
         "p_min" => units.p_min[i],
         "ramp_up" => units.ramp_up[i],
         "ramp_down" => units.ramp_down[i],
-        "min_up" => units.min_shutup_time[i],
-        "min_down" => units.min_shutdown_time[i],
+        "min_up" => units.min_up_time[i],
+        "min_down" => units.min_down_time[i],
         "init_status" => units.x_0[i],
         "init_power" => units.p_0[i],
-        "cost_a" => units.coffi_a[i],
-        "cost_b" => units.coffi_b[i],
-        "cost_c" => units.coffi_c[i],
+        "cost_a" => units.coeff_a[i],
+        "cost_b" => units.coeff_b[i],
+        "cost_c" => units.coeff_c[i],
     ) for i in 1:NG
 ]
 

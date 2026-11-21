@@ -164,7 +164,7 @@ withenv("MODEL_CONSIDER_BESS" => "0", "MODEL_CONSIDER_FREQUENCY_CONTROL" => "0",
 
     # 2. Execute Benders iterative decomposition.
     # 2. Execute the iterative Benders decomposition.
-    res_benders = multiple_bender_decomposition_scuc(
+    res_benders = multiple_benders_decomposition_scuc(
         scuc_masterproblem, scuc_subproblem, master_model_struct, batch_sub_model_struct_dic,
         winds, config_param, NG, NT, length(winds.index), ND, NL,
     )

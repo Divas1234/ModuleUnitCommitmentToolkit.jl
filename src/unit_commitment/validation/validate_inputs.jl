@@ -1,46 +1,72 @@
 """
-	validate_inputs(units, loads, winds, lines, DataCentras, config_param)
+	validate_inputs(NT, NB, NG, ND, NC, ND2, units, loads, winds, lines, data_centers, config_param, psses, scenarios_prob, NL)
 
-Validates the input data for the SUC model.
-
-# Arguments
-
-  - `units::unit`: Generator unit data
-  - `loads::load`: Load data
-  - `winds::wind`: Wind generation data
-  - `lines::transmissionline`: Transmission line data
-  - `DataCentras::data_centra`: Data center data
-  - `config_param::config`: Configuration parameters
+Validates the input dimensions and data consistency for the SUC model.
 
 # Returns
 
   - `Bool`: True if all checks pass, false otherwise.
 """
-function validate_inputs(NT, NB, NG, ND, NC, ND2, units, loads, winds, lines, DataCentras, config_param, stroges, scenarios_prob, NL)
-    # Check if the number of generators matches the expected value
-    if size(units.p_max, 1) != NG
-        @warn "Number of generators in `units` ($(size(units.p_max, 1))) does not match NG ($NG). This might lead to errors."
+function validate_inputs(NT, NB, NG, ND, NC, ND2, units, loads, winds, lines, data_centers, config_param, psses, scenarios_prob, NL)
+    if NT <= 0 || NB <= 0 || NG <= 0
+        @warn "Core dimensions must be positive: got NT=$NT, NB=$NB, NG=$NG."
         return false
     end
 
-    if size(loads.index, 1) != ND
-        @warn "Number of loads in `loads` ($(size(loads.p_load, 1))) does not match ND ($ND). This might lead to errors."
+    if ND < 0 || NC < 0 || ND2 < 0 || NL < 0
+        @warn "Entity counts must be non-negative: got ND=$ND, NC=$NC, ND2=$ND2, NL=$NL."
         return false
     end
 
-    NW = size(winds.index, 1)
-    if size(winds.index, 1) != NW
-        @warn "Number of wind farms in `winds` ($(size(winds.index, 1))) does not match NW ($NW). This might lead to errors."
+    if !(isfinite(scenarios_prob) && 0.0 < scenarios_prob <= 1.0)
+        @warn "Scenario probability `scenarios_prob` ($scenarios_prob) must be in (0, 1]."
         return false
     end
 
-    if NL > 0 && size(lines.index, 1) != NL
-        @warn "Number of transmission lines in `lines` ($(size(lines.rateA, 1))) does not match NL ($NL). This might lead to errors."
+    # Generator dimensions
+    if length(units.index) != NG || length(units.p_max) != NG || length(units.p_min) != NG
+        @warn "Number of generators in `units` (index=$(length(units.index)), p_max=$(length(units.p_max)), p_min=$(length(units.p_min))) does not match NG ($NG)."
         return false
     end
 
-    # Implement other input validation logic here
+    # Load dimensions
+    if length(loads.index) != ND
+        @warn "Number of loads in `loads.index` ($(length(loads.index))) does not match ND ($ND)."
+        return false
+    end
+    if ND > 0 && (size(loads.load_curve, 1) != ND || size(loads.load_curve, 2) < NT)
+        @warn "Load curve dimensions ($(size(loads.load_curve))) are incompatible with ND=$ND, NT=$NT."
+        return false
+    end
 
-    # Return true if all checks pass, false otherwise
+    # Wind dimensions
+    NW = length(winds.index)
+    if length(winds.locatebus) != NW || length(winds.p_max) != NW
+        @warn "Wind metadata lengths (locatebus=$(length(winds.locatebus)), p_max=$(length(winds.p_max))) do not match NW ($NW)."
+        return false
+    end
+    if winds.scenarios_nums <= 0
+        @warn "Number of wind scenarios `winds.scenarios_nums` ($(winds.scenarios_nums)) must be positive."
+        return false
+    end
+
+    # Transmission line dimensions
+    if NL > 0 && (length(lines.index) != NL || length(lines.from) != NL || length(lines.to) != NL || length(lines.p_max) != NL)
+        @warn "Transmission line dimensions (index=$(length(lines.index)), from=$(length(lines.from)), to=$(length(lines.to)), p_max=$(length(lines.p_max))) do not match NL ($NL)."
+        return false
+    end
+
+    # Storage dimensions
+    if NC > 0 && psses !== nothing && hasproperty(psses, :index) && length(psses.index) != NC
+        @warn "Number of storage units in `psses.index` ($(length(psses.index))) does not match NC ($NC)."
+        return false
+    end
+
+    # Data center dimensions
+    if ND2 > 0 && data_centers !== nothing && hasproperty(data_centers, :index) && length(data_centers.index) != ND2
+        @warn "Number of data centers in `data_centers.index` ($(length(data_centers.index))) does not match ND2 ($ND2)."
+        return false
+    end
+
     return true
 end

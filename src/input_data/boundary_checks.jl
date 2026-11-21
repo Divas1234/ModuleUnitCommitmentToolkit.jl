@@ -83,6 +83,9 @@ function _print_runtime_configuration()
 end
 
 function boundary_env_bool(name::String, default::Bool)
+    if isdefined(@__MODULE__, :uc_env_bool)
+        return uc_env_bool(name, default)
+    end
     value = lowercase(strip(get(ENV, name, default ? "1" : "0")))
     return value in ("1", "true", "yes", "y", "on")
 end
@@ -97,7 +100,7 @@ function maybe_print_boundarycondition(
     loads::load,
     lines::transmissionline,
     winds::wind,
-    stroges::pss,
+    storages::pss,
     config_param::config,
     ;
     data_centers = nothing,
@@ -117,7 +120,7 @@ function maybe_print_boundarycondition(
         loads,
         lines,
         winds,
-        stroges,
+        storages,
         config_param;
         data_centers = data_centers,
         show_plots = show_plots,
@@ -134,7 +137,7 @@ function boundrycondition(
     loads::load,
     lines::transmissionline,
     winds::wind,
-    stroges::pss,
+    storages::pss,
     config_param::config,
     ;
     data_centers = nothing,
@@ -165,7 +168,7 @@ function boundrycondition(
     _print_kv("Time periods (NT)", NT)
     _print_kv("Wind units (NW)", NW)
     _print_kv("Wind scenarios (NS)", NS)
-    _print_kv("Storage units (NC)", length(stroges.index))
+    _print_kv("Storage units (NC)", length(storages.index))
     _print_kv("Total generator Pmax", @sprintf("%.4f", sum(units.p_max)))
     _print_kv("Total generator Pmin", @sprintf("%.4f", sum(units.p_min)))
     _print_kv("Peak system load", @sprintf("%.4f", maximum(sum(loads.load_curve; dims = 1))))
@@ -185,20 +188,20 @@ function boundrycondition(
     _print_vector("p_min", units.p_min)
     _print_vector("ramp_up", units.ramp_up)
     _print_vector("ramp_down", units.ramp_down)
-    _print_vector("startup ramp", units.shut_up)
-    _print_vector("shutdown ramp", units.shut_down)
-    _print_vector("min up time", units.min_shutup_time)
-    _print_vector("min down time", units.min_shutdown_time)
+    _print_vector("startup ramp", units.startup_ramp)
+    _print_vector("shutdown ramp", units.shutdown_ramp)
+    _print_vector("min up time", units.min_up_time)
+    _print_vector("min down time", units.min_down_time)
     _print_vector("initial status", units.x_0)
     _print_vector("initial time", units.t_0)
     _print_vector("initial power", units.p_0)
-    _print_vector("cost a", units.coffi_a)
-    _print_vector("cost b", units.coffi_b)
-    _print_vector("cost c", units.coffi_c)
-    _print_vector("cold startup cost 1", units.coffi_cold_shutup_1)
-    _print_vector("cold startup cost 2", units.coffi_cold_shutup_2)
-    _print_vector("cold shutdown cost 1", units.coffi_cold_shutdown_1)
-    _print_vector("cold shutdown cost 2", units.coffi_cold_shutdown_2)
+    _print_vector("cost a", units.coeff_a)
+    _print_vector("cost b", units.coeff_b)
+    _print_vector("cost c", units.coeff_c)
+    _print_vector("cold startup cost 1", units.coeff_hot_startup)
+    _print_vector("cold startup cost 2", units.coeff_cold_startup)
+    _print_vector("cold shutdown cost 1", units.coeff_shutdown)
+    _print_vector("cold shutdown cost 2", units.cold_start_time_limit)
     _print_vector("inertia H", units.Hg)
     _print_vector("damping D", units.Dg)
     _print_vector("governor gain K", units.Kg)
@@ -231,18 +234,18 @@ function boundrycondition(
     _print_matrix_rows("wind scenario curves", winds.scenarios_curve, NS, NT)
 
     _print_section("Storage Units")
-    _print_vector("index", stroges.index)
-    _print_vector("locatebus", stroges.locatebus)
-    _print_vector("Q_max", stroges.Q_max)
-    _print_vector("Q_min", stroges.Q_min)
-    _print_vector("charge power limit", stroges.p⁺)
-    _print_vector("discharge power limit", stroges.p⁻)
-    _print_vector("initial energy", stroges.P₀)
-    _print_vector("charge ramp/cost parameter", stroges.γ⁺)
-    _print_vector("discharge ramp/cost parameter", stroges.γ⁻)
-    _print_vector("charge efficiency", stroges.η⁺)
-    _print_vector("discharge efficiency", stroges.η⁻)
-    _print_vector("self-discharge", stroges.δₛ)
+    _print_vector("index", storages.index)
+    _print_vector("locatebus", storages.locatebus)
+    _print_vector("Q_max", storages.Q_max)
+    _print_vector("Q_min", storages.Q_min)
+    _print_vector("charge power limit", storages.p⁺)
+    _print_vector("discharge power limit", storages.p⁻)
+    _print_vector("initial energy", storages.P₀)
+    _print_vector("charge ramp/cost parameter", storages.γ⁺)
+    _print_vector("discharge ramp/cost parameter", storages.γ⁻)
+    _print_vector("charge efficiency", storages.η⁺)
+    _print_vector("discharge efficiency", storages.η⁻)
+    _print_vector("self-discharge", storages.δₛ)
 
     if data_centers !== nothing
         _print_section("Data Centers")
@@ -251,7 +254,7 @@ function boundrycondition(
         _print_vector("p_max", data_centers.p_max)
         _print_vector("p_min", data_centers.p_min)
         _print_vector("voltage regulation", data_centers.voltage_regulation)
-        _print_vector("idle power", data_centers.idale)
+        _print_vector("idle power", data_centers.idle_power)
         _print_vector("server energy constant", data_centers.sv_constant)
         _print_vector("arrival rate lambda", data_centers.λ)
         _print_vector("service rate mu", data_centers.μ)

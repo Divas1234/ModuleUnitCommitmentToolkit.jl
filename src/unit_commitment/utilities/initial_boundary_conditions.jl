@@ -1,10 +1,10 @@
 function calculate_gsdf(config_param, NL, units, lines, loads, NG, NB, ND)
     Gsdf = nothing # Initialize Gsdf
-    if config_param.is_NetWorkCon == 1
+    if config_param.is_network_con == 1
         if NL > 0 # Ensure lines exist before calculating power flow
             Adjacmatrix_BtoG, Adjacmatrix_B2D, Gsdf = linearpowerflow(units, lines, loads, NG, NB, ND, NL)
         else
-            println("Warning: Network constraints enabled (is_NetWorkCon=1), but NL=0. Skipping Gsdf calculation.")
+            println("Warning: Network constraints enabled (is_network_con=1), but NL=0. Skipping Gsdf calculation.")
         end
     end
     return Gsdf

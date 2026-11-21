@@ -19,7 +19,7 @@ and then adapts it along with the project-specific CSV extensions.
 
 # Returns
 A 14-tuple of adapted structs and dimensions:
-`(config_param, units, lines, loads, stroges, winds, NB, NG, NL, ND, NT, NC, ND2, datacentra_data)`
+`(config_param, units, lines, loads, storages, winds, NB, NG, NL, ND, NT, NC, ND2, data_center_data)`
 """
 function read_powersystems_case(case_dir::String; scenario_limit::Int64 = 50)
     user_desc_path = joinpath(case_dir, "user_descriptors.yaml")
@@ -134,11 +134,11 @@ function read_powersystems_case(sys::System, case_dir::String; scenario_limit::I
 
         push!(Gens_RU, row[Symbol(get_col_name(df_uc, ["ramp_up"]))] / sys_base_power)
         push!(Gens_RD, row[Symbol(get_col_name(df_uc, ["ramp_down"]))] / sys_base_power)
-        push!(Gens_SU, row[Symbol(get_col_name(df_uc, ["startup_ramp", "shut_up"]))] / sys_base_power)
-        push!(Gens_SD, row[Symbol(get_col_name(df_uc, ["shutdown_ramp", "shut_down"]))] / sys_base_power)
+        push!(Gens_SU, row[Symbol(get_col_name(df_uc, ["startup_ramp", "startup_ramp"]))] / sys_base_power)
+        push!(Gens_SD, row[Symbol(get_col_name(df_uc, ["shutdown_ramp", "shutdown_ramp"]))] / sys_base_power)
 
-        push!(Gens_TU, Float64(row[Symbol(get_col_name(df_uc, ["min_uptime", "min_shutup_time"]))]))
-        push!(Gens_TD, Float64(row[Symbol(get_col_name(df_uc, ["min_downtime", "min_shutdown_time"]))]))
+        push!(Gens_TU, Float64(row[Symbol(get_col_name(df_uc, ["min_uptime", "min_up_time"]))]))
+        push!(Gens_TD, Float64(row[Symbol(get_col_name(df_uc, ["min_downtime", "min_down_time"]))]))
 
         x0_val = Float64(row[Symbol(get_col_name(df_uc, ["initial_status", "x_0"]))])
         if x0_val != 0.0 && x0_val != 1.0
@@ -148,14 +148,14 @@ function read_powersystems_case(sys::System, case_dir::String; scenario_limit::I
         push!(Gens_t0, Float64(row[Symbol(get_col_name(df_uc, ["initial_hours", "t_0"]))]))
         push!(Gens_p0, row[Symbol(get_col_name(df_uc, ["initial_power", "p_0"]))] / sys_base_power)
 
-        push!(Gens_a, row[Symbol(get_col_name(df_uc, ["cost_a", "coffi_a"]))] * (sys_base_power^2))
-        push!(Gens_b, row[Symbol(get_col_name(df_uc, ["cost_b", "coffi_b"]))] * sys_base_power)
-        push!(Gens_c, row[Symbol(get_col_name(df_uc, ["cost_c", "coffi_c"]))])
+        push!(Gens_a, row[Symbol(get_col_name(df_uc, ["cost_a", "coeff_a"]))] * (sys_base_power^2))
+        push!(Gens_b, row[Symbol(get_col_name(df_uc, ["cost_b", "coeff_b"]))] * sys_base_power)
+        push!(Gens_c, row[Symbol(get_col_name(df_uc, ["cost_c", "coeff_c"]))])
 
-        push!(Gens_CU, row[Symbol(get_col_name(df_uc, ["startup_cost_hot", "coffi_cold_shutup_1"]))])
-        push!(Gens_CU1, row[Symbol(get_col_name(df_uc, ["startup_cost_cold", "coffi_cold_shutup_2"]))])
-        push!(Gens_CD, row[Symbol(get_col_name(df_uc, ["shutdown_cost", "coffi_cold_shutdown_1"]))])
-        push!(Gens_Cold, row[Symbol(get_col_name(df_uc, ["cold_start_time", "coffi_cold_shutdown_2"]))])
+        push!(Gens_CU, row[Symbol(get_col_name(df_uc, ["startup_cost_hot", "coeff_hot_startup"]))])
+        push!(Gens_CU1, row[Symbol(get_col_name(df_uc, ["startup_cost_cold", "coeff_cold_startup"]))])
+        push!(Gens_CD, row[Symbol(get_col_name(df_uc, ["shutdown_cost", "coeff_shutdown"]))])
+        push!(Gens_Cold, row[Symbol(get_col_name(df_uc, ["cold_start_time", "cold_start_time_limit"]))])
     end
 
     # Validations for Conventional Generators
@@ -179,7 +179,7 @@ function read_powersystems_case(sys::System, case_dir::String; scenario_limit::I
     end
 
     # Load frequency parameters
-    is_freq_con = (config_param.is_ConsiderFrequencyControl == 1)
+    is_freq_con = (config_param.consider_frequency_control == 1)
     freq_path = joinpath(case_dir, "frequency_parameters.csv")
 
     if !isfile(freq_path)
@@ -338,11 +338,11 @@ function read_powersystems_case(sys::System, case_dir::String; scenario_limit::I
     storage_path = joinpath(case_dir, "storage_uc.csv")
 
     if NC == 0
-        stroges_struct =
+        storage_struct =
             pss(Int64[], Int64[], Float64[], Float64[], Float64[], Float64[], Float64[], Float64[], Float64[], Float64[], Float64[], Float64[])
     else
         if !isfile(storage_path)
-            if config_param.is_ConsiderBESS == 1
+            if config_param.consider_bess == 1
                 throw(ArgumentError("Missing required file: storage_uc.csv because MODEL_CONSIDER_BESS is enabled"))
             else
                 Pss_index = collect(1:NC)
@@ -455,7 +455,7 @@ function read_powersystems_case(sys::System, case_dir::String; scenario_limit::I
             0 <= Pss_δₛ[i] <= 1 || throw(ArgumentError("Invalid self-discharge rate for storage index $i"))
         end
 
-        stroges_struct = pss(Pss_index, Pss_locatebus, Pss_q_max, Pss_q_min, Pss_p⁺, Pss_p⁻, Pss_P₀, Pss_γ⁺, Pss_γ⁻, Pss_η⁺, Pss_η⁻, Pss_δₛ)
+        storage_struct = pss(Pss_index, Pss_locatebus, Pss_q_max, Pss_q_min, Pss_p⁺, Pss_p⁻, Pss_P₀, Pss_γ⁺, Pss_γ⁻, Pss_η⁺, Pss_η⁻, Pss_δₛ)
     end
 
     # --- 5. Map Renewable Generators (Wind) ---
@@ -556,11 +556,11 @@ function read_powersystems_case(sys::System, case_dir::String; scenario_limit::I
     dc_workload_path = joinpath(case_dir, "data_center_workloads.csv")
 
     if !isfile(dc_path)
-        if config_param.is_ConsiderDataCentra == 1
+        if config_param.consider_data_center == 1
             throw(ArgumentError("Missing required file: data_centers.csv because MODEL_CONSIDER_DATA_CENTER is enabled"))
         else
-            datacentra_struct =
-                data_centra(Int64[], Int64[], Float64[], Float64[], Float64[], Float64[], Float64[], Float64[], Float64[], zeros(0, NT))
+            data_center_struct =
+                DataCenters(Int64[], Int64[], Float64[], Float64[], Float64[], Float64[], Float64[], Float64[], Float64[], zeros(0, NT))
             ND2 = 0
         end
     else
@@ -596,7 +596,7 @@ function read_powersystems_case(sys::System, case_dir::String; scenario_limit::I
         dc_pmax = df_dc[!, Symbol(get_col_name(df_dc, ["p_max"]))] / sys_base_power
         dc_pmin = df_dc[!, Symbol(get_col_name(df_dc, ["p_min"]))] / sys_base_power
         dc_voltage_regulation = df_dc[!, Symbol(get_col_name(df_dc, ["voltage_regulation"]))]
-        dc_idale = df_dc[!, Symbol(get_col_name(df_dc, ["idale", "idle_power"]))] / sys_base_power
+        dc_idle_power = df_dc[!, Symbol(get_col_name(df_dc, ["idle_power", "idale"]))] / sys_base_power
         dc_sv_constant = df_dc[!, Symbol(get_col_name(df_dc, ["sv_constant", "sv_constent"]))] / sys_base_power
         dc_λ = df_dc[!, Symbol(get_col_name(df_dc, ["λ", "lambda"]))]
         dc_μ = df_dc[!, Symbol(get_col_name(df_dc, ["μ", "mu"]))]
@@ -634,19 +634,19 @@ function read_powersystems_case(sys::System, case_dir::String; scenario_limit::I
 
         for i in 1:ND2
             dc_pmax[i] >= dc_pmin[i] >= 0 || throw(ArgumentError("Invalid power limits for data center index $i"))
-            dc_idale[i] >= 0 || throw(ArgumentError("Invalid idle power for data center index $i"))
+            dc_idle_power[i] >= 0 || throw(ArgumentError("Invalid idle power for data center index $i"))
             dc_sv_constant[i] >= 0 || throw(ArgumentError("Invalid server constant for data center index $i"))
             dc_λ[i] >= 0 || throw(ArgumentError("Invalid task arrival rate for data center index $i"))
             dc_μ[i] >= 0 || throw(ArgumentError("Invalid service rate for data center index $i"))
         end
 
-        datacentra_struct = data_centra(
+        data_center_struct = DataCenters(
             dc_index,
             dc_locatebus,
             dc_pmax,
             dc_pmin,
             dc_voltage_regulation,
-            dc_idale,
+            dc_idle_power,
             dc_sv_constant,
             dc_λ,
             dc_μ,
@@ -656,5 +656,5 @@ function read_powersystems_case(sys::System, case_dir::String; scenario_limit::I
 
     NB = maximum(get_number(b) for b in get_components(ACBus, sys))
 
-    return config_param, units_struct, lines_struct, loads_struct, stroges_struct, winds_struct, NB, NG, NL, ND, NT, NC, ND2, datacentra_struct
+    return config_param, units_struct, lines_struct, loads_struct, storage_struct, winds_struct, NB, NG, NL, ND, NT, NC, ND2, data_center_struct
 end

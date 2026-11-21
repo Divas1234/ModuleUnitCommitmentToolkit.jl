@@ -26,7 +26,7 @@ NS = setup.NS
 NT = setup.NT
 NC = setup.NC
 ND2 = setup.ND2
-DataCentras = setup.DataCentras
+data_centers = setup.data_centers
 
 # `NW` is derived from the final wind object to stay correct after scenario
 # filtering or stochastic generator changes.
@@ -35,8 +35,8 @@ NW = Int64(length(winds.index))
 # Jensen cuts are an optional strengthening path. They are intentionally gated
 # behind both the ENV switch and multi-cut mode because the cut depends on a
 # mean-scenario subproblem aligned with per-scenario theta variables.
-jensen_subproblem_struct = if get(ENV, "BENDERS_ENABLE_JENSEN_CUT", "0") == "1" && config_param.is_ConsiderMultiCUTs == 1
-    build_jensen_subproblem_for_mean_scenario(NT, NB, NL, NG, ND, NC, ND2, NW, units, winds, loads, lines, DataCentras, psses, config_param)
+jensen_subproblem_struct = if get(ENV, "BENDERS_ENABLE_JENSEN_CUT", "0") == "1" && config_param.consider_multi_cuts == 1
+    build_jensen_subproblem_for_mean_scenario(NT, NB, NL, NG, ND, NC, ND2, NW, units, winds, loads, lines, data_centers, psses, config_param)
 else
     nothing
 end
@@ -52,34 +52,30 @@ scenarios in one JuMP model. Keep it disabled for large production cases unless
 the goal is validation rather than decomposition performance.
 """
 
-function solve_fast_extensive_uc(NT, NB, NG, ND, NC, ND2, NS, NW, NL, units, loads, winds, lines, DataCentras, psses, config_param, scenarios_prob)
+function solve_fast_extensive_uc(NT, NB, NG, ND, NC, ND2, NS, NW, NL, units, loads, winds, lines, data_centers, psses, config_param, scenarios_prob)
     println("Starting fast extensive-form UC solve for Benders benchmark/convergence...")
     gsdf = calculate_gsdf(config_param, NL, units, lines, loads, NG, NB, ND)
     refcost, eachslope = linearizationfuelcurve(units, NG)
     onoffinit = calculate_initial_unit_status(units, NG)
     contingency_size = define_contingency_size(units, NG)
 
-    model = Model(Gurobi.Optimizer)
-    set_silent(model)
-    set_optimizer_attribute(model, "MIPGap", parse(Float64, get(ENV, "BENDERS_FAST_MIP_GAP", "1e-4")))
-    set_optimizer_attribute(model, "NumericFocus", parse(Int64, get(ENV, "BENDERS_FAST_NUMERIC_FOCUS", "1")))
+    model = build_uc_model(;
+        silent = true,
+        attributes = (
+            "MIPGap" => parse(Float64, get(ENV, "BENDERS_FAST_MIP_GAP", "1e-4")),
+            "NumericFocus" => parse(Int64, get(ENV, "BENDERS_FAST_NUMERIC_FOCUS", "1")),
+        ),
+    )
 
     define_decision_variables!(model, NT, NG, ND, NC, ND2, NS, NW, config_param)
     set_objective!(model, NT, NG, ND, NW, NS, units, config_param, scenarios_prob, refcost, eachslope)
-    add_unit_operation_constraints!(model, NT, NG, units, onoffinit)
-    add_curtailment_constraints!(model, NT, ND, NW, NS, loads, winds)
-    add_generator_power_constraints!(model, NT, NG, NS, units)
-    add_reserve_constraints!(model, NT, NG, NC, NS, units, loads, winds, config_param)
-    add_power_balance_constraints!(model, NT, NG, ND, NC, NW, NS, loads, winds, config_param, ND2)
-    add_ramp_constraints!(model, NT, NG, NS, units, onoffinit)
-    add_pwl_constraints!(model, NT, NG, NS, units)
-    add_transmission_constraints!(model, NT, NG, ND, NC, NW, NL, NS, units, loads, winds, lines, psses, gsdf, config_param, ND2, DataCentras)
-    add_storage_constraints!(model, NT, NC, NS, config_param, psses)
-    add_datacentra_constraints!(model, NT, NS, config_param, ND2, DataCentras)
-    add_frequency_constraints!(model, NT, NG, NC, NS, units, psses, config_param, contingency_size)
+    apply_scuc_constraints!(
+        model, NT, NB, NL, NG, ND, NC, ND2, NS, NW,
+        units, loads, winds, lines, data_centers, psses, config_param, onoffinit, gsdf, contingency_size,
+    )
 
     optimize!(model)
-    assert_is_solved_and_feasible(model)
+    uc_require_feasible_solution!(model; context = "Fast extensive-form UC")
     println("\n====================================================")
     println("Fast extensive-form convergence achieved")
     println("FINAL OBJECTIVE:    ", objective_value(model))
@@ -91,9 +87,9 @@ end
 
 # Execute the multiple-cut Benders Decomposition algorithm to solve the problem
 if get(ENV, "BENDERS_FAST_DIRECT_SOLVE", "0") == "1"
-    solve_fast_extensive_uc(NT, NB, NG, ND, NC, ND2, NS, NW, NL, units, loads, winds, lines, DataCentras, psses, config_param, 1.0 / NS)
+    solve_fast_extensive_uc(NT, NB, NG, ND, NC, ND2, NS, NW, NL, units, loads, winds, lines, data_centers, psses, config_param, 1.0 / NS)
 else
-    multiple_bender_decomposition_scuc(
+    multiple_benders_decomposition_scuc(
         scuc_masterproblem, scuc_subproblem, master_model_struct, batch_sub_model_struct_dic,
         winds, config_param, NG, NT, NW, ND, NL;
         jensen_subproblem_struct = jensen_subproblem_struct,

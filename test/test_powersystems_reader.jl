@@ -180,7 +180,7 @@
         p_max = [10.0],
         p_min = [2.0],
         voltage_regulation = [0.05],
-        idale = [1.0],
+        idle_power = [1.0],
         sv_constant = [0.1],
         λ = [10.0],
         μ = [20.0],
@@ -194,14 +194,14 @@
     # Enable all relevant sub-components in env config for the test scope
     withenv("MODEL_CONSIDER_BESS" => "1", "MODEL_CONSIDER_FREQUENCY_CONTROL" => "1", "MODEL_CONSIDER_DATA_CENTER" => "1") do
         # 3. Call the adapter
-        config_param, units, lines, loads, stroges, winds, NB, NG, NL, ND, NT, NC, ND2, datacentra_data =
+        config_param, units, lines, loads, storages, winds, NB, NG, NL, ND, NT, NC, ND2, data_center_data =
             read_powersystems_case(sys, temp_dir; scenario_limit = 1)
 
         # 4. Verify outputs
         @test config_param isa config
-        @test config_param.is_ConsiderBESS == 1
-        @test config_param.is_ConsiderFrequencyControl == 1
-        @test config_param.is_ConsiderDataCentra == 1
+        @test config_param.consider_bess == 1
+        @test config_param.consider_frequency_control == 1
+        @test config_param.consider_data_center == 1
 
         @test NB == 2
         @test NG == 1
@@ -215,22 +215,22 @@
         @test units.locatebus == [1]
         @test units.p_max == [50.0 / 100.0]
         @test units.p_min == [10.0 / 100.0]
-        @test units.min_shutup_time == [4.0]
-        @test units.min_shutdown_time == [4.0]
+        @test units.min_up_time == [4.0]
+        @test units.min_down_time == [4.0]
         @test units.x_0 == [1.0]
         @test units.t_0 == [10.0]
         @test units.p_0 == [20.0 / 100.0]
-        @test units.coffi_a ≈ [0.01 * 100.0^2]
-        @test units.coffi_b ≈ [10.0 * 100.0]
-        @test units.coffi_c == [100.0]
-        @test units.coffi_cold_shutup_1 == [50.0]
-        @test units.coffi_cold_shutup_2 == [100.0]
-        @test units.coffi_cold_shutdown_1 == [20.0]
-        @test units.coffi_cold_shutdown_2 == [8.0]
+        @test units.coeff_a ≈ [0.01 * 100.0^2]
+        @test units.coeff_b ≈ [10.0 * 100.0]
+        @test units.coeff_c == [100.0]
+        @test units.coeff_hot_startup == [50.0]
+        @test units.coeff_cold_startup == [100.0]
+        @test units.coeff_shutdown == [20.0]
+        @test units.cold_start_time_limit == [8.0]
         @test units.ramp_up == [15.0 / 100.0]
         @test units.ramp_down == [15.0 / 100.0]
-        @test units.shut_up == [20.0 / 100.0]
-        @test units.shut_down == [20.0 / 100.0]
+        @test units.startup_ramp == [20.0 / 100.0]
+        @test units.shutdown_ramp == [20.0 / 100.0]
 
         # Generator frequency response
         @test units.Hg == [5.0]
@@ -253,17 +253,17 @@
         @test loads.load_curve[1, 1] ≈ 0.8 * 30.0 / 100.0
 
         # Storage
-        @test stroges.locatebus == [1]
-        @test stroges.Q_max == [20.0 / 100.0]
-        @test stroges.Q_min == [2.0 / 100.0]
-        @test stroges.p⁺ == [10.0 / 100.0]
-        @test stroges.p⁻ == [10.0 / 100.0]
-        @test stroges.P₀ == [8.0 / 100.0]
-        @test stroges.γ⁺ == [5.0 / 100.0]
-        @test stroges.γ⁻ == [5.0 / 100.0]
-        @test stroges.η⁺ == [0.9]
-        @test stroges.η⁻ == [0.9]
-        @test stroges.δₛ == [0.001]
+        @test storages.locatebus == [1]
+        @test storages.Q_max == [20.0 / 100.0]
+        @test storages.Q_min == [2.0 / 100.0]
+        @test storages.p⁺ == [10.0 / 100.0]
+        @test storages.p⁻ == [10.0 / 100.0]
+        @test storages.P₀ == [8.0 / 100.0]
+        @test storages.γ⁺ == [5.0 / 100.0]
+        @test storages.γ⁻ == [5.0 / 100.0]
+        @test storages.η⁺ == [0.9]
+        @test storages.η⁻ == [0.9]
+        @test storages.δₛ == [0.001]
 
         # Wind / Renewables
         @test winds.locatebus == [1]
@@ -279,15 +279,15 @@
         @test winds.Tw == [0.0]
 
         # Data centers
-        @test datacentra_data.locatebus == [1]
-        @test datacentra_data.p_max == [10.0 / 100.0]
-        @test datacentra_data.p_min == [2.0 / 100.0]
-        @test datacentra_data.voltage_regulation == [0.05]
-        @test datacentra_data.idale == [1.0 / 100.0]
-        @test datacentra_data.sv_constant == [0.1 / 100.0]
-        @test datacentra_data.λ == [10.0]
-        @test datacentra_data.μ == [20.0]
-        @test datacentra_data.computational_power_tasks[1, :] == fill(0.5, 24)
+        @test data_center_data.locatebus == [1]
+        @test data_center_data.p_max == [10.0 / 100.0]
+        @test data_center_data.p_min == [2.0 / 100.0]
+        @test data_center_data.voltage_regulation == [0.05]
+        @test data_center_data.idle_power == [1.0 / 100.0]
+        @test data_center_data.sv_constant == [0.1 / 100.0]
+        @test data_center_data.λ == [10.0]
+        @test data_center_data.μ == [20.0]
+        @test data_center_data.computational_power_tasks[1, :] == fill(0.5, 24)
     end
 
     # 5. Negative/Error Tests

@@ -16,6 +16,8 @@ BOUNDARY_SHOW_PLOTS = false
 JULIA_SHOW_ASCII = true
 # Legacy global BESS switch retained for backward compatibility.
 CONSIDER_BESS = 0
+# Use DRO scenario probabilities in the extensive-form benchmark when enabled.
+BENCHMARK_UC_USE_DRO = false
 
 [model]
 # These fields map one-to-one to the `config` struct in src/input_data.

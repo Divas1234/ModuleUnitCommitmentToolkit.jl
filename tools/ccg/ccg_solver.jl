@@ -36,6 +36,7 @@ function solve_ccg_unit_commitment(;
     frequency_parameters = nothing,
     data_centers = NamedTuple[],
     horizon::Int64 = 24,
+    data_file::Union{Nothing, AbstractString} = nothing,
 )
     data = load_ccg_data(
         scenario_limit;
@@ -50,6 +51,7 @@ function solve_ccg_unit_commitment(;
         frequency_parameters = frequency_parameters,
         data_centers = data_centers,
         horizon = horizon,
+        data_file = data_file,
     )
     initial_count = clamp(parse(Int64, get(ENV, "CCG_INITIAL_SCENARIOS", string(min(3, data.NS)))), 1, data.NS)
     scenarios_per_iteration = max(1, parse(Int64, get(ENV, "CCG_SCENARIOS_PER_ITERATION", "2")))
@@ -183,8 +185,9 @@ function export_ccg_schedule_results(model, data, active_scenarios::Vector{Int64
 end
 
 function ccg_env_bool(name::String, default::Bool)
-    # Accept common boolean spellings because these values often come from shell,
-    # CI variables, or TOML booleans converted by the runtime loader.
+    if isdefined(@__MODULE__, :uc_env_bool)
+        return uc_env_bool(name, default)
+    end
     value = lowercase(strip(get(ENV, name, default ? "1" : "0")))
     return value in ("1", "true", "yes", "y", "on")
 end
@@ -210,6 +213,7 @@ function load_ccg_data(
     frequency_parameters = nothing,
     data_centers = NamedTuple[],
     horizon::Int64 = 24,
+    data_file::Union{Nothing, AbstractString} = nothing,
 )
     # CCG reuses the same data ingestion pipeline as Benders so that topology,
     # model flags, wind scenarios, and boundary diagnostics stay identical across
@@ -227,6 +231,7 @@ function load_ccg_data(
         frequency_parameters = frequency_parameters,
         data_centers = data_centers,
         horizon = horizon,
+        data_file = data_file,
     )
     maybe_print_boundarycondition(
         data.NB,
@@ -240,7 +245,7 @@ function load_ccg_data(
         data.winds,
         data.psses,
         data.config_param,
-        data_centers = data.DataCentras,
+        data_centers = data.data_centers,
     )
     return (
         config_param = data.config_param,
@@ -249,7 +254,7 @@ function load_ccg_data(
         loads = data.loads,
         winds = data.winds,
         psses = data.psses,
-        DataCentras = data.DataCentras,
+        data_centers = data.data_centers,
         NB = data.NB,
         NG = data.NG,
         NL = data.NL,
@@ -282,7 +287,7 @@ function solve_ccg_master(data, selected_scenarios::Vector{Int64})
         use_dro_objective = data.dro.enabled,
     )
     optimize!(model)
-    assert_is_solved_and_feasible(model)
+    uc_require_feasible_solution!(model; context = "CCG master")
     return model
 end
 
@@ -300,15 +305,18 @@ function build_ccg_extensive_model(
     # by Benders. Keeping the algebra shared makes Benders-vs-CCG comparisons about
     # algorithm strategy rather than hidden formulation differences.
     gsdf = calculate_gsdf(data.config_param, data.NL, data.units, data.lines, data.loads, data.NG, data.NB, data.ND)
-    refcost, eachslope = linearizationfuelcurve(data.units, data.NG)
+    refcost, eachslope = linearizationfuelcurve(data.units, data.NG; num_segments = data.config_param.num_segments)
     onoffinit = calculate_initial_unit_status(data.units, data.NG)
     contingency_size = define_contingency_size(data.units, data.NG)
 
-    model = Model(Gurobi.Optimizer)
-    set_silent(model)
-    set_optimizer_attribute(model, "MIPGap", parse(Float64, get(ENV, "CCG_MASTER_MIP_GAP", "1e-4")))
-    set_optimizer_attribute(model, "NumericFocus", parse(Int64, get(ENV, "CCG_NUMERIC_FOCUS", "1")))
-    set_optimizer_attribute(model, "Threads", ccg_optimizer_threads("CCG_MASTER_THREADS", 0))
+    model = build_uc_model(;
+        silent = true,
+        attributes = (
+            "MIPGap" => parse(Float64, get(ENV, "CCG_MASTER_MIP_GAP", "1e-4")),
+            "NumericFocus" => parse(Int64, get(ENV, "CCG_NUMERIC_FOCUS", "1")),
+            "Threads" => ccg_optimizer_threads("CCG_MASTER_THREADS", 0),
+        ),
+    )
 
     define_decision_variables!(model, data.NT, data.NG, data.ND, data.NC, data.ND2, NS_active, data.NW, data.config_param)
     if use_dro_objective
@@ -331,7 +339,7 @@ function build_ccg_extensive_model(
         data.loads,
         winds_subset,
         data.lines,
-        data.DataCentras,
+        data.data_centers,
         data.psses,
         data.config_param,
         onoffinit,
@@ -368,7 +376,7 @@ function solve_ccg_single_scenario_recourse(data, first_stage, scenario_id::Int6
     model = build_ccg_recourse_model(data, scenario_winds, 1.0)
     fix_first_stage_commitment!(model, first_stage)
     optimize!(model)
-    assert_is_solved_and_feasible(model)
+    uc_require_feasible_solution!(model; context = "CCG recourse (scenario $(scenario_id))")
     return (recourse_cost = objective_value(model), objective_bound = objective_bound(model), status = termination_status(model))
 end
 
@@ -377,72 +385,48 @@ function build_ccg_recourse_model(data, scenario_winds::wind, scenarios_prob::Fl
     onoffinit = calculate_initial_unit_status(data.units, data.NG)
     contingency_size = define_contingency_size(data.units, data.NG)
 
-    model = Model(Gurobi.Optimizer)
-    set_silent(model)
-    set_optimizer_attribute(model, "MIPGap", parse(Float64, get(ENV, "CCG_RECOURSE_MIP_GAP", "1e-4")))
-    set_optimizer_attribute(model, "NumericFocus", parse(Int64, get(ENV, "CCG_NUMERIC_FOCUS", "1")))
-    set_optimizer_attribute(model, "Threads", ccg_optimizer_threads("CCG_RECOURSE_THREADS", ccg_parallel_recourse_enabled() ? 1 : 0))
+    model = build_uc_model(;
+        silent = true,
+        attributes = (
+            "MIPGap" => parse(Float64, get(ENV, "CCG_RECOURSE_MIP_GAP", "1e-4")),
+            "NumericFocus" => parse(Int64, get(ENV, "CCG_NUMERIC_FOCUS", "1")),
+            "Threads" => ccg_optimizer_threads("CCG_RECOURSE_THREADS", ccg_parallel_recourse_enabled() ? 1 : 0),
+        ),
+    )
 
     define_decision_variables!(model, data.NT, data.NG, data.ND, data.NC, data.ND2, Int64(1), data.NW, data.config_param)
     set_ccg_recourse_objective!(model, data, Int64(1), scenarios_prob)
-    add_curtailment_constraints!(model, data.NT, data.ND, data.NW, Int64(1), data.loads, scenario_winds)
-    add_generator_power_constraints!(model, data.NT, data.NG, Int64(1), data.units)
-    add_reserve_constraints!(model, data.NT, data.NG, data.NC, Int64(1), data.units, data.loads, scenario_winds, data.config_param)
-    add_power_balance_constraints!(
+    apply_scuc_constraints!(
         model,
         data.NT,
-        data.NG,
-        data.ND,
-        data.NC,
-        data.NW,
-        Int64(1),
-        data.loads,
-        scenario_winds,
-        data.config_param,
-        data.ND2,
-    )
-    add_ramp_constraints!(model, data.NT, data.NG, Int64(1), data.units, onoffinit)
-    add_pwl_constraints!(model, data.NT, data.NG, Int64(1), data.units)
-    add_transmission_constraints!(
-        model,
-        data.NT,
-        data.NG,
-        data.ND,
-        data.NC,
-        data.NW,
+        data.NB,
         data.NL,
+        data.NG,
+        data.ND,
+        data.NC,
+        data.ND2,
         Int64(1),
+        data.NW,
         data.units,
         data.loads,
         scenario_winds,
         data.lines,
+        data.data_centers,
         data.psses,
+        data.config_param,
+        onoffinit,
         gsdf,
-        data.config_param,
-        data.ND2,
-        data.DataCentras,
-    )
-    add_storage_constraints!(model, data.NT, data.NC, Int64(1), data.config_param, data.psses)
-    add_datacentra_constraints!(model, data.NT, Int64(1), data.config_param, data.ND2, data.DataCentras)
-    add_frequency_constraints!(
-        model,
-        data.NT,
-        data.NG,
-        data.NC,
-        Int64(1),
-        data.units,
-        data.psses,
-        data.config_param,
         contingency_size;
-        winds = scenario_winds,
+        include_unit_operation = false,
+        winds_for_freq = scenario_winds,
     )
     return model
 end
 
 function set_ccg_recourse_objective!(model::Model, data, NS::Int64, scenarios_prob::Float64)
-    c0 = data.config_param.is_CoalPrice
-    load_curtailment_penalty = data.config_param.is_LoadsCuttingCoefficient * 1e10
-    wind_curtailment_penalty = data.config_param.is_WindsCuttingCoefficient * 1e0
+    c0 = data.config_param.coal_price
+    load_curtailment_penalty = uc_load_curtailment_penalty(data.config_param)
+    wind_curtailment_penalty = uc_wind_curtailment_penalty(data.config_param)
     reserve_cost_positive = 2 * c0
     reserve_cost_negative = 2 * c0
     refcost, eachslope = linearizationfuelcurve(data.units, data.NG)

@@ -15,12 +15,12 @@ over the planning horizon.
 """
 function set_objective_economic!(scuc::Model, NT, NG, ND, NW, NS, units, config_param, scenarios_prob, refcost, eachslope)
     # Cost parameters
-    c₀ = config_param.is_CoalPrice  # Base cost of coal
+    c₀ = config_param.coal_price  # Base cost of coal
     pₛ = scenarios_prob  # Probability of scenarios
 
     # Penalty coefficients for load and wind curtailment
-    load_curtailment_penalty = config_param.is_LoadsCuttingCoefficient * 1e4
-    wind_curtailment_penalty = config_param.is_WindsCuttingCoefficient * 1e0
+    load_curtailment_penalty = uc_load_curtailment_penalty(config_param)
+    wind_curtailment_penalty = uc_wind_curtailment_penalty(config_param)
 
     ρ⁺ = c₀ * 2
     ρ⁻ = c₀ * 2

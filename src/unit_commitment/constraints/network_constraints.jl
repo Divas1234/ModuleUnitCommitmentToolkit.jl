@@ -19,13 +19,13 @@ Net_Injection(Bus b) = P_gen + P_wind_net - P_load_net - P_storage_net - P_datac
 """
 function add_transmission_constraints!(
     scuc::Model,
-    NT, NG, ND, NC, NW, NL, NS, units, loads, winds, lines, stroges, Gsdf, config_param,
+    NT, NG, ND, NC, NW, NL, NS, units, loads, winds, lines, storages, Gsdf, config_param,
     ND2 = nothing,
-    DataCentras = nothing,
+    data_centers = nothing,
 )
 
     # Only apply constraints if network modeling is enabled and GSDF data is available
-    if config_param.is_NetWorkCon == 1 && Gsdf !== nothing && NL > 0
+    if config_param.is_network_con == 1 && Gsdf !== nothing && NL > 0
         transmissionline_powerflow_upbound_constr = [] # Container for upper bound (P <= Pmax)
         transmissionline_powerflow_downbound_constr = [] # Container for lower bound (P >= Pmin)
 
@@ -44,15 +44,15 @@ function add_transmission_constraints!(
         pc⁻ = check_var_exists(scuc, "pc⁻") ? scuc[:pc⁻] : nothing
 
         dc_enabled =
-            config_param.is_ConsiderDataCentra == 1 && ND2 !== nothing && ND2 > 0 && DataCentras !== nothing && check_var_exists(scuc, "dc_p")
+            config_param.consider_data_center == 1 && ND2 !== nothing && ND2 > 0 && data_centers !== nothing && check_var_exists(scuc, "dc_p")
         dc_p = dc_enabled ? scuc[:dc_p] : nothing
 
         for l in 1:NL
             subGsdf_units = Gsdf[l, units.locatebus]
             subGsdf_winds = Gsdf[l, winds.index]
             subGsdf_loads = Gsdf[l, loads.locatebus]
-            subGsdf_psses = (NC > 0 && !isempty(stroges.locatebus)) ? Gsdf[l, stroges.locatebus] : []
-            subGsdf_dc = dc_enabled ? Gsdf[l, DataCentras.locatebus] : Float64[]
+            subGsdf_psses = (NC > 0 && !isempty(storages.locatebus)) ? Gsdf[l, storages.locatebus] : []
+            subGsdf_dc = dc_enabled ? Gsdf[l, data_centers.locatebus] : Float64[]
 
             flow = @expression(
                 scuc,
@@ -77,6 +77,6 @@ function add_transmission_constraints!(
         println("\t constraints: 10) transmissionline limits for basline\t\t\t done")
         return scuc, transmissionline_powerflow_upbound_constr, transmissionline_powerflow_downbound_constr
     else
-        return println("\t constraints: 10) transmissionline limits skipped (is_NetWorkCon != 1 or Gsdf missing or NL=0)")
+        return println("\t constraints: 10) transmissionline limits skipped (is_network_con != 1 or Gsdf missing or NL=0)")
     end
 end

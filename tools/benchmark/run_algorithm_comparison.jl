@@ -146,7 +146,7 @@ function capture_stdout_to_file(path::AbstractString, fn::Function)
     return result_ref[], elapsed
 end
 
-function benders_data_tuple_to_namedtuple(config_param, units, lines, loads, winds, psses, NB, NG, NL, ND, NS, NT, NC, ND2, DataCentras)
+function benders_data_tuple_to_namedtuple(config_param, units, lines, loads, winds, psses, NB, NG, NL, ND, NS, NT, NC, ND2, data_centers)
     return (
         config_param = config_param,
         units = units,
@@ -154,7 +154,7 @@ function benders_data_tuple_to_namedtuple(config_param, units, lines, loads, win
         loads = loads,
         winds = winds,
         psses = psses,
-        DataCentras = DataCentras,
+        data_centers = data_centers,
         NB = NB,
         NG = NG,
         NL = NL,
@@ -188,16 +188,16 @@ function solve_benchmark_benders(; scenario_limit::Int64 = 20)
     NT = setup.NT
     NC = setup.NC
     ND2 = setup.ND2
-    DataCentras = setup.DataCentras
+    data_centers = setup.data_centers
 
     NW = Int64(length(winds.index))
-    jensen_subproblem_struct = if get(ENV, "BENDERS_ENABLE_JENSEN_CUT", "0") == "1" && config_param.is_ConsiderMultiCUTs == 1
-        build_jensen_subproblem_for_mean_scenario(NT, NB, NL, NG, ND, NC, ND2, NW, units, winds, loads, lines, DataCentras, psses, config_param)
+    jensen_subproblem_struct = if get(ENV, "BENDERS_ENABLE_JENSEN_CUT", "0") == "1" && config_param.consider_multi_cuts == 1
+        build_jensen_subproblem_for_mean_scenario(NT, NB, NL, NG, ND, NC, ND2, NW, units, winds, loads, lines, data_centers, psses, config_param)
     else
         nothing
     end
 
-    result = multiple_bender_decomposition_scuc(
+    result = multiple_benders_decomposition_scuc(
         scuc_masterproblem,
         scuc_subproblem,
         master_model_struct,
@@ -212,7 +212,7 @@ function solve_benchmark_benders(; scenario_limit::Int64 = 20)
         jensen_subproblem_struct = jensen_subproblem_struct,
     )
 
-    data = benders_data_tuple_to_namedtuple(config_param, units, lines, loads, winds, psses, NB, NG, NL, ND, NS, NT, NC, ND2, DataCentras)
+    data = benders_data_tuple_to_namedtuple(config_param, units, lines, loads, winds, psses, NB, NG, NL, ND, NS, NT, NC, ND2, data_centers)
     cost_summary = nothing
     dispatch_model = nothing
     if result.incumbent !== nothing

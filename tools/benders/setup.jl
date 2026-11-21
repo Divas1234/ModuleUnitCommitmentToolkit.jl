@@ -6,6 +6,7 @@ if !isdefined(@__MODULE__, :load_runtime_config!)
     include(joinpath(BENDERS_PROJECT_ROOT, "src", "runtime_config.jl"))
 end
 isdefined(@__MODULE__, :BendersSetup) || include(joinpath(BENDERS_PROJECT_ROOT, "src", "api_types.jl"))
+isdefined(@__MODULE__, :build_uc_model) || include(joinpath(BENDERS_PROJECT_ROOT, "src", "optimizer_config.jl"))
 load_runtime_config!()
 
 # Load environment configurations, simulation modules, and data readers
@@ -49,6 +50,7 @@ function main(;
     frequency_parameters = nothing,
     data_centers = NamedTuple[],
     horizon::Int64 = 24,
+    data_file::Union{Nothing, AbstractString} = nothing,
 )
     # Load system data using the unified data loader
     data = load_uc_data(;
@@ -64,6 +66,7 @@ function main(;
         frequency_parameters = frequency_parameters,
         data_centers = data_centers,
         horizon = horizon,
+        data_file = data_file,
     )
 
     config_param = data.config_param
@@ -72,7 +75,7 @@ function main(;
     loads = data.loads
     winds = data.winds
     psses = data.psses
-    DataCentras = data.DataCentras
+    data_centers = data.data_centers
     NB = data.NB
     NG = data.NG
     NL = data.NL
@@ -85,7 +88,7 @@ function main(;
     scenarios_prob = data.full_scenario_probability
 
     # Print imported system statistics and validate core boundaries when enabled.
-    maybe_print_boundarycondition(NB, NL, NG, NT, ND, units, loads, lines, winds, psses, config_param; data_centers = DataCentras)
+    maybe_print_boundarycondition(NB, NL, NG, NT, ND, units, loads, lines, winds, psses, config_param; data_centers = data_center_units)
 
     # Linearize generator fuel cost curves
     refcost, eachslope = linearizationfuelcurve(units, NG)
@@ -95,7 +98,7 @@ function main(;
 
     # Construct the Benders Base Subproblem algebraically
     scuc_subproblem, sub_model_struct =
-        bd_subfunction(NT, NB, NL, NG, ND, NC, ND2, NS, NW, units, winds, loads, lines, DataCentras, psses, scenarios_prob, config_param)
+        bd_subfunction(NT, NB, NL, NG, ND, NC, ND2, NS, NW, units, winds, loads, lines, data_center_units, psses, scenarios_prob, config_param)
 
     # Fallback initialization validation for scenario probabilities
     if !@isdefined(scenarios_prob)
@@ -106,35 +109,31 @@ function main(;
     # Initialize decoupled scenario subproblems. Multi-cut mode requires one
     # independently fixable subproblem per scenario; single-cut mode reuses the
     # aggregate/base model.
-    if config_param.is_ConsiderMultiCUTs == 1
-        # Create discrete subproblem instances explicitly for multi-cut logic evaluation
-        batch_scuc_subproblem_struct_dic = OrderedDict{Int64, SCUC_Model}()
-        batch_scuc_subproblem_struct_dic = if (config_param.is_ConsiderMultiCUTs == 1)
-            get_batch_scuc_subproblems_for_scenario(
-                NT,
-                NB,
-                NL,
-                NG,
-                ND,
-                NC,
-                ND2,
-                NW,
-                units,
-                winds,
-                loads,
-                lines,
-                DataCentras,
-                psses,
-                scenarios_prob,
-                config_param,
-            )
-        else
-            OrderedDict(1 => sub_model_struct)
-        end
+    batch_scuc_subproblem_struct_dic = if config_param.consider_multi_cuts == 1
         @info "Generating batch subproblems for multi-cut scenarios"
-        @info "Batch subproblem dictionary successfully created with $(length(batch_scuc_subproblem_struct_dic)) independent entries."
+        dic = get_batch_scuc_subproblems_for_scenario(
+            NT,
+            NB,
+            NL,
+            NG,
+            ND,
+            NC,
+            ND2,
+            NW,
+            units,
+            winds,
+            loads,
+            lines,
+            data_center_units,
+            psses,
+            scenarios_prob,
+            config_param,
+        )
+        @info "Batch subproblem dictionary successfully created with $(length(dic)) independent entries."
+        dic
     else
-        @info "Single subproblem mode activated, skipping batch SCUC model multicut initialization."
+        @info "Single subproblem mode activated, reusing base SCUC subproblem."
+        OrderedDict{Int64, SCUC_Model}(1 => sub_model_struct)
     end
 
     # Output constructed structs, models, constraints, and optimization environment settings
@@ -158,7 +157,7 @@ function main(;
         Int64(NT),
         Int64(NC),
         Int64(ND2),
-        DataCentras,
+        data_center_units,
         data,
     )
 end

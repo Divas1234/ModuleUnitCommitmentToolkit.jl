@@ -6,8 +6,14 @@ export solve_and_extract_results
 function solve_and_extract_results(
     scuc::Model,
     NT, NG, ND, NC, NW, NS, ND2,
-    scenarios_prob, eachslope, refcost, config_param, units, loads, winds, lines, DataCentras,
+    scenarios_prob, eachslope, refcost, config_param, units, loads, winds, lines, data_centers;
+    NB::Union{Nothing, Int64} = nothing,
 )
+    resolved_NB = if NB !== nothing
+        NB
+    else
+        Int64(maximum(vcat(units.locatebus, loads.locatebus, lines.from, lines.to)))
+    end
     println("+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++")
     println("Step-4: starting Gurobi solver")
     optimize!(scuc)
@@ -41,7 +47,7 @@ function solve_and_extract_results(
 
         # Storage results (check if NC > 0)
         pss_charge_p⁺, pss_charge_p⁻, pss_charge_state⁺, pss_charge_state⁻, pss_charge_cycle⁺, pss_charge_cycle⁻, pss_Qc = ntuple(_ -> nothing, 7)
-        if NC > 0 && config_param.is_ConsiderBESS == 1
+        if NC > 0 && config_param.consider_bess == 1
             pss_charge_p⁺ = JuMP.value.(scuc[:pc⁺])
             pss_charge_p⁻ = JuMP.value.(scuc[:pc⁻])
             pss_charge_state⁺ = JuMP.value.(scuc[:κ⁺])
@@ -53,7 +59,7 @@ function solve_and_extract_results(
 
         # Data centra results
         dc_p_res, dc_fv²_res, dc_fv²λ_res, dc_fv²_plus_res, dc_fv²_minus_res, dc_fv²λ_plus_res = ntuple(_ -> nothing, 6)
-        if config_param.is_ConsiderDataCentra == 1 && ND2 > 0
+        if config_param.consider_data_center == 1 && ND2 > 0
             dc_p_res = JuMP.value.(scuc[:dc_p])
             dc_fv²_res = JuMP.value.(scuc[:dc_fv²])
             dc_fv²λ_res = JuMP.value.(scuc[:dc_fv²λ])
@@ -87,7 +93,7 @@ function solve_and_extract_results(
             "pᵩ" => pᵩ,
         )
 
-        if NC > 0 && config_param.is_ConsiderBESS == 1
+        if NC > 0 && config_param.consider_bess == 1
             push!(
                 results,
                 "pss_charge_p⁺" => pss_charge_p⁺,
@@ -101,7 +107,7 @@ function solve_and_extract_results(
         end
 
         # Add data centra results to dictionary
-        if config_param.is_ConsiderDataCentra == 1 && ND2 > 0
+        if config_param.consider_data_center == 1 && ND2 > 0
             push!(
                 results,
                 "dc_p" => dc_p_res,
@@ -118,8 +124,8 @@ function solve_and_extract_results(
         # "cr⁻"       => cr⁻,       # Removed as they are not calculated here anymore
 
         cost_summary = exported_scheduling_cost(
-            NS, NT, NB, NG, ND, NC, ND2,
-            units, loads, winds, lines, DataCentras, config_param, scenarios_prob, su_cost, sd_cost,
+            NS, NT, resolved_NB, NG, ND, NC, ND2,
+            units, loads, winds, lines, data_centers, config_param, scenarios_prob, su_cost, sd_cost,
             pgₖ, pg₀, x₀, u₀, v₀, seq_sr⁺, seq_sr⁻, pᵨ, pᵩ, eachslope, refcost,
             pss_charge_state⁺, pss_charge_state⁻, pss_charge_p⁺, pss_charge_p⁻, pss_Qc,
             dc_p_res, dc_fv²_res, dc_fv²λ_res, dc_fv²_plus_res, dc_fv²_minus_res, dc_fv²λ_plus_res,

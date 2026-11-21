@@ -25,7 +25,7 @@ contains both human-readable summaries and plotting/analysis-friendly CSV files:
 """
 function exported_scheduling_cost(
     NS::Int64, NT::Int64, NB::Int64, NG::Int64, ND::Int64, NC::Int64, ND2::Int64, units::unit, loads::load, winds::wind, lines::transmissionline,
-    DataCentras::data_centra, config_param::config,
+    data_centers::DataCenters, config_param::config,
     scenarios_prob, su_cost, sd_cost, pgₖ, pg₀, x₀, u₀, v₀, seq_sr⁺, seq_sr⁻, pᵨ, pᵩ, eachslope, refcost,
     pss_charge_state⁺ = nothing,
     pss_charge_state⁻ = nothing,
@@ -62,17 +62,17 @@ function exported_scheduling_cost(
         loads, winds, pg₀, pᵨ, pᵩ, NT, NG, ND, NW, NS, config_param, NC, pss_charge_p⁺, pss_charge_p⁻, ND2, dc_p_res,
     )
 
-    if config_param.is_ConsiderBESS == 1 && NC > 0
+    if config_param.consider_bess == 1 && NC > 0
         write_bess_schedule_csv(
             joinpath(output_dir, file_prefix * "bess_schedule.csv"),
             pss_charge_state⁺, pss_charge_state⁻, pss_charge_p⁺, pss_charge_p⁻, pss_Qc, NT, NC, NS,
         )
     end
 
-    if config_param.is_ConsiderDataCentra == 1 && ND2 > 0
+    if config_param.consider_data_center == 1 && ND2 > 0
         write_data_center_schedule_csv(
             joinpath(output_dir, file_prefix * "data_center_schedule.csv"),
-            DataCentras, dc_p_res, dc_fv²_res, dc_fv²λ_res, dc_fv²_plus_res, dc_fv²_minus_res, dc_fv²λ_plus_res, NT, ND2, NS,
+            data_centers, dc_p_res, dc_fv²_res, dc_fv²λ_res, dc_fv²_plus_res, dc_fv²_minus_res, dc_fv²λ_plus_res, NT, ND2, NS,
         )
     end
 
@@ -176,7 +176,7 @@ function export_solved_uc_model_results(
     return exported_scheduling_cost(
         NS,
         data.NT, data.NB, data.NG, data.ND, data.NC, data.ND2, data.units, data.loads,
-        winds, data.lines, data.DataCentras, config_param, scenarios_prob, su_cost, sd_cost, pgₖ, pg₀, x₀, u₀, v₀, seq_sr⁺, seq_sr⁻, pᵨ, pᵩ, eachslope, refcost,
+        winds, data.lines, data.data_centers, config_param, scenarios_prob, su_cost, sd_cost, pgₖ, pg₀, x₀, u₀, v₀, seq_sr⁺, seq_sr⁻, pᵨ, pᵩ, eachslope, refcost,
         pss_charge_state⁺, pss_charge_state⁻, pss_charge_p⁺, pss_charge_p⁻, pss_Qc,
         dc_p_res, dc_fv²_res, dc_fv²λ_res, dc_fv²_plus_res, dc_fv²_minus_res, dc_fv²λ_plus_res; output_dir_override = resolved_output_dir,
         file_prefix = file_prefix,
@@ -192,10 +192,10 @@ function compute_uc_cost_summary(
     config_param, scenarios_prob,
     su_cost, sd_cost, pgₖ, x₀, seq_sr⁺, seq_sr⁻, pᵨ, pᵩ, eachslope, refcost,
 )
-    c0 = config_param.is_CoalPrice
+    c0 = config_param.coal_price
     ps = scenarios_prob
-    load_curtailment_penalty = config_param.is_LoadsCuttingCoefficient * 1e10
-    wind_curtailment_penalty = config_param.is_WindsCuttingCoefficient
+    load_curtailment_penalty = uc_load_curtailment_penalty(config_param)
+    wind_curtailment_penalty = uc_wind_curtailment_penalty(config_param)
     reserve_price_up = 2 * c0
     reserve_price_down = 2 * c0
 
@@ -290,17 +290,17 @@ function write_power_balance_summary_csv(
         wind_spill = NW == 0 ? 0.0 : sum(wind_curtailment[scenario_row(NW, s, w), t] for w in 1:NW)
         load_total = sum(loads.load_curve[d, t] for d in 1:ND)
         load_shed = sum(load_curtailment[scenario_row(ND, s, d), t] for d in 1:ND)
-        bess_charge_total = if (config_param.is_ConsiderBESS == 1 && NC > 0 && bess_charge !== nothing)
+        bess_charge_total = if (config_param.consider_bess == 1 && NC > 0 && bess_charge !== nothing)
             sum(bess_charge[scenario_row(NC, s, c), t] for c in 1:NC)
         else
             0.0
         end
-        bess_discharge_total = if (config_param.is_ConsiderBESS == 1 && NC > 0 && bess_discharge !== nothing)
+        bess_discharge_total = if (config_param.consider_bess == 1 && NC > 0 && bess_discharge !== nothing)
             sum(bess_discharge[scenario_row(NC, s, c), t] for c in 1:NC)
         else
             0.0
         end
-        data_center_load = if (config_param.is_ConsiderDataCentra == 1 && ND2 > 0 && dc_power !== nothing)
+        data_center_load = if (config_param.consider_data_center == 1 && ND2 > 0 && dc_power !== nothing)
             sum(dc_power[scenario_row(ND2, s, dc), t] for dc in 1:ND2)
         else
             0.0
@@ -345,11 +345,11 @@ function write_bess_schedule_csv(path, charge_state, discharge_state, charge_pow
     )
 end
 
-function write_data_center_schedule_csv(path, DataCentras, dc_power, fv2, fv2lambda, fv2_plus, fv2_minus, fv2lambda_plus, NT, ND2, NS)
+function write_data_center_schedule_csv(path, data_centers, dc_power, fv2, fv2lambda, fv2_plus, fv2_minus, fv2lambda_plus, NT, ND2, NS)
     rows = (
         Any[
             s,
-            DataCentras.index[dc],
+            data_centers.index[dc],
             t,
             dc_power[scenario_row(ND2, s, dc), t],
             fv2[scenario_row(ND2, s, dc), t],

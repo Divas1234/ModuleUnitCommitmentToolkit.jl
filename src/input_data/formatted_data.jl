@@ -1,53 +1,105 @@
-# reformat data
+# Formatted SCUC domain data structures and compatibility aliases
+
 """
-`config`
+`UCConfig` (legacy alias: `config`)
 
 Configuration parameters controlling algorithmic behavior and model inclusion logic for the SCUC optimization.
 """
-struct config
+struct UCConfig
     # Algorithmic and model inclusion flags
-    is_NetWorkCon::Int64                  # 1: Consider transmission network constraints; 0: Ignore
-    is_ThermalUnitCon::Int64              # 1: Consider thermal unit generation limits; 0: Ignore
-    is_WindUnitCon::Int64                 # 1: Consider wind generation availability; 0: Ignore
-    is_SysticalCon::Int64                 # 1: Consider system-level balance/tracking; 0: Ignore
-    is_PieceLinear::Int64                 # 1: Use piecewise linear cost approximations; 0: Nonlinear
-    is_NumSeg::Int64                      # Number of linear approximation segments for cost curves
+    is_network_con::Int64                 # 1: Consider transmission network constraints; 0: Ignore
+    is_thermal_unit_con::Int64            # 1: Consider thermal unit generation limits; 0: Ignore
+    is_wind_unit_con::Int64               # 1: Consider wind generation availability; 0: Ignore
+    is_system_con::Int64                  # 1: Consider system-level balance/tracking; 0: Ignore
+    is_piecewise_linear::Int64            # 1: Use piecewise linear cost approximations; 0: Nonlinear
+    num_segments::Int64                   # Number of linear approximation segments for cost curves
 
     # Objective function weighting factors
-    is_Alpha::Float64                     # Penalty weight for economic dispatch base cost
-    is_Belta::Float64                     # Penalty weight for frequency deviation or emission objective
+    alpha::Float64                        # Penalty weight for economic dispatch base cost
+    beta::Float64                         # Penalty weight for frequency deviation or emission objective
 
     # Market and economic factors
-    is_CoalPrice::Int64                   # Multiplier or index for fuel cost modeling
+    coal_price::Int64                     # Multiplier or index for fuel cost modeling
 
     # Flexible modeling scopes
-    is_ActiveLoad::Int64                  # 1: Consider active load demand constraints; 0: Ignore
-    is_WindIntegration::Int64             # 1: Enable stochastic wind integration; 0: Ignore
-    is_LoadsCuttingCoefficient::Float64   # Economic penalty factor for involuntary load shedding
-    is_WindsCuttingCoefficient::Float64   # Economic penalty factor for wind curtailment
+    is_active_load::Int64                 # 1: Consider active load demand constraints; 0: Ignore
+    is_wind_integration::Int64            # 1: Enable stochastic wind integration; 0: Ignore
+    load_cutting_coefficient::Float64     # Economic penalty factor for involuntary load shedding
+    wind_cutting_coefficient::Float64     # Economic penalty factor for wind curtailment
 
     # Benders decomposition solver precision parameters
-    is_MaxIterationsNum::Int64            # Maximum allowed iterations for algorithmic convergence
-    is_CalculPrecision::Float64           # Absolute or relative optimization gap tolerance
+    max_iterations::Int64                 # Maximum allowed iterations for algorithmic convergence
+    calculation_precision::Float64        # Absolute or relative optimization gap tolerance
 
     # Advanced sub-component inclusions
-    is_ConsiderDataCentra::Int64          # 1: Enable spatially-coupled Data Center flexible loads; 0: Ignore
-    is_ConsiderFrequencyControl::Int64    # 1: Enforce frequency safety (nadir/RoCoF) constraints; 0: Ignore
-    is_ConsiderBESS::Int64                # 1: Enable Battery Energy Storage Systems / PSS; 0: Ignore
-    is_ConsiderMultiCUTs::Int64           # 1: Generate multiple Benders cuts per scenario; 0: Standard aggregated cut
+    consider_data_center::Int64           # 1: Enable spatially-coupled Data Center flexible loads; 0: Ignore
+    consider_frequency_control::Int64     # 1: Enforce frequency safety (nadir/RoCoF) constraints; 0: Ignore
+    consider_bess::Int64                  # 1: Enable Battery Energy Storage Systems / PSS; 0: Ignore
+    consider_multi_cuts::Int64            # 1: Generate multiple Benders cuts per scenario; 0: Standard aggregated cut
+end
+
+const config = UCConfig
+
+const _LEGACY_UCCONFIG_FIELDS = Dict{Symbol, Symbol}(
+    :is_NetWorkCon => :is_network_con,
+    :is_ThermalUnitCon => :is_thermal_unit_con,
+    :is_WindUnitCon => :is_wind_unit_con,
+    :is_SysticalCon => :is_system_con,
+    :is_PieceLinear => :is_piecewise_linear,
+    :is_NumSeg => :num_segments,
+    :is_Alpha => :alpha,
+    :is_Belta => :beta,
+    :is_CoalPrice => :coal_price,
+    :is_ActiveLoad => :is_active_load,
+    :is_WindIntegration => :is_wind_integration,
+    :is_LoadsCuttingCoefficient => :load_cutting_coefficient,
+    :is_WindsCuttingCoefficient => :wind_cutting_coefficient,
+    :is_MaxIterationsNum => :max_iterations,
+    :is_CalculPrecision => :calculation_precision,
+    :is_ConsiderDataCentra => :consider_data_center,
+    :is_ConsiderFrequencyControl => :consider_frequency_control,
+    :is_ConsiderBESS => :consider_bess,
+    :is_ConsiderMultiCUTs => :consider_multi_cuts,
+)
+
+function Base.getproperty(cfg::UCConfig, name::Symbol)
+    canonical = get(_LEGACY_UCCONFIG_FIELDS, name, name)
+    return getfield(cfg, canonical)
+end
+
+const DEFAULT_LOAD_CURTAILMENT_PENALTY_SCALE = 1e4
+
+"""
+    uc_load_curtailment_penalty(config_param::UCConfig)
+
+Return the unified load-shedding penalty used across Benchmark, Benders, CCG,
+DRO objectives, and scheduling cost exports.
+"""
+function uc_load_curtailment_penalty(config_param::UCConfig)
+    return Float64(config_param.load_cutting_coefficient) * DEFAULT_LOAD_CURTAILMENT_PENALTY_SCALE
+end
+
+"""
+    uc_wind_curtailment_penalty(config_param::UCConfig)
+
+Return the unified wind-curtailment penalty used across all SCUC algorithms and
+scheduling cost exports.
+"""
+function uc_wind_curtailment_penalty(config_param::UCConfig)
+    return Float64(config_param.wind_cutting_coefficient)
 end
 
 function model_env_int(name::String, default::Int64)
-    return parse(Int64, get(ENV, name, string(default)))
+    return isdefined(@__MODULE__, :uc_env_int) ? uc_env_int(name, default) : parse(Int64, get(ENV, name, string(default)))
 end
 
 function model_env_float(name::String, default::Float64)
-    return parse(Float64, get(ENV, name, string(default)))
+    return isdefined(@__MODULE__, :uc_env_float) ? uc_env_float(name, default) : parse(Float64, get(ENV, name, string(default)))
 end
 
 function config_from_env()
     consider_bess = model_env_int("MODEL_CONSIDER_BESS", parse(Int64, get(ENV, "BENDERS_CONSIDER_BESS", get(ENV, "CONSIDER_BESS", "0"))))
-    return config(
+    return UCConfig(
         model_env_int("MODEL_IS_NETWORK_CON", 1),
         model_env_int("MODEL_IS_THERMAL_UNIT_CON", 1),
         model_env_int("MODEL_IS_WIND_UNIT_CON", 1),
@@ -71,11 +123,11 @@ function config_from_env()
 end
 
 """
-`unit`
+`ThermalUnits` (legacy alias: `unit`)
 
 Structure representing dispatchable conventional or thermal generation units.
 """
-struct unit
+struct ThermalUnits
     # Topological mapping
     index::Vector{Int64}                  # Generator ID array
     locatebus::Vector{Int64}              # Connected bus ID array
@@ -85,12 +137,12 @@ struct unit
     p_min::Vector{Float64}                # Minimum active power limits (p.u.)
     ramp_up::Vector{Float64}              # Normal operational ramp-up limits (p.u./time)
     ramp_down::Vector{Float64}            # Normal operational ramp-down limits (p.u./time)
-    shut_up::Vector{Float64}              # Startup condition ramp limits (p.u.)
-    shut_down::Vector{Float64}            # Shutdown condition ramp limits (p.u.)
+    startup_ramp::Vector{Float64}         # Startup condition ramp limits (p.u.)
+    shutdown_ramp::Vector{Float64}        # Shutdown condition ramp limits (p.u.)
 
     # Temporal scheduling constraints
-    min_shutup_time::Vector{Float64}      # Minimum continuous up-time requirement (h)
-    min_shutdown_time::Vector{Float64}    # Minimum continuous down-time requirement (h)
+    min_up_time::Vector{Float64}          # Minimum continuous up-time requirement (h)
+    min_down_time::Vector{Float64}        # Minimum continuous down-time requirement (h)
 
     # Initial border states (t=0)
     x_0::Vector{Float64}                  # Initial online status (1: online, 0: offline)
@@ -98,88 +150,101 @@ struct unit
     p_0::Vector{Float64}                  # Initial generated active power (p.u.)
 
     # Performance & operation cost parameters
-    coffi_a::Vector{Float64}              # Quadratic fuel cost coefficient ($/MW^2)
-    coffi_b::Vector{Float64}              # Linear fuel cost coefficient ($/MW)
-    coffi_c::Vector{Float64}              # Fixed no-load operational cost ($)
-    coffi_cold_shutup_1::Vector{Float64}  # Hot startup cost penalty ($)
-    coffi_cold_shutup_2::Vector{Float64}  # Cold startup cost penalty ($)
-    coffi_cold_shutdown_1::Vector{Float64} # Normal shutdown cost ($)
-    coffi_cold_shutdown_2::Vector{Float64} # Cold start time horizon limit (h)
+    coeff_a::Vector{Float64}              # Quadratic fuel cost coefficient ($/MW^2)
+    coeff_b::Vector{Float64}              # Linear fuel cost coefficient ($/MW)
+    coeff_c::Vector{Float64}              # Fixed no-load operational cost ($)
+    coeff_hot_startup::Vector{Float64}    # Hot startup cost penalty ($)
+    coeff_cold_startup::Vector{Float64}   # Cold startup cost penalty ($)
+    coeff_shutdown::Vector{Float64}       # Normal shutdown cost ($)
+    cold_start_time_limit::Vector{Float64} # Cold start time horizon limit (h)
 
     # Frequency response parameters
-
-    # Part-1 Inertia response process
     Hg::Vector{Float64}                   # Generation unit inertia constant (s)
     Dg::Vector{Float64}                   # Mechanical damping constant (p.u.)
-
-    # Part-2 Primary frequency response process
     Kg::Vector{Float64}                   # Governor gain (inverse of droop characteristic)
     Fg::Vector{Float64}                   # Fraction of total power generated by high-pressure turbine stages
     Tg::Vector{Float64}                   # Governor/Turbine operational time constant (s)
     Rg::Vector{Float64}                   # Unit governor speed regulation or droop factor (p.u.)
 
-    function unit(
-        index, locatebus, p_max, p_min, ramp_up, ramp_down, shut_up, shut_down,
-        min_shutup_time, min_shutdown_time,
-        x_0, t_0, p_0, coffi_a, coffi_b, coffi_c, coffi_cold_shutup_1, coffi_cold_shutup_2, coffi_cold_shutdown_1, coffi_cold_shutdown_2,
+    function ThermalUnits(
+        index, locatebus, p_max, p_min, ramp_up, ramp_down, startup_ramp, shutdown_ramp,
+        min_up_time, min_down_time,
+        x_0, t_0, p_0, coeff_a, coeff_b, coeff_c, coeff_hot_startup, coeff_cold_startup, coeff_shutdown, cold_start_time_limit,
         Hg, Dg, Kg, Fg, Tg, Rg,
     )
         return new(
-            index, locatebus, p_max, p_min, ramp_up, ramp_down, shut_up, shut_down,
-            min_shutup_time, min_shutdown_time, x_0, t_0, p_0, coffi_a, coffi_b, coffi_c,
-            coffi_cold_shutup_1, coffi_cold_shutup_2, coffi_cold_shutdown_1, coffi_cold_shutdown_2,
+            index, locatebus, p_max, p_min, ramp_up, ramp_down, startup_ramp, shutdown_ramp,
+            min_up_time, min_down_time, x_0, t_0, p_0, coeff_a, coeff_b, coeff_c,
+            coeff_hot_startup, coeff_cold_startup, coeff_shutdown, cold_start_time_limit,
             Hg, Dg, Kg, Fg, Tg, Rg,
         )
     end
+end
 
-    # units(Hg,Dg,Kg,Fg,Tg,Rg) = new(Hg,Dg,Kg,Fg,Tg,Rg)
-    #
-    # function unit(args...)
-    #     new(index, p_max, p_min, ramp_up, ramp_down, shut_up, shut_down, min_shutup_time, min_shutdown_time,
-    #         x_0, t_0, p_0, coffi_a, coffi_b, coffi_c, coffi_cold_shutup_1, coffi_cold_shutup_2, coffi_cold_shutdown_1, coffi_cold_shutdown_2, Hg, Dg, Kg, Fg, Tg, Rg, nothing)
-    # end
+const unit = ThermalUnits
+
+const _LEGACY_THERMAL_UNIT_FIELDS = Dict{Symbol, Symbol}(
+    :shut_up => :startup_ramp,
+    :shut_down => :shutdown_ramp,
+    :min_shutup_time => :min_up_time,
+    :min_shutdown_time => :min_down_time,
+    :coffi_a => :coeff_a,
+    :coffi_b => :coeff_b,
+    :coffi_c => :coeff_c,
+    :coffi_cold_shutup_1 => :coeff_hot_startup,
+    :coffi_cold_shutup_2 => :coeff_cold_startup,
+    :coffi_cold_shutdown_1 => :coeff_shutdown,
+    :coffi_cold_shutdown_2 => :cold_start_time_limit,
+)
+
+function Base.getproperty(u::ThermalUnits, name::Symbol)
+    canonical = get(_LEGACY_THERMAL_UNIT_FIELDS, name, name)
+    return getfield(u, canonical)
 end
 
 """
-`transmissionline`
+`TransmissionLines` (legacy alias: `transmissionline`)
 
 Structure representing the AC transmission network branches.
 """
-struct transmissionline
+struct TransmissionLines
     index::Vector{Int64}                  # Branch/Line ID
     from::Vector{Int64}                   # Sending bus ID
     to::Vector{Int64}                     # Receiving bus ID
     x::Vector{Float64}                    # Branch series reactance (p.u.)
     p_max::Vector{Float64}                # Forward active power flow capacity
     p_min::Vector{Float64}                # Reverse active power flow capacity
-    # b::Vector{Float64}
-    # ratio::Vector{Int64}
-    # transmissionline(from,to,x,b,p_max,p_min) = new(from,to,x,b,p_max,p_min)
-    function transmissionline(index, from, to, x, p_max, p_min)
+
+    function TransmissionLines(index, from, to, x, p_max, p_min)
         return new(index, from, to, x, p_max, p_min)
     end
 end
 
+const transmissionline = TransmissionLines
+
 """
-`load`
+`Loads` (legacy alias: `load`)
 
 Structure representing baseline electrical demand across various network nodes.
 """
-struct load
+struct Loads
     index::Vector{Int64}                  # Load ID
     locatebus::Vector{Int64}              # Connected bus ID
     load_curve::Array{Float64}            # Time-series active power demand matrix (ND x NT)
-    function load(index, locatebus, load_curve) # Using consistent constructor syntax
+
+    function Loads(index, locatebus, load_curve)
         return new(index, locatebus, load_curve)
     end
 end
 
-"""
-`pss`
+const load = Loads
 
-Structure representing energy storage units, such as Pumped-Storage Systems (PSS) or Batteries.
 """
-struct pss
+`StorageUnits` (legacy alias: `pss`)
+
+Structure representing energy storage units, such as Pumped-Storage Systems (PSS) or Batteries (BESS).
+"""
+struct StorageUnits
     index::Vector{Int64}                  # Storage unit ID
     locatebus::Vector{Int64}              # Connected bus ID
     Q_max::Vector{Float64}                # Maximum State of Charge (SoC) energy limit
@@ -192,28 +257,39 @@ struct pss
     η⁺::Vector{Float64}                   # Energy conversion charging efficiency
     η⁻::Vector{Float64}                   # Energy conversion discharging efficiency
     δₛ::Vector{Float64}                   # Storage self-discharge or capacity leakage rate
-    function pss(index, locatebus, Q_max, Q_min, p⁺, p⁻, P₀, γ⁺, γ⁻, η⁺, η⁻, δₛ) # Corrected constructor name, also fixed p₀ -> P₀ to match definition
-        return new(index, locatebus, Q_max, Q_min, p⁺, p⁻, P₀, γ⁺, γ⁻, η⁺, η⁻, δₛ) # Fixed p₀ -> P₀
+
+    function StorageUnits(index, locatebus, Q_max, Q_min, p⁺, p⁻, P₀, γ⁺, γ⁻, η⁺, η⁻, δₛ)
+        return new(index, locatebus, Q_max, Q_min, p⁺, p⁻, P₀, γ⁺, γ⁻, η⁺, η⁻, δₛ)
     end
 end
 
+const pss = StorageUnits
+
 """
-`data_centra`
+`DataCenters` (legacy alias: `data_centra`)
 
 Structure representing spatial Data Centers acting as dispatchable, computationally-linked flexible loads.
 """
-struct data_centra
-    index::Vector{Int64}                  # Data center ID
-    locatebus::Vector{Int64}              # Connected power bus ID
-    p_max::Vector{Float64}                # Maximum permissible power consumption
-    p_min::Vector{Float64}                # Minimum mandatory power consumption
-    voltage_regulation::Vector{Float64}   # Voltage-dependent active power regulation capability
-    idale::Vector{Float64}                # Baseline or static idle power consumption
-    sv_constant::Vector{Float64}          # Equivalent server energy constant (models PUE characteristics)
-    λ::Vector{Float64}                    # IT computational task continuous arrival rate
-    μ::Vector{Float64}                    # IT computational task service processing capability
+struct DataCenters
+    index::Vector{Int64}                       # Data center ID
+    locatebus::Vector{Int64}                   # Connected power bus ID
+    p_max::Vector{Float64}                     # Maximum permissible power consumption
+    p_min::Vector{Float64}                     # Minimum mandatory power consumption
+    voltage_regulation::Vector{Float64}        # Voltage-dependent active power regulation capability
+    idle_power::Vector{Float64}                # Baseline or static idle power consumption
+    sv_constant::Vector{Float64}               # Equivalent server energy constant (models PUE characteristics)
+    λ::Vector{Float64}                         # IT computational task continuous arrival rate
+    μ::Vector{Float64}                         # IT computational task service processing capability
     computational_power_tasks::Matrix{Float64} # Time-series IT task allocation matrix (ND2 x NT)
-    function data_centra(index, locatebus, p_max, p_min, voltage_regulation, idale, sv_constant, λ, μ, computational_power_tasks)
-        return new(index, locatebus, p_max, p_min, voltage_regulation, idale, sv_constant, λ, μ, computational_power_tasks)
+
+    function DataCenters(index, locatebus, p_max, p_min, voltage_regulation, idle_power, sv_constant, λ, μ, computational_power_tasks)
+        return new(index, locatebus, p_max, p_min, voltage_regulation, idle_power, sv_constant, λ, μ, computational_power_tasks)
     end
+end
+
+const data_centra = DataCenters
+
+function Base.getproperty(dc::DataCenters, name::Symbol)
+    name === :idale && return getfield(dc, :idle_power)
+    return getfield(dc, name)
 end

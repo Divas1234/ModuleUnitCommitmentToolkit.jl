@@ -240,7 +240,7 @@ Power components inside a native `PowerSystems.System` are already in the `SYSTE
 The return value is a `NamedTuple` with stable fields:
 
 ```text
-config_param, units, lines, loads, winds, psses, DataCentras,
+config_param, units, lines, loads, winds, psses, data_centers,
 NB, NG, NL, ND, NT, NC, ND2, NW, NS, full_scenario_probability
 ```
 
@@ -294,7 +294,7 @@ include("tools/benders/setup.jl")
 
 setup = main(; scenario_limit = 3)
 
-result = multiple_bender_decomposition_scuc(
+result = multiple_benders_decomposition_scuc(
     setup.master_model,
     setup.sub_model,
     setup.master_struct,

@@ -30,9 +30,9 @@
     data118 = load_uc_data(input = :powersystems, case_name = "ieee118", scenario_limit = 1, horizon = 4)
 
     @test (data6.NB, data6.NG, data6.NL, data6.NT) == (6, 6, 6, 4)
-    @test all(isfinite, data6.units.coffi_a)
-    @test all(isfinite, data6.units.coffi_b)
-    @test all(isfinite, data6.units.coffi_c)
+    @test all(isfinite, data6.units.coeff_a)
+    @test all(isfinite, data6.units.coeff_b)
+    @test all(isfinite, data6.units.coeff_c)
     refcost6, slopes6 = linearizationfuelcurve(data6.units, data6.NG)
     @test all(isfinite, refcost6)
     @test all(isfinite, slopes6)

@@ -19,8 +19,9 @@ function define_decision_variables!(scuc::Model, NT, NG, ND, NC, ND2, NS, NW, co
     @variable(scuc, v[1:NG, 1:NT], Bin)  # Shutdown indicator
 
     # --- Generation, Reserve, and Slack Variables (Scenario-indexed) ---
-    @variable(scuc, pg₀[1:(NG * NS), 1:NT] >= 0)       # Base active power dispatch
-    @variable(scuc, pgₖ[1:(NG * NS), 1:NT, 1:3] >= 0)  # Piecewise cost segments
+    num_segments = max(1, Int(config_param.num_segments))
+    @variable(scuc, pg₀[1:(NG * NS), 1:NT] >= 0)               # Base active power dispatch
+    @variable(scuc, pgₖ[1:(NG * NS), 1:NT, 1:num_segments] >= 0)  # Piecewise cost segments
     @variable(scuc, su₀[1:NG, 1:NT] >= 0)            # Startup cost linearization
     @variable(scuc, sd₀[1:NG, 1:NT] >= 0)            # Shutdown cost linearization
     @variable(scuc, sr⁺[1:(NG * NS), 1:NT] >= 0)       # Upward spinning reserve
@@ -29,7 +30,7 @@ function define_decision_variables!(scuc::Model, NT, NG, ND, NC, ND2, NS, NW, co
     @variable(scuc, Δpw[1:(NW * NS), 1:NT] >= 0)       # Wind curtailment slack
 
     # --- Energy Storage (BESS) Variables ---
-    if config_param.is_ConsiderBESS == 1 && NC > 0
+    if config_param.consider_bess == 1 && NC > 0
         @variable(scuc, κ⁺[1:(NC * NS), 1:NT], Bin)   # Charging binary status
         @variable(scuc, κ⁻[1:(NC * NS), 1:NT], Bin)   # Discharging binary status
         @variable(scuc, pc⁺[1:(NC * NS), 1:NT] >= 0)  # Charging power power
@@ -40,16 +41,23 @@ function define_decision_variables!(scuc::Model, NT, NG, ND, NC, ND2, NS, NW, co
         @variable(scuc, β[1:(NS * NC), 1:NT], Bin)
     end
 
-    if config_param.is_ConsiderDataCentra == 1
+    if config_param.consider_data_center == 1
         define_data_center_variables!(scuc, Int(NT), Int(ND2), Int(NS); binary_response_weights = true)
     end
 
     # Frequency control related variables (assuming these might be needed based on later constraints)
     # Check if these are actually used/defined in the constraints file later
-    if config_param.is_ConsiderFrequencyControl == 1 # Assuming flag exists
+    if config_param.consider_frequency_control == 1 # Assuming flag exists
         @variable(scuc, Δf_nadir[1:NS] >= 0)
         @variable(scuc, Δf_qss[1:NS] >= 0)
         @variable(scuc, Δp_imbalance[1:NS] >= 0) # Placeholder, adjust as needed based on full constraints
+    end
+
+    if isdefined(@__MODULE__, :_UC_VARIABLE_HOOKS) && !isempty(_UC_VARIABLE_HOOKS)
+        ctx = (NT = NT, NG = NG, ND = ND, NC = NC, ND2 = ND2, NS = NS, NW = NW, config_param = config_param)
+        for (_, hook_fn) in _UC_VARIABLE_HOOKS
+            hook_fn(scuc, ctx)
+        end
     end
 
     println("\t Variables defined.")

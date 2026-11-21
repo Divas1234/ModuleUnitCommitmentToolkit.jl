@@ -35,8 +35,8 @@ function add_unit_operation_constraints!(scuc::Model, NT, NG, units, onoffinit)
         # Uncomment if initial status is provided
         # onoffinit[i] = ((units.x_0[i, 1] > 0.5) ? 1 : 0)
         # Calculate minimum up/down time limits
-        Lupmin[i] = min(NT, units.min_shutup_time[i] * onoffinit[i])
-        Ldownmin[i] = min(NT, (units.min_shutdown_time[i, 1]) * (1 - onoffinit[i]))
+        Lupmin[i] = min(NT, units.min_up_time[i] * onoffinit[i])
+        Ldownmin[i] = min(NT, (units.min_down_time[i, 1]) * (1 - onoffinit[i]))
     end
 
     units_minuptime_constr = Vector{ConType}()
@@ -44,16 +44,16 @@ function add_unit_operation_constraints!(scuc::Model, NT, NG, units, onoffinit)
 
     # --- Minimum Up and Down Time Constraints ---
     for i in 1:NG
-        # Minimum Up Time: If a unit starts, it must remain on for units.min_shutup_time
+        # Minimum Up Time: If a unit starts, it must remain on for units.min_up_time
         for t in Int64(max(1, Lupmin[i])):NT
-            LB = Int64(max(t - units.min_shutup_time[i, 1] + 1, 1))
+            LB = Int64(max(t - units.min_up_time[i, 1] + 1, 1))
             con = @constraint(scuc, sum(u[i, r] for r in LB:t) <= x[i, t])
             push!(units_minuptime_constr, con)
         end
 
-        # Minimum Down Time: If a unit stops, it must remain off for units.min_shutdown_time
+        # Minimum Down Time: If a unit stops, it must remain off for units.min_down_time
         for t in Int64(max(1, Ldownmin[i])):NT
-            LB = Int64(max(t - units.min_shutdown_time[i, 1] + 1, 1))
+            LB = Int64(max(t - units.min_down_time[i, 1] + 1, 1))
             con = @constraint(scuc, sum(v[i, r] for r in LB:t) <= (1 - x[i, t]))
             push!(units_mindowntime_constr, con)
         end
@@ -72,8 +72,8 @@ function add_unit_operation_constraints!(scuc::Model, NT, NG, units, onoffinit)
     println("\t constraints: 2) binary variable logic\t\t\t\t\t done")
 
     # --- Startup and Shutdown Costs (Linearization) ---
-    shutupcost = units.coffi_cold_shutup_1
-    shutdowncost = units.coffi_cold_shutdown_1
+    shutupcost = units.coeff_hot_startup
+    shutdowncost = units.coeff_shutdown
     units_init_shutup_cost_constr = @constraint(scuc, su₀[:, 1] .>= shutupcost .* (x[:, 1] - onoffinit[:, 1]))
     units_init_shutdown_cost_costr = @constraint(scuc, sd₀[:, 1] .>= shutdowncost .* (onoffinit[:, 1] - x[:, 1]))
     units_shutup_cost_constr = @constraint(scuc, [t = 2:NT], su₀[:, t] .>= shutupcost .* u[:, t])
@@ -142,8 +142,8 @@ function add_ramp_constraints!(scuc::Model, NT, NG, NS, units, onoffinit)
     p_0 = units.p_0
     ramp_up = units.ramp_up
     ramp_down = units.ramp_down
-    shut_up = units.shut_up
-    shut_down = units.shut_down
+    startup_ramp = units.startup_ramp
+    shutdown_ramp = units.shutdown_ramp
     p_max = units.p_max
     p_min = units.p_min
 
@@ -152,7 +152,7 @@ function add_ramp_constraints!(scuc::Model, NT, NG, NS, units, onoffinit)
         [s = 1:NS, t = 1:NT],
         pg₀[(1 + (s - 1) * NG):(s * NG), t] - ((t == 1) ? units.p_0[:, 1] : pg₀[(1 + (s - 1) * NG):(s * NG), t - 1]) .<=
         ramp_up[:, 1] .* ((t == 1) ? onoffinit[:, 1] : x[:, t - 1]) +
-        shut_up[:, 1] .* ((t == 1) ? ones(NG, 1) : u[:, t - 1]) +
+        startup_ramp[:, 1] .* ((t == 1) ? ones(NG, 1) : u[:, t - 1]) +
         p_max[:, 1] .* (ones(NG, 1) - ((t == 1) ? onoffinit[:, 1] : x[:, t - 1])) +
         (
             if ramp_violation⁺ === nothing
@@ -167,7 +167,7 @@ function add_ramp_constraints!(scuc::Model, NT, NG, NS, units, onoffinit)
         scuc,
         [s = 1:NS, t = 1:NT],
         ((t == 1) ? units.p_0[:, 1] : pg₀[(1 + (s - 1) * NG):(s * NG), t - 1]) - pg₀[(1 + (s - 1) * NG):(s * NG), t] .<=
-        ramp_down[:, 1] .* x[:, t] + shut_down[:, 1] .* v[:, t] + p_max[:, 1] .* (x[:, t]) + (
+        ramp_down[:, 1] .* x[:, t] + shutdown_ramp[:, 1] .* v[:, t] + p_max[:, 1] .* (x[:, t]) + (
             if ramp_violation⁻ === nothing
                 zeros(NG)
             else

@@ -17,53 +17,63 @@ A tuple containing matrices for generator frequency parameters, wind frequency p
 energy storage capabilities, generator static characteristics, generation costs, branch network parameters,
 load curves, point loads, and data center requirements.
 """
-function readxlssheet()
+function _read_excel_sheet(workbook, preferred::AbstractString, legacy::Union{Nothing, AbstractString} = nothing)
+    sheets = XLSX.sheetnames(workbook)
+    if preferred in sheets
+        return workbook[preferred]
+    elseif legacy !== nothing && legacy in sheets
+        return workbook[legacy]
+    end
+    error("Required Excel sheet `$(preferred)` not found in workbook (available: $(sheets))")
+end
+
+function readxlssheet(data_file::AbstractString = unit_commitment_data_file())
     println("Step-1: Pkgs and functions are loaded")
-    data_file = unit_commitment_data_file()
-    isfile(data_file) || error("Input data workbook not found: $data_file")
-    df = XLSX.readxlsx(data_file)
+    resolved_file = String(data_file)
+    isfile(resolved_file) || error("Input data workbook not found: $resolved_file")
+    df = XLSX.readxlsx(resolved_file)
 
     # Part 1: Extract generation and wind frequency parameter matrices
-    unitsfreqparam = df["units_frequencyparam"]
-    windsfreqparam = df["winds_frequencyparam"]
+    units_freq_param = _read_excel_sheet(df, "units_frequencyparam")
+    winds_freq_param = _read_excel_sheet(df, "winds_frequencyparam")
 
-    Sheet1_list = string("A2", ":", "G", string(size(unitsfreqparam[:], 1)))
-    Sheet2_list = string("A2", ":", "F", string(size(windsfreqparam[:], 1)))
+    sheet1_range = string("A2", ":", "G", string(size(units_freq_param[:], 1)))
+    sheet2_range = string("A2", ":", "F", string(size(winds_freq_param[:], 1)))
 
-    unitsfreqparam = convert(Array{Float64, 2}, unitsfreqparam[Sheet1_list])
-    windsfreqparam = convert(Array{Float64, 2}, windsfreqparam[Sheet2_list])
+    units_freq_param = convert(Array{Float64, 2}, units_freq_param[sheet1_range])
+    winds_freq_param = convert(Array{Float64, 2}, winds_freq_param[sheet2_range])
 
     # Part 2: Extract energy storage system parameters
-    strogesystemdata = df["strogesystem_data"]
-    Sheet3_list = string("A2", ":", "L", string(size(strogesystemdata[:], 1)))
-    strogesystemdata = convert(Array{Float64, 2}, strogesystemdata[Sheet3_list])
+    storage_system_data = _read_excel_sheet(df, "storage_system_data", "strogesystem_data")
+    sheet3_range = string("A2", ":", "L", string(size(storage_system_data[:], 1)))
+    storage_system_data = convert(Array{Float64, 2}, storage_system_data[sheet3_range])
 
     # Part 3: Extract conventional unit, transmission network, and electrical load data
-    gendata = df["units_data"]
-    Sheet4_list = string("A2", ":", "M", string(size(gendata[:], 1)))
-    gendata = convert(Array{Float64, 2}, gendata[Sheet4_list])
+    gen_data = _read_excel_sheet(df, "units_data")
+    sheet4_range = string("A2", ":", "M", string(size(gen_data[:], 1)))
+    gen_data = convert(Array{Float64, 2}, gen_data[sheet4_range])
 
-    gencost = df["units_cost"]
-    Sheet5_list = string("A2", ":", "H", string(size(gencost[:], 1)))
-    gencost = convert(Array{Float64, 2}, gencost[Sheet5_list])
+    gen_cost = _read_excel_sheet(df, "units_cost")
+    sheet5_range = string("A2", ":", "H", string(size(gen_cost[:], 1)))
+    gen_cost = convert(Array{Float64, 2}, gen_cost[sheet5_range])
 
-    linedata = df["branch_data"]
-    Sheet6_list = string("A2", ":", "E", string(size(linedata[:], 1)))
-    linedata = convert(Array{Float64, 2}, linedata[Sheet6_list])
+    line_data = _read_excel_sheet(df, "branch_data")
+    sheet6_range = string("A2", ":", "E", string(size(line_data[:], 1)))
+    line_data = convert(Array{Float64, 2}, line_data[sheet6_range])
 
-    loadcurve = df["load_curve"]
-    Sheet7_list = string("A2", ":", "B", string(size(loadcurve[:], 1)))
-    loadcurve = convert(Array{Float64, 2}, loadcurve[Sheet7_list])
+    load_curve = _read_excel_sheet(df, "load_curve")
+    sheet7_range = string("A2", ":", "B", string(size(load_curve[:], 1)))
+    load_curve = convert(Array{Float64, 2}, load_curve[sheet7_range])
 
-    loaddata = df["load_data"]
-    Sheet8_list = string("A2", ":", "C", string(size(loaddata[:], 1)))
-    loaddata = convert(Array{Float64, 2}, loaddata[Sheet8_list])
+    load_data = _read_excel_sheet(df, "load_data")
+    sheet8_range = string("A2", ":", "C", string(size(load_data[:], 1)))
+    load_data = convert(Array{Float64, 2}, load_data[sheet8_range])
 
-    data_cnetra_data = df["data_centra"]
-    Sheet9_list = string("A2", ":", "I", string(size(data_cnetra_data[:], 1)))
-    datacentra_data = convert(Array{Float64, 2}, data_cnetra_data[Sheet9_list])
+    data_center_sheet = _read_excel_sheet(df, "data_centers", "data_centra")
+    sheet9_range = string("A2", ":", "I", string(size(data_center_sheet[:], 1)))
+    data_center_data = convert(Array{Float64, 2}, data_center_sheet[sheet9_range])
 
-    return unitsfreqparam, windsfreqparam, strogesystemdata, gendata, gencost, linedata, loadcurve, loaddata, datacentra_data
+    return units_freq_param, winds_freq_param, storage_system_data, gen_data, gen_cost, line_data, load_curve, load_data, data_center_data
 end
 
 """
@@ -77,15 +87,19 @@ required for Security-Constrained Unit Commitment (SCUC) optimization.
 A consolidated tuple of physical component structs, optimization parameters, and topological dimensions
 (e.g., number of buses `NB`, number of generators `NG`, number of lines `NL`, etc.).
 """
-function forminputdata(DataGen, DataBranch, DataLoad, LoadCurve, GenCost, UnitsFreqParam, StrogeData, datacentra_Data)
+function forminputdata(DataGen, DataBranch, DataLoad, LoadCurve, GenCost, UnitsFreqParam, storage_data, data_center_data; horizon::Union{Nothing, Integer} = nothing)
 
     # Topological dimension mappings (DataGen,DataBranch,DataLoad,LoadCurve,GenCost = IEEE_RTS6())
     NB = Int64(maximum([maximum(DataBranch[:, 2]), maximum(DataBranch[:, 3])]))::Int64 # Number of Buses
     NL = Int64(size(DataBranch)[1])::Int64 # Number of Transmission Lines
     NG = Int64(size(DataGen)[1])::Int64    # Number of Generators
     ND = Int64(size(DataLoad)[1])::Int64   # Number of Loads
-    NC = Int64(size(StrogeData)[1])::Int64 # Number of Storage Units
-    NT = 24::Int64                         # Number of Time periods (e.g., 24 hours)
+    NC = Int64(size(storage_data)[1])::Int64 # Number of Storage Units
+    available_periods = Int64(size(LoadCurve, 1))
+    NT = horizon === nothing ? Int64(24) : Int64(horizon)
+    if NT <= 0 || NT > available_periods
+        throw(ArgumentError("horizon must be between 1 and $(available_periods) for the loaded Excel LoadCurve; got $(NT)"))
+    end
 
     # --- 1. Generator Parameters ---
     Gens_Index = convert(Array{Int64}, DataGen[:, 1])        # Generator ID
@@ -142,18 +156,18 @@ function forminputdata(DataGen, DataBranch, DataLoad, LoadCurve, GenCost, UnitsF
     Rg = UnitsFreqParam[:, 7]      # Governor speed regulation (droop) (p.u.)
 
     # --- 6. Energy Storage (PSS) Parameters ---
-    Pss_index = convert(Array{Int64}, StrogeData[:, 1])      # Storage ID
-    Pss_locatebus = convert(Array{Int64}, StrogeData[:, 2])  # Bus location
-    Pss_q_max = StrogeData[:, 3] / 100                       # Max State of Charge (SoC) limit (p.u.)
-    Pss_q_min = StrogeData[:, 4] / 100                       # Min State of Charge (SoC) limit (p.u.)
-    Pss_p⁺ = StrogeData[:, 5] / 100                          # Max charging power (p.u.)
-    Pss_p⁻ = StrogeData[:, 6] / 100                          # Max discharging power (p.u.)
-    Pss_P₀ = StrogeData[:, 7] / 100                          # Initial State of Charge (p.u.)
-    Pss_γ⁺ = StrogeData[:, 8] / 100                          # Maximum charging ramp rate
-    Pss_γ⁻ = StrogeData[:, 9] / 100                          # Maximum discharging ramp rate
-    Pss_η⁺ = StrogeData[:, 10]                               # Charging efficiency
-    Pss_η⁻ = StrogeData[:, 11]                               # Discharging efficiency
-    Pss_δₛ = StrogeData[:, 12]                               # Self-discharge coefficient
+    Pss_index = convert(Array{Int64}, storage_data[:, 1])      # Storage ID
+    Pss_locatebus = convert(Array{Int64}, storage_data[:, 2])  # Bus location
+    Pss_q_max = storage_data[:, 3] / 100                       # Max State of Charge (SoC) limit (p.u.)
+    Pss_q_min = storage_data[:, 4] / 100                       # Min State of Charge (SoC) limit (p.u.)
+    Pss_p⁺ = storage_data[:, 5] / 100                          # Max charging power (p.u.)
+    Pss_p⁻ = storage_data[:, 6] / 100                          # Max discharging power (p.u.)
+    Pss_P₀ = storage_data[:, 7] / 100                          # Initial State of Charge (p.u.)
+    Pss_γ⁺ = storage_data[:, 8] / 100                          # Maximum charging ramp rate
+    Pss_γ⁻ = storage_data[:, 9] / 100                          # Maximum discharging ramp rate
+    Pss_η⁺ = storage_data[:, 10]                               # Charging efficiency
+    Pss_η⁻ = storage_data[:, 11]                               # Discharging efficiency
+    Pss_δₛ = storage_data[:, 12]                               # Self-discharge coefficient
 
     # Re-normalized data and model configurations.
     config_param = config_from_env()
@@ -191,7 +205,7 @@ function forminputdata(DataGen, DataBranch, DataLoad, LoadCurve, GenCost, UnitsF
     # γ⁺/γ⁻: Charging and discharging ramp rates
     # η⁺/η⁻: Charging and discharging efficiency
     # δₛ: Self-discharge rate
-    stroges = pss(Pss_index, Pss_locatebus, Pss_q_max, Pss_q_min, Pss_p⁺, Pss_p⁻, Pss_P₀, Pss_γ⁺, Pss_γ⁻, Pss_η⁺, Pss_η⁻, Pss_δₛ)
+    storages = pss(Pss_index, Pss_locatebus, Pss_q_max, Pss_q_min, Pss_p⁺, Pss_p⁻, Pss_P₀, Pss_γ⁺, Pss_γ⁻, Pss_η⁺, Pss_η⁻, Pss_δₛ)
 
     # Initialize electrical load distribution structure
     # Index/LocateBus: Load ID and connected bus ID
@@ -203,18 +217,18 @@ function forminputdata(DataGen, DataBranch, DataLoad, LoadCurve, GenCost, UnitsF
     end
 
     # Formulate Data Center (DC) parametric structures
-    dc_index = convert(Array{Int64}, datacentra_Data[:, 1])
-    dc_locatebus = convert(Array{Int64}, datacentra_Data[:, 2])
-    dc_pmax = datacentra_Data[:, 3]
-    dc_pmin = datacentra_Data[:, 4]
-    dc_voltage_regulation = datacentra_Data[:, 5]
-    dc_idale = datacentra_Data[:, 6]
-    dc_sv_constent = datacentra_Data[:, 7]
-    dc_λ = datacentra_Data[:, 8]
-    dc_μ = datacentra_Data[:, 9]
+    dc_index = convert(Array{Int64}, data_center_data[:, 1])
+    dc_locatebus = convert(Array{Int64}, data_center_data[:, 2])
+    dc_pmax = data_center_data[:, 3]
+    dc_pmin = data_center_data[:, 4]
+    dc_voltage_regulation = data_center_data[:, 5]
+    dc_idle_power = data_center_data[:, 6]
+    dc_sv_constant = data_center_data[:, 7]
+    dc_λ = data_center_data[:, 8]
+    dc_μ = data_center_data[:, 9]
 
-    tem_computatioinal_task_curves = ones(NT, 1) * 0.2
-    dc_computational_power_tasks = tem_computatioinal_task_curves
+    temp_computational_task_curves = ones(NT, 1) * 0.2
+    dc_computational_power_tasks = temp_computational_task_curves
 
     ND2 = size(dc_index)[1]
 
@@ -222,15 +236,15 @@ function forminputdata(DataGen, DataBranch, DataLoad, LoadCurve, GenCost, UnitsF
     # index/locatebus: Data center ID and connected bus
     # pmax/pmin: Maximum and minimum power consumption
     # voltage_regulation: Voltage regulation capability index
-    # idale: Idle power consumption
-    # sv_constent: Server power constant (reflecting PUE efficiency characteristics)
+    # idle_power: Idle power consumption
+    # sv_constant: Server power constant (reflecting PUE efficiency characteristics)
     # λ/μ: Task arrival rate and processing service rate parameters
     # computational_power_tasks: Time-series computational load task curve
-    datacentra_data = data_centra(
-        dc_index, dc_locatebus, dc_pmax, dc_pmin, dc_voltage_regulation, dc_idale, dc_sv_constent, dc_λ, dc_μ, dc_computational_power_tasks,
+    data_center_data = DataCenters(
+        dc_index, dc_locatebus, dc_pmax, dc_pmin, dc_voltage_regulation, dc_idle_power, dc_sv_constant, dc_λ, dc_μ, dc_computational_power_tasks,
     )
 
     println("Step-2: imput data are loaded")
 
-    return config_param, units, lines, loads, stroges, NB, NG, NL, ND, NT, NC, ND2, datacentra_data
+    return config_param, units, lines, loads, storages, NB, NG, NL, ND, NT, NC, ND2, data_center_data
 end
