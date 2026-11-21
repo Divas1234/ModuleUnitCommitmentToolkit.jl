@@ -18,6 +18,15 @@ class GuiSecurityTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             server.validate_run_request({"task": "benchmark", "params": {"scenario_counts": "1;2"}})
 
+        task, params = server.validate_run_request(
+            {"task": "pcm_clustered_adaptive", "params": {"pcm_profile": "extreme_ramp"}}
+        )
+        self.assertEqual(task, "pcm_clustered_adaptive")
+        self.assertEqual(params["pcm_profile"], "extreme_ramp")
+
+        with self.assertRaises(ValueError):
+            server.validate_run_request({"task": "pcm_suite", "params": {"pcm_profile": "rm -rf"}})
+
     def test_config_update_validation(self):
         with self.assertRaises(ValueError):
             server.validate_config_updates({"unknown_key": 1})

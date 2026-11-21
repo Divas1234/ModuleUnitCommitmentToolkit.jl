@@ -18,7 +18,20 @@ from urllib.parse import urlparse
 
 ROOT = Path(__file__).resolve().parent.parent
 CONFIG_PATH = ROOT / 'config' / 'runtime_config.toml'
-VALID_TASKS = ("boundary", "benchmark", "ccg", "benders", "benders_fast", "tests")
+VALID_TASKS = (
+    "boundary",
+    "benchmark",
+    "ccg",
+    "benders",
+    "benders_fast",
+    "pcm_standard",
+    "pcm_clustered",
+    "pcm_adaptive",
+    "pcm_clustered_adaptive",
+    "pcm_suite",
+    "tests",
+)
+VALID_PCM_PROFILES = ("baseline", "smooth", "extreme_ramp", "all")
 JULIA_STARTUP_TIMEOUT = 60
 JULIA_RUN_TIMEOUT = 3600
 ANSI_RE = re.compile(r'\x1b\[[0-?]*[ -/]*[@-~]')
@@ -43,6 +56,11 @@ TASK_OUTPUT_DIRS = {
     "ccg": ("ccg",),
     "benders": ("benders",),
     "benders_fast": ("benders",),
+    "pcm_standard": ("",),
+    "pcm_clustered": ("",),
+    "pcm_adaptive": ("",),
+    "pcm_clustered_adaptive": ("",),
+    "pcm_suite": ("",),
     "boundary": (),
     "tests": (),
 }
@@ -325,6 +343,23 @@ class RunManager:
             env["BENDERS_FAST_DIRECT_SOLVE"] = "1"
             return ["julia", "tools/benders/driver.jl"], env
 
+        if task in ("pcm_standard", "pcm_clustered", "pcm_adaptive", "pcm_clustered_adaptive"):
+            method_map = {
+                "pcm_standard": "standard",
+                "pcm_clustered": "clustered_pcm",
+                "pcm_adaptive": "adaptive_overlap",
+                "pcm_clustered_adaptive": "clustered_adaptive_overlap",
+            }
+            env["PCM_METHOD"] = method_map[task]
+            if "pcm_profile" in params and params["pcm_profile"] != "all":
+                env["PCM_LOAD_PROFILE"] = params["pcm_profile"]
+            return ["julia", "--project=.", "tools/pcm/main.jl"], env
+
+        if task == "pcm_suite":
+            if "pcm_profile" in params and params["pcm_profile"] != "all":
+                env["PCM_SUITE_PROFILES"] = params["pcm_profile"]
+            return ["julia", "--project=.", "tools/pcm/run_pcm_suite.jl"], env
+
         if task == "tests":
             env["MODULE_UC_TEST_ACTIVATE_LOCAL_PROJECT"] = "0"
             return ["julia", "test/runtests.jl"], env
@@ -456,6 +491,11 @@ def validate_run_request(body):
         "ccg": {"scenario_limit"},
         "benders": {"scenario_limit"},
         "benders_fast": {"scenario_limit"},
+        "pcm_standard": {"pcm_profile"},
+        "pcm_clustered": {"pcm_profile"},
+        "pcm_adaptive": {"pcm_profile"},
+        "pcm_clustered_adaptive": {"pcm_profile"},
+        "pcm_suite": {"pcm_profile"},
         "tests": set(),
     }[task]
     unknown = set(params) - allowed
@@ -472,6 +512,10 @@ def validate_run_request(body):
             raise ValueError("scenario_counts must be comma-separated positive integers")
         if any(int(value) > 200 for value in counts.split(",")):
             raise ValueError("scenario_counts values must be between 1 and 200")
+    if "pcm_profile" in params:
+        profile = params["pcm_profile"]
+        if not isinstance(profile, str) or profile not in VALID_PCM_PROFILES:
+            raise ValueError(f"pcm_profile must be one of: {', '.join(VALID_PCM_PROFILES)}")
     return task, params
 
 
@@ -591,12 +635,12 @@ class Handler(SimpleHTTPRequestHandler):
 
     def do_POST(self):
         path = urlparse(self.path).path
-        if path not in ('/api/config', '/api/run', '/api/run/cancel'):
+        if path not in ('/api/config', '/api/run', '/api/run/cancel', '/api/rebuild'):
             self.send_error(404, 'Not found')
             return
         if not self._guard_api(mutating=True, expensive=path == '/api/run'):
             return
-        if path == '/api/run/cancel':
+        if path in ('/api/run/cancel', '/api/rebuild'):
             body = {}
         else:
             if self.headers.get('Content-Type', '').split(';', 1)[0].lower() != 'application/json':
@@ -630,6 +674,21 @@ class Handler(SimpleHTTPRequestHandler):
 
         if path == '/api/run/cancel':
             self._send_json({'ok': RUN_MGR.cancel()})
+            return
+
+        if path == '/api/rebuild':
+            try:
+                import sys
+                r = subprocess.run(
+                    [sys.executable, str(ROOT / 'gui' / 'build_html.py')],
+                    capture_output=True, text=True, timeout=60, cwd=str(ROOT),
+                )
+                if r.returncode == 0:
+                    self._send_json({'ok': True, 'msg': r.stdout.strip()})
+                else:
+                    self._send_json({'ok': False, 'error': (r.stderr or r.stdout).strip()}, status=500)
+            except Exception as exc:
+                self._send_json({'ok': False, 'error': str(exc)}, status=500)
             return
 
     def do_OPTIONS(self):
