@@ -20,14 +20,14 @@ Return the active frequency-security modeling mode from `ENV["FREQUENCY_MODEL_MO
 """
 function frequency_model_mode()
     raw = lowercase(strip(get(ENV, "FREQUENCY_MODEL_MODE", "legacy")))
-    if raw in ("legacy", "classic", "affine")
+    if raw in ("legacy", "classic", "affine", "affine_fitting")
         return :legacy
     elseif raw in ("hd_region", "hd", "frsr", "hd_estimation")
         return :hd_region
     elseif raw in ("hybrid", "both")
         return :hybrid
     end
-    throw(ArgumentError("Unsupported FREQUENCY_MODEL_MODE=$(raw); expected one of: legacy, hd_region, hybrid"))
+    throw(ArgumentError("Unsupported FREQUENCY_MODEL_MODE=$(raw); expected one of: affine_fitting (legacy), hd_region, hybrid"))
 end
 
 function frequency_contingency_size(units, Δp_contingency)
