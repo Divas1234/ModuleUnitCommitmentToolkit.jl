@@ -138,6 +138,21 @@ function bd_subfunction(
     _units_upramp_constr, _units_downramp_constr = constrs.ramp[2], constrs.ramp[3]
     _units_pwlpower_sum_constr, _units_pwlblock_upbound_constr, _units_pwlblock_dwbound_constr = constrs.pwl[2], constrs.pwl[3], constrs.pwl[4]
     _transmissionline_powerflow_upbound_constr, _transmissionline_powerflow_downbound_constr = constrs.transmission[2], constrs.transmission[3]
+
+    # Second-stage frequency reserve constraints (QSS & SFR/FCR) couple sr⁺ with fixed x;
+    # first-stage x-only frequency constraints (RoCoF, H-D cuts / affine nadir) live in master.
+    _freq_qss_constr = nothing
+    _freq_sfr_constr = nothing
+    if config_param.consider_frequency_control == 1 &&
+       haskey(JuMP.object_dictionary(scuc_subproblem), :x) &&
+       haskey(JuMP.object_dictionary(scuc_subproblem), :sr⁺)
+        x_sub = scuc_subproblem[:x]
+        qss_limit_hz = frequency_env_float("FREQUENCY_QSS_LIMIT_HZ", 5.0)
+        nadir_limit_hz = frequency_env_float("FREQUENCY_NADIR_LIMIT_HZ", qss_limit_hz)
+        fcr_threshold = frequency_env_float("FREQUENCY_FCR_THRESHOLD", 0.025)
+        _freq_qss_constr = add_qss_frequency_constraints!(scuc_subproblem, NT, NG, NS_copy, units, x_sub, qss_limit_hz)
+        _freq_sfr_constr = add_sfr_reserve_constraints!(scuc_subproblem, NT, NG, NS_copy, units, x_sub, max(nadir_limit_hz, eps(Float64)), fcr_threshold)
+    end
     # @show model_summary(scuc_subproblem)
 
     if get(ENV, "BENDERS_SHOW_MODEL_SUMMARY", "0") == "1"
@@ -172,7 +187,14 @@ function bd_subfunction(
     all_constraints_dict[:key_units_pwlblock_dwbound_constr] = vec(_units_pwlblock_dwbound_constr)
     all_constraints_dict[:key_units_pwlpower_sum_constr] = vec(_units_pwlpower_sum_constr)
     all_constraints_dict[:key_units_upramp_constr] = vec(collect(Iterators.flatten(_units_upramp_constr)))
-    fields = [Symbol(string(k)[5:end]) for k in keys(all_constraints_dict) if startswith(string(k), "key_")]
+    if _freq_qss_constr !== nothing
+        all_constraints_dict[:key_freq_qss_constr] = vec(_freq_qss_constr)
+    end
+    if _freq_sfr_constr !== nothing
+        all_constraints_dict[:key_freq_sfr_constr] = vec(_freq_sfr_constr)
+    end
+    valid_struct_fields = Set(fieldnames(SCUCModel_constraints))
+    fields = [Symbol(string(k)[5:end]) for k in keys(all_constraints_dict) if startswith(string(k), "key_") && Symbol(string(k)[5:end]) in valid_struct_fields]
     sub_cons = build_constraints(; (f => all_constraints_dict[Symbol("key_", f)] for f in fields)...)
 
     # NOTE - save the reformated constraints in a dictionary for easy access

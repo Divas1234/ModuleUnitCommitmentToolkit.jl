@@ -70,6 +70,7 @@ function bd_masterfunction(
     _master_supply_adequacy_constr = add_master_supply_adequacy_constraints!(scuc_masterproblem, NT, NG, ND, NW, units, loads, winds)
     _master_storage_binary_constr = add_master_storage_binary_constraints!(scuc_masterproblem, NT, NC, NS, config_param)
     _frequency_constr = add_frequency_constraints!(scuc_masterproblem, NT, NG, NC, NS, units, nothing, config_param, Δp_contingency; winds = winds)
+    _master_freq_feas_constr = add_master_frequency_feasibility_cuts!(scuc_masterproblem, NT, NG, units, config_param)
     # add_curtailment_constraints!(scuc_masterproblem, NT, ND, NW, NS, loads, winds)
     # add_generator_power_constraints!(scuc_masterproblem, NT, NG, NS, units)
     # add_reserve_constraints!(scuc_masterproblem, NT, NG, NC, NS, units, loads, winds, config_param)
@@ -196,6 +197,48 @@ function add_master_supply_adequacy_constraints!(
     )
     println("\t constraints: master supply adequacy cuts\t\t\t\t done")
     return (supply = supply_adequacy, reserve = reserve_adequacy)
+end
+
+function add_master_frequency_feasibility_cuts!(
+    scuc_masterproblem::Model,
+    NT::Int64,
+    NG::Int64,
+    units::unit,
+    config_param::config,
+)
+    if config_param.consider_frequency_control == 0 || !haskey(JuMP.object_dictionary(scuc_masterproblem), :x)
+        return nothing
+    end
+    x = scuc_masterproblem[:x]
+    qss_limit_hz = frequency_env_float("FREQUENCY_QSS_LIMIT_HZ", 5.0)
+    nadir_limit_hz = max(frequency_env_float("FREQUENCY_NADIR_LIMIT_HZ", qss_limit_hz), eps(Float64))
+    fcr_threshold = frequency_env_float("FREQUENCY_FCR_THRESHOLD", 0.025)
+    qss_contingency = frequency_contingency_size(units, 0.0)
+
+    # Exact first-stage projections of subproblem (sr⁺, x) frequency reserve bounds:
+    # 1) Per-unit SFR reserve lower bound <= generator headroom (p_max - p_min)
+    sfr_unit_feas = ConstraintRef[]
+    for i in 1:NG
+        sfr_req = unit_primary_response_coeff(units, i) * nadir_limit_hz * fcr_threshold
+        headroom = max(0.0, safe_frequency_coeff(units.p_max, i) - safe_frequency_coeff(units.p_min, i))
+        if sfr_req > headroom + 1.0e-9
+            for t in 1:NT
+                push!(sfr_unit_feas, @constraint(scuc_masterproblem, x[i, t] == 0))
+            end
+        end
+    end
+
+    # 2) System QSS headroom + damping >= contingency
+    qss_headroom = @constraint(
+        scuc_masterproblem,
+        [t = 1:NT],
+        sum(
+            (max(0.0, safe_frequency_coeff(units.p_max, i) - safe_frequency_coeff(units.p_min, i)) +
+             safe_frequency_coeff(units.Dg, i) * safe_frequency_coeff(units.p_max, i) * qss_limit_hz) * x[i, t] for i in 1:NG
+        ) >= qss_contingency
+    )
+    println("\t constraints: master frequency reserve feasibility cuts\t\t done")
+    return (sfr_unit_feas = sfr_unit_feas, qss_headroom = qss_headroom)
 end
 
 # Helper function to define first-stage decision variables
