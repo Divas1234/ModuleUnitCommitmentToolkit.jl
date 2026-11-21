@@ -1,4 +1,59 @@
-"""Named request, input, result, and compatibility types for the public UC API."""
+"""Named request, input, problem data, result, and compatibility types for the public UC API."""
+
+"""
+    UCProblemData
+
+Strongly typed problem data container unifying all system dimensions and component
+structs so solvers, validators, and constraint builders accept a single structured
+argument instead of 15-20 positional parameters.
+"""
+struct UCProblemData{C, U, L, D, S, W, DC}
+    config_param::C
+    units::U
+    lines::L
+    loads::D
+    storages::S
+    winds::W
+    data_centers::DC
+    NB::Int64
+    NG::Int64
+    NL::Int64
+    ND::Int64
+    NT::Int64
+    NC::Int64
+    ND2::Int64
+    NW::Int64
+    NS::Int64
+end
+
+function UCProblemData(data::NamedTuple)
+    return UCProblemData(
+        data.config_param,
+        data.units,
+        data.lines,
+        data.loads,
+        hasproperty(data, :storages) ? data.storages : data.psses,
+        data.winds,
+        data.data_centers,
+        Int64(data.NB),
+        Int64(data.NG),
+        Int64(data.NL),
+        Int64(data.ND),
+        Int64(data.NT),
+        Int64(data.NC),
+        Int64(data.ND2),
+        Int64(data.NW),
+        Int64(data.NS),
+    )
+end
+
+function Base.getproperty(data::UCProblemData, name::Symbol)
+    name === :psses && return getfield(data, :storages)
+    name === :DataCentras && return getfield(data, :data_centers)
+    return getfield(data, name)
+end
+
+Base.getindex(data::UCProblemData, name::Symbol) = getproperty(data, name)
 
 struct UCInputSpec
     source::Symbol

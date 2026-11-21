@@ -16,11 +16,22 @@ if !isdefined(@__MODULE__, :_CLUSTERED_PCM_NETWORK_DISPATCH_INCLUDED)
 	3. 以最小化成本为目标，求解出力、备用、水电出力和弃风量（*解群*）
 	"""
 
+	function _resolve_pcm_optimizer(optimizer)
+		optimizer !== nothing && return optimizer
+		if isdefined(@__MODULE__, :default_uc_optimizer)
+			return default_uc_optimizer()
+		end
+		if isdefined(@__MODULE__, :Gurobi)
+			return getfield(@__MODULE__, :Gurobi).Optimizer
+		end
+		error("No optimizer specified for PCM solver; pass `optimizer = ...` or configure `set_default_uc_optimizer!`.")
+	end
+
 	function solve_clustered_physical_network_dispatch(
-			x, y, z, units, loads, winds, hydros, lines, gsdf, config_param, NT, ND, NW, NH; optimizer = Gurobi.Optimizer, tolerance = 1e-5)
+			x, y, z, units, loads, winds, hydros, lines, gsdf, config_param, NT, ND, NW, NH; optimizer = nothing, tolerance = 1e-5)
 		NG=size(x, 1)
 		NL=size(gsdf, 1)
-		m=Model(optimizer)
+		m=Model(_resolve_pcm_optimizer(optimizer))
 		set_silent(m)
 		@variable(m, p[1:NG, 1:NT]>=0)
 		@variable(m, ru[1:NG, 1:NT]>=0)

@@ -7,11 +7,21 @@ if !isdefined(@__MODULE__, :_PERIOD_SCUC_MODULES_INCLUDED)
     # Module Dependencies and Includes
     #---------------------------------------------------------------------------------------------------
 
-    include("../../../src/environment_config.jl")
-    include("../../../src/unit_commitment/constraints/constraints.jl")
-    include("../../../src/unit_commitment/objectives/objectives.jl")
-    include("../../../src/unit_commitment/utilities/utilities.jl")
-    include("../../../src/unit_commitment/validation/validation.jl")
+    if !isdefined(@__MODULE__, :Gurobi)
+        include("../../../src/environment_config.jl")
+    end
+    if !isdefined(@__MODULE__, :apply_scuc_constraints!)
+        include("../../../src/unit_commitment/constraints/constraints.jl")
+    end
+    if !isdefined(@__MODULE__, :set_objective!)
+        include("../../../src/unit_commitment/objectives/objectives.jl")
+    end
+    if !isdefined(@__MODULE__, :define_decision_variables!)
+        include("../../../src/unit_commitment/utilities/utilities.jl")
+    end
+    if !isdefined(@__MODULE__, :validate_inputs)
+        include("../../../src/unit_commitment/validation/validation.jl")
+    end
     include("../clustered/clustered_pcm.jl")
     const PCM_CLUSTER_ATTEMPTS = Ref(0)
     const PCM_CLUSTER_SUCCESSES = Ref(0)

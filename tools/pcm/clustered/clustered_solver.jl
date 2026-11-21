@@ -296,7 +296,7 @@ if !isdefined(@__MODULE__, :_TRUE_CLUSTERED_PCM_SOLVER_INCLUDED)
 			 min_down = max(1, maximum(round.(Int, units.min_shutdown_time[g])))) for (k, g) ∈ enumerate(groups)]
 	end
 
-	function solve_true_clustered_pcm_window(NT, NB, NG, ND, units, loads, winds, lines, config_param, NL, hydros, NH; optimizer = Gurobi.Optimizer,
+	function solve_true_clustered_pcm_window(NT, NB, NG, ND, units, loads, winds, lines, config_param, NL, hydros, NH; optimizer = nothing,
 			tolerance = 1e-5, feedback_lines = Int[], iteration = 1, max_iterations = 6,
 			max_cluster_size::Int = typemax(Int), refinement_used::Bool = false,
 			physical_cuts::Vector{NamedTuple} = NamedTuple[], physical_iteration::Int = 1,
@@ -305,6 +305,7 @@ if !isdefined(@__MODULE__, :_TRUE_CLUSTERED_PCM_SOLVER_INCLUDED)
 			max_targeted_refinements::Int = parse(Int, get(ENV, "PCM_CLUSTER_MAX_TARGETED_REFINEMENTS", "12")),
 			use_output_state::Bool = true,
 			output_bins::Int = parse(Int, get(ENV, "PCM_CLUSTER_OUTPUT_BINS", "9")))
+		optimizer = _resolve_pcm_optimizer(optimizer)
 		# The clustered master is copper-plate by default. Bus identity is only
 		# part of homogeneity when network constraints are actually represented.
 		cluster_preprocess_start = time()

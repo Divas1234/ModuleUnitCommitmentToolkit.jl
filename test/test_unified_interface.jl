@@ -106,11 +106,22 @@
     try
         register_uc_exporter!(:mock_json_sink, (res; output_dir = nothing) -> (ok = true, dir = output_dir))
         @test :mock_json_sink in registered_uc_exporters()
-        exported = run_uc_exporters(UCSolveResult(:benchmark, :excel, 1, "OPTIMAL", 0.0, 0.0, 0.0, 0.0, nothing, nothing, nothing, nothing); output_dir = "tmp/out")
+        exported = run_uc_exporters(UCSolveResult(:benchmark, :excel, "tmp/out", (status = "OPTIMAL",)); output_dir = "tmp/out")
         @test exported[:mock_json_sink].ok
         @test exported[:mock_json_sink].dir == "tmp/out"
     finally
         unregister_uc_exporter!(:mock_json_sink)
     end
     @test !(:mock_json_sink in registered_uc_exporters())
+
+    # P0: Strongly-typed UCProblemData container & compatibility aliases
+    prob = UCProblemData((
+        config_param = :cfg, units = :u, lines = :l, loads = :d,
+        psses = :s, winds = :w, data_centers = :dc,
+        NB = 6, NG = 3, NL = 7, ND = 3, NT = 24, NC = 1, ND2 = 0, NW = 2, NS = 5,
+    ))
+    @test prob.storages === :s
+    @test prob.psses === :s
+    @test prob.DataCentras === :dc
+    @test prob[:NT] == 24
 end

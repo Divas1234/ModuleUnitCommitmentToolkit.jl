@@ -25,6 +25,7 @@ include("solver_interface.jl")
 # Include PCM tools in a submodule for package-level access and LSP indexing
 module SequentialPCM
     using ..ModuleUnitCommitmentToolkit:
+        Gurobi,
         UCConfig,
         ThermalUnits,
         TransmissionLines,
@@ -47,7 +48,18 @@ module SequentialPCM
         uc_env_int,
         uc_env_float,
         uc_load_curtailment_penalty,
-        uc_wind_curtailment_penalty
+        uc_wind_curtailment_penalty,
+        apply_scuc_constraints!,
+        set_objective!,
+        define_decision_variables!,
+        validate_inputs,
+        calculate_gsdf,
+        linearizationfuelcurve,
+        calculate_initial_unit_status,
+        define_contingency_size,
+        solve_and_extract_results,
+        check_var_exists,
+        save_details_scheduled_results
     const hydro = Any
 
     include("../tools/pcm/standard/period_scuc.jl")
@@ -85,6 +97,7 @@ export SUC_scucmodel,
     DataCenters,
     WindUnits,
     UCInputSpec,
+    UCProblemData,
     UCSolveRequest,
     UCSolveResult,
     BendersSetup,
