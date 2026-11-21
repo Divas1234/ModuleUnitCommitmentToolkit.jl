@@ -195,5 +195,24 @@
             @test out.legacy.mode === :legacy
             @test out.hd.mode === :hd_region
         end
+
+        # Time-varying H-D trajectory, binding curves CSV & 2x2 plot export
+        mktempdir() do tmpdir
+            x_sample = ones(Float64, NG, NT)
+            x_sample[3, 1:12] .= 0.0
+            exported = export_hd_frequency_analysis(
+                units,
+                winds,
+                x_sample;
+                output_dir = tmpdir,
+                file_prefix = "test_",
+                plot_enabled = true,
+            )
+            @test isfile(exported.trajectory_csv)
+            @test isfile(exported.binding_curves_csv)
+            @test exported.figure_path !== nothing && isfile(exported.figure_path) && filesize(exported.figure_path) > 1000
+            @test size(exported.analysis.trajectory_df, 1) == NT
+            @test length(exported.analysis.mode_regions) == 2
+        end
     end
 end

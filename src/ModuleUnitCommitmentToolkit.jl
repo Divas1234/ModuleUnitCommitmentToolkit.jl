@@ -177,6 +177,9 @@ export SUC_scucmodel,
     hd_cuts_dataframe,
     extract_uc_hd_parameters,
     add_hd_frequency_constraints!,
+    evaluate_uc_hd_trajectory,
+    plot_hd_time_varying_region,
+    export_hd_frequency_analysis,
     frequency_model_mode
 
 end

@@ -81,6 +81,13 @@ function exported_scheduling_cost(
         cost_summary, units, x₀, u₀, v₀, pg₀, seq_sr⁺, seq_sr⁻, NT, NG,
     )
 
+    if config_param.consider_frequency_control == 1 &&
+       isdefined(@__MODULE__, :frequency_model_mode) &&
+       frequency_model_mode() in (:hd_region, :hybrid) &&
+       isdefined(@__MODULE__, :export_hd_frequency_analysis)
+        export_hd_frequency_analysis(units, winds, x₀; output_dir = output_dir, file_prefix = file_prefix)
+    end
+
     println("UC scheduling results saved to: $output_dir")
     return cost_summary
 end

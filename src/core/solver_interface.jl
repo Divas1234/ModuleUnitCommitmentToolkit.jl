@@ -369,6 +369,18 @@ function _solve_benders_unified(request::UCSolveRequest)
         setup.ND,
         setup.NL,
     )
+    if setup.config_param.consider_frequency_control == 1 &&
+       frequency_model_mode() in (:hd_region, :hybrid) &&
+       haskey(decomposition_result, :incumbent) &&
+       decomposition_result.incumbent !== nothing
+        export_hd_frequency_analysis(
+            setup.units,
+            setup.winds,
+            decomposition_result.incumbent.x;
+            output_dir = uc_scheduling_output_dir("benders"),
+            file_prefix = uc_schedule_file_prefix("benders", setup.NS),
+        )
+    end
     return merge(decomposition_result, (data = setup.data,))
 end
 
