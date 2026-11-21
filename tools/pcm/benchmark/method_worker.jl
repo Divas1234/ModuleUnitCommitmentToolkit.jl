@@ -24,7 +24,7 @@ virtual_units=isdefined(@__MODULE__, :units) && isdefined(@__MODULE__, :build_si
               missing
 integer_variables=physical_units === missing || virtual_units === missing ? missing :
                   3 * WINDOW_HOURS *
-                  (METHOD in ("clustered_pcm", "clustered", "cluster", "clustered_adaptive_overlap") ? virtual_units : physical_units)
+                  (METHOD in ("clustered", "clustered", "cluster", "clustered_adaptive_overlap") ? virtual_units : physical_units)
 total_cost=isdefined(@__MODULE__, :PCM_TOTAL_SCHEDULED_COST) ? sum(PCM_TOTAL_SCHEDULED_COST[end, :]) :
            isdefined(@__MODULE__, :total_scheduled_cost) ? sum(total_scheduled_cost[end, :]) : missing
 solver=try

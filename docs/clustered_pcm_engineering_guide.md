@@ -4,9 +4,9 @@
 
 1. `tools/pcm/standard/pcm_main.jl`：读取数据、固定风电种子、执行滚动窗口。
 2. `tools/pcm/standard/period_scuc.jl`：选择聚类路径或原单机 SCUC。
-3. `tools/pcm/clustered_pcm/master.jl`：建立同质簇和虚拟机组主问题。
+3. `tools/pcm/clustered/master.jl`：建立同质簇和虚拟机组主问题。
 4. `src/unit_commitment/clustered_pcm/disaggregation.jl`：驻留流、路径匹配和网络解群。
-5. `tools/pcm/clustered_pcm/network_dispatch.jl`：固定单机启停路径后的联合网络调度模型。
+5. `tools/pcm/clustered/network_dispatch.jl`：固定单机启停路径后的联合网络调度模型。
 
 ## 调用链
 
@@ -51,7 +51,7 @@ U[g,t] - U[g,t-1] = Y[g,t] - Z[g,t]
 
 ## 网络为什么在第二阶段处理
 
-初始聚类主问题不放完整线路集合，以保留规模优势。路径映射完成后，物理出力通过 PTDF 网络检查；越限线路才反馈到主问题。`tools/pcm/clustered_pcm/network_dispatch.jl` 封装了固定 `U/Y/Z` 后联合调整热机、水电、备用和弃风的第二阶段模型。
+初始聚类主问题不放完整线路集合，以保留规模优势。路径映射完成后，物理出力通过 PTDF 网络检查；越限线路才反馈到主问题。`tools/pcm/clustered/network_dispatch.jl` 封装了固定 `U/Y/Z` 后联合调整热机、水电、备用和弃风的第二阶段模型。
 
 任何需要负荷损失才能成立的解都不应被视为成功的物理解群。
 

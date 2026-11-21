@@ -1,13 +1,13 @@
 #!/usr/bin/env julia
 
-const PROJECT_ROOT = normpath(@__DIR__)
+const PROJECT_ROOT = normpath(joinpath(@__DIR__, ".."))
 const FORMATTER_MODULE = Ref{Module}()
 const DEFAULT_EXCLUDED_DIRS = Set([".git", ".julia", ".pkg", ".codegraph", ".reasonix", ".kilo", "output"])
 
 function print_usage()
     return println("""
            Usage:
-             julia --project=. format_project.jl [--check] [--verbose] [--all] [PATH...]
+             julia --project=. scripts/format_project.jl [--check] [--verbose] [--all] [PATH...]
 
            Modes:
              default     Format Julia files in place.

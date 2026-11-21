@@ -40,8 +40,8 @@ where:
 ## Main Files
 
 - `tools/ccg/driver.jl`: command-line entry point.
-- `tools/ccg/ccg_solver.jl`: master/recourse CCG loop.
-- `tools/ccg/ccg_helpers.jl`: scenario selection and subset helpers.
+- `tools/ccg/solver.jl`: master/recourse CCG loop.
+- `tools/ccg/helpers.jl`: scenario selection and subset helpers.
 - `tools/ccg/dro_uncertainty.jl`: Wasserstein distance matrix, transport LP, and DRO objective.
 - `src/renewables/renewable_simulation.jl`: renewable scenario generation.
 

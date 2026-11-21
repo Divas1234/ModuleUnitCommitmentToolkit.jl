@@ -17,5 +17,5 @@ if !isdefined(@__MODULE__, :wind)
 end
 
 if !isdefined(@__MODULE__, :each_period_scucmodel_modules)
-    include("../../standard_pcm/period_scuc.jl")
+    include("../../standard/period_scuc.jl")
 end

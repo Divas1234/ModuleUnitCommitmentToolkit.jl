@@ -44,7 +44,7 @@ include(joinpath(PROJECT_ROOT, "tools", "benders", "decomposition.jl"))
 
 # Include the Column-and-Constraint Generation (CCG) solver files.
 # Include the Column-and-Constraint Generation solver files.
-include(joinpath(PROJECT_ROOT, "tools", "ccg", "ccg_solver.jl"))
+include(joinpath(PROJECT_ROOT, "tools", "ccg", "solver.jl"))
 
 # Include the Extensive-Form benchmark solver files.
 # Include the extensive-form benchmark solver files.

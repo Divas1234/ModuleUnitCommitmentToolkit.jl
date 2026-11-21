@@ -275,7 +275,7 @@ result = solve_benchmark_uc_powersystems(
 ### 4.2 C&CG
 
 ```julia
-include("tools/ccg/ccg_solver.jl")
+include("tools/ccg/solver.jl")
 
 result = solve_ccg_unit_commitment(
     input = :powersystems,

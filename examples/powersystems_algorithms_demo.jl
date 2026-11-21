@@ -30,7 +30,7 @@ include("../src/renewables/stochastic_simulation.jl")
 include("../src/input_data/readers.jl")
 include("../src/unit_commitment/unit_commitment_model.jl")
 include("../tools/benders/setup.jl")
-include("../tools/ccg/ccg_solver.jl")
+include("../tools/ccg/solver.jl")
 include("../tools/benchmark/benchmark_uc.jl")
 
 println("======================================================================")

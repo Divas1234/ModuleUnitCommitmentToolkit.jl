@@ -14,7 +14,7 @@ end
 
 include("../../../../src/renewables/stochastic_simulation.jl")
 include("../../../../src/input_data/readers.jl")
-include("../../standard_pcm/period_scuc.jl")
+include("../../standard/period_scuc.jl")
 include("../core/pcm_overlap_core.jl")
 
 function repeat_time_series_to_horizon(curve::AbstractMatrix{<:Real}, target_hours::Int)

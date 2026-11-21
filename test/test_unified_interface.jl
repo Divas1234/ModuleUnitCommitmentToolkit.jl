@@ -89,4 +89,28 @@
     @test excel_req.input.horizon == 6
     @test excel_req.input.data_file == "data/data.xlsx"
     @test excel_req.optimizer === sentinel_opt
+
+    # Extensibility: pluggable input data loader registry
+    try
+        register_uc_data_loader!(:mock_external_grid, (; kwargs...) -> (source = :mock_external_grid, horizon = kwargs[:horizon]))
+        @test :mock_external_grid in registered_uc_data_loaders()
+        loaded_custom = load_uc_data(input = :mock_external_grid, horizon = 12)
+        @test loaded_custom.source == :mock_external_grid
+        @test loaded_custom.horizon == 12
+    finally
+        unregister_uc_data_loader!(:mock_external_grid)
+    end
+    @test !(:mock_external_grid in registered_uc_data_loaders())
+
+    # Extensibility: pluggable result exporter registry
+    try
+        register_uc_exporter!(:mock_json_sink, (res; output_dir = nothing) -> (ok = true, dir = output_dir))
+        @test :mock_json_sink in registered_uc_exporters()
+        exported = run_uc_exporters(UCSolveResult(:benchmark, :excel, 1, "OPTIMAL", 0.0, 0.0, 0.0, 0.0, nothing, nothing, nothing, nothing); output_dir = "tmp/out")
+        @test exported[:mock_json_sink].ok
+        @test exported[:mock_json_sink].dir == "tmp/out"
+    finally
+        unregister_uc_exporter!(:mock_json_sink)
+    end
+    @test !(:mock_json_sink in registered_uc_exporters())
 end

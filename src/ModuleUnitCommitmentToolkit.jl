@@ -27,8 +27,8 @@ module SequentialPCM
     using ..ModuleUnitCommitmentToolkit: config, unit, transmissionline, load, data_centra, wind
     const hydro = Any
 
-    include("../tools/pcm/standard_pcm/period_scuc.jl")
-    include("../tools/pcm/clustered_overlap_pcm/core/pcm_overlap_core.jl")
+    include("../tools/pcm/standard/period_scuc.jl")
+    include("../tools/pcm/clustered_overlap/core/pcm_overlap_core.jl")
 end
 
 # Public package-level entry points. Algorithm drivers under `tools/` remain the
@@ -66,6 +66,13 @@ export SUC_scucmodel,
     register_uc_algorithm!,
     unregister_uc_algorithm!,
     registered_uc_algorithms,
+    register_uc_data_loader!,
+    unregister_uc_data_loader!,
+    registered_uc_data_loaders,
+    register_uc_exporter!,
+    unregister_uc_exporter!,
+    registered_uc_exporters,
+    run_uc_exporters,
     register_uc_constraint_hook!,
     registered_uc_constraint_hooks,
     clear_uc_constraint_hooks!,

@@ -7,7 +7,7 @@ src/unit_commitment/clustered_pcm/
 ├── clustered_pcm.jl      # src 统一入口
 └── disaggregation.jl     # 驻留流、路径和物理解群
 
-tools/pcm/clustered_pcm/
+tools/pcm/clustered/
 ├── clustered_pcm.jl      # PCM 聚类统一入口
 ├── adapter.jl            # 旧 PCM 接口适配
 ├── master.jl             # 聚类主问题

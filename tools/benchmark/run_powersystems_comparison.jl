@@ -6,7 +6,7 @@ using XLSX
 using CSV
 using DataFrames
 using Dates
-include(joinpath(@__DIR__, "..", "ccg", "ccg_solver.jl"))
+include(joinpath(@__DIR__, "..", "ccg", "solver.jl"))
 
 const PSY = PowerSystems
 

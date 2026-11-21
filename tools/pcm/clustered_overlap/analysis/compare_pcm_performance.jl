@@ -15,7 +15,7 @@ using Printf, Statistics
 include("../paths.jl")
 include("../../../../src/renewables/stochastic_simulation.jl")
 include("../../../../src/input_data/readers.jl")
-include("../../standard_pcm/period_scuc.jl")
+include("../../standard/period_scuc.jl")
 include("../core/pcm_overlap_core.jl")
 
 println("\n" * "="^80)

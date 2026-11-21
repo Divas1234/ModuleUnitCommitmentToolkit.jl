@@ -16,7 +16,7 @@ isdefined(@__MODULE__, :PCM_FORMULATION_NAME) ||
 
 include("../../src/renewables/stochastic_simulation.jl")
 include("../../src/input_data/readers.jl")
-include("standard_pcm/period_scuc.jl")
+include("standard/period_scuc.jl")
 include("config/load_profiles.jl")
 
 using Random

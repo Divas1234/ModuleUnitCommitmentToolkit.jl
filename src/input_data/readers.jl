@@ -17,13 +17,58 @@ export readxlssheet,
     list_powersystems_cases,
     extract_uc_data_from_powersystems,
     generate_wind_scenarios_from_system,
-    load_native_powersystems_case
+    load_native_powersystems_case,
+    register_uc_data_loader!,
+    unregister_uc_data_loader!,
+    registered_uc_data_loaders
+
+const _UC_DATA_LOADER_REGISTRY = Dict{Symbol, Function}()
+
+"""
+    register_uc_data_loader!(name::Symbol, loader::Function)
+
+Register a custom input data loader under `name` so `load_uc_data(input = name, ...)`
+and `solve_uc(input = name, ...)` can ingest external data sources (e.g. JSON, MATPOWER,
+CSV, database, or in-memory structs) without modifying core toolkit files.
+
+`loader` is called with keyword arguments matching `load_uc_data` and must return a
+NamedTuple containing the standard UC data fields (`config_param`, `units`, `lines`,
+`loads`, `psses`, `winds`, `NB`, `NG`, `NL`, `ND`, `NT`, `NC`, `ND2`, `NW`, `NS`,
+`data_centers`).
+"""
+function register_uc_data_loader!(name::Symbol, loader::Function)
+    canonical = Symbol(lowercase(replace(string(name), '-' => '_', ' ' => '_')))
+    _UC_DATA_LOADER_REGISTRY[canonical] = loader
+    return canonical
+end
+
+"""
+    unregister_uc_data_loader!(name::Symbol)
+
+Remove a previously registered custom input data loader.
+"""
+function unregister_uc_data_loader!(name::Symbol)
+    canonical = Symbol(lowercase(replace(string(name), '-' => '_', ' ' => '_')))
+    delete!(_UC_DATA_LOADER_REGISTRY, canonical)
+    return canonical
+end
+
+"""
+    registered_uc_data_loaders()
+
+Return the sorted list of input source identifiers accepted by `load_uc_data`.
+"""
+function registered_uc_data_loaders()
+    return sort!(collect(union(Set((:excel, :powersystems, :powersystems_csv)), keys(_UC_DATA_LOADER_REGISTRY))))
+end
 
 function _normalize_input_source(input, use_powersystems, sys, case_name, case_dir)
     source = lowercase(replace(string(input), '-' => '_', ' ' => '_'))
     source = source == "power_systems" ? "powersystems" : source
-    source in ("excel", "powersystems", "powersystems_csv") ||
-        throw(ArgumentError("input must be :excel, :powersystems, or :powersystems_csv; got $(input)"))
+    source_sym = Symbol(source)
+    if !(source_sym in (:excel, :powersystems, :powersystems_csv)) && !haskey(_UC_DATA_LOADER_REGISTRY, source_sym)
+        throw(ArgumentError("input must be one of $(registered_uc_data_loaders()); got $(input)"))
+    end
 
     if source == "powersystems" && !isempty(case_dir) && case_name === nothing
         source = "powersystems_csv"
@@ -70,6 +115,22 @@ function load_uc_data(;
     data_file::Union{Nothing, AbstractString} = nothing,
 )
     input_source = _normalize_input_source(input, use_powersystems, sys, case_name, case_dir)
+    if haskey(_UC_DATA_LOADER_REGISTRY, input_source)
+        return _UC_DATA_LOADER_REGISTRY[input_source](;
+            input = input_source,
+            scenario_limit = scenario_limit,
+            sys = sys,
+            case_name = case_name,
+            case_category = case_category,
+            case_dir = case_dir,
+            data_center_buses = data_center_buses,
+            data_center_pmax = data_center_pmax,
+            frequency_parameters = frequency_parameters,
+            data_centers = data_centers,
+            horizon = horizon,
+            data_file = data_file,
+        )
+    end
     if input_source == :powersystems
         if case_name !== nothing
             sys === nothing || throw(ArgumentError("Pass either sys or case_name, not both"))

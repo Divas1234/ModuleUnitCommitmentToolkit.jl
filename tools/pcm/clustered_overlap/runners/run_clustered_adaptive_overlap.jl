@@ -9,7 +9,7 @@ using Printf, Statistics, CSV, DataFrames, Random
 include("../paths.jl")
 include("../../../../src/renewables/stochastic_simulation.jl")
 include("../../../../src/input_data/readers.jl")
-include("../../standard_pcm/period_scuc.jl")
+include("../../standard/period_scuc.jl")
 include("../../config/load_profiles.jl")
 include("../core/pcm_overlap_core.jl")
 

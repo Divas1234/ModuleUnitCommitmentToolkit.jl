@@ -27,11 +27,11 @@ include(joinpath(PROJECT_ROOT, "tools", "benders", "models", "batch_subproblems.
 ccg_env_bool(name::String, default::Bool) = uc_env_bool(name, default)
 
 include(joinpath(PROJECT_ROOT, "tools", "ccg", "dro_uncertainty.jl"))
-include(joinpath(PROJECT_ROOT, "tools", "ccg", "ccg_helpers.jl"))
+include(joinpath(PROJECT_ROOT, "tools", "ccg", "helpers.jl"))
 include(joinpath(PROJECT_ROOT, "src", "api_types.jl"))
 include(joinpath(PROJECT_ROOT, "src", "output_reporting.jl"))
 include(joinpath(PROJECT_ROOT, "src", "solver_interface.jl"))
-include(joinpath(PROJECT_ROOT, "tools", "pcm", "clustered_pcm", "clustered_pcm.jl"))
+include(joinpath(PROJECT_ROOT, "tools", "pcm", "clustered", "clustered_pcm.jl"))
 
 @testset "module_unitcommitment" begin
     include("test_runtime_config.jl")
@@ -51,8 +51,8 @@ include(joinpath(PROJECT_ROOT, "tools", "pcm", "clustered_pcm", "clustered_pcm.j
     include("test_clustered_pcm_adapter.jl")
     include("test_clustered_pcm_solver.jl")
     include("test_clustered_pcm_costs.jl")
-    include("test_three_method_benchmark.jl")
-    include("test_two_scale_benchmark.jl")
+    include("test_pcm_three_method_benchmark.jl")
+    include("test_pcm_two_scale_benchmark.jl")
     include("test_overlap_training_cache.jl")
     include("test_clustered_adaptive_overlap.jl")
 end

@@ -2,7 +2,7 @@
 using Dates
 using JuMP
 
-include(joinpath(@__DIR__, "..", "ccg", "ccg_solver.jl"))
+include(joinpath(@__DIR__, "..", "ccg", "solver.jl"))
 include(joinpath(@__DIR__, "benchmark_uc.jl"))
 
 const ALGORITHM_OUTPUT_ROOT = uc_output_root()

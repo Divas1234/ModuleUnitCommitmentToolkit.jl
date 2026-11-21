@@ -68,6 +68,54 @@ function registered_uc_algorithms()
     return sort!(collect(union(Set((:benchmark, :benders, :ccg)), keys(_UC_ALGORITHM_REGISTRY))))
 end
 
+const _UC_EXPORTER_REGISTRY = Dict{Symbol, Function}()
+
+"""
+    register_uc_exporter!(name::Symbol, exporter::Function)
+
+Register a result exporter hook `exporter(result::UCSolveResult; output_dir = nothing)`
+for external pipelines (e.g. Parquet, JSON telemetry, database, or GUI sinks).
+"""
+function register_uc_exporter!(name::Symbol, exporter::Function)
+    canonical = Symbol(_normalize_algorithm_key(name))
+    _UC_EXPORTER_REGISTRY[canonical] = exporter
+    return canonical
+end
+
+"""
+    unregister_uc_exporter!(name::Symbol)
+
+Remove a previously registered result exporter hook.
+"""
+function unregister_uc_exporter!(name::Symbol)
+    canonical = Symbol(_normalize_algorithm_key(name))
+    delete!(_UC_EXPORTER_REGISTRY, canonical)
+    return canonical
+end
+
+"""
+    registered_uc_exporters()
+
+Return the sorted list of registered result exporter names.
+"""
+function registered_uc_exporters()
+    return sort!(collect(keys(_UC_EXPORTER_REGISTRY)))
+end
+
+"""
+    run_uc_exporters(result::UCSolveResult; output_dir = nothing)
+
+Invoke all registered result exporters on `result` and return a `Dict{Symbol, Any}`
+mapping exporter names to their return values.
+"""
+function run_uc_exporters(result::UCSolveResult; output_dir = nothing)
+    outputs = Dict{Symbol, Any}()
+    for name in registered_uc_exporters()
+        outputs[name] = _UC_EXPORTER_REGISTRY[name](result; output_dir = output_dir)
+    end
+    return outputs
+end
+
 function _resolve_tools_path(project_root::AbstractString, parts::AbstractString...)
     for dir_name in ("tools", "Tools")
         candidate = joinpath(project_root, dir_name, parts...)
@@ -79,7 +127,7 @@ end
 function _ensure_uc_algorithm_modules!()
     if !_UC_ALGORITHM_MODULES_READY[]
         project_root = normpath(joinpath(@__DIR__, ".."))
-        include(_resolve_tools_path(project_root, "ccg", "ccg_solver.jl"))
+        include(_resolve_tools_path(project_root, "ccg", "solver.jl"))
         include(_resolve_tools_path(project_root, "benchmark", "benchmark_uc.jl"))
         _UC_ALGORITHM_MODULES_READY[] = true
     end

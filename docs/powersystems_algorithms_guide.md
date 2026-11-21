@@ -250,7 +250,7 @@ println("Benders Upper Bound: ", res_benders.upper_bound)
 Generates recourse constraints and dispatch columns dynamically based on identifying worst-case scenarios. CCG is particularly suited for robust optimization and Distributionally Robust Optimization (DRO):
 
 ```julia
-include("tools/ccg/ccg_solver.jl")
+include("tools/ccg/solver.jl")
 
 # Solve stochastic UC using Column-and-Constraint Generation. The solver
 # accepts input-selection keywords; it does not take the `load_uc_data` result
@@ -298,8 +298,8 @@ The behavior of the algorithms, penalties, and solvers is controlled through the
 
 ## 7. Runnable Example Code
 
-A complete, runnable example script containing detailed bilingual (English/Chinese) comments is located at [docs/powersystems_example.jl](powersystems_example.jl). You can run it directly from the terminal:
+A complete, runnable example script containing detailed bilingual (English/Chinese) comments is located at [examples/powersystems_example.jl](powersystems_example.jl). You can run it directly from the terminal:
 
 ```bash
-julia --project=. docs/powersystems_example.jl
+julia --project=. examples/powersystems_example.jl
 ```

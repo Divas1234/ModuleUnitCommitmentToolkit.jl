@@ -2,22 +2,22 @@
 
 ```text
 tools/pcm/
-├── standard_pcm/             # 常规固定窗口 PCM / 单机 SCUC
+├── standard/             # 常规固定窗口 PCM / 单机 SCUC
 │   ├── main.jl
 │   └── period_scuc.jl
-├── clustered_overlap_pcm/    # 单机/聚类自适应交叠窗统一实现
+├── clustered_overlap/    # 单机/聚类自适应交叠窗统一实现
 │   ├── core/                 # 按工业职责拆分的交叠窗核心组件
 │   ├── runners/              # 可执行仿真流程
 │   ├── analysis/             # 性能比较和准则评估
 │   ├── data_tools/           # 离线样本与负荷数据工具
-│   ├── STEADY_STATE_OVERLAP.md # 稳态交叠窗说明
+│   ├── steady_state_overlap.md # 稳态交叠窗说明
 │   └── paths.jl              # 项目相对路径统一定义
 ├── clustered_pcm/            # 同质聚类、驻留解群与网络再调度
 │   ├── clustered_pcm.jl
 │   ├── adapter.jl
 │   ├── clustered_solver.jl
 │   └── network_dispatch.jl
-├── integrated_pcm/           # 完整时域 UC 参考入口
+├── integrated/           # 完整时域 UC 参考入口
 ├── benchmark/                # 批量实验编排、单进程计量、双规模对比
 ├── config/                   # 运行配置与负荷模式
 ├── results/                  # 统一结果清单导出
@@ -28,7 +28,7 @@ tools/pcm/
 
 新增代码应放入对应方法目录，不再继续堆放到 `tools/pcm` 根目录。
 
-固定窗方法采用策略注入：`standard_pcm/main.jl` 注入物理单机窗求解器，
+固定窗方法采用策略注入：`standard/main.jl` 注入物理单机窗求解器，
 `clustered_pcm/main.jl` 注入聚类主问题与物理解群求解器；两者共同调用
 `rolling_pcm_driver.jl` 管理数据、滚动边界、结果累计与落盘，方法入口之间不再互相包含。
 
@@ -116,14 +116,14 @@ julia --project=pkg tools/pcm/benchmark/scale_runner.jl
 $env:MODULE_UC_DATA_FILE='data/data_118_clustered_pcm.xlsx'
 $env:PCM_LOAD_PROFILE='smooth'
 $env:PCM_SOLVER='gurobi'
-julia --project=pkg tools/pcm/clustered_overlap_pcm/data_tools/offline_dataset_generator.jl
+julia --project=pkg tools/pcm/clustered_overlap/data_tools/offline_dataset_generator.jl
 ```
 
 训练数据会按算例文件内容哈希、机组/网络规模、负荷模式、求解器、滚动窗口、训练模式和负荷/风电曲线指纹保存到 `output/pcm_training_cache/overlap_training_cache/<signature>/`。后续运行 adaptive_overlap 时，终端会打印 `Training cache: HIT` 并直接复用；算例、负荷模式或关键配置变化时打印 `MISS`，不会错误复用旧数据。需要强制重训时设置 `PCM_FORCE_TRAINING=1`。大规模算例可设置 `PCM_TRAINING_MODE=fast_max_overlap`，对当前 case 的四个扰动场景实际求解特征，并以当前最大交叠标注训练样本，避免逐一扫掠 0–12 h。
 
 自适应在线决策默认在终端打印关键判据：边界状态、稳态特征、预测交叠、驻留约束、爬坡事件和最终 `max(...)` 决策。可设置 `PCM_OVERLAP_VERBOSE=0` 关闭。
 
-`clustered_overlap_pcm/core` 采用“入口 + 单一职责组件”的组织方式：
+`clustered_overlap/core` 采用“入口 + 单一职责组件”的组织方式：
 
 - `pcm_overlap_core.jl`：唯一实际装载入口；使用 IDE 可索引的显式依赖顺序加载核心功能。
 - `pcm_dependencies.jl`：数据结构与标准 PCM 求解器的静态依赖契约，支持 core 独立加载和 IDE 跳转。
