@@ -1,7 +1,6 @@
-include("src/environment_config.jl");
-include("src/renewables/stochastic_simulation.jl");
-include("src/input_data/readers.jl");
-include("src/unit_commitment/unit_commitment_model.jl");
+using Pkg
+Pkg.activate(@__DIR__)
+using ModuleUnitCommitmentToolkit
 
 # Destructure directly from function call for clarity
 # Read data from Excel sheet

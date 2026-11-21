@@ -57,6 +57,10 @@ end
 # Public package-level entry points. Algorithm drivers under `tools/` remain the
 # implementation and compatibility layer behind the unified entry point.
 export SUC_scucmodel,
+    readxlssheet,
+    forminputdata,
+    genscenario,
+    save_details_scheduled_results,
     load_uc_data,
     config_from_env,
     load_runtime_config!,
