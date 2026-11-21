@@ -1,9 +1,9 @@
 #!/usr/bin/env julia
 # PCM 四方案统一入口：配置、运行、结果拼接和清单导出均由此文件完成。
 
-include("../config/suite_config.jl")
+include("suite_config.jl")
 include("suite_runner.jl")
-include(joinpath("..", "results", "export_result_catalog.jl"))
+include("catalog_exporter.jl")
 
 using .PCMSuiteConfig
 using .PCMThreeMethodBenchmark

@@ -35,7 +35,7 @@ include(joinpath(PROJECT_ROOT, "tools", "ccg", "helpers.jl"))
 include(joinpath(PROJECT_ROOT, "src", "core", "api_types.jl"))
 include(joinpath(PROJECT_ROOT, "src", "core", "output_reporting.jl"))
 include(joinpath(PROJECT_ROOT, "src", "core", "solver_interface.jl"))
-include(joinpath(PROJECT_ROOT, "tools", "pcm", "clustered", "clustered_pcm.jl"))
+include(joinpath(PROJECT_ROOT, "src", "production_cost", "entry.jl"))
 
 @testset "module_unitcommitment" begin
     include("core/test_runtime_config.jl")

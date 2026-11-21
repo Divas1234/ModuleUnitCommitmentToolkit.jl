@@ -385,7 +385,7 @@ class RunManager:
         if task == "pcm_suite":
             if "pcm_profile" in params and params["pcm_profile"] != "all":
                 env["PCM_SUITE_PROFILES"] = params["pcm_profile"]
-            return [julia_bin, "--project=.", "tools/pcm/benchmark/run_pcm_suite.jl"], env
+            return [julia_bin, "--project=.", "tools/pcm/benchmark/run_suite.jl"], env
 
         if task == "tests":
             env["MODULE_UC_TEST_ACTIVATE_LOCAL_PROJECT"] = "0"

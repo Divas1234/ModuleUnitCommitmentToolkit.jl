@@ -6,13 +6,20 @@
 # ============================================================================
 
 using Printf, Statistics, CSV, DataFrames, Random
-include("../paths.jl")
-include("../../../../src/renewables/stochastic_simulation.jl")
-include("../../../../src/input_data/readers.jl")
-include("../../standard/period_scuc.jl")
-include("../../config/load_profiles.jl")
-include("../../config/pcm_data_adapter.jl")
-include("../core/pcm_overlap_core.jl")
+const REPO_ROOT = normpath(joinpath(@__DIR__, "..", "..", "..", ".."))
+if !isdefined(@__MODULE__, :load_pcm_excel_data)
+    using ModuleUnitCommitmentToolkit
+    using ModuleUnitCommitmentToolkit:
+        each_period_scucmodel_modules,
+        apply_pcm_load_profile!,
+        load_pcm_excel_data,
+        genscenario,
+        run_adaptive_overlap_window_selection,
+        extract_generator_operating_features,
+        commit_rolling_window_state!,
+        save_overlap_training_data,
+        load_overlap_training_data
+end
 
 function repeat_time_series_to_horizon(curve::AbstractMatrix{<:Real}, target_hours::Int)
 	source_hours = size(curve, 2)

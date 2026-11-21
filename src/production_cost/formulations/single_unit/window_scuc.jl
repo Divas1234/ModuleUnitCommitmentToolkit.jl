@@ -11,21 +11,24 @@ if !isdefined(@__MODULE__, :_PERIOD_SCUC_MODULES_INCLUDED)
         const hydro = Any
     end
     if !isdefined(@__MODULE__, :Gurobi)
-        include("../../../src/core/environment_config.jl")
+        include("../../../core/environment_config.jl")
     end
     if !isdefined(@__MODULE__, :apply_scuc_constraints!)
-        include("../../../src/unit_commitment/constraints/constraints.jl")
+        include("../../../unit_commitment/constraints/constraints.jl")
     end
     if !isdefined(@__MODULE__, :set_objective!)
-        include("../../../src/unit_commitment/objectives/objectives.jl")
+        include("../../../unit_commitment/objectives/objectives.jl")
     end
     if !isdefined(@__MODULE__, :define_decision_variables!) || !isdefined(@__MODULE__, :calculate_gsdf)
-        include("../../../src/unit_commitment/utilities/utilities.jl")
+        include("../../../unit_commitment/utilities/utilities.jl")
     end
     if !isdefined(@__MODULE__, :validate_inputs) || !isdefined(@__MODULE__, :ConType)
-        include("../../../src/unit_commitment/validation/validation.jl")
+        include("../../../unit_commitment/validation/validation.jl")
     end
-    include("../clustered/clustered_pcm.jl")
+    isdefined(@__MODULE__, :apply_clustered_pcm_optimization!) || include("../clustered/cluster_adapter.jl")
+    isdefined(@__MODULE__, :solve_fixed_commitment_network_dispatch) || include("../clustered/network_dispatch.jl")
+    isdefined(@__MODULE__, :clustered_pcm_cost_coefficients) || include("../clustered/economic_costs.jl")
+    isdefined(@__MODULE__, :solve_true_clustered_pcm_window) || include("../clustered/master_solver.jl")
     if !isdefined(@__MODULE__, :pcm_optimizer)
         pcm_optimizer() = _resolve_pcm_optimizer(nothing)
     end

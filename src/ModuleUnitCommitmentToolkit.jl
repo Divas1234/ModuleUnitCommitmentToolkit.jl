@@ -15,7 +15,9 @@ include("input_data/readers.jl")
 
 # Unit commitment models and constraints
 include("unit_commitment/unit_commitment_model.jl")
-include("unit_commitment/clustered_pcm/clustered_pcm.jl")
+
+# Production Cost Modeling (PCM) core library (2x2 orthogonal matrix + Benchmark)
+include("production_cost/entry.jl")
 using .ClusteredDisaggregation
 
 # Unified data/algorithm orchestration entry point. Heavy algorithm implementation
@@ -24,51 +26,8 @@ include("core/solver_interface.jl")
 include("core/execution_diagnostics.jl")
 include("core/deprecations.jl")
 
-# Include PCM tools in a submodule for package-level access and LSP indexing
-module SequentialPCM
-    using ..ModuleUnitCommitmentToolkit:
-        Gurobi,
-        PCMRunStats,
-        UCConfig,
-        ThermalUnits,
-        TransmissionLines,
-        Loads,
-        StorageUnits,
-        DataCenters,
-        WindUnits,
-        config,
-        unit,
-        transmissionline,
-        load,
-        pss,
-        data_centra,
-        wind,
-        build_uc_model,
-        default_uc_optimizer,
-        uc_has_feasible_solution,
-        uc_require_feasible_solution!,
-        uc_env_bool,
-        uc_env_int,
-        uc_env_float,
-        uc_load_curtailment_penalty,
-        uc_wind_curtailment_penalty,
-        apply_scuc_constraints!,
-        set_objective!,
-        define_decision_variables!,
-        validate_inputs,
-        ConType,
-        calculate_gsdf,
-        linearizationfuelcurve,
-        calculate_initial_unit_status,
-        define_contingency_size,
-        solve_and_extract_results,
-        check_var_exists,
-        save_details_scheduled_results
-    const hydro = Any
-
-    include("../tools/pcm/standard/period_scuc.jl")
-    include("../tools/pcm/clustered_overlap/core/pcm_overlap_core.jl")
-end
+# Backwards-compatible namespace alias for legacy `ModuleUnitCommitmentToolkit.SequentialPCM` callers
+const SequentialPCM = ModuleUnitCommitmentToolkit
 
 # Public package-level entry points. Algorithm drivers under `tools/` remain the
 # implementation and compatibility layer behind the unified entry point.
@@ -158,6 +117,20 @@ export SUC_scucmodel,
     run_cluster_disaggregation,
     validate_disaggregation,
     SequentialPCM,
+    AbstractPCMFormulation,
+    SingleUnitFormulation,
+    ClusteredFormulation,
+    AbstractPCMHorizonPolicy,
+    FixedHorizonPolicy,
+    AdaptiveOverlapPolicy,
+    PCMConfig,
+    PCM_MATRIX_METHODS,
+    pcm_method_spec,
+    apply_pcm_load_profile!,
+    load_pcm_excel_data,
+    run_pcm,
+    run_pcm_benchmark,
+    compare_pcm_methods,
     HDFrequencyParameters,
     HDFrequencyRegionResult,
     HDLinearCutSet,

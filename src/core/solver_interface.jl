@@ -462,25 +462,19 @@ function _solve_uc_selected(request::UCSolveRequest)
 end
 
 function _solve_pcm_unified(request::UCSolveRequest)
-    method_map = Dict{Symbol, String}(
-        :pcm_standard => "standard",
-        :pcm_clustered => "clustered_pcm",
-        :pcm_adaptive_overlap => "adaptive_overlap",
-        :pcm_clustered_adaptive => "clustered_adaptive_overlap",
-        :pcm_integrated => "integrated_uc",
+    method_map = Dict{Symbol, Symbol}(
+        :pcm_standard => :standard,
+        :pcm_clustered => :clustered,
+        :pcm_adaptive_overlap => :adaptive_overlap,
+        :pcm_clustered_adaptive => :clustered_overlap,
+        :pcm_integrated => :benchmark,
     )
-    project_root = normpath(joinpath(@__DIR__, "..", ".."))
-    pcm_entry = _resolve_tools_path(project_root, "pcm", "main.jl")
-    env_pairs = Pair{String, String}["PCM_METHOD" => method_map[request.algorithm]]
-    if request.input.data_file !== nothing
-        push!(env_pairs, "MODULE_UC_DATA_FILE" => request.input.data_file)
-    end
-    t0 = time()
-    withenv(env_pairs...) do
-        Base.include(Main, pcm_entry)
-    end
-    elapsed = time() - t0
-    return (status = "COMPLETED", method = method_map[request.algorithm], runtime_seconds = elapsed)
+    cfg = PCMConfig(
+        data_file = request.input.data_file === nothing ?
+            (let f = strip(get(ENV, "MODULE_UC_DATA_FILE", "")); isempty(f) ? nothing : f end) :
+            String(request.input.data_file),
+    )
+    return run_pcm(method_map[request.algorithm]; cfg = cfg)
 end
 
 function _algorithm_to_request_args(alg::BenchmarkUCAlgorithm)

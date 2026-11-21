@@ -2,7 +2,7 @@ if !isdefined(@__MODULE__, :_PCM_CLUSTERED_ADAPTER_INCLUDED)
 	const _PCM_CLUSTERED_ADAPTER_INCLUDED = true
 	# adapter 外层已有幂等保护，直接连接模块定义文件，避免条件入口中断
 	# Language Server 的静态引用链。
-	include("../../../src/unit_commitment/clustered_pcm/disaggregation.jl")
+	isdefined(@__MODULE__, :ClusteredDisaggregation) || include("unit_disaggregation.jl")
 	using .ClusteredDisaggregation
 	using GLPK
 

@@ -1,22 +1,21 @@
-# PCM 唯一程序入口。
-# 通过 PCM_METHOD 选择 standard、clustered_pcm、adaptive_overlap 或 clustered_adaptive_overlap。
-method=lowercase(get(ENV, "PCM_METHOD", "standard"))
+#!/usr/bin/env julia
+"""
+PCM unified CLI & GUI entrypoint.
 
-if method in ("integrated_uc", "uc_reference")
-	include("integrated/main.jl")
+Selects one of the 4 orthogonal PCM methods or the full-horizon Benchmark via
+`ENV["PCM_METHOD"]`:
+  - `standard`                   : Single-Unit + Fixed Horizon (no cluster, no overlap)
+  - `adaptive_overlap`           : Single-Unit + Adaptive Overlap
+  - `clustered` / `clustered_pcm`: Clustered + Fixed Horizon
+  - `clustered_overlap` / `clustered_adaptive_overlap`: Clustered + Adaptive Overlap
+  - `benchmark` / `integrated_uc`: Full-Horizon Integrated UC Reference
+"""
 
-elseif method in ("standard", "single", "single_unit")
-	include("standard/main.jl")
-
-elseif method in ("clustered_pcm", "clustered", "cluster")
-	include("clustered/main.jl")
-
-elseif method in ("adaptive_overlap", "adaptive", "overlap",
-		"clustered_adaptive_overlap", "clustered_overlap", "adaptive_clustered", "clustered_adaptive")
-	# 两类交叠窗共用同一入口，只在这里注入是否启用聚类的策略。
-	PCM_OVERLAP_FORMULATION = method in ("adaptive_overlap", "adaptive", "overlap") ?
-		:standard : :clustered
-	include("clustered_overlap/main.jl")
-else
-	error("Unsupported PCM_METHOD='$method'. Use standard, clustered_pcm, adaptive_overlap, or clustered_adaptive_overlap.")
+if !isdefined(@__MODULE__, :run_pcm)
+    using ModuleUnitCommitmentToolkit
 end
+
+method = strip(get(ENV, "PCM_METHOD", "standard"))
+cfg = PCMConfig()
+result = run_pcm(method; cfg = cfg)
+println("PCM run completed: method=$(result.method), status=$(result.status), total_cost=$(round(result.total_cost; digits=4)), runtime=$(round(result.runtime_seconds; digits=3))s")

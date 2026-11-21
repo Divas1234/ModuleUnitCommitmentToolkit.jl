@@ -1,6 +1,6 @@
 if !isdefined(@__MODULE__, :_TRUE_CLUSTERED_PCM_SOLVER_INCLUDED)
 	const _TRUE_CLUSTERED_PCM_SOLVER_INCLUDED=true
-	include("adapter.jl")
+	isdefined(@__MODULE__, :apply_clustered_pcm_optimization!) || include("cluster_adapter.jl")
 	using JuMP
 	using Statistics
 	import MathOptInterface as MOI
@@ -331,7 +331,7 @@ if !isdefined(@__MODULE__, :_TRUE_CLUSTERED_PCM_SOLVER_INCLUDED)
 			PCM_CLUSTER_PREPROCESS_TIME_SEC[] += time() - cluster_preprocess_start
 		end
 		C=length(clusters)
-		clustered_units=sum(length(c.unit_indices) for c ∈ clusters if length(c.unit_indices)>1)
+		clustered_units=sum(length(c.unit_indices) for c ∈ clusters if length(c.unit_indices)>1; init = 0)
 		println("  Clustered PCM: $NG physical units -> $C equivalent units " *
 				"($(round(100 * (NG - C) / max(NG, 1); digits = 1))% state reduction; $clustered_units units in non-singleton clusters)")
 		NW=length(winds.index)
