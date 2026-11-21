@@ -321,30 +321,24 @@ export MODULE_UC_GUI_PORT="$PORT"
 export MODULE_UC_OUTPUT_DIR="$OUTPUT_DIR"
 
 cd "$WORKSPACE"
-nohup "$PYTHON_BIN" -u "$WORKSPACE/gui/server.py" >> "$SERVER_LOG" 2>&1 </dev/null &
-SERVER_PID=$!
-echo "$SERVER_PID" > "$PID_FILE"
+
+# Open browser once the HTTP server is ready (runs in background while exec keeps server alive)
+(
+  for _ in $(seq 1 75); do
+    if "$PYTHON_BIN" -c "import http.client; c = http.client.HTTPConnection('127.0.0.1', ${PORT}, timeout=1); c.request('GET', '/api/config'); r = c.getresponse(); assert r.status == 200" >/dev/null 2>&1; then
+      open "http://127.0.0.1:${PORT}/gui/"
+      exit 0
+    fi
+    sleep 0.2
+  done
+  /usr/bin/osascript -e "display dialog \"GUI 服务启动超时，请查看日志：$SERVER_LOG\" with title \"$APP_NAME\" buttons {\"OK\"} default button \"OK\" with icon stop" >/dev/null 2>&1 || true
+) >/dev/null 2>&1 &
+
+echo "$$" > "$PID_FILE"
 echo "$PORT" > "$PORT_FILE"
 
-# Wait up to 15 seconds for server readiness (direct localhost HTTP, bypassing system proxies)
-READY=0
-for _ in $(seq 1 75); do
-  if ! kill -0 "$SERVER_PID" 2>/dev/null; then
-    break
-  fi
-  if "$PYTHON_BIN" -c "import http.client; c = http.client.HTTPConnection('127.0.0.1', ${PORT}, timeout=1); c.request('GET', '/api/config'); r = c.getresponse(); assert r.status == 200" >/dev/null 2>&1; then
-    READY=1
-    break
-  fi
-  sleep 0.2
-done
-
-if [ "$READY" -ne 1 ]; then
-  alert_error "GUI 服务启动失败，请查看日志：$SERVER_LOG"
-fi
-
-open "http://127.0.0.1:${PORT}/gui/"
-exit 0
+# Keep server.py as the main .app process so macOS LaunchServices does NOT kill it
+exec "$PYTHON_BIN" -u "$WORKSPACE/gui/server.py" >> "$SERVER_LOG" 2>&1
 LAUNCHER
 chmod +x "$APP_BUNDLE/Contents/MacOS/${APP_NAME}"
 

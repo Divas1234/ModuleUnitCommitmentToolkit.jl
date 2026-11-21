@@ -587,9 +587,10 @@ function checkJuliaStatus(){
     }
     setRunButtonsDisabled(!d.ok);
   }).catch(function(){
-    juliaOk = false;
+    juliaOk = null;
     var el = $('julia-status');
-    if (el) el.textContent = 'Server unavailable';
+    if (el) el.innerHTML = '<span style="color:#dc2626;font-weight:600">Server unavailable (retrying...)</span>';
+    setRunButtonsDisabled(false);
   });
 }
 
@@ -633,7 +634,7 @@ function runTask(task){
     $('run-output').textContent += '[ERROR] ' + err.message + '\n';
     setStatusBadge('failed');
     $('run-cancel-btn').style.display = 'none';
-    setRunButtonsDisabled(juliaOk === false);
+    setRunButtonsDisabled(false);
   });
 }
 
