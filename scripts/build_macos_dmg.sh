@@ -16,7 +16,7 @@ print(data.get("version", "0.1.0"))
 ')"
 BUILD_STAMP="$(date +%Y%m%d_%H%M%S)"
 
-DIST_DIR="$PROJECT_ROOT/dist"
+DIST_DIR="$PROJECT_ROOT/Release"
 STAGE_DIR="$DIST_DIR/dmg_stage"
 APP_BUNDLE="$STAGE_DIR/${APP_NAME}.app"
 DMG_NAME="${APP_NAME}-${VERSION}-macOS.dmg"
@@ -37,6 +37,7 @@ rsync -a \
   --exclude '.pkg' \
   --exclude '.vscode' \
   --exclude 'dist' \
+  --exclude 'Release' \
   --exclude 'output' \
   --exclude '*.dmg' \
   "$PROJECT_ROOT/src" \

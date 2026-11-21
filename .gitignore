@@ -114,4 +114,5 @@ docs/benchmarks/**/logs/
 
 # macOS DMG / App packaging artifacts
 dist/
+Release/
 *.dmg
