@@ -4,7 +4,7 @@
 Data structure for wind plants, stochastic availability scenarios, and wind
 frequency-control parameters.
 """
-struct WindUnits
+mutable struct WindUnits
     index::Vector{Int64}
     locatebus::Vector{Int64}
     p_max::Vector{Float64}

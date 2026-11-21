@@ -13,7 +13,7 @@ export parse_list, cost_delta_pct, method_equivalent_units, read_cost_vector,
 	   benchmark_run_dir, benchmark_batch_name, benchmark_output_root, run_one, write_report, rebuild_outputs, main
 
 const PROJECT_ROOT = dirname(dirname(dirname(@__DIR__)))
-const DEFAULT_METHODS = ["standard", "clustered", "adaptive_overlap", "clustered_adaptive_overlap"]
+const DEFAULT_METHODS = ["standard", "clustered_pcm", "adaptive_overlap", "clustered_adaptive_overlap"]
 const DEFAULT_PROFILES = ["baseline", "smooth", "extreme_ramp"]
 
 # 输出目录只使用短而稳定的英文标识；CSV 内仍保留完整名称，便于分析和审计。
@@ -77,7 +77,7 @@ function cost_delta_pct(base, candidate)
 end
 
 function method_equivalent_units(method::AbstractString, physical, virtual)
-	lowercase(method) in ("clustered", "clustered_adaptive_overlap") ? virtual : physical
+	lowercase(method) in ("clustered_pcm", "clustered", "clustered_adaptive_overlap") ? virtual : physical
 end
 
 function read_cost_vector(path::AbstractString)
@@ -430,7 +430,7 @@ function rebuild_outputs(output_root::AbstractString; input_file = "unknown", pr
 	adaptive_frames = DataFrame[]
 	for row ∈ eachrow(raw)
 		run_dir = benchmark_run_dir(output_root, String(row.profile), String(row.method), Int(row.run); existing = true)
-		row.method in ("clustered", "clustered_adaptive_overlap") &&
+		row.method in ("clustered_pcm", "clustered", "clustered_adaptive_overlap") &&
 			push!(cluster_frames, extract_cluster_intermediate(run_dir, row.profile, row.run))
 		row.method in ("adaptive_overlap", "clustered_adaptive_overlap") &&
 			push!(adaptive_frames, extract_adaptive_intermediate(run_dir, row.profile, row.run, String(row.method)))
@@ -498,7 +498,7 @@ function main(; project_root = PROJECT_ROOT,
 	for (job, run_row) in zip(jobs, job_rows)
 		push!(rows, run_row)
 		run_dir = benchmark_run_dir(output_root, String(job.profile), job.method, job.run_number; existing = true)
-		job.method in ("clustered", "clustered_adaptive_overlap") &&
+		job.method in ("clustered_pcm", "clustered", "clustered_adaptive_overlap") &&
 			push!(cluster_process_frames, extract_cluster_intermediate(run_dir, job.profile, job.run_number))
 		job.method in ("adaptive_overlap", "clustered_adaptive_overlap") &&
 			push!(adaptive_process_frames, extract_adaptive_intermediate(run_dir, job.profile, job.run_number, job.method))

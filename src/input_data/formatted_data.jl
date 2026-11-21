@@ -127,7 +127,7 @@ end
 
 Structure representing dispatchable conventional or thermal generation units.
 """
-struct ThermalUnits
+mutable struct ThermalUnits
     # Topological mapping
     index::Vector{Int64}                  # Generator ID array
     locatebus::Vector{Int64}              # Connected bus ID array
@@ -146,7 +146,8 @@ struct ThermalUnits
 
     # Initial border states (t=0)
     x_0::Vector{Float64}                  # Initial online status (1: online, 0: offline)
-    t_0::Vector{Float64}                  # Accumulative hours historically online/offline prior to dispatch
+    t_0::Vector{Float64}                  # Accumulative hours historically online prior to dispatch
+    t_1::Vector{Float64}                  # Accumulative hours historically offline prior to dispatch
     p_0::Vector{Float64}                  # Initial generated active power (p.u.)
 
     # Performance & operation cost parameters
@@ -170,11 +171,12 @@ struct ThermalUnits
         index, locatebus, p_max, p_min, ramp_up, ramp_down, startup_ramp, shutdown_ramp,
         min_up_time, min_down_time,
         x_0, t_0, p_0, coeff_a, coeff_b, coeff_c, coeff_hot_startup, coeff_cold_startup, coeff_shutdown, cold_start_time_limit,
-        Hg, Dg, Kg, Fg, Tg, Rg,
+        Hg, Dg, Kg, Fg, Tg, Rg;
+        t_1 = zeros(Float64, length(t_0)),
     )
         return new(
             index, locatebus, p_max, p_min, ramp_up, ramp_down, startup_ramp, shutdown_ramp,
-            min_up_time, min_down_time, x_0, t_0, p_0, coeff_a, coeff_b, coeff_c,
+            min_up_time, min_down_time, x_0, t_0, Float64.(t_1), p_0, coeff_a, coeff_b, coeff_c,
             coeff_hot_startup, coeff_cold_startup, coeff_shutdown, cold_start_time_limit,
             Hg, Dg, Kg, Fg, Tg, Rg,
         )
@@ -227,7 +229,7 @@ const transmissionline = TransmissionLines
 
 Structure representing baseline electrical demand across various network nodes.
 """
-struct Loads
+mutable struct Loads
     index::Vector{Int64}                  # Load ID
     locatebus::Vector{Int64}              # Connected bus ID
     load_curve::Array{Float64}            # Time-series active power demand matrix (ND x NT)

@@ -5,7 +5,7 @@ include("../../tools/pcm/benchmark/suite_runner.jl")
 using .PCMThreeMethodBenchmark
 
 @testset "three-method PCM benchmark aggregation" begin
-    @test parse_list(" standard, clustered_pcm , adaptive_overlap ") == ["standard", "clustered", "adaptive_overlap"]
+    @test parse_list(" standard, clustered_pcm , adaptive_overlap ") == ["standard", "clustered_pcm", "adaptive_overlap"]
     @test method_equivalent_units("standard", 108, 31) == 108
     @test method_equivalent_units("clustered_pcm", 108, 31) == 31
     @test cost_delta_pct(100.0, 110.0) ≈ 10.0
@@ -27,14 +27,14 @@ using .PCMThreeMethodBenchmark
           "pcm_com0_loadnormal_h72_20260811_150000"
     @test benchmark_output_root("repo", ["integrated_uc"], ["baseline"]; timestamp = "20260811_150000") ==
           abspath(joinpath("repo", "output", "test_res", "pcm_com0_loadnormal_h72_20260811_150000"))
-    @test benchmark_output_root("repo", ["integrated_uc", "standard", "clustered", "adaptive_overlap", "clustered_adaptive_overlap"],
+    @test benchmark_output_root("repo", ["integrated_uc", "standard", "clustered_pcm", "adaptive_overlap", "clustered_adaptive_overlap"],
         ["baseline"]; timestamp = "20260811_150000") ==
           abspath(joinpath("repo", "output", "pcm_com4_loadnormal_h72_20260811_150000"))
     @test_throws ArgumentError benchmark_batch_name(["standard"], ["baseline", "smooth"])
 
     raw = DataFrame(
         profile = ["smooth", "smooth", "smooth", "smooth"],
-        method = ["standard", "standard", "clustered", "adaptive_overlap"],
+        method = ["standard", "standard", "clustered_pcm", "adaptive_overlap"],
         status = ["OK", "OK", "OK", "OK"],
         wall_time_sec = [10.0, 12.0, 5.0, 20.0],
         simulation_time_sec = [8.0, 10.0, 4.0, 15.0],

@@ -11,20 +11,20 @@
     	units::unit,
     	loads::load,
     	winds::wind,
-    	results::Union{Dict{String, Array{Float64}}, Nothing}
+    	results::Union{AbstractDict{String}, Nothing}
     )
 
 Update initial boundary conditions and slice time-series inputs for an adaptive window simulation.
 Boundary conditions (x_0, p_0, t_0, t_1) are extracted from time step `exec_NT` of previous results.
 """
 function update_adaptive_boundary_conditions(interval_scheduling_id::Int64, NG::Int64, exec_NT::Int64, total_NT::Int64, start_time::Int64,
-        units::unit, loads::load, winds::wind, results::Union{Dict{String, Array{Float64}}, Nothing})
+        units::unit, loads::load, winds::wind, results::Union{AbstractDict{String}, Nothing})
     mini_units = deepcopy(units)
 
     if interval_scheduling_id != 1 && results !== nothing
         # Extract initial state from end of committed execution window (exec_NT) of prior interval
-        mini_units.x_0 = results["x₀"][:, exec_NT]
-        mini_units.p_0 = results["p₀"][:, exec_NT]
+        mini_units.x_0 = vec(results["x₀"][1:NG, exec_NT])
+        mini_units.p_0 = vec(results["p₀"][1:NG, exec_NT])
 
         # Calculate elapsed on/off duration at the committed boundary.  The UC
         # constraint layer converts it to a remaining mandatory residence time.
@@ -47,19 +47,17 @@ function update_adaptive_boundary_conditions(interval_scheduling_id::Int64, NG::
 end
 
 """
-    truncate_and_commit_results(results::Dict{String, Array{Float64}}, exec_NT::Int64)
+    truncate_and_commit_results(results::AbstractDict{String}, exec_NT::Int64)
 
 Extract and return only the committed execution period (1:exec_NT) from total window results.
 """
-function truncate_and_commit_results(results::Dict{String, Array{Float64}}, exec_NT::Int64)
-    committed_results = Dict{String, Array{Float64}}()
+function truncate_and_commit_results(results::AbstractDict{String}, exec_NT::Int64)
+    committed_results = Dict{String, Any}()
     for (k, v) ∈ results
-        if ndims(v) == 2 && size(v, 2) >= exec_NT
+        if v isa AbstractArray && ndims(v) == 2 && size(v, 2) >= exec_NT
             committed_results[k] = v[:, 1:exec_NT]
-        elseif ndims(v) == 3 && size(v, 2) >= exec_NT
+        elseif v isa AbstractArray && ndims(v) == 3 && size(v, 2) >= exec_NT
             committed_results[k] = v[:, 1:exec_NT, :]
-        elseif ndims(v) == 1
-            committed_results[k] = v
         else
             committed_results[k] = v
         end
@@ -69,7 +67,7 @@ end
 
 """
     compute_committed_cost(
-    	committed_results::Dict{String, Array{Float64}},
+    	committed_results::AbstractDict{String},
     	exec_NT::Int64,
     	units::unit,
     	loads::load,
@@ -85,7 +83,7 @@ end
 Compute 1x7 scheduling cost vector for the committed execution period (1:exec_NT).
 """
 function compute_committed_cost(
-        committed_results::Dict{String, Array{Float64}}, exec_NT::Int64, units::unit, loads::load, winds::wind, lines::transmissionline,
+        committed_results::AbstractDict{String}, exec_NT::Int64, units::unit, loads::load, winds::wind, lines::transmissionline,
         DataCentras::data_centra, config_param::config, interval_scheduling_id::Int64, hydros::hydro, scenarios_prob::Float64)
     NS = winds.scenarios_nums
     NW = length(winds.index)
@@ -111,10 +109,22 @@ function compute_committed_cost(
     pᵨ = committed_results["pᵨ"]
     pᵩ = committed_results["pᵩ"]
 
-    # Set global scenarios_prob if required by exported_scheduling_cost
-    global scenarios_prob = scenarios_prob
-
-    str = exported_scheduling_cost(NS, exec_NT, NB, NG, ND, NC, ND2, NH, units, loads, committed_winds, lines, DataCentras, config_param,
-        interval_scheduling_id, su_cost, sd_cost, pgₖ, pg₀, x₀, seq_sr⁺, seq_sr⁻, pᵨ, pᵩ, eachslope, refcost)
-    return str
+    cs = compute_uc_cost_summary(
+        NS, exec_NT, NG, ND, NW,
+        config_param, scenarios_prob,
+        su_cost, sd_cost, pgₖ, x₀, seq_sr⁺, seq_sr⁻, pᵨ, pᵩ, eachslope, refcost,
+    )
+    return reshape(
+        Float64[
+            cs.total_cost,
+            cs.startup_cost,
+            cs.shutdown_cost,
+            cs.variable_fuel_cost + cs.no_load_cost,
+            cs.reserve_up_cost + cs.reserve_down_cost,
+            cs.load_curtailment_cost,
+            cs.wind_curtailment_cost,
+        ],
+        1,
+        7,
+    )
 end

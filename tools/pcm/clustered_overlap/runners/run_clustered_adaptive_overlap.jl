@@ -11,6 +11,7 @@ include("../../../../src/renewables/stochastic_simulation.jl")
 include("../../../../src/input_data/readers.jl")
 include("../../standard/period_scuc.jl")
 include("../../config/load_profiles.jl")
+include("../../config/pcm_data_adapter.jl")
 include("../core/pcm_overlap_core.jl")
 
 function repeat_time_series_to_horizon(curve::AbstractMatrix{<:Real}, target_hours::Int)
@@ -49,21 +50,24 @@ function run_clustered_adaptive_overlap_simulation()
 	# 1. Read input data
 	println("\nReading project input data...")
 	get!(ENV, "MODULE_UC_DATA_FILE", joinpath(ADAPTIVE_PCM_PROJECT_ROOT, "data", "data_118.xlsx"))
-	UnitsFreqParam, WindsFreqParam, StrogeData, DataGen, GenCost, DataBranch, LoadCurve, DataLoad, Datacentra_Data, HydroData,
-	HydroCurve = readxlssheet()
+	pcm_data = load_pcm_excel_data()
 	global config_param, units, lines, loads, stroges, NB, NG, NL, ND, NT, NC, ND2, NH, DataCentras, hydros, scenarios_prob, winds
-	config_param, units, lines, loads, stroges, NB, NG, NL, ND, NT, NC, ND2, NH, DataCentras, hydros = forminputdata(
-		DataGen, DataBranch, DataLoad, LoadCurve, GenCost, UnitsFreqParam, StrogeData, Datacentra_Data, HydroData, HydroCurve)
+	config_param = pcm_data.config_param
+	units = pcm_data.units
+	lines = pcm_data.lines
+	loads = pcm_data.loads
+	stroges = pcm_data.stroges
+	NB, NG, NL, ND, NT, NC, ND2, NH = pcm_data.NB, pcm_data.NG, pcm_data.NL, pcm_data.ND, pcm_data.NT, pcm_data.NC, pcm_data.ND2, pcm_data.NH
+	DataCentras = pcm_data.DataCentras
+	hydros = pcm_data.hydros
+	WindsFreqParam = pcm_data.WindsFreqParam
 	load_profile = lowercase(get(ENV, "PCM_LOAD_PROFILE", "baseline"))
 	apply_pcm_load_profile!(loads, load_profile)
 	println("  PCM load profile: $load_profile")
-	config_param.is_NetWorkCon = parse(Int, get(ENV, "PCM_NETWORK_CONSTRAINTS", "0"))
 	random_seed = parse(Int, get(ENV, "PCM_RANDOM_SEED", "20260809"))
 	Random.seed!(random_seed)
 	println("  PCM random seed: $random_seed")
-	winds, NW = genscenario(WindsFreqParam, 0)
-	winds.scenarios_nums = 1
-	winds.scenarios_curve = winds.scenarios_curve[1:1, :]
+	winds, NW = genscenario(WindsFreqParam, 0; scenario_limit = 1)
 
 	exec_NT = parse(Int, get(ENV, "PCM_WINDOW_HOURS", "24"))
 	N_sets = parse(Int, get(ENV, "PCM_INTERVALS", "7"))

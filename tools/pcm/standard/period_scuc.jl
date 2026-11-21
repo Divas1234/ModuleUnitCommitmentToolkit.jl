@@ -7,6 +7,9 @@ if !isdefined(@__MODULE__, :_PERIOD_SCUC_MODULES_INCLUDED)
     # Module Dependencies and Includes
     #---------------------------------------------------------------------------------------------------
 
+    if !isdefined(@__MODULE__, :hydro)
+        const hydro = Any
+    end
     if !isdefined(@__MODULE__, :Gurobi)
         include("../../../src/core/environment_config.jl")
     end
@@ -16,13 +19,19 @@ if !isdefined(@__MODULE__, :_PERIOD_SCUC_MODULES_INCLUDED)
     if !isdefined(@__MODULE__, :set_objective!)
         include("../../../src/unit_commitment/objectives/objectives.jl")
     end
-    if !isdefined(@__MODULE__, :define_decision_variables!)
+    if !isdefined(@__MODULE__, :define_decision_variables!) || !isdefined(@__MODULE__, :calculate_gsdf)
         include("../../../src/unit_commitment/utilities/utilities.jl")
     end
-    if !isdefined(@__MODULE__, :validate_inputs)
+    if !isdefined(@__MODULE__, :validate_inputs) || !isdefined(@__MODULE__, :ConType)
         include("../../../src/unit_commitment/validation/validation.jl")
     end
     include("../clustered/clustered_pcm.jl")
+    if !isdefined(@__MODULE__, :pcm_optimizer)
+        pcm_optimizer() = _resolve_pcm_optimizer(nothing)
+    end
+    if !isdefined(@__MODULE__, :pcm_solver_name)
+        pcm_solver_name() = occursin("gurobi", lowercase(string(pcm_optimizer()))) ? "gurobi" : "glpk"
+    end
     const PCM_CLUSTER_ATTEMPTS = Ref(0)
     const PCM_CLUSTER_SUCCESSES = Ref(0)
     const PCM_CLUSTER_FALLBACKS = Ref(0)
@@ -87,15 +96,15 @@ if !isdefined(@__MODULE__, :_PERIOD_SCUC_MODULES_INCLUDED)
     """
     # NOTE - update boundary conditions
     function update_boundary_conditions(
-            interval_scheduling_id, NG::Int64, NT::Int64, units::unit, loads::load, winds::wind, results::Dict{String, Array{Float64}})
+            interval_scheduling_id, NG::Int64, NT::Int64, units::unit, loads::load, winds::wind, results::AbstractDict{String})
 
         # FIXME -  update generators parameter_value
         mini_units = deepcopy(units)
         if interval_scheduling_id != 1
             res_up, res_down = get_generators_upoff_durations(units, results["u₀"], results["v₀"], NG)
             # mini_units = deepcopy(units)
-            mini_units.x_0 = results["x₀"][:, NT]
-            mini_units.p_0 = results["p₀"][:, NT]
+            mini_units.x_0 = vec(results["x₀"][1:NG, NT])
+            mini_units.p_0 = vec(results["p₀"][1:NG, NT])
             mini_units.t_0 = res_up[:, 1]
             mini_units.t_1 = res_down[:, 1]
         end
@@ -214,21 +223,17 @@ if !isdefined(@__MODULE__, :_PERIOD_SCUC_MODULES_INCLUDED)
             set_optimizer_attribute(scuc, "mip_gap", 0.015)
         end
         # --- Define Variables ---
-        # Define decision variables for the optimization model
-        # define_decision_variables!(scuc, NT, NG, ND, NC, ND2, NS, NW, config_param)
-        define_decision_variables!(scuc, NT, NG, ND, NC, ND2, NS, NW, NH, config_param)
+        define_decision_variables!(scuc, NT, NG, ND, NC, ND2, NS, NW, config_param)
         # --- Set Objective ---
-        # Set the objective function to be minimized
         set_objective!(scuc, NT, NG, ND, NW, NS, units, config_param, scenarios_prob, refcost, eachslope)
 
         println("subject to.") # Indicate the start of constraint definitions
 
         # --- Add Constraints ---
-        # Add the constraints to the optimization model
         add_unit_operation_constraints!(scuc, NT, NG, units, onoffinit)
         add_curtailment_constraints!(scuc, NT, ND, NW, NS, loads, winds)
         add_generator_power_constraints!(scuc, NT, NG, NS, units)
-        add_reserve_constraints!(scuc, NT, NG, NC, NS, units, loads, winds, config_param, hydros)
+        add_reserve_constraints!(scuc, NT, NG, NC, NS, units, loads, winds, config_param)
         add_power_balance_constraints!(scuc, NT, NG, ND, NC, NW, NS, loads, winds, config_param, ND2)
         add_ramp_constraints!(scuc, NT, NG, NS, units, onoffinit)
         add_pwl_constraints!(scuc, NT, NG, NS, units)
@@ -236,20 +241,16 @@ if !isdefined(@__MODULE__, :_PERIOD_SCUC_MODULES_INCLUDED)
             println("\t constraints: 10) transmission limits deferred to unit disaggregation")
         else
             add_transmission_constraints!(
-                scuc, NT, NG, ND, NC, NW, NL, NS, units, loads, winds, lines, stroges, Gsdf, config_param, ND2, DataCentras, hydros)
+                scuc, NT, NG, ND, NC, NW, NL, NS, units, loads, winds, lines, stroges, Gsdf, config_param, ND2, DataCentras)
         end
         add_storage_constraints!(scuc, NT, NC, NS, config_param, stroges)
-        add_datacentra_constraints!(scuc, NT, NS, config_param, ND2, DataCentras)
+        add_data_center_constraints!(scuc, NT, NS, config_param, ND2, DataCentras)
         add_frequency_constraints!(scuc, NT, NG, NC, NS, units, stroges, config_param, Δp_contingency)
-        add_hydros_constraints!(scuc::Model, NT, NH, NS, hydros)
         # --- Solve and Extract Results ---
-        # Solve the optimization model and extract the results
         try
-            # Attempt to solve the SCUC model
             results = solve_and_extract_results(
-                scuc, NT, NG, ND, NC, NW, NS, ND2, NH, scenarios_prob, eachslope, refcost, config_param, interval_scheduling_id)
-            # --- Return Results ---
-            # Check if the optimization was successful
+                scuc, NT, NG, ND, NC, NW, NS, ND2, scenarios_prob, eachslope, refcost, config_param,
+                units, loads, winds, lines, DataCentras; NB = NB)
             if results !== nothing
                 if clustered_enabled
                     cluster_strict=lowercase(get(ENV, "PCM_CLUSTER_STRICT", "false")) in ("1", "true", "yes", "on")
@@ -260,9 +261,10 @@ if !isdefined(@__MODULE__, :_PERIOD_SCUC_MODULES_INCLUDED)
                     if !clustered.network_feasible && config_param.is_NetWorkCon==1 && NL>0
                         println("  ↻ Network feedback: adding PTDF constraints and re-solving the current PCM window")
                         add_transmission_constraints!(
-                            scuc, NT, NG, ND, NC, NW, NL, NS, units, loads, winds, lines, stroges, Gsdf, config_param, ND2, DataCentras, hydros)
+                            scuc, NT, NG, ND, NC, NW, NL, NS, units, loads, winds, lines, stroges, Gsdf, config_param, ND2, DataCentras)
                         results=solve_and_extract_results(
-                            scuc, NT, NG, ND, NC, NW, NS, ND2, NH, scenarios_prob, eachslope, refcost, config_param, interval_scheduling_id)
+                            scuc, NT, NG, ND, NC, NW, NS, ND2, scenarios_prob, eachslope, refcost, config_param,
+                            units, loads, winds, lines, DataCentras; NB = NB)
                         results===nothing&&error("Network-feedback re-solve failed")
                         repaired_clusters=build_pcm_clusters(units)
                         results["cluster_ids"]=Float64.([only(c.id for c ∈ repaired_clusters if i in c.unit_indices) for i ∈ 1:NG])

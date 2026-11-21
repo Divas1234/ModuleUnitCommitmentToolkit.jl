@@ -58,16 +58,18 @@ function _report_infeasibility_conflict(scuc::Model)
     return nothing
 end
 
-function SUC_scucmodel(data::UCProblemData; scenarios_prob::Float64 = 1.0 / max(1, data.NS))
-    return SUC_scucmodel(
-        data.NT, data.NB, data.NG, data.ND, data.NC, data.ND2,
-        data.units, data.loads, data.winds, data.lines, data.data_centers,
-        data.config_param, data.storages, scenarios_prob, data.NL,
-    )
-end
+if isdefined(@__MODULE__, :UCProblemData)
+    function SUC_scucmodel(data::UCProblemData; scenarios_prob::Float64 = 1.0 / max(1, data.NS))
+        return SUC_scucmodel(
+            data.NT, data.NB, data.NG, data.ND, data.NC, data.ND2,
+            data.units, data.loads, data.winds, data.lines, data.data_centers,
+            data.config_param, data.storages, scenarios_prob, data.NL,
+        )
+    end
 
-function SUC_scucmodel(data::NamedTuple; scenarios_prob::Float64 = 1.0 / max(1, Int(data.NS)))
-    return SUC_scucmodel(UCProblemData(data); scenarios_prob = scenarios_prob)
+    function SUC_scucmodel(data::NamedTuple; scenarios_prob::Float64 = 1.0 / max(1, Int(data.NS)))
+        return SUC_scucmodel(UCProblemData(data); scenarios_prob = scenarios_prob)
+    end
 end
 
 function SUC_scucmodel(

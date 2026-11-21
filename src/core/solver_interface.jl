@@ -1,14 +1,15 @@
+
 """
     solve_uc(; algorithm = :benchmark, input = :excel, scenario_limit = 20, ...)
 
-Unified solver entry point for the extensive-form benchmark, Benders, and CCG
-algorithms. The selected algorithm and input source are routed internally to
-the existing implementation modules; callers do not need to manage include
-order or algorithm-specific data-loading branches.
+    Unified solver entry point for the extensive-form benchmark, Benders, and CCG
+    algorithms. The selected algorithm and input source are routed internally to
+    the existing implementation modules; callers do not need to manage include
+    order or algorithm-specific data-loading branches.
 
-`calibration` is a named tuple or dictionary of runtime ENV overrides. Values
-are applied only for the duration of this solve, so a one-off calibration does
-not leak into later calls in the same Julia process.
+    `calibration` is a named tuple or dictionary of runtime ENV overrides. Values
+    are applied only for the duration of this solve, so a one-off calibration does
+    not leak into later calls in the same Julia process.
 """
 
 const _UC_ALGORITHM_MODULES_READY = Ref(false)

@@ -4,10 +4,13 @@ function linearizationfuelcurve(units, NG; num_segments::Integer = 3)
     linearpower_limits = (units.p_max - units.p_min) ./ nseg
     cost = zeros(NG, nseg + 1)
     temp = units.p_min
-    cost[:, 1] = units.coeff_a .* (units.p_min .^ 2) + units.coeff_b .* units.p_min + units.coeff_c
+    coeff_a = hasproperty(units, :coeff_a) ? units.coeff_a : units.coffi_a
+    coeff_b = hasproperty(units, :coeff_b) ? units.coeff_b : units.coffi_b
+    coeff_c = hasproperty(units, :coeff_c) ? units.coeff_c : units.coffi_c
+    cost[:, 1] = coeff_a .* (units.p_min .^ 2) + coeff_b .* units.p_min + coeff_c
     for i in 2:(nseg + 1)
         temp = temp + linearpower_limits
-        cost[:, i] = units.coeff_a .* (temp .^ 2) + units.coeff_b .* temp + units.coeff_c
+        cost[:, i] = coeff_a .* (temp .^ 2) + coeff_b .* temp + coeff_c
     end
     eachslope = zeros(NG, nseg)
     for i in 1:nseg

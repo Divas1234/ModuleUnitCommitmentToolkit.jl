@@ -7,14 +7,6 @@ Validates the input dimensions and data consistency for the SUC model.
 
   - `Bool`: True if all checks pass, false otherwise.
 """
-function validate_inputs(data::UCProblemData; scenarios_prob::Float64 = 1.0 / max(1, data.NS))
-    return validate_inputs(
-        data.NT, data.NB, data.NG, data.ND, data.NC, data.ND2,
-        data.units, data.loads, data.winds, data.lines, data.data_centers,
-        data.config_param, data.storages, scenarios_prob, data.NL,
-    )
-end
-
 function validate_inputs(NT, NB, NG, ND, NC, ND2, units, loads, winds, lines, data_centers, config_param, psses, scenarios_prob, NL)
     if NT <= 0 || NB <= 0 || NG <= 0
         @warn "Core dimensions must be positive: got NT=$NT, NB=$NB, NG=$NG."
@@ -77,4 +69,14 @@ function validate_inputs(NT, NB, NG, ND, NC, ND2, units, loads, winds, lines, da
     end
 
     return true
+end
+
+if isdefined(@__MODULE__, :UCProblemData)
+    function validate_inputs(data::UCProblemData; scenarios_prob::Float64 = 1.0 / max(1, data.NS))
+        return validate_inputs(
+            data.NT, data.NB, data.NG, data.ND, data.NC, data.ND2,
+            data.units, data.loads, data.winds, data.lines, data.data_centers,
+            data.config_param, data.storages, scenarios_prob, data.NL,
+        )
+    end
 end

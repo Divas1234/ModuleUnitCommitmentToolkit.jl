@@ -16,11 +16,15 @@ using Distributions
 const MOI = MathOptInterface
 
 include(joinpath(PROJECT_ROOT, "src", "core", "runtime_config.jl"))
+include(joinpath(PROJECT_ROOT, "src", "core", "optimizer_config.jl"))
+include(joinpath(PROJECT_ROOT, "src", "core", "deprecations.jl"))
 include(joinpath(PROJECT_ROOT, "src", "renewables", "renewables.jl"))
 include(joinpath(PROJECT_ROOT, "src", "input_data", "readers.jl"))
 include(joinpath(PROJECT_ROOT, "src", "unit_commitment", "constraints", "constraints.jl"))
 include(joinpath(PROJECT_ROOT, "src", "unit_commitment", "utilities", "linearization.jl"))
 include(joinpath(PROJECT_ROOT, "src", "unit_commitment", "utilities", "decision_variables.jl"))
+include(joinpath(PROJECT_ROOT, "src", "unit_commitment", "utilities", "export_results.jl"))
+include(joinpath(PROJECT_ROOT, "src", "unit_commitment", "validation", "validation.jl"))
 include(joinpath(PROJECT_ROOT, "tools", "benders", "models", "scuc_model.jl"))
 include(joinpath(PROJECT_ROOT, "tools", "benders", "models", "batch_subproblems.jl"))
 

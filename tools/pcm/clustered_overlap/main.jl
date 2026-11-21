@@ -16,8 +16,8 @@ performance_mode in ("fast", "balanced") ||
 
 env_overrides = Pair{String, String}[
     "PCM_USE_CLUSTERED_UC" => (overlap_formulation === :clustered ? "true" : "false"),
-    "PCM_OVERLAP_MODE" => "ml_prediction",
 ]
+haskey(ENV, "PCM_OVERLAP_MODE") || push!(env_overrides, "PCM_OVERLAP_MODE" => "ml_prediction")
 if performance_mode == "fast"
     haskey(ENV, "PCM_OVERLAP_REFERENCE_MODE") || push!(env_overrides, "PCM_OVERLAP_REFERENCE_MODE" => "load_following")
     haskey(ENV, "PCM_MIP_GAP") || push!(env_overrides, "PCM_MIP_GAP" => "0.03")
