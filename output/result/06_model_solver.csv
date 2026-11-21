@@ -1,0 +1,7 @@
+parameter,value
+num_variables,1470
+objective_value,511704.686493159
+objective_bound,511704.6864931589
+relative_gap,0.0
+solve_time_seconds,0.03834390640258789
+termination_status,OPTIMAL

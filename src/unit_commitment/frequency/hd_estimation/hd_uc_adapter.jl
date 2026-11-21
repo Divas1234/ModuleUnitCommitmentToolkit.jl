@@ -22,17 +22,26 @@ function extract_uc_hd_parameters(
     winds,
     Δp_contingency::Real;
     f0_hz::Float64 = frequency_env_float("FREQUENCY_BASE_HZ", 50.0),
-    rocof_limit_hz_per_s::Float64 = frequency_env_float("FREQUENCY_ROCOF_LIMIT_HZ_PER_S", 4.5),
+    rocof_limit_hz_per_s::Float64 = frequency_env_float(
+        "FREQUENCY_ROCOF_LIMIT_HZ_PER_S",
+        4.5,
+    ),
     nadir_limit_hz::Float64 = frequency_env_float("FREQUENCY_NADIR_LIMIT_HZ", 0.5),
     qss_limit_hz::Float64 = frequency_env_float("FREQUENCY_QSS_LIMIT_HZ", 0.5),
     damping_min::Float64 = frequency_env_float("FREQUENCY_HD_DAMPING_MIN", 0.0),
     damping_max::Float64 = frequency_env_float("FREQUENCY_HD_DAMPING_MAX", 15.0),
-    damping_points::Int = max(5, floor(Int, frequency_env_float("FREQUENCY_HD_DAMPING_POINTS", 61.0))),
+    damping_points::Int = max(
+        5,
+        floor(Int, frequency_env_float("FREQUENCY_HD_DAMPING_POINTS", 61.0)),
+    ),
     inertia_max::Float64 = begin
         raw = strip(get(ENV, "FREQUENCY_HD_INERTIA_MAX", ""))
         isempty(raw) ? Inf : parse(Float64, raw)
     end,
-    include_converter_support::Bool = frequency_env_bool("FREQUENCY_HD_CONVERTER_ENABLED", true),
+    include_converter_support::Bool = frequency_env_bool(
+        "FREQUENCY_HD_CONVERTER_ENABLED",
+        true,
+    ),
     area_id::Int = 1,
 )
     NG = length(units.index)
@@ -40,17 +49,27 @@ function extract_uc_hd_parameters(
     sum_unit_capacity = max(sum(units.p_max), eps(Float64))
 
     # Capacity-weighted equivalent governor parameters across thermal fleet
-    K_num = sum(unit_primary_response_coeff(units, i) * safe_frequency_coeff(units.p_max, i) for i in 1:NG)
-    KF_num = sum(unit_turbine_response_coeff(units, i) * safe_frequency_coeff(units.p_max, i) for i in 1:NG)
+    K_num = sum(
+        unit_primary_response_coeff(units, i) * safe_frequency_coeff(units.p_max, i) for
+        i = 1:NG
+    )
+    KF_num = sum(
+        unit_turbine_response_coeff(units, i) * safe_frequency_coeff(units.p_max, i) for
+        i = 1:NG
+    )
     K_eq = max(K_num / sum_apparent_power, 1.0e-3)
     FH_eq = K_num > eps(Float64) ? clamp(KF_num / K_num, 0.0, 0.99) : 0.25
 
-    T_vals = [safe_frequency_coeff(units.Tg, i; default = 8.0) for i in 1:NG]
-    T_weights = [max(safe_frequency_coeff(units.p_max, i), 0.0) for i in 1:NG]
-    T_eq = sum(T_weights) > eps(Float64) ? sum(T_vals .* T_weights) / sum(T_weights) : mean(T_vals)
+    T_vals = [safe_frequency_coeff(units.Tg, i; default = 8.0) for i = 1:NG]
+    T_weights = [max(safe_frequency_coeff(units.p_max, i), 0.0) for i = 1:NG]
+    T_eq =
+        sum(T_weights) > eps(Float64) ? sum(T_vals .* T_weights) / sum(T_weights) :
+        mean(T_vals)
     T_eq = max(T_eq, 0.1)
 
-    wind_support = include_converter_support ? wind_frequency_capacity_support(winds) : (inertia = 0.0, damping = 0.0, primary = 0.0)
+    wind_support =
+        include_converter_support ? wind_frequency_capacity_support(winds) :
+        (inertia = 0.0, damping = 0.0, primary = 0.0)
     H_vsm = wind_support.inertia / (2.0 * sum_apparent_power)
     D_vsm = wind_support.damping / sum_apparent_power
     K_conv = wind_support.primary / sum_apparent_power
@@ -59,9 +78,21 @@ function extract_uc_hd_parameters(
     delta_p_pu = contingency_mw / sum_apparent_power
 
     # Ensure damping search range covers both fleet damping capability and QSS minimum damping
-    max_sync_damping = sum(safe_frequency_coeff(units.Dg, i) * safe_frequency_coeff(units.p_max, i) for i in 1:NG) / sum_apparent_power
-    qss_damping_req = max(0.0, hd_qss_min_damping(delta_p_pu, qss_limit_hz, K_eq; f0 = f0_hz) - (D_vsm + K_conv))
-    eff_damping_max = max(damping_max, max_sync_damping * 1.25 + 1.0, qss_damping_req + 5.0, damping_min + 1.0)
+    max_sync_damping =
+        sum(
+            safe_frequency_coeff(units.Dg, i) * safe_frequency_coeff(units.p_max, i) for
+            i = 1:NG
+        ) / sum_apparent_power
+    qss_damping_req = max(
+        0.0,
+        hd_qss_min_damping(delta_p_pu, qss_limit_hz, K_eq; f0 = f0_hz) - (D_vsm + K_conv),
+    )
+    eff_damping_max = max(
+        damping_max,
+        max_sync_damping * 1.25 + 1.0,
+        qss_damping_req + 5.0,
+        damping_min + 1.0,
+    )
 
     return HDFrequencyParameters(
         area_id = area_id,
@@ -105,7 +136,9 @@ function add_hd_frequency_constraints!(
     winds = nothing,
 )
     if !haskey(JuMP.object_dictionary(scuc), :x)
-        println("\t constraints: 13) H-D frequency security constraints skipped (x not defined)")
+        println(
+            "\t constraints: 13) H-D frequency security constraints skipped (x not defined)",
+        )
         return nothing
     end
 
@@ -118,10 +151,22 @@ function add_hd_frequency_constraints!(
     if frequency_env_bool("FREQUENCY_HD_EXPORT_REPORT", false)
         println("\n--- H-D Frequency Security Region Assessment ---")
         io = IOContext(stdout, :displaysize => (100, 140), :compact => true)
-        show(io, hd_region_summary_dataframe(hd_region); allrows = true, allcols = true, eltypes = false)
+        show(
+            io,
+            hd_region_summary_dataframe(hd_region);
+            allrows = true,
+            allcols = true,
+            eltypes = false,
+        )
         println()
         if !isempty(cuts.alpha)
-            show(io, hd_cuts_dataframe(cuts); allrows = true, allcols = true, eltypes = false)
+            show(
+                io,
+                hd_cuts_dataframe(cuts);
+                allrows = true,
+                allcols = true,
+                eltypes = false,
+            )
             println()
         end
     end
@@ -131,12 +176,20 @@ function add_hd_frequency_constraints!(
     H_sync_expr = @expression(
         scuc,
         [t = 1:NT],
-        sum(safe_frequency_coeff(units.Hg, i) * safe_frequency_coeff(units.p_max, i) * x[i, t] for i in 1:NG) / sum_apparent_power
+        sum(
+            safe_frequency_coeff(units.Hg, i) *
+            safe_frequency_coeff(units.p_max, i) *
+            x[i, t] for i = 1:NG
+        ) / sum_apparent_power
     )
     D_sync_expr = @expression(
         scuc,
         [t = 1:NT],
-        sum(safe_frequency_coeff(units.Dg, i) * safe_frequency_coeff(units.p_max, i) * x[i, t] for i in 1:NG) / sum_apparent_power
+        sum(
+            safe_frequency_coeff(units.Dg, i) *
+            safe_frequency_coeff(units.p_max, i) *
+            x[i, t] for i = 1:NG
+        ) / sum_apparent_power
     )
 
     rocof_constr = @constraint(scuc, [t = 1:NT], H_sync_expr[t] >= cuts.H_min_sync)
@@ -180,10 +233,22 @@ function add_hd_frequency_constraints!(
     end
 
     fcr_threshold = frequency_env_float("FREQUENCY_FCR_THRESHOLD", 0.025)
-    qss_constr = add_qss_frequency_constraints!(scuc, NT, NG, NS, units, x, hd_params.qss_limit_hz)
-    sfr_constr = add_sfr_reserve_constraints!(scuc, NT, NG, NS, units, x, hd_params.nadir_limit_hz, fcr_threshold)
+    qss_constr =
+        add_qss_frequency_constraints!(scuc, NT, NG, NS, units, x, hd_params.qss_limit_hz)
+    sfr_constr = add_sfr_reserve_constraints!(
+        scuc,
+        NT,
+        NG,
+        NS,
+        units,
+        x,
+        hd_params.nadir_limit_hz,
+        fcr_threshold,
+    )
 
-    println("\t constraints: 13) H-D frequency security region constraints ($(nadir_cut_count) lower, $(upper_cut_count) upper cuts)\t done")
+    println(
+        "\t constraints: 13) H-D frequency security region constraints ($(nadir_cut_count) lower, $(upper_cut_count) upper cuts)\t done",
+    )
     return (
         mode = :hd_region,
         region = hd_region,
