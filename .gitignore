@@ -111,3 +111,7 @@ secrets.*
 
 # Benchmark/generated artifacts
 docs/benchmarks/**/logs/
+
+# macOS DMG / App packaging artifacts
+dist/
+*.dmg
