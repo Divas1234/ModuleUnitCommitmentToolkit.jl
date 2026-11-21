@@ -28,6 +28,10 @@ function extract_uc_hd_parameters(
     damping_min::Float64 = frequency_env_float("FREQUENCY_HD_DAMPING_MIN", 0.0),
     damping_max::Float64 = frequency_env_float("FREQUENCY_HD_DAMPING_MAX", 15.0),
     damping_points::Int = max(5, floor(Int, frequency_env_float("FREQUENCY_HD_DAMPING_POINTS", 61.0))),
+    inertia_max::Float64 = begin
+        raw = strip(get(ENV, "FREQUENCY_HD_INERTIA_MAX", ""))
+        isempty(raw) ? Inf : parse(Float64, raw)
+    end,
     include_converter_support::Bool = frequency_env_bool("FREQUENCY_HD_CONVERTER_ENABLED", true),
     area_id::Int = 1,
 )
@@ -54,9 +58,10 @@ function extract_uc_hd_parameters(
     contingency_mw = frequency_contingency_size(units, Δp_contingency)
     delta_p_pu = contingency_mw / sum_apparent_power
 
-    # Ensure damping search range covers the actual fleet damping capability
+    # Ensure damping search range covers both fleet damping capability and QSS minimum damping
     max_sync_damping = sum(safe_frequency_coeff(units.Dg, i) * safe_frequency_coeff(units.p_max, i) for i in 1:NG) / sum_apparent_power
-    eff_damping_max = max(damping_max, max_sync_damping * 1.25 + 1.0, damping_min + 1.0)
+    qss_damping_req = max(0.0, hd_qss_min_damping(delta_p_pu, qss_limit_hz, K_eq; f0 = f0_hz) - (D_vsm + K_conv))
+    eff_damping_max = max(damping_max, max_sync_damping * 1.25 + 1.0, qss_damping_req + 5.0, damping_min + 1.0)
 
     return HDFrequencyParameters(
         area_id = area_id,
@@ -74,6 +79,7 @@ function extract_uc_hd_parameters(
         damping_min = damping_min,
         damping_max = eff_damping_max,
         damping_points = damping_points,
+        inertia_max = inertia_max,
     )
 end
 
@@ -150,11 +156,34 @@ function add_hd_frequency_constraints!(
         nothing
     end
 
+    # Upper binding constraints: H_sync <= H_max_sync, D_sync <= D_max_sync, and upper H-D cuts
+    enforce_upper = frequency_env_bool("FREQUENCY_HD_ENFORCE_UPPER_BOUNDS", true)
+    inertia_upper_constr = if enforce_upper && isfinite(cuts.H_max_sync)
+        @constraint(scuc, [t = 1:NT], H_sync_expr[t] <= cuts.H_max_sync)
+    else
+        nothing
+    end
+    damping_upper_constr = if enforce_upper && isfinite(cuts.D_max_sync)
+        @constraint(scuc, [t = 1:NT], D_sync_expr[t] <= cuts.D_max_sync)
+    else
+        nothing
+    end
+    upper_cut_count = length(cuts.alpha_upper)
+    hd_upper_constr = if enforce_upper && upper_cut_count > 0
+        @constraint(
+            scuc,
+            [m = 1:upper_cut_count, t = 1:NT],
+            H_sync_expr[t] - cuts.beta_upper[m] * D_sync_expr[t] <= cuts.alpha_upper[m]
+        )
+    else
+        nothing
+    end
+
     fcr_threshold = frequency_env_float("FREQUENCY_FCR_THRESHOLD", 0.025)
     qss_constr = add_qss_frequency_constraints!(scuc, NT, NG, NS, units, x, hd_params.qss_limit_hz)
     sfr_constr = add_sfr_reserve_constraints!(scuc, NT, NG, NS, units, x, hd_params.nadir_limit_hz, fcr_threshold)
 
-    println("\t constraints: 13) H-D frequency security region constraints ($(nadir_cut_count) cuts)\t done")
+    println("\t constraints: 13) H-D frequency security region constraints ($(nadir_cut_count) lower, $(upper_cut_count) upper cuts)\t done")
     return (
         mode = :hd_region,
         region = hd_region,
@@ -162,8 +191,11 @@ function add_hd_frequency_constraints!(
         H_sync = H_sync_expr,
         D_sync = D_sync_expr,
         rocof = rocof_constr,
+        inertia_upper = inertia_upper_constr,
         damping = damping_constr,
+        damping_upper = damping_upper_constr,
         nadir = hd_nadir_constr,
+        hd_upper = hd_upper_constr,
         qss = qss_constr,
         sfr = sfr_constr,
     )

@@ -106,6 +106,9 @@
         @test cuts.max_violation_s <= 1e-8
         @test all(cuts.beta .>= 0.0)
         @test length(cuts.alpha) <= 6
+        @test isfinite(cuts.H_max_sync) && cuts.H_max_sync > cuts.H_min_sync
+        @test isfinite(cuts.D_max_sync) && cuts.D_max_sync > cuts.D_min_sync
+        @test all(cuts.beta_upper .>= 0.0)
 
         # Every feasible point on the true H-D boundary must be conservatively bounded
         for idx in res.feasible_indices
@@ -129,7 +132,7 @@
         end
 
         cuts_df = hd_cuts_dataframe(cuts)
-        @test size(cuts_df, 1) == length(cuts.alpha)
+        @test size(cuts_df, 1) == length(cuts.alpha) + length(cuts.alpha_upper)
     end
 
     @testset "UC adapter & add_frequency_constraints! mode routing" begin
@@ -177,6 +180,8 @@
             @test out.region isa HDFrequencyRegionResult
             @test out.cuts isa HDLinearCutSet
             @test out.rocof !== nothing
+            @test out.inertia_upper !== nothing
+            @test out.damping_upper !== nothing
         end
 
         # Route via FREQUENCY_MODEL_MODE = "hybrid"

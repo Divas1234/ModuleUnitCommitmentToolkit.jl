@@ -31,6 +31,7 @@ Base.@kwdef struct HDFrequencyParameters
     damping_min::Float64 = 0.0
     damping_max::Float64 = 15.0
     damping_points::Int = 61
+    inertia_max::Float64 = Inf
     nadir_search_grid::Int = 25
 end
 
@@ -38,7 +39,7 @@ end
     HDFrequencyRegionResult
 
 Complete assessment result of the H–D Frequency Security Region (FRSR), including
-explicit minimum inertia and minimum damping demands and feasible boundary curves.
+explicit minimum/maximum inertia and damping bounds and feasible boundary curves.
 """
 struct HDFrequencyRegionResult
     params::HDFrequencyParameters
@@ -53,7 +54,9 @@ struct HDFrequencyRegionResult
     qss_min_damping_sync::Float64
     nadir_min_damping_sync::Float64
     min_damping_demand::Float64
+    max_damping_bound::Float64
     min_inertia_demand::Float64
+    max_inertia_bound::Float64
     quadratic_fit_coeffs::Vector{Float64}
     feasible_indices::Vector{Int}
     vertices::Vector{Tuple{Float64, Float64}}
@@ -229,19 +232,28 @@ function assess_hd_frequency_region(p::HDFrequencyParameters)
     D_nadir_min = isempty(nadir_feasible_idx) ? Inf : damping_grid[first(nadir_feasible_idx)]
     min_damping_demand = max(D_qss_sync, D_nadir_min)
 
-    feasible_mask = isfinite.(required_inertia) .& (damping_grid .>= min_damping_demand - 1.0e-9)
+    effective_upper = isfinite(p.inertia_max) ? min.(underdamped_upper, p.inertia_max) : underdamped_upper
+
+    feasible_mask = isfinite.(required_inertia) .&
+                    isfinite.(effective_upper) .&
+                    (damping_grid .>= min_damping_demand - 1.0e-9) .&
+                    (required_inertia .<= effective_upper .+ 1.0e-9)
     feasible_indices = _largest_contiguous_true_run(feasible_mask)
 
     min_inertia_demand = isempty(feasible_indices) ? Inf : minimum(required_inertia[feasible_indices])
+    finite_uppers = filter(isfinite, effective_upper)
+    fallback_upper = isfinite(p.inertia_max) ? p.inertia_max : (isempty(finite_uppers) ? Inf : maximum(finite_uppers))
+    max_inertia_bound = isempty(feasible_indices) ? fallback_upper : maximum(effective_upper[feasible_indices])
+    max_damping_bound = isempty(feasible_indices) ? p.damping_max : damping_grid[last(feasible_indices)]
 
     quad_coeffs = hd_fit_quadratic_boundary(damping_grid, nadir_critical)
 
-    # Extract closed polygon vertices (D, H) using underdamped_upper as display ceiling
+    # Extract closed polygon vertices (D, H) using effective_upper as upper boundary
     vertices = Tuple{Float64, Float64}[]
     if !isempty(feasible_indices)
         d_sub = damping_grid[feasible_indices]
         h_bot = required_inertia[feasible_indices]
-        h_top = max.(underdamped_upper[feasible_indices], h_bot .+ 1.0e-3)
+        h_top = max.(effective_upper[feasible_indices], h_bot .+ 1.0e-3)
         for i in eachindex(d_sub)
             push!(vertices, (d_sub[i], h_bot[i]))
         end
@@ -254,7 +266,7 @@ function assess_hd_frequency_region(p::HDFrequencyParameters)
         p,
         damping_grid,
         underdamped_lower,
-        underdamped_upper,
+        effective_upper,
         nadir_critical,
         required_inertia,
         H_rocof_total,
@@ -263,7 +275,9 @@ function assess_hd_frequency_region(p::HDFrequencyParameters)
         D_qss_sync,
         D_nadir_min,
         min_damping_demand,
+        max_damping_bound,
         min_inertia_demand,
+        max_inertia_bound,
         quad_coeffs,
         feasible_indices,
         vertices,
@@ -290,8 +304,8 @@ function hd_region_summary_dataframe(res::HDFrequencyRegionResult)
             "RoCoF Limit (Hz/s) -> Min Inertia Total / Sync (s)",
             "QSS Limit (Hz) -> Min Damping Total / Sync (pu)",
             "Nadir Limit (Hz) -> Nadir Min Damping (pu)",
-            "Overall Min Damping Demand D_min (pu)",
-            "Overall Min Inertia Demand H_min (s)",
+            "Overall Min / Max Damping Bound D_min / D_max (pu)",
+            "Overall Min / Max Inertia Bound H_min / H_max (s)",
             "Feasible Grid Points",
         ],
         value = [
@@ -305,8 +319,8 @@ function hd_region_summary_dataframe(res::HDFrequencyRegionResult)
             "$(round(p.rocof_limit_hz_per_s; digits = 2)) -> $(round(res.rocof_min_inertia_total; digits = 4)) / $(round(res.rocof_min_inertia_sync; digits = 4))",
             "$(round(p.qss_limit_hz; digits = 2)) -> $(round(res.qss_min_damping_total; digits = 4)) / $(round(res.qss_min_damping_sync; digits = 4))",
             "$(round(p.nadir_limit_hz; digits = 2)) -> $(round(res.nadir_min_damping_sync; digits = 4))",
-            string(round(res.min_damping_demand; digits = 4)),
-            string(round(res.min_inertia_demand; digits = 4)),
+            "$(round(res.min_damping_demand; digits = 4)) / $(round(res.max_damping_bound; digits = 4))",
+            "$(round(res.min_inertia_demand; digits = 4)) / $(round(res.max_inertia_bound; digits = 4))",
             "$(length(res.feasible_indices)) / $(length(res.damping_grid))",
         ],
     )
