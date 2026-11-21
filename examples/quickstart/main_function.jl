@@ -23,5 +23,5 @@ scenarios_prob = 1.0 / winds.scenarios_nums;
 # Call the refactored function
 results = SUC_scucmodel(NT, NB, NG, ND, NC, ND2, units, loads, winds, lines, data_centers, config_param, psses, scenarios_prob, NL)
 
-save_details_scheduled_results(config_param, results)
+save_details_scheduled_results(config_param, results; winds = winds)
 println("Simulation completed successfully.")

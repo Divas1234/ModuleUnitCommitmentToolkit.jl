@@ -88,7 +88,7 @@ function main(;
     scenarios_prob = data.full_scenario_probability
 
     # Print imported system statistics and validate core boundaries when enabled.
-    maybe_print_boundarycondition(NB, NL, NG, NT, ND, units, loads, lines, winds, psses, config_param; data_centers = data_center_units)
+    maybe_print_boundarycondition(NB, NL, NG, NT, ND, units, loads, lines, winds, psses, config_param; data_centers = data_centers)
 
     # Linearize generator fuel cost curves
     refcost, eachslope = linearizationfuelcurve(units, NG)
@@ -98,7 +98,7 @@ function main(;
 
     # Construct the Benders Base Subproblem algebraically
     scuc_subproblem, sub_model_struct =
-        bd_subfunction(NT, NB, NL, NG, ND, NC, ND2, NS, NW, units, winds, loads, lines, data_center_units, psses, scenarios_prob, config_param)
+        bd_subfunction(NT, NB, NL, NG, ND, NC, ND2, NS, NW, units, winds, loads, lines, data_centers, psses, scenarios_prob, config_param)
 
     # Fallback initialization validation for scenario probabilities
     if !@isdefined(scenarios_prob)
@@ -124,7 +124,7 @@ function main(;
             winds,
             loads,
             lines,
-            data_center_units,
+            data_centers,
             psses,
             scenarios_prob,
             config_param,
@@ -157,7 +157,7 @@ function main(;
         Int64(NT),
         Int64(NC),
         Int64(ND2),
-        data_center_units,
+        data_centers,
         data,
     )
 end

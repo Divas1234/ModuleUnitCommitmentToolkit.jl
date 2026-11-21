@@ -2,7 +2,7 @@ using DelimitedFiles
 using JLD2
 
 #LINK -  exported details scheduled results as a .csv file
-function save_details_scheduled_results(config_param, results)
+function save_details_scheduled_results(config_param, results; winds = nothing, output_dir = nothing)
     # Check if optimization was successful and extract results
     if results !== nothing
         println("Extracting results from dictionary...")
@@ -49,7 +49,17 @@ function save_details_scheduled_results(config_param, results)
     # Save the balance results
     # Save the balance results (only if optimization succeeded)
     if results !== nothing && bench_p₀ !== nothing # Check if variables are valid
-        savebalance_result(bench_p₀, bench_pᵨ, bench_pᵩ, bench_pss_charge_p⁺, bench_pss_charge_p⁻, 1)
+        savebalance_result(
+            bench_p₀,
+            bench_pᵨ,
+            bench_pᵩ,
+            bench_pss_charge_p⁺,
+            bench_pss_charge_p⁻,
+            1;
+            config_param = config_param,
+            winds = winds,
+            output_dir = output_dir,
+        )
     else
         println("Skipping saving results due to optimization failure.")
     end
@@ -145,32 +155,43 @@ function read_UCresults()
     NT, NG, ND, NW, units, winds
 end
 
-function savebalance_result(bench_p₀, bench_pᵨ, bench_pᵩ, bench_pss_charge_p⁺, bench_pss_charge_p⁻, flag; output_dir = nothing)
-    # @show DataFrame(bench_p₀[1:3,:],:auto)
-    thermalunits_output = zeros(24, 1)
-    for i in 1:24
-        thermalunits_output[i, 1] = sum(bench_p₀[1:3, i])
+function savebalance_result(
+    bench_p₀,
+    bench_pᵨ,
+    bench_pᵩ,
+    bench_pss_charge_p⁺,
+    bench_pss_charge_p⁻,
+    flag;
+    config_param = nothing,
+    winds = nothing,
+    output_dir = nothing,
+)
+    nt = size(bench_p₀, 2)
+    thermalunits_output = zeros(nt, 1)
+    for i in 1:nt
+        thermalunits_output[i, 1] = sum(@view bench_p₀[:, i])
     end
-    # Plots.plot(thermalunits_output)
-    # @show DataFrame(bench_pᵩ[1:3,:],:auto)
-    windunits_output = zeros(24, 1)
-    for i in 1:24
-        windunits_output[i, 1] = sum(winds.p_max) * winds.scenarios_curve[1, i] - sum(bench_pᵩ[1:2, i])
-    end
-    # Plots.plot(windunits_output)
-    forceloadcurtailment = zeros(24, 1)
-    for i in 1:24
-        forceloadcurtailment[i, 1] = sum(bench_pᵨ[1:ND, i])
-    end
-    # Plots.plot(forceloadcurtailment)
-    # @show bench_pss_charge_p⁺[1,:]
-    BESScharging_output, BESSdischarging_output = zeros(24, 1), zeros(24, 1)
-    if config_param.consider_bess == 1
-        for i in 1:24
-            BESScharging_output[i, 1] = sum(bench_pss_charge_p⁺[1, i])
+
+    windunits_output = zeros(nt, 1)
+    if winds !== nothing
+        total_wind_cap = sum(winds.p_max)
+        nw = min(length(winds.p_max), size(bench_pᵩ, 1))
+        for i in 1:nt
+            windunits_output[i, 1] = total_wind_cap * winds.scenarios_curve[1, i] - sum(@view bench_pᵩ[1:nw, i])
         end
-        for i in 1:24
-            BESSdischarging_output[i, 1] = sum(bench_pss_charge_p⁻[1, i])
+    end
+
+    forceloadcurtailment = zeros(nt, 1)
+    for i in 1:nt
+        forceloadcurtailment[i, 1] = sum(@view bench_pᵨ[:, i])
+    end
+
+    BESScharging_output, BESSdischarging_output = zeros(nt, 1), zeros(nt, 1)
+    consider_bess = config_param !== nothing && config_param.consider_bess == 1
+    if consider_bess && bench_pss_charge_p⁺ !== nothing && bench_pss_charge_p⁻ !== nothing
+        for i in 1:nt
+            BESScharging_output[i, 1] = sum(@view bench_pss_charge_p⁺[:, i])
+            BESSdischarging_output[i, 1] = sum(@view bench_pss_charge_p⁻[:, i])
         end
     end
     # Plots.plot(-bench_pss_charge_p⁺[1,:])
