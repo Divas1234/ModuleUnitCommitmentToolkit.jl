@@ -1,5 +1,5 @@
 """
-    src/pcm/horizons/fixed_horizon.jl
+    src/production_cost/horizons/fixed_rolling.jl
 
 Pure-function fixed-horizon (non-overlapping) rolling PCM driver.
 Replaces the legacy global-variable `rolling_pcm_driver.jl` with explicit
@@ -34,25 +34,21 @@ function _slice_pcm_window_winds(winds, t_start::Int, t_end::Int)
     )
 end
 
-function _update_units_initial_state(units, x_end::AbstractVector, p_end::AbstractVector, prev_t0::AbstractVector, window_hours::Int)
-    NG = length(units.index)
-    new_t0 = similar(Float64.(prev_t0))
-    for i in 1:NG
-        on_now = x_end[i] >= 0.5
-        was_on = units.x_0[i] >= 0.5
-        new_t0[i] = (on_now == was_on) ? (Float64(prev_t0[i]) + window_hours) : Float64(window_hours)
+function _update_units_initial_state(units, results::AbstractDict, NG::Int, window_hours::Int)
+    next_units = deepcopy(units)
+    next_units.x_0 = Float64.(vec(results["x₀"][1:NG, window_hours]))
+    next_units.p_0 = Float64.(vec(results["p₀"][1:NG, window_hours]))
+    if haskey(results, "u₀") && haskey(results, "v₀")
+        res_up, res_down = get_generators_upoff_durations(
+            units,
+            results["u₀"][1:NG, 1:window_hours],
+            results["v₀"][1:NG, 1:window_hours],
+            NG,
+        )
+        next_units.t_0 = Float64.(res_up[:, 1])
+        next_units.t_1 = Float64.(res_down[:, 1])
     end
-    vals = Any[getfield(units, f) for f in fieldnames(typeof(units))]
-    for (k, f) in enumerate(fieldnames(typeof(units)))
-        if f === :x_0
-            vals[k] = Float64.(x_end)
-        elseif f === :t_0
-            vals[k] = new_t0
-        elseif f === :p_0
-            vals[k] = Float64.(p_end)
-        end
-    end
-    return ThermalUnits(vals[1:26]...; t_1 = units.t_1)
+    return next_units
 end
 
 """
@@ -69,17 +65,13 @@ function execute_fixed_horizon_pcm(
 )
     Random.seed!(cfg.random_seed)
     t_start_wall = time()
-
     perf = cfg.performance_mode
-    perf in ("fast", "balanced") || throw(ArgumentError("PCM_PERFORMANCE_MODE must be fast or balanced; got '$perf'"))
 
     env_pairs = Pair{String, String}[]
     if formulation isa ClusteredFormulation
         haskey(ENV, "PCM_CLUSTER_OUTPUT_BINS") || push!(env_pairs, "PCM_CLUSTER_OUTPUT_BINS" => (perf == "fast" ? "5" : "9"))
-        haskey(ENV, "PCM_MIP_GAP") || push!(env_pairs, "PCM_MIP_GAP" => (perf == "fast" ? "0.03" : "0.015"))
-    else
-        haskey(ENV, "PCM_MIP_GAP") || push!(env_pairs, "PCM_MIP_GAP" => (perf == "fast" ? "0.03" : "0.015"))
     end
+    haskey(ENV, "PCM_MIP_GAP") || push!(env_pairs, "PCM_MIP_GAP" => (perf == "fast" ? "0.03" : "0.015"))
 
     formulation_sym = formulation isa ClusteredFormulation ? :clustered : :standard
     method_label = isempty(label) ? (policy.intervals == 1 ? "benchmark" : String(formulation_sym)) : label
@@ -125,20 +117,21 @@ function execute_fixed_horizon_pcm(
                 d.stroges,
                 scenarios_prob,
                 d.NL,
-                d.NH,
+                k,
                 d.hydros,
-                k;
+                d.NH;
                 formulation = formulation_sym,
             )
             dt_win = time() - t_win
             push!(interval_times, dt_win)
+            results === nothing && error("Fixed-horizon PCM ($method_label) failed at interval $k.")
 
             win_cost = if haskey(results, "total_cost")
                 Float64(results["total_cost"])
             elseif haskey(results, "objective_value")
                 Float64(results["objective_value"])
             else
-                0.0
+                error("Fixed-horizon PCM ($method_label) interval $k result is missing total_cost/objective_value.")
             end
             push!(interval_costs, win_cost)
             total_cost += win_cost
@@ -148,13 +141,7 @@ function execute_fixed_horizon_pcm(
                 p_mat = results["p₀"]
                 full_x[:, h_start:h_end] .= x_mat[1:NG, 1:mini_NT]
                 full_p[:, h_start:h_end] .= p_mat[1:NG, 1:mini_NT]
-                current_units = _update_units_initial_state(
-                    current_units,
-                    x_mat[1:NG, mini_NT],
-                    p_mat[1:NG, mini_NT],
-                    current_units.t_0,
-                    mini_NT,
-                )
+                current_units = _update_units_initial_state(current_units, results, NG, mini_NT)
             end
         end
 
@@ -169,6 +156,8 @@ function execute_fixed_horizon_pcm(
             intervals = n_intervals,
             window_hours = mini_NT,
             total_hours = total_hours,
+            physical_units = NG,
+            units = d.units,
             interval_costs = interval_costs,
             interval_times = interval_times,
             commitment = full_x,

@@ -1,5 +1,5 @@
 """
-    src/pcm/comparison.jl
+    src/production_cost/benchmark_comparison.jl
 
 4-Method PCM vs Benchmark comparison engine.
 Runs the 2x2 PCM method matrix (`standard`, `adaptive_overlap`, `clustered`,

@@ -28,6 +28,7 @@ if !isdefined(@__MODULE__, :_PCM_CORE_INCLUDED)
     include("horizons/adaptive_overlap/model_calibration.jl")
     include("horizons/adaptive_overlap/window_selector.jl")
     include("horizons/adaptive_overlap/state_commit.jl")
+    include("horizons/adaptive_overlap/adaptive_rolling.jl")
 
     include("horizons/fixed_rolling.jl")
     include("rolling_engine.jl")

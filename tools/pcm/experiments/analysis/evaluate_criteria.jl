@@ -1,16 +1,11 @@
-include("../paths.jl")
+const ADAPTIVE_PCM_PROJECT_ROOT = normpath(joinpath(@__DIR__, "..", "..", "..", ".."))
 
+using ModuleUnitCommitmentToolkit
 using XLSX
 using Statistics
 using Printf
 using CSV
 using DataFrames
-
-# Include legacy data loaders and SCUC modeling components
-include("../../../../src/renewables/stochastic_simulation.jl")
-include("../../../../src/input_data/readers.jl")
-include("../../standard/period_scuc.jl")
-include("../core/pcm_overlap_core.jl")
 
 function run_criteria_evaluation()
     println("="^80)
@@ -18,18 +13,14 @@ function run_criteria_evaluation()
     println("="^80)
 
     ENV["MODULE_UC_DATA_FILE"] = joinpath(ADAPTIVE_PCM_PROJECT_ROOT, "data", "data_118.xlsx")
-    UnitsFreqParam, WindsFreqParam, StrogeData, DataGen, GenCost, DataBranch, LoadCurve, DataLoad, Datacentra_Data, HydroData,
-    HydroCurve = readxlssheet()
+    pcm_data = load_pcm_excel_data(; network_constraints = false)
 
     # Declare variables as global for legacy compatibility
     global config_param, units, lines, loads, stroges, NB, NG, NL, ND, NT, NC, ND2, NH, DataCentras, hydros, scenarios_prob, winds
-
-    config_param, units, lines, loads, stroges, NB, NG, NL, ND, NT, NC, ND2, NH, DataCentras, hydros = forminputdata(
-        DataGen, DataBranch, DataLoad, LoadCurve, GenCost, UnitsFreqParam, StrogeData, Datacentra_Data, HydroData, HydroCurve)
-    config_param.is_NetWorkCon = 0
-    winds, NW = genscenario(WindsFreqParam, 0)
-    winds.scenarios_nums = 1
-    winds.scenarios_curve = winds.scenarios_curve[1:1, :]
+    config_param, units, lines, loads, stroges = pcm_data.config_param, pcm_data.units, pcm_data.lines, pcm_data.loads, pcm_data.stroges
+    NB, NG, NL, ND, NT, NC, ND2, NH = pcm_data.NB, pcm_data.NG, pcm_data.NL, pcm_data.ND, pcm_data.NT, pcm_data.NC, pcm_data.ND2, pcm_data.NH
+    DataCentras, hydros = pcm_data.DataCentras, pcm_data.hydros
+    winds, NW = genscenario(pcm_data.WindsFreqParam, 0; scenario_limit = 1)
 
     scenarios_prob = 1.0
     exec_NT = 24

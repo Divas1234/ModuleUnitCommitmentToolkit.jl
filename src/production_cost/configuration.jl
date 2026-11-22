@@ -1,5 +1,5 @@
 """
-    src/pcm/pcm_config.jl
+    src/production_cost/configuration.jl
 
 Core orthogonal types, configuration, load-profile transforms, and Excel data
 adapter for Production Cost Modeling (PCM).
@@ -44,6 +44,14 @@ Base.@kwdef struct PCMConfig
     random_seed::Int = parse(Int, get(ENV, "PCM_RANDOM_SEED", "20260809"))
     data_file::Union{Nothing, String} = let f = strip(get(ENV, "MODULE_UC_DATA_FILE", ""))
         isempty(f) ? nothing : f
+    end
+
+    function PCMConfig(window_hours, intervals, load_profile, performance_mode, network_constraints, random_seed, data_file)
+        window_hours > 0 || throw(ArgumentError("PCMConfig.window_hours must be positive; got $window_hours"))
+        intervals > 0 || throw(ArgumentError("PCMConfig.intervals must be positive; got $intervals"))
+        perf = lowercase(strip(String(performance_mode)))
+        perf in ("fast", "balanced") || throw(ArgumentError("PCM_PERFORMANCE_MODE must be fast or balanced; got '$performance_mode'"))
+        return new(window_hours, intervals, lowercase(strip(String(load_profile))), perf, network_constraints, random_seed, data_file)
     end
 end
 

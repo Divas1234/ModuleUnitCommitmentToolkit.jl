@@ -19,3 +19,4 @@ method = strip(get(ENV, "PCM_METHOD", "standard"))
 cfg = PCMConfig()
 result = run_pcm(method; cfg = cfg)
 println("PCM run completed: method=$(result.method), status=$(result.status), total_cost=$(round(result.total_cost; digits=4)), runtime=$(round(result.runtime_seconds; digits=3))s")
+result

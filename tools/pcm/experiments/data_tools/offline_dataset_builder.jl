@@ -1,17 +1,11 @@
-include("../paths.jl")
+const ADAPTIVE_PCM_PROJECT_ROOT = normpath(joinpath(@__DIR__, "..", "..", "..", ".."))
 
+using ModuleUnitCommitmentToolkit
 using XLSX
 using Statistics
 using Printf
 using CSV
 using DataFrames
-
-# Include legacy data loaders and SCUC modeling components
-include("../../../../src/renewables/stochastic_simulation.jl")
-include("../../../../src/input_data/readers.jl")
-include("../../standard/period_scuc.jl")
-include("../../config/load_profiles.jl")
-include("../core/pcm_overlap_core.jl")
 
 function run_offline_dataset_generation(;
         input_file = get(ENV, "MODULE_UC_DATA_FILE", joinpath(ADAPTIVE_PCM_PROJECT_ROOT, "data", "data_118_clustered_pcm.xlsx")),

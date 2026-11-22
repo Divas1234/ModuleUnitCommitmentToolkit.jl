@@ -1,7 +1,6 @@
 using CSV, DataFrames, Printf, Dates, Statistics
-include("../paths.jl")
 
-const ROOT = ADAPTIVE_PCM_PROJECT_ROOT
+const ROOT = normpath(joinpath(@__DIR__, "..", "..", "..", ".."))
 const ARCHIVE_ROOT = joinpath(ROOT, "output", "archive")
 
 function find_files(root::String, filename::String)

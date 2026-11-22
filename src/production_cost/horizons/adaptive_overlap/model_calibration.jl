@@ -94,8 +94,7 @@ function sample_and_train_loss_models(loads::load, winds::wind, units::unit, lin
                         ref_x_curr = Float64.(ref_results["x₀"][:, 1] .> 0.5)
                     end
                 catch e
-                    # Keep the deterministic load-following reference if the
-                    # local no-boundary reference solve is unavailable.
+                    @warn "Local no-boundary reference solve failed; keeping load-following reference" exception = e
                 end
                 x_perturbations = ml_training ? [Float64.(units.x_0)] : [Float64.(units.x_0), ref_x_curr]
 
@@ -134,6 +133,7 @@ function sample_and_train_loss_models(loads::load, winds::wind, units::unit, lin
                         res_true = each_period_scucmodel_modules(total_NT_true, NB, NG, ND, NC, ND2, mini_units, mini_loads, mini_winds,
                             lines, DataCentras, config_param, stroges, scenarios_prob, NL, 1, hydros, NH)
                     catch e
+                        @warn "Calibration true-horizon solve failed" start_time l_scale exception = e
                         continue
                     end
 
@@ -144,7 +144,7 @@ function sample_and_train_loss_models(loads::load, winds::wind, units::unit, lin
                     committed_res_true = truncate_and_commit_results(res_true, exec_NT)
                     committed_cost_true = compute_committed_cost(
                         committed_res_true, exec_NT, mini_units, mini_loads, mini_winds, lines, DataCentras, config_param, 1, hydros, scenarios_prob)
-                    C_true = sum(committed_cost_true)
+                    C_true = committed_cost_true[1]
                     if C_true <= 1.0
                         continue
                     end
@@ -164,6 +164,7 @@ function sample_and_train_loss_models(loads::load, winds::wind, units::unit, lin
                                 res_H = each_period_scucmodel_modules(total_NT_H, NB, NG, ND, NC, ND2, mini_units, mini_loads, mini_winds, lines,
                                     DataCentras, config_param, stroges, scenarios_prob, NL, 1, hydros, NH)
                             catch e
+                                @warn "Calibration candidate overlap solve failed" start_time H exception = e
                                 continue
                             end
                         end
@@ -175,7 +176,7 @@ function sample_and_train_loss_models(loads::load, winds::wind, units::unit, lin
                         committed_res_H = truncate_and_commit_results(res_H, exec_NT)
                         committed_cost_H = compute_committed_cost(
                             committed_res_H, exec_NT, mini_units, mini_loads, mini_winds, lines, DataCentras, config_param, 1, hydros, scenarios_prob)
-                        C_H = sum(committed_cost_H)
+                        C_H = committed_cost_H[1]
 
                         # Accuracy loss combines cost deviation and commitment
                         # state deviation. Cost-only labels often make small
@@ -242,7 +243,7 @@ function sample_and_train_loss_models(loads::load, winds::wind, units::unit, lin
         models.b2 = b2
         println("  ✓ Neural Network model calibrated successfully.")
     catch e
-        println("  ⚠ Neural network calibration failed. Using defaults.")
+        @warn "Neural network calibration failed; using defaults" exception = e
     end
 
     # 3. Fit CART Decision Tree and update OverlapPredictor & cache
@@ -280,8 +281,8 @@ function sample_and_train_loss_models(loads::load, winds::wind, units::unit, lin
         end
 
         df_train = DataFrame(rows)
-        if nrow(df_train) >= 4 && isdefined(@__MODULE__, :ADAPTIVE_PCM_PROJECT_ROOT)
-            cache_root = joinpath(ADAPTIVE_PCM_PROJECT_ROOT, "output", "ml_trainningdata_res")
+        if nrow(df_train) >= 4
+            cache_root = normpath(joinpath(@__DIR__, "..", "..", "..", "..", "output", "ml_trainningdata_res"))
             expected_meta = OverlapPredictor.EXPECTED_TRAINING_METADATA[]
             if expected_meta !== nothing
                 paths = AdaptiveOverlapTrainingCache.cache_paths(cache_root, expected_meta)

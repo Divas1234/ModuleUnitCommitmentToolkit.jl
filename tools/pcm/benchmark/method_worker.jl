@@ -19,27 +19,34 @@ catch err
     global failure=sprint(showerror, err)
 end
 
-physical_units=isdefined(@__MODULE__, :NG) ? NG : missing
-virtual_units=isdefined(@__MODULE__, :units) && isdefined(@__MODULE__, :build_similar_pcm_clusters) ? length(build_similar_pcm_clusters(units)) :
-              missing
-integer_variables=physical_units === missing || virtual_units === missing ? missing :
-                  3 * WINDOW_HOURS *
-                  (METHOD in ("clustered", "clustered", "cluster", "clustered_adaptive_overlap") ? virtual_units : physical_units)
-total_cost=isdefined(@__MODULE__, :PCM_TOTAL_SCHEDULED_COST) ? sum(PCM_TOTAL_SCHEDULED_COST[end, :]) :
-           isdefined(@__MODULE__, :total_scheduled_cost) ? sum(total_scheduled_cost[end, :]) : missing
-solver=try
+res = (timed !== nothing && timed.value isa NamedTuple) ? timed.value : nothing
+physical_units = (res !== nothing && hasproperty(res, :physical_units)) ? res.physical_units :
+                 (isdefined(@__MODULE__, :NG) ? NG : missing)
+units_obj = (res !== nothing && hasproperty(res, :units)) ? res.units :
+            (isdefined(@__MODULE__, :units) ? units : nothing)
+virtual_units = units_obj !== nothing && isdefined(@__MODULE__, :build_similar_pcm_clusters) ?
+                length(build_similar_pcm_clusters(units_obj)) : missing
+is_clustered_method = METHOD in ("clustered", "clustered_pcm", "cluster", "clustered_overlap", "clustered_adaptive_overlap")
+integer_variables = physical_units === missing || virtual_units === missing ? missing :
+                    3 * WINDOW_HOURS * (is_clustered_method ? virtual_units : physical_units)
+total_cost = (res !== nothing && hasproperty(res, :total_cost)) ? res.total_cost :
+             isdefined(@__MODULE__, :PCM_TOTAL_SCHEDULED_COST) ? PCM_TOTAL_SCHEDULED_COST[end, 1] :
+             isdefined(@__MODULE__, :total_scheduled_cost) ? total_scheduled_cost[end, 1] : missing
+solver = try
     isdefined(@__MODULE__, :pcm_solver_name) ? pcm_solver_name() : get(ENV, "PCM_SOLVER", "unknown")
 catch
     get(ENV, "PCM_SOLVER", "unknown")
 end
-cluster_attempts=isdefined(@__MODULE__, :PCM_CLUSTER_ATTEMPTS) ? PCM_CLUSTER_ATTEMPTS[] : 0
-cluster_successes=isdefined(@__MODULE__, :PCM_CLUSTER_SUCCESSES) ? PCM_CLUSTER_SUCCESSES[] : 0
-cluster_fallbacks=isdefined(@__MODULE__, :PCM_CLUSTER_FALLBACKS) ? PCM_CLUSTER_FALLBACKS[] : 0
-extended_integer_variables=isdefined(@__MODULE__, :PCM_CLUSTER_EXTENDED_INTEGER_VARIABLES) ?
-                           PCM_CLUSTER_EXTENDED_INTEGER_VARIABLES[] : missing
-simulation_time=isdefined(@__MODULE__, :PCM_SIMULATION_TIME_SEC) ? PCM_SIMULATION_TIME_SEC : (timed === nothing ? missing : timed.time)
-training_time=isdefined(@__MODULE__, :PCM_ML_TRAINING_TIME_SEC) ? PCM_ML_TRAINING_TIME_SEC : 0.0
-preprocess_time=isdefined(@__MODULE__, :PCM_OFFLINE_PREPROCESS_TIME_SEC) ? PCM_OFFLINE_PREPROCESS_TIME_SEC : 0.0
+cluster_stats = isdefined(@__MODULE__, :snapshot_pcm_cluster_stats) ? snapshot_pcm_cluster_stats() : nothing
+cluster_attempts = cluster_stats !== nothing ? cluster_stats.attempts : 0
+cluster_successes = cluster_stats !== nothing ? cluster_stats.successes : 0
+cluster_fallbacks = cluster_stats !== nothing ? cluster_stats.fallbacks : 0
+extended_integer_variables = cluster_stats !== nothing ? cluster_stats.extended_integer_variables : missing
+simulation_time = (res !== nothing && hasproperty(res, :simulation_time_sec)) ? res.simulation_time_sec :
+                  (res !== nothing && hasproperty(res, :runtime_seconds)) ? res.runtime_seconds :
+                  (timed === nothing ? missing : timed.time)
+training_time = (res !== nothing && hasproperty(res, :offline_training_time_sec)) ? res.offline_training_time_sec : 0.0
+preprocess_time = (res !== nothing && hasproperty(res, :offline_preprocess_time_sec)) ? res.offline_preprocess_time_sec : 0.0
 
 row=DataFrame(; timestamp = [string(now())], method = [METHOD], load_profile = [PROFILE], status = [status],
     solver = [solver],

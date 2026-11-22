@@ -60,4 +60,5 @@ include(joinpath(PROJECT_ROOT, "src", "production_cost", "entry.jl"))
     include("pcm/test_pcm_two_scale_benchmark.jl")
     include("pcm/test_overlap_training_cache.jl")
     include("pcm/test_clustered_adaptive_overlap.jl")
+    include("pcm/test_pcm_unified_entrypoints.jl")
 end

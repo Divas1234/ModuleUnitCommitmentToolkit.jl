@@ -1,8 +1,7 @@
-include("../paths.jl")
-
 using Printf, Statistics, CSV, DataFrames
+using ModuleUnitCommitmentToolkit
 
-const ROOT = ADAPTIVE_PCM_PROJECT_ROOT
+const ROOT = normpath(joinpath(@__DIR__, "..", "..", "..", ".."))
 
 function arg_value(flag::String, default::Union{Nothing, String} = nothing)
     idx = findfirst(==(flag), ARGS)
@@ -11,11 +10,6 @@ function arg_value(flag::String, default::Union{Nothing, String} = nothing)
     end
     return ARGS[idx + 1]
 end
-
-include("../../../../src/renewables/stochastic_simulation.jl")
-include("../../../../src/input_data/readers.jl")
-include("../../standard/period_scuc.jl")
-include("../core/pcm_overlap_core.jl")
 
 function repeat_time_series_to_horizon(curve::AbstractMatrix{<:Real}, target_hours::Int)
     source_hours = size(curve, 2)

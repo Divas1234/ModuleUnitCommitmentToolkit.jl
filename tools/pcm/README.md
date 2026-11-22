@@ -9,10 +9,10 @@ PCM is organized along two orthogonal modeling dimensions plus a full-horizon **
 | **Full-Horizon Reference** | `benchmark` (`integrated_uc`) — single-shot integrated UC over `intervals × window_hours` |
 
 ## Directory Structure
-- `src/pcm/` — Core precompiled library (`formulations/{single_unit,clustered}/`, `horizons/{fixed_horizon.jl,adaptive_overlap/}`, `rolling_engine.jl`, `comparison.jl`).
+- `src/production_cost/` — Core precompiled library (`formulations/{single_unit,clustered}/`, `horizons/{fixed_rolling.jl,adaptive_overlap/}`, `rolling_engine.jl`, `benchmark_comparison.jl`).
 - `tools/pcm/main.jl` — Unified CLI & GUI entrypoint (`PCM_METHOD=...`).
 - `tools/pcm/example_run.jl` — Example runner supporting single methods and `--compare-all` / `--compare-fixed` against Benchmark.
-- `tools/pcm/benchmark/` — Multi-scale and multi-profile benchmark suite (`run_pcm_suite.jl`).
+- `tools/pcm/benchmark/` — Multi-scale and multi-profile benchmark suite (`run_suite.jl`).
 - `tools/pcm/experiments/` — Archived research analysis and offline dataset generation scripts.
 
 ## Quick Start

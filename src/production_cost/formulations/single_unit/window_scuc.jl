@@ -10,25 +10,8 @@ if !isdefined(@__MODULE__, :_PERIOD_SCUC_MODULES_INCLUDED)
     if !isdefined(@__MODULE__, :hydro)
         const hydro = Any
     end
-    if !isdefined(@__MODULE__, :Gurobi)
-        include("../../../core/environment_config.jl")
-    end
-    if !isdefined(@__MODULE__, :apply_scuc_constraints!)
-        include("../../../unit_commitment/constraints/constraints.jl")
-    end
-    if !isdefined(@__MODULE__, :set_objective!)
-        include("../../../unit_commitment/objectives/objectives.jl")
-    end
-    if !isdefined(@__MODULE__, :define_decision_variables!) || !isdefined(@__MODULE__, :calculate_gsdf)
-        include("../../../unit_commitment/utilities/utilities.jl")
-    end
-    if !isdefined(@__MODULE__, :validate_inputs) || !isdefined(@__MODULE__, :ConType)
-        include("../../../unit_commitment/validation/validation.jl")
-    end
-    isdefined(@__MODULE__, :apply_clustered_pcm_optimization!) || include("../clustered/cluster_adapter.jl")
-    isdefined(@__MODULE__, :solve_fixed_commitment_network_dispatch) || include("../clustered/network_dispatch.jl")
-    isdefined(@__MODULE__, :clustered_pcm_cost_coefficients) || include("../clustered/economic_costs.jl")
-    isdefined(@__MODULE__, :solve_true_clustered_pcm_window) || include("../clustered/master_solver.jl")
+    isdefined(@__MODULE__, :set_objective!) || include("../../../unit_commitment/objectives/objectives.jl")
+    isdefined(@__MODULE__, :calculate_gsdf) || include("../../../unit_commitment/utilities/utilities.jl")
     if !isdefined(@__MODULE__, :pcm_optimizer)
         pcm_optimizer() = _resolve_pcm_optimizer(nothing)
     end
@@ -250,43 +233,35 @@ if !isdefined(@__MODULE__, :_PERIOD_SCUC_MODULES_INCLUDED)
         add_data_center_constraints!(scuc, NT, NS, config_param, ND2, DataCentras)
         add_frequency_constraints!(scuc, NT, NG, NC, NS, units, stroges, config_param, Δp_contingency)
         # --- Solve and Extract Results ---
-        try
-            results = solve_and_extract_results(
-                scuc, NT, NG, ND, NC, NW, NS, ND2, scenarios_prob, eachslope, refcost, config_param,
-                units, loads, winds, lines, DataCentras; NB = NB)
-            if results !== nothing
-                if clustered_enabled
-                    cluster_strict=lowercase(get(ENV, "PCM_CLUSTER_STRICT", "false")) in ("1", "true", "yes", "on")
-                    clustered=apply_clustered_pcm_optimization!(
-                        results, units, loads, winds, lines, config_param, NB, NL; optimizer = pcm_optimizer(),
-                        strict = cluster_strict, stroges = stroges, data_centers = DataCentras, hydros = hydros)
-                    clustered.feasible||error("Clustered PCM disaggregation failed at $(clustered.stage): $(clustered.feedback)")
-                    if !clustered.network_feasible && config_param.is_NetWorkCon==1 && NL>0
-                        println("  ↻ Network feedback: adding PTDF constraints and re-solving the current PCM window")
-                        add_transmission_constraints!(
-                            scuc, NT, NG, ND, NC, NW, NL, NS, units, loads, winds, lines, stroges, Gsdf, config_param, ND2, DataCentras)
-                        results=solve_and_extract_results(
-                            scuc, NT, NG, ND, NC, NW, NS, ND2, scenarios_prob, eachslope, refcost, config_param,
-                            units, loads, winds, lines, DataCentras; NB = NB)
-                        results===nothing&&error("Network-feedback re-solve failed")
-                        repaired_clusters=build_pcm_clusters(units)
-                        results["cluster_ids"]=Float64.([only(c.id for c ∈ repaired_clusters if i in c.unit_indices) for i ∈ 1:NG])
-                        results["cluster_disaggregation_feasible"]=ones(Float64, NS, 1)
-                        clustered=(feasible = true, strictly_feasible = true, network_feasible = true, stage = :network_feedback_repaired,
-                            clusters = repaired_clusters, checks = clustered.checks, results = nothing, feedback = nothing)
-                    end
-                    println("  ✓ Clustered UC residence/network disaggregation completed ($(length(clustered.clusters)) clusters, stage=$(clustered.stage))")
+        results = solve_and_extract_results(
+            scuc, NT, NG, ND, NC, NW, NS, ND2, scenarios_prob, eachslope, refcost, config_param,
+            units, loads, winds, lines, DataCentras; NB = NB)
+        if results !== nothing
+            if clustered_enabled
+                cluster_strict=lowercase(get(ENV, "PCM_CLUSTER_STRICT", "false")) in ("1", "true", "yes", "on")
+                clustered=apply_clustered_pcm_optimization!(
+                    results, units, loads, winds, lines, config_param, NB, NL; optimizer = pcm_optimizer(),
+                    strict = cluster_strict, stroges = stroges, data_centers = DataCentras, hydros = hydros)
+                clustered.feasible||error("Clustered PCM disaggregation failed at $(clustered.stage): $(clustered.feedback)")
+                if !clustered.network_feasible && config_param.is_NetWorkCon==1 && NL>0
+                    println("  ↻ Network feedback: adding PTDF constraints and re-solving the current PCM window")
+                    add_transmission_constraints!(
+                        scuc, NT, NG, ND, NC, NW, NL, NS, units, loads, winds, lines, stroges, Gsdf, config_param, ND2, DataCentras)
+                    results=solve_and_extract_results(
+                        scuc, NT, NG, ND, NC, NW, NS, ND2, scenarios_prob, eachslope, refcost, config_param,
+                        units, loads, winds, lines, DataCentras; NB = NB)
+                    results===nothing&&error("Network-feedback re-solve failed")
+                    repaired_clusters=build_pcm_clusters(units)
+                    results["cluster_ids"]=Float64.([only(c.id for c ∈ repaired_clusters if i in c.unit_indices) for i ∈ 1:NG])
+                    results["cluster_disaggregation_feasible"]=ones(Float64, NS, 1)
+                    clustered=(feasible = true, strictly_feasible = true, network_feasible = true, stage = :network_feedback_repaired,
+                        clusters = repaired_clusters, checks = clustered.checks, results = nothing, feedback = nothing)
                 end
-                return results # Return the dictionary containing the optimization results
-            else
-                # Handle optimization failure
-                println("Optimization failed, returning nothing.")
-                return nothing
+                println("  ✓ Clustered UC residence/network disaggregation completed ($(length(clustered.clusters)) clusters, stage=$(clustered.stage))")
             end
-        catch e
-            # Catch any errors that occur during the optimization process
-            println("An error occurred during optimization: ", e)
-            return nothing
+            return results
         end
+        println("Optimization failed, returning nothing.")
+        return nothing
     end # end SUC_scucmodel function
 end # end guard _PERIOD_SCUC_MODULES_INCLUDED
