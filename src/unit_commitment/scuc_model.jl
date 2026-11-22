@@ -5,10 +5,10 @@ using JuMP, Gurobi, DelimitedFiles
 #---------------------------------------------------------------------------------------------------
 
 # Include necessary model components
-include("constraints/constraints.jl")
-include("objectives/objectives.jl")
-include("utilities/utilities.jl")
-include("validation/validation.jl")
+include("constraints/entry.jl")
+include("objectives/entry.jl")
+include("utilities/entry.jl")
+include("validation/entry.jl")
 """
 	SUC_scucmodel(NT, NB, NG, ND, NC, ND2, units, loads, winds, lines, data_centers, config_param, storages, scenarios_prob, NL)
 

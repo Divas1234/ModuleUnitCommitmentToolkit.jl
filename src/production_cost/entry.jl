@@ -15,6 +15,7 @@ if !isdefined(@__MODULE__, :_PCM_CORE_INCLUDED)
     include("formulations/clustered/cluster_adapter.jl")
     include("formulations/clustered/network_dispatch.jl")
     include("formulations/clustered/economic_costs.jl")
+    include("formulations/clustered/residence_hull.jl")
     include("formulations/clustered/master_solver.jl")
     include("formulations/single_unit/window_scuc.jl")
 

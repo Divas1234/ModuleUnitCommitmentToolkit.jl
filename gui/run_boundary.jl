@@ -18,7 +18,7 @@ include(joinpath(_ROOT, "src", "core", "runtime_config.jl"))
 load_runtime_config!(override = true)
 
 include(joinpath(_ROOT, "src", "core", "environment_config.jl"))
-include(joinpath(_ROOT, "src", "renewables", "renewables.jl"))
+include(joinpath(_ROOT, "src", "renewables", "entry.jl"))
 include(joinpath(_ROOT, "src", "input_data", "readers.jl"))
 include(joinpath(_ROOT, "src", "input_data", "formatted_data.jl"))
 include(joinpath(_ROOT, "src", "unit_commitment", "utilities", "linearization.jl"))

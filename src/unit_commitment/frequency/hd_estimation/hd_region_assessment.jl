@@ -159,9 +159,9 @@ function hd_evaluate_nadir_critical_inertia(D_sync::Float64, p::HDFrequencyParam
         include_overdamped = true,
     )
 
-    # Scan from a small positive inertia up to H_win_hi (covering all H > 0 smoothly)
+    # Scan from a small positive inertia up to H_win_hi (zero-allocation lazy range)
     H_start = 1.0e-4
-    grid = collect(range(H_start, H_win_hi; length = max(25, p.nadir_search_grid)))
+    grid = range(H_start, H_win_hi; length = max(25, p.nadir_search_grid))
     first_ok = nothing
     for (idx, h_val) in enumerate(grid)
         v = nadir_at(h_val)
@@ -208,15 +208,24 @@ function assess_hd_frequency_region(p::HDFrequencyParameters)
     damping_grid = collect(range(p.damping_min, p.damping_max; length = p.damping_points))
     n = length(damping_grid)
 
-    underdamped_lower = zeros(Float64, n)
-    underdamped_upper = zeros(Float64, n)
-    nadir_critical = zeros(Float64, n)
+    underdamped_lower = Vector{Float64}(undef, n)
+    underdamped_upper = Vector{Float64}(undef, n)
+    nadir_critical = Vector{Float64}(undef, n)
 
-    for i in 1:n
-        h_crit, h_lo, h_hi = hd_evaluate_nadir_critical_inertia(damping_grid[i], p)
-        nadir_critical[i] = h_crit
-        underdamped_lower[i] = h_lo
-        underdamped_upper[i] = h_hi
+    if Threads.nthreads() > 1 && n >= 8
+        Threads.@threads :static for i in 1:n
+            h_crit, h_lo, h_hi = hd_evaluate_nadir_critical_inertia(damping_grid[i], p)
+            @inbounds nadir_critical[i] = h_crit
+            @inbounds underdamped_lower[i] = h_lo
+            @inbounds underdamped_upper[i] = h_hi
+        end
+    else
+        for i in 1:n
+            h_crit, h_lo, h_hi = hd_evaluate_nadir_critical_inertia(damping_grid[i], p)
+            @inbounds nadir_critical[i] = h_crit
+            @inbounds underdamped_lower[i] = h_lo
+            @inbounds underdamped_upper[i] = h_hi
+        end
     end
 
     H_rocof_total = hd_rocof_min_inertia(p.delta_p_pu, p.rocof_limit_hz_per_s; f0 = p.f0_hz)

@@ -801,11 +801,16 @@ function batch_solve_subproblem_with_feasibility_cut(
 )
     ret_dic = OrderedDict{Int64, Any}()
     if should_solve_subproblems_in_parallel(NS)
+        # Pre-extract scenario models into a concrete vector so worker threads never
+        # touch the OrderedDict hash table concurrently, and use :dynamic scheduling
+        # to load-balance heterogeneous LP solve times.
+        submodels = SCUC_Model[batch_scuc_subproblem_dic[s] for s in 1:NS]
         ret_vec = Vector{Any}(undef, NS)
-        Threads.@threads for s in 1:NS
-            scenario_storage_values = select_storage_binary_values_for_subproblem(storage_binary_values, s, batch_scuc_subproblem_dic[s].model)
+        Threads.@threads :dynamic for s in 1:NS
+            submodel = submodels[s]
+            scenario_storage_values = select_storage_binary_values_for_subproblem(storage_binary_values, s, submodel.model)
             ret_vec[s] = solve_subproblem_with_feasibility_cut(
-                batch_scuc_subproblem_dic[s]::SCUC_Model,
+                submodel,
                 x,
                 u,
                 v,

@@ -1,7 +1,5 @@
 using JuMP
 
-export add_transmission_constraints!
-
 # Helper function for transmission line constraints
 
 """

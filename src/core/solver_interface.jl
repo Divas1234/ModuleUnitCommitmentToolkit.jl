@@ -12,7 +12,8 @@
     not leak into later calls in the same Julia process.
 """
 
-const _UC_ALGORITHM_MODULES_READY = Ref(false)
+const _UC_ALGORITHM_MODULES_READY = Threads.Atomic{Bool}(false)
+const _UC_ALGORITHM_MODULES_LOCK = ReentrantLock()
 const _UC_ALGORITHM_ALIASES = Dict{String, Symbol}(
     "benchmark" => :benchmark,
     "benchmark_uc" => :benchmark,
@@ -52,11 +53,14 @@ function _resolve_tools_path(project_root::AbstractString, parts::AbstractString
 end
 
 function _ensure_uc_algorithm_modules!()
-    if !_UC_ALGORITHM_MODULES_READY[]
-        project_root = normpath(joinpath(@__DIR__, "..", ".."))
-        include(_resolve_tools_path(project_root, "ccg", "solver.jl"))
-        include(_resolve_tools_path(project_root, "benchmark", "benchmark_uc.jl"))
-        _UC_ALGORITHM_MODULES_READY[] = true
+    _UC_ALGORITHM_MODULES_READY[] && return nothing
+    lock(_UC_ALGORITHM_MODULES_LOCK) do
+        if !_UC_ALGORITHM_MODULES_READY[]
+            project_root = normpath(joinpath(@__DIR__, "..", ".."))
+            include(_resolve_tools_path(project_root, "ccg", "solver.jl"))
+            include(_resolve_tools_path(project_root, "benchmark", "benchmark_uc.jl"))
+            Threads.atomic_xchg!(_UC_ALGORITHM_MODULES_READY, true)
+        end
     end
     return nothing
 end

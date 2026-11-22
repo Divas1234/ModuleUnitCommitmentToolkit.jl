@@ -14,7 +14,7 @@ include("renewables/stochastic_simulation.jl")
 include("input_data/readers.jl")
 
 # Unit commitment models and constraints
-include("unit_commitment/unit_commitment_model.jl")
+include("unit_commitment/scuc_model.jl")
 
 # Production Cost Modeling (PCM) core library (2x2 orthogonal matrix + Benchmark)
 include("production_cost/entry.jl")
@@ -29,6 +29,7 @@ include("core/deprecations.jl")
 # Public package-level entry points. Algorithm drivers under `tools/` remain the
 # implementation and compatibility layer behind the unified entry point.
 export SUC_scucmodel,
+    validate_inputs,
     readxlssheet,
     forminputdata,
     genscenario,

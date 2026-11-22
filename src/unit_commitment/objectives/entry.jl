@@ -1,6 +1,4 @@
-include("economic_objective.jl")
-
-export set_objective!
+include("economic.jl")
 
 """
 Sets the objective function for the Security-Constrained Unit Commitment (SCUC) model.

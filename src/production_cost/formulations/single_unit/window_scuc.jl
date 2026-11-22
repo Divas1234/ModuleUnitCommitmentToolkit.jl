@@ -10,28 +10,28 @@ if !isdefined(@__MODULE__, :_PERIOD_SCUC_MODULES_INCLUDED)
     if !isdefined(@__MODULE__, :hydro)
         const hydro = Any
     end
-    isdefined(@__MODULE__, :set_objective!) || include("../../../unit_commitment/objectives/objectives.jl")
-    isdefined(@__MODULE__, :calculate_gsdf) || include("../../../unit_commitment/utilities/utilities.jl")
+    isdefined(@__MODULE__, :set_objective!) || include("../../../unit_commitment/objectives/entry.jl")
+    isdefined(@__MODULE__, :calculate_gsdf) || include("../../../unit_commitment/utilities/entry.jl")
     if !isdefined(@__MODULE__, :pcm_optimizer)
         pcm_optimizer() = _resolve_pcm_optimizer(nothing)
     end
     if !isdefined(@__MODULE__, :pcm_solver_name)
         pcm_solver_name() = occursin("gurobi", lowercase(string(pcm_optimizer()))) ? "gurobi" : "glpk"
     end
-    const PCM_CLUSTER_ATTEMPTS = Ref(0)
-    const PCM_CLUSTER_SUCCESSES = Ref(0)
-    const PCM_CLUSTER_FALLBACKS = Ref(0)
-    const PCM_CLUSTER_PREPROCESS_TIME_SEC = Ref(0.0)
+    const PCM_CLUSTER_ATTEMPTS = Threads.Atomic{Int}(0)
+    const PCM_CLUSTER_SUCCESSES = Threads.Atomic{Int}(0)
+    const PCM_CLUSTER_FALLBACKS = Threads.Atomic{Int}(0)
+    const PCM_CLUSTER_PREPROCESS_TIME_SEC = Threads.Atomic{Float64}(0.0)
     # 最近一次聚类主问题的真实整数变量数。与仅按 U/Y/Z 估算的
     # commitment 变量数分开记录，因为扩展凸包还包含状态流和出力弧变量。
-    const PCM_CLUSTER_EXTENDED_INTEGER_VARIABLES = Ref(0)
+    const PCM_CLUSTER_EXTENDED_INTEGER_VARIABLES = Threads.Atomic{Int}(0)
 
     function reset_pcm_cluster_stats!()
-        PCM_CLUSTER_ATTEMPTS[] = 0
-        PCM_CLUSTER_SUCCESSES[] = 0
-        PCM_CLUSTER_FALLBACKS[] = 0
-        PCM_CLUSTER_PREPROCESS_TIME_SEC[] = 0.0
-        PCM_CLUSTER_EXTENDED_INTEGER_VARIABLES[] = 0
+        Threads.atomic_xchg!(PCM_CLUSTER_ATTEMPTS, 0)
+        Threads.atomic_xchg!(PCM_CLUSTER_SUCCESSES, 0)
+        Threads.atomic_xchg!(PCM_CLUSTER_FALLBACKS, 0)
+        Threads.atomic_xchg!(PCM_CLUSTER_PREPROCESS_TIME_SEC, 0.0)
+        Threads.atomic_xchg!(PCM_CLUSTER_EXTENDED_INTEGER_VARIABLES, 0)
         return snapshot_pcm_cluster_stats()
     end
 
@@ -164,18 +164,18 @@ if !isdefined(@__MODULE__, :_PERIOD_SCUC_MODULES_INCLUDED)
         clustered_enabled = formulation === :clustered ||
             (formulation === :environment && lowercase(get(ENV, "PCM_USE_CLUSTERED_UC", "false")) in ("1", "true", "yes", "on"))
         if clustered_enabled
-            PCM_CLUSTER_ATTEMPTS[] += 1
+            Threads.atomic_add!(PCM_CLUSTER_ATTEMPTS, 1)
             clustered_result=solve_true_clustered_pcm_window(NT, NB, NG, ND, units, loads, winds, lines, config_param, NL, hydros,
                 NH; optimizer = pcm_optimizer())
             if clustered_result.feasible
-                PCM_CLUSTER_SUCCESSES[] += 1
+                Threads.atomic_add!(PCM_CLUSTER_SUCCESSES, 1)
                 println("  ✓ True clustered UC completed ($(length(clustered_result.clusters)) virtual units)")
                 return clustered_result.results
             end
             # Never export an unverified aggregate schedule. The physical
             # disaggregation is the feasibility certificate for clustered PCM.
             println("  ⚠ True clustered UC failed at $(clustered_result.stage): $(clustered_result.message); falling back to full unit-network SCUC")
-            PCM_CLUSTER_FALLBACKS[] += 1
+            Threads.atomic_add!(PCM_CLUSTER_FALLBACKS, 1)
             clustered_enabled=false
         end
 
