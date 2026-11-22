@@ -1,4 +1,0 @@
-algorithm,scenarios,max_abs_balance_error,total_load_curtailment,total_wind_curtailment,peak_served_load
-benchmark_uc,2,0.0,0.0,4.609109138421218,3.2861000000000007
-benders,2,4.440892098500626e-16,0.0,4.609109138421211,3.2861000000000007
-ccg,2,0.0,0.0,4.609109138421218,3.2861000000000007

@@ -13,7 +13,6 @@ PCM is organized along two orthogonal modeling dimensions plus a full-horizon **
 - `tools/pcm/main.jl` — Unified CLI & GUI entrypoint (`PCM_METHOD=...`).
 - `tools/pcm/example_run.jl` — Example runner supporting single methods and `--compare-all` / `--compare-fixed` against Benchmark.
 - `tools/pcm/benchmark/` — Multi-scale and multi-profile benchmark suite (`run_suite.jl`).
-- `tools/pcm/experiments/` — Archived research analysis and offline dataset generation scripts.
 
 ## Quick Start
 ```bash

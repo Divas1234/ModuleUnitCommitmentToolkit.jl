@@ -1,4 +1,0 @@
-method,formulation,horizon_policy,status,total_cost,cost_error_pct,runtime_s,speedup_vs_bench
-benchmark,standard,full_horizon,OPTIMAL,822426.0925,0.0,14.3611,1.0
-standard,standard,fixed_horizon,OPTIMAL,791229.7146,-3.7932,0.2933,48.96
-clustered,clustered,fixed_horizon,OPTIMAL,791229.7146,-3.7932,2.4013,5.98

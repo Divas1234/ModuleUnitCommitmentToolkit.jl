@@ -1,6 +1,5 @@
 using DataFrames
 using Printf
-using UnicodePlots
 
 function _print_section(title::AbstractString)
     println("\n", repeat("=", 88))

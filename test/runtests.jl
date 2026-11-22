@@ -38,6 +38,7 @@ include(joinpath(PROJECT_ROOT, "src", "core", "solver_interface.jl"))
 include(joinpath(PROJECT_ROOT, "src", "production_cost", "entry.jl"))
 
 @testset "module_unitcommitment" begin
+    include("core/test_public_package_api.jl")
     include("core/test_runtime_config.jl")
     include("core/test_unified_interface.jl")
     include("core/test_renewables.jl")

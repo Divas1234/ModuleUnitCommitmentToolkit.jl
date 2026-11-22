@@ -1,7 +1,7 @@
 if !isdefined(@__MODULE__, :_PERIOD_SCUC_MODULES_INCLUDED)
     const _PERIOD_SCUC_MODULES_INCLUDED = true
 
-    using JuMP, Test, DelimitedFiles
+    using JuMP, DelimitedFiles
 
     #---------------------------------------------------------------------------------------------------
     # Module Dependencies and Includes

@@ -1,4 +1,0 @@
-algorithm,scenarios,status,iterations,upper_bound,lower_bound,gap,runtime_seconds
-benchmark_uc,2,OPTIMAL,1,152036.84197254595,152036.84197254595,0.0,6.855
-benders,2,no_violated_cuts,1,1.1510155694551012e6,260.0,0.9997741125247134,4.338
-ccg,2,converged,1,152036.84126773363,152036.84197254595,4.635799564295151e-9,1.003

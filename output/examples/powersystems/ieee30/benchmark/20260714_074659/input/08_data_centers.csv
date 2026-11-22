@@ -1,2 +1,0 @@
-center_id,bus,p_min_MW,p_max_MW,idle_power_MW,server_energy,lambda,mu,workload_mean,workload_min,workload_max
-1,5,0.0,20.0,1.0,0.05,1.0,1.0,0.10000000000000002,0.1,0.1

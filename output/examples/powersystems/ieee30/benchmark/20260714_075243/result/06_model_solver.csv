@@ -1,7 +1,0 @@
-parameter,value
-num_variables,479
-objective_value,997.1574275810405
-objective_bound,997.1507735620047
-relative_gap,6.67298748592959e-6
-solve_time_seconds,0.003526926040649414
-termination_status,OPTIMAL

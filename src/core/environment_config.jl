@@ -2,14 +2,10 @@ using JuMP,
     MathOptInterface,
     Gurobi,
     DelimitedFiles,
-    LaTeXStrings,
-    JLD2,
     DataFrames,
-    Clustering,
     Distributions,
     CSV,
     Random,
-    MultivariateStats,
     DataStructures
 
 # Plotting backends are loaded by the visualization scripts that need them.
