@@ -20,8 +20,10 @@ include("unit_commitment/scuc_model.jl")
 include("production_cost/entry.jl")
 using .ClusteredDisaggregation
 
-# Unified data/algorithm orchestration entry point. Heavy algorithm implementation
-# modules are loaded lazily on the first `solve_uc` call.
+# Precompiled core UC algorithms (Benders, C&CG, Extensive-Form Benchmark)
+include("algorithms/entry.jl")
+
+# Unified data/algorithm orchestration entry point.
 include("core/solver_interface.jl")
 include("core/execution_diagnostics.jl")
 include("core/deprecations.jl")
@@ -68,6 +70,12 @@ export SUC_scucmodel,
     UCSolveRequest,
     UCSolveResult,
     BendersSetup,
+    build_benders_setup,
+    multiple_benders_decomposition_scuc,
+    solve_ccg_unit_commitment,
+    solve_benchmark_uc,
+    solve_benchmark_uc_powersystems,
+    process_memory_mb,
     print_uc_result,
     solve_uc,
     UCExampleOptions,

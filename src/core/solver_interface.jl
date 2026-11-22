@@ -12,8 +12,6 @@
     not leak into later calls in the same Julia process.
 """
 
-const _UC_ALGORITHM_MODULES_READY = Threads.Atomic{Bool}(false)
-const _UC_ALGORITHM_MODULES_LOCK = ReentrantLock()
 const _UC_ALGORITHM_ALIASES = Dict{String, Symbol}(
     "benchmark" => :benchmark,
     "benchmark_uc" => :benchmark,
@@ -42,27 +40,6 @@ const _BUILTIN_UC_ALGORITHMS = (
 
 function _normalize_algorithm_key(name)
     return lowercase(replace(string(name), '-' => '_', ' ' => '_'))
-end
-
-function _resolve_tools_path(project_root::AbstractString, parts::AbstractString...)
-    for dir_name in ("tools", "Tools")
-        candidate = joinpath(project_root, dir_name, parts...)
-        isfile(candidate) && return candidate
-    end
-    return joinpath(project_root, "tools", parts...)
-end
-
-function _ensure_uc_algorithm_modules!()
-    _UC_ALGORITHM_MODULES_READY[] && return nothing
-    lock(_UC_ALGORITHM_MODULES_LOCK) do
-        if !_UC_ALGORITHM_MODULES_READY[]
-            project_root = normpath(joinpath(@__DIR__, "..", ".."))
-            include(_resolve_tools_path(project_root, "ccg", "solver.jl"))
-            include(_resolve_tools_path(project_root, "benchmark", "benchmark_uc.jl"))
-            Threads.atomic_xchg!(_UC_ALGORITHM_MODULES_READY, true)
-        end
-    end
-    return nothing
 end
 
 function _normalize_solver_algorithm(algorithm)
@@ -245,15 +222,9 @@ function UCSolveRequest(;
     )
 end
 
-function _invoke_uc_algorithm(name::Symbol, args...; kwargs...)
-    algorithm = Base.invokelatest(getfield, @__MODULE__, name)
-    return Base.invokelatest(algorithm, args...; kwargs...)
-end
-
 function _solve_benders_unified(request::UCSolveRequest)
     input = request.input
-    values = _invoke_uc_algorithm(
-        :main;
+    setup = build_benders_setup(;
         input = input.source,
         scenario_limit = input.scenario_limit,
         sys = input.sys,
@@ -267,10 +238,8 @@ function _solve_benders_unified(request::UCSolveRequest)
         horizon = input.horizon,
         data_file = input.data_file,
     )
-    setup = values
 
-    decomposition_result = _invoke_uc_algorithm(
-        :multiple_benders_decomposition_scuc,
+    decomposition_result = multiple_benders_decomposition_scuc(
         setup.master_model,
         setup.sub_model,
         setup.master_struct,
@@ -302,19 +271,16 @@ function _solve_uc_selected(request::UCSolveRequest)
     return with_uc_optimizer(request.optimizer) do
         algorithm = request.algorithm
         input = request.input
-        _ensure_uc_algorithm_modules!()
         if algorithm == :benchmark
             source = input.source
             if source == :excel
-                return _invoke_uc_algorithm(
-                    :solve_benchmark_uc;
+                return solve_benchmark_uc(;
                     scenario_limit = input.scenario_limit,
                     horizon = input.horizon,
                     data_file = input.data_file,
                 )
             elseif source == :powersystems_csv
-                return _invoke_uc_algorithm(
-                    :solve_benchmark_uc_powersystems,
+                return solve_benchmark_uc_powersystems(
                     input.sys,
                     input.case_dir;
                     scenario_limit = input.scenario_limit,
@@ -325,8 +291,7 @@ function _solve_uc_selected(request::UCSolveRequest)
                     horizon = input.horizon,
                 )
             elseif input.case_name !== nothing
-                return _invoke_uc_algorithm(
-                    :solve_benchmark_uc_powersystems,
+                return solve_benchmark_uc_powersystems(
                     input.case_name;
                     case_category = input.case_category,
                     scenario_limit = input.scenario_limit,
@@ -337,8 +302,7 @@ function _solve_uc_selected(request::UCSolveRequest)
                     horizon = input.horizon,
                 )
             else
-                return _invoke_uc_algorithm(
-                    :solve_benchmark_uc_powersystems,
+                return solve_benchmark_uc_powersystems(
                     input.sys;
                     scenario_limit = input.scenario_limit,
                     data_center_buses = input.data_center_buses,
@@ -349,8 +313,7 @@ function _solve_uc_selected(request::UCSolveRequest)
                 )
             end
         elseif algorithm == :ccg
-            return _invoke_uc_algorithm(
-                :solve_ccg_unit_commitment;
+            return solve_ccg_unit_commitment(;
                 input = input.source,
                 scenario_limit = input.scenario_limit,
                 sys = input.sys,

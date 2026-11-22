@@ -25,13 +25,13 @@ include(joinpath(PROJECT_ROOT, "src", "unit_commitment", "utilities", "lineariza
 include(joinpath(PROJECT_ROOT, "src", "unit_commitment", "utilities", "decision_variables.jl"))
 include(joinpath(PROJECT_ROOT, "src", "unit_commitment", "utilities", "export_results.jl"))
 include(joinpath(PROJECT_ROOT, "src", "unit_commitment", "validation", "entry.jl"))
-include(joinpath(PROJECT_ROOT, "tools", "benders", "models", "scuc_model.jl"))
-include(joinpath(PROJECT_ROOT, "tools", "benders", "models", "batch_subproblems.jl"))
+include(joinpath(PROJECT_ROOT, "src", "algorithms", "benders", "models", "scuc_model.jl"))
+include(joinpath(PROJECT_ROOT, "src", "algorithms", "benders", "models", "batch_subproblems.jl"))
 
 ccg_env_bool(name::String, default::Bool) = uc_env_bool(name, default)
 
-include(joinpath(PROJECT_ROOT, "tools", "ccg", "dro_uncertainty.jl"))
-include(joinpath(PROJECT_ROOT, "tools", "ccg", "helpers.jl"))
+include(joinpath(PROJECT_ROOT, "src", "algorithms", "ccg", "dro_uncertainty.jl"))
+include(joinpath(PROJECT_ROOT, "src", "algorithms", "ccg", "helpers.jl"))
 include(joinpath(PROJECT_ROOT, "src", "core", "api_types.jl"))
 include(joinpath(PROJECT_ROOT, "src", "core", "output_reporting.jl"))
 include(joinpath(PROJECT_ROOT, "src", "core", "solver_interface.jl"))
