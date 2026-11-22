@@ -1,7 +1,20 @@
 
 using Dates
 using JuMP
+using ModuleUnitCommitmentToolkit
+using ModuleUnitCommitmentToolkit:
+    uc_output_root,
+    uc_run_id,
+    uc_algorithm_run_dir,
+    uc_schedule_file_prefix,
+    uc_scheduling_output_dir,
+    build_jensen_subproblem_for_mean_scenario,
+    build_ccg_extensive_model,
+    fix_first_stage_commitment!,
+    assert_is_solved_and_feasible,
+    export_solved_uc_model_results
 
+include(joinpath(@__DIR__, "..", "benders", "setup.jl"))
 include(joinpath(@__DIR__, "..", "ccg", "solver.jl"))
 include(joinpath(@__DIR__, "benchmark_uc.jl"))
 
@@ -169,7 +182,7 @@ function benders_data_tuple_to_namedtuple(config_param, units, lines, loads, win
 end
 
 function solve_benchmark_benders(; scenario_limit::Int64 = 20)
-    setup = main(; scenario_limit = scenario_limit)
+    setup = build_benders_setup(; scenario_limit = scenario_limit)
     scuc_masterproblem = setup.master_model
     scuc_subproblem = setup.sub_model
     master_model_struct = setup.master_struct
