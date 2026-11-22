@@ -28,5 +28,3 @@ export add_unit_operation_constraints!,
     add_power_balance_constraints!,
     add_frequency_constraints!, # From system_constraints.jl
     apply_scuc_constraints!
-
-println("\t\u2192 constraint modules included and functions exported.")

@@ -68,7 +68,8 @@ function multiple_benders_decomposition_scuc(
     NS = Int64(winds.scenarios_nums)
     scenarios_prob = 1.0 / winds.scenarios_nums
 
-    @assert !is_mixed_integer_problem(scuc_subproblem)
+    is_mixed_integer_problem(scuc_subproblem) &&
+        throw(ArgumentError("Benders recourse subproblem must be a continuous LP relaxation, not a MIP."))
     println("Starting (Strengthen) Benders decomposition algorithm")
     println("iteration start ...\n")
     println("====================================================")
@@ -285,14 +286,7 @@ function multiple_benders_decomposition_scuc(
     )
 end
 
-function process_memory_mb()
-    try
-        rss_kb = parse(Float64, strip(read(`ps -o rss= -p $(getpid())`, String)))
-        return rss_kb / 1024.0
-    catch
-        return Base.gc_live_bytes() / 1024.0^2
-    end
-end
+process_memory_mb() = Sys.maxrss() / 1024.0^2
 
 function add_storage_logic_based_dominance_cuts!(
     model::Model,

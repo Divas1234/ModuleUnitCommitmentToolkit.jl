@@ -1,68 +1,5 @@
 using JuMP
 
-const _UC_CONSTRAINT_HOOKS = Pair{Symbol, Function}[]
-const _UC_VARIABLE_HOOKS = Pair{Symbol, Function}[]
-const _UC_OBJECTIVE_HOOKS = Pair{Symbol, Function}[]
-
-function _register_uc_hook!(registry::Vector{Pair{Symbol, Function}}, name::Symbol, hook::Function)
-    idx = findfirst(entry -> first(entry) === name, registry)
-    if idx === nothing
-        push!(registry, name => hook)
-    else
-        registry[idx] = name => hook
-    end
-    return name
-end
-
-"""
-    register_uc_constraint_hook!(name::Symbol, hook::Function)
-
-Register an extension constraint builder invoked at the end of `apply_scuc_constraints!`.
-`hook` receives `(model, ctx)` where `ctx` is a NamedTuple of model dimensions, data
-structures, and `config_param`, and may return constraint references to be stored under
-`result.extensions[name]`.
-"""
-register_uc_constraint_hook!(name::Symbol, hook::Function) = _register_uc_hook!(_UC_CONSTRAINT_HOOKS, name, hook)
-registered_uc_constraint_hooks() = Symbol[first(entry) for entry in _UC_CONSTRAINT_HOOKS]
-function clear_uc_constraint_hooks!()
-    empty!(_UC_CONSTRAINT_HOOKS)
-    return nothing
-end
-
-"""
-    register_uc_variable_hook!(name::Symbol, hook::Function)
-
-Register a custom variable builder invoked at the end of `define_decision_variables!`.
-`hook` receives `(model, ctx)` where `ctx` contains model dimensions and `config_param`.
-"""
-register_uc_variable_hook!(name::Symbol, hook::Function) = _register_uc_hook!(_UC_VARIABLE_HOOKS, name, hook)
-registered_uc_variable_hooks() = Symbol[first(entry) for entry in _UC_VARIABLE_HOOKS]
-function clear_uc_variable_hooks!()
-    empty!(_UC_VARIABLE_HOOKS)
-    return nothing
-end
-
-"""
-    register_uc_objective_hook!(name::Symbol, hook::Function)
-
-Register a custom objective term builder invoked after `set_objective_economic!`.
-`hook` receives `(model, ctx)` and may return an additive JuMP expression to add to the
-minimization objective (or `nothing` if it modifies the objective in place).
-"""
-register_uc_objective_hook!(name::Symbol, hook::Function) = _register_uc_hook!(_UC_OBJECTIVE_HOOKS, name, hook)
-registered_uc_objective_hooks() = Symbol[first(entry) for entry in _UC_OBJECTIVE_HOOKS]
-function clear_uc_objective_hooks!()
-    empty!(_UC_OBJECTIVE_HOOKS)
-    return nothing
-end
-
-function clear_all_uc_hooks!()
-    clear_uc_variable_hooks!()
-    clear_uc_objective_hooks!()
-    clear_uc_constraint_hooks!()
-    return nothing
-end
-
 """
     apply_scuc_constraints!(...)
 
@@ -159,20 +96,6 @@ function apply_scuc_constraints!(
         nothing
     end
 
-    # 12. Pluggable extension constraint hooks
-    extension_constrs = Dict{Symbol, Any}()
-    if !isempty(_UC_CONSTRAINT_HOOKS)
-        ctx = (
-            NT = NT, NB = NB, NL = NL, NG = NG, ND = ND, NC = NC, ND2 = ND2, NS = NS, NW = NW,
-            units = units, loads = loads, winds = winds, lines = lines,
-            data_centers = data_centers, psses = psses, config_param = config_param,
-            onoffinit = onoffinit, gsdf = gsdf, contingency_size = contingency_size,
-        )
-        for (hook_name, hook_fn) in _UC_CONSTRAINT_HOOKS
-            extension_constrs[hook_name] = hook_fn(model, ctx)
-        end
-    end
-
     return (
         unit_operation = unit_op_constrs,
         curtailment = curtailment_constrs,
@@ -185,6 +108,5 @@ function apply_scuc_constraints!(
         storage = storage_constrs,
         datacentra = data_center_constrs,
         frequency = freq_constrs,
-        extensions = extension_constrs,
     )
 end

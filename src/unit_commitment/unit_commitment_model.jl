@@ -115,27 +115,14 @@ function SUC_scucmodel(
     )
 
     # --- Solve and Extract Results ---
-    # Solve the optimization model and extract the results
-    try
-        # Attempt to solve the SCUC model
-        results = solve_and_extract_results(
-            scuc, NT, NG, ND, NC, NW, NS, ND2, scenarios_prob, eachslope, refcost, config_param, units, loads, winds, lines, data_centers;
-            NB = NB,
-        )
-
-        # --- Return Results ---
-        # Check if the optimization was successful
-        if results !== nothing
-            return results # Return the dictionary containing the optimization results
-        else
-            println("Optimization failed.")
-            _report_infeasibility_conflict(scuc)
-            return nothing
-        end
-    catch e
-        # Catch any errors that occur during the optimization process
-        println("An error occurred during optimization: ", e)
-        _report_infeasibility_conflict(scuc)
-        return nothing
+    results = solve_and_extract_results(
+        scuc, NT, NG, ND, NC, NW, NS, ND2, scenarios_prob, eachslope, refcost, config_param, units, loads, winds, lines, data_centers;
+        NB = NB,
+    )
+    if results !== nothing
+        return results
     end
+    println("Optimization failed.")
+    _report_infeasibility_conflict(scuc)
+    return nothing
 end # end SUC_scucmodel function

@@ -29,12 +29,6 @@ function add_transmission_constraints!(
         transmissionline_powerflow_upbound_constr = [] # Container for upper bound (P <= Pmax)
         transmissionline_powerflow_downbound_constr = [] # Container for lower bound (P >= Pmin)
 
-        # Check if network constraints should be applied
-        if NL == 0 || Gsdf === nothing
-            println("\t constraints: 10) transmissionline limits skipped (NL=0 or Gsdf missing)")
-            return nothing
-        end
-
         pg₀ = scuc[:pg₀] # Base generation
         Δpd = scuc[:Δpd] # Load shedding slack
         Δpw = scuc[:Δpw] # Wind curtailment slack
@@ -42,6 +36,7 @@ function add_transmission_constraints!(
         # Retrieve storage variable references if they exist in the model
         pc⁺ = check_var_exists(scuc, "pc⁺") ? scuc[:pc⁺] : nothing
         pc⁻ = check_var_exists(scuc, "pc⁻") ? scuc[:pc⁻] : nothing
+        storage_enabled = NC > 0 && pc⁺ !== nothing && pc⁻ !== nothing && !isempty(storages.locatebus)
 
         dc_enabled =
             config_param.consider_data_center == 1 && ND2 !== nothing && ND2 > 0 && data_centers !== nothing && check_var_exists(scuc, "dc_p")
@@ -49,9 +44,9 @@ function add_transmission_constraints!(
 
         for l in 1:NL
             subGsdf_units = Gsdf[l, units.locatebus]
-            subGsdf_winds = Gsdf[l, winds.index]
+            subGsdf_winds = Gsdf[l, winds.locatebus]
             subGsdf_loads = Gsdf[l, loads.locatebus]
-            subGsdf_psses = (NC > 0 && !isempty(storages.locatebus)) ? Gsdf[l, storages.locatebus] : []
+            subGsdf_psses = storage_enabled ? Gsdf[l, storages.locatebus] : Float64[]
             subGsdf_dc = dc_enabled ? Gsdf[l, data_centers.locatebus] : Float64[]
 
             flow = @expression(
@@ -60,16 +55,12 @@ function add_transmission_constraints!(
                 sum(subGsdf_units[i] * pg₀[i + (s - 1) * NG, t] for i in 1:NG) +
                 sum(subGsdf_winds[w] * (winds.scenarios_curve[s, t] * winds.p_max[w, 1] - Δpw[(s - 1) * NW + w, t]) for w in 1:NW) -
                 sum(subGsdf_loads[d] * (loads.load_curve[d, t] - Δpd[(s - 1) * ND + d, t]) for d in 1:ND) - (
-                    if dc_enabled
-                        sum(subGsdf_dc[c] * dc_p[(s - 1) * ND2 + c, t] for c in 1:ND2)
-                    else
-                        0.0
-                    end
-                ) + sum(if (NC > 0 && pc⁺ !== nothing && pc⁻ !== nothing && c <= length(subGsdf_psses))
-                    subGsdf_psses[c] * (pc⁻[(s - 1) * NC + c, t] - pc⁺[(s - 1) * NC + c, t])
-                else
+                    dc_enabled ? sum(subGsdf_dc[c] * dc_p[(s - 1) * ND2 + c, t] for c in 1:ND2) : 0.0
+                ) + (
+                    storage_enabled ?
+                    sum(subGsdf_psses[c] * (pc⁻[(s - 1) * NC + c, t] - pc⁺[(s - 1) * NC + c, t]) for c in 1:min(NC, length(subGsdf_psses))) :
                     0.0
-                end for c in 1:NC)
+                )
             )
             push!(transmissionline_powerflow_upbound_constr, @constraint(scuc, [s = 1:NS, t = 1:NT], flow[s, t] <= lines.p_max[l, 1]))
             push!(transmissionline_powerflow_downbound_constr, @constraint(scuc, [s = 1:NS, t = 1:NT], flow[s, t] >= lines.p_min[l, 1]))

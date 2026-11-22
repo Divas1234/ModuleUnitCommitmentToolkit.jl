@@ -57,15 +57,19 @@ function validate_inputs(NT, NB, NG, ND, NC, ND2, units, loads, winds, lines, da
     end
 
     # Storage dimensions
-    if NC > 0 && psses !== nothing && hasproperty(psses, :index) && length(psses.index) != NC
-        @warn "Number of storage units in `psses.index` ($(length(psses.index))) does not match NC ($NC)."
-        return false
+    if NC > 0
+        if psses === nothing || !hasproperty(psses, :index) || length(psses.index) != NC
+            @warn "Storage input `psses` is missing or its index length does not match NC ($NC)."
+            return false
+        end
     end
 
     # Data center dimensions
-    if ND2 > 0 && data_centers !== nothing && hasproperty(data_centers, :index) && length(data_centers.index) != ND2
-        @warn "Number of data centers in `data_centers.index` ($(length(data_centers.index))) does not match ND2 ($ND2)."
-        return false
+    if ND2 > 0
+        if data_centers === nothing || !hasproperty(data_centers, :index) || length(data_centers.index) != ND2
+            @warn "Data center input `data_centers` is missing or its index length does not match ND2 ($ND2)."
+            return false
+        end
     end
 
     return true

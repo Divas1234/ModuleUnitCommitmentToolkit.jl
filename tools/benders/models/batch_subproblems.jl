@@ -30,7 +30,8 @@ function get_batch_scuc_subproblems_for_scenario(
     # batch_scuc_subproblem_dic = OrderedDict{Int64, Any}()
     batch_scuc_model_structure_dict = OrderedDict{Int64, SCUC_Model}()
 
-    @assert config_param.consider_multi_cuts == 1
+    config_param.consider_multi_cuts == 1 ||
+        throw(ArgumentError("Batch scenario subproblems require config_param.consider_multi_cuts == 1; got $(config_param.consider_multi_cuts)"))
 
     for s in 1:NS
         # Deep copy both the JuMP model and the tracking structure to ensure scenario independence
@@ -74,7 +75,8 @@ function get_batch_scuc_subproblems_for_scenario(
     scenarios_prob::Float64,
     config_param::config,
 )
-    @assert config_param.consider_multi_cuts == 1
+    config_param.consider_multi_cuts == 1 ||
+        throw(ArgumentError("Batch scenario subproblems require config_param.consider_multi_cuts == 1; got $(config_param.consider_multi_cuts)"))
 
     batch_scuc_model_structure_dic = OrderedDict{Int64, SCUC_Model}()
     for s in 1:Int64(winds.scenarios_nums)

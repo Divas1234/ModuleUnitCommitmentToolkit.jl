@@ -6,6 +6,4 @@ if !isdefined(@__MODULE__, :_RENEWABLES_INCLUDED)
     include("wind_data.jl")
     include("wind_profiles.jl")
     include("wind_scenario_generation.jl")
-
-    println("\t→ the renewable energy curves module loaded.")
 end

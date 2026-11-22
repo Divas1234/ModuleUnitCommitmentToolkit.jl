@@ -5,7 +5,6 @@ include("solver_utilities.jl")
 include("initial_boundary_conditions.jl")
 include("export_results.jl")
 include("save_scheduling_results.jl")
-include("convert_data_type.jl")
 include("reorganize_constraints.jl")
 # """
 # This module provides utility functions for the unit commitment model.
@@ -26,8 +25,4 @@ export define_variables!,
     save_UCresults,
     read_UCresults,
     savebalance_result,
-    convert_constraints_type_to_vector,
-    check_constrainsref_type,
     reorginze_constraints_sets
-
-println("\t\u2192 utility functions exported.")

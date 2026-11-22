@@ -38,6 +38,16 @@ fixed first-stage commitment decisions.
 - A tuple: `(scuc_subproblem::Model, sub_scuc_struct::SCUCM_Model)`
 """
 
+function _validate_benders_subproblem_dims(NT, NG, ND, NW, NS, scenarios_prob; NB = 1, NC = 0, ND2 = 0)
+    (NT > 0 && NB > 0 && NG > 0 && NS > 0) ||
+        throw(ArgumentError("Positive dimensions required: got NT=$NT, NB=$NB, NG=$NG, NS=$NS"))
+    (ND >= 0 && NC >= 0 && ND2 >= 0 && NW >= 0) ||
+        throw(ArgumentError("Non-negative entity counts required: got ND=$ND, NC=$NC, ND2=$ND2, NW=$NW"))
+    (isfinite(scenarios_prob) && 0.0 < scenarios_prob <= 1.0) ||
+        throw(ArgumentError("scenarios_prob must be in (0, 1]; got $scenarios_prob"))
+    return nothing
+end
+
 function bd_subfunction(
     NT::Int64,
     NB::Int64,
@@ -58,16 +68,7 @@ function bd_subfunction(
     config_param::config,
 )
     println("Initializing Benders Subproblem (Recourse) construction...")
-    # Input validation
-    @assert NT>0 "Number of time periods (NT) must be positive."
-    @assert NB>0 "Number of buses (NB) must be positive."
-    @assert NG>0 "Number of generators (NG) must be positive."
-    @assert ND>=0 "Number of loads (ND) must be non-negative."
-    @assert NC>=0 "Number of storage units (NC) must be non-negative."
-    @assert ND2>=0 "Number of data centers (ND2) must be non-negative."
-    @assert NS>0 "Number of scenarios (NS) must be positive."
-    @assert NW>=0 "Number of wind power plants (NW) must be non-negative."
-    @assert scenarios_prob >= 0&&scenarios_prob <= 1 "Scenario probability must be between 0 and 1."
+    _validate_benders_subproblem_dims(NT, NG, ND, NW, NS, scenarios_prob; NB = NB, NC = NC, ND2 = ND2)
 
     # Create the subproblem model
     scuc_subproblem = build_uc_model(; silent = true)
@@ -368,13 +369,7 @@ function set_subproblem_objective_economic!(
     config_param::config,
     scenarios_prob::Float64,
 )
-    # Input validation
-    @assert NT>0 "Number of time periods (NT) must be positive."
-    @assert NG>0 "Number of generators (NG) must be positive."
-    @assert ND>=0 "Number of loads (ND) must be non-negative."
-    @assert NW>=0 "Number of wind power plants (NW) must be non-negative."
-    @assert NS>0 "Number of scenarios (NS) must be positive."
-    @assert scenarios_prob >= 0&&scenarios_prob <= 1 "Scenario probability must be between 0 and 1."
+    _validate_benders_subproblem_dims(NT, NG, ND, NW, NS, scenarios_prob)
 
     # Cost parameters
     c₀ = config_param.coal_price  # Base cost of coal

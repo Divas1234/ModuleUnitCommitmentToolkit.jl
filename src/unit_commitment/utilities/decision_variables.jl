@@ -53,13 +53,6 @@ function define_decision_variables!(scuc::Model, NT, NG, ND, NC, ND2, NS, NW, co
         @variable(scuc, Δp_imbalance[1:NS] >= 0) # Placeholder, adjust as needed based on full constraints
     end
 
-    if isdefined(@__MODULE__, :_UC_VARIABLE_HOOKS) && !isempty(_UC_VARIABLE_HOOKS)
-        ctx = (NT = NT, NG = NG, ND = ND, NC = NC, ND2 = ND2, NS = NS, NW = NW, config_param = config_param)
-        for (_, hook_fn) in _UC_VARIABLE_HOOKS
-            hook_fn(scuc, ctx)
-        end
-    end
-
     println("\t Variables defined.")
     return scuc # Return model with variables
 end

@@ -86,9 +86,14 @@ function PCMAlgorithm(;
     window_hours::Union{Nothing, Int} = nothing,
     performance_mode::Symbol = :fast,
 )
-    method in (:standard, :clustered, :clustered_pcm, :adaptive_overlap, :clustered_adaptive_overlap, :integrated) ||
-        throw(ArgumentError("Unsupported PCM method: $(method)"))
-    return PCMAlgorithm(method, profile, intervals, window_hours, performance_mode)
+    canon = if isdefined(@__MODULE__, :pcm_method_spec)
+        pcm_method_spec(method)[1]
+    else
+        method in (:standard, :clustered, :clustered_pcm, :adaptive_overlap, :clustered_overlap, :clustered_adaptive_overlap, :benchmark, :integrated) ||
+            throw(ArgumentError("Unsupported PCM method: $(method)"))
+        method
+    end
+    return PCMAlgorithm(canon, profile, intervals, window_hours, performance_mode)
 end
 
 """Immutable snapshot of clustered PCM window execution statistics."""
@@ -113,25 +118,26 @@ struct UCInputSpec
     data_centers::Any
     horizon::Int64
     data_file::Union{Nothing, String}
-end
 
-function UCInputSpec(
-    source::Symbol,
-    scenario_limit::Int64,
-    sys::Any,
-    case_name::Union{Nothing, String},
-    case_category::Any,
-    case_dir::String,
-    data_center_buses::Vector{Int},
-    data_center_pmax::Vector{Float64},
-    frequency_parameters::Any,
-    data_centers::Any,
-    horizon::Int64,
-)
-    return UCInputSpec(
-        source, scenario_limit, sys, case_name, case_category, case_dir,
-        data_center_buses, data_center_pmax, frequency_parameters, data_centers, horizon, nothing,
+    function UCInputSpec(
+        source::Symbol,
+        scenario_limit::Int64,
+        sys::Any,
+        case_name::Union{Nothing, String},
+        case_category::Any,
+        case_dir::String,
+        data_center_buses::Vector{Int},
+        data_center_pmax::Vector{Float64},
+        frequency_parameters::Any,
+        data_centers::Any,
+        horizon::Int64,
+        data_file::Union{Nothing, String} = nothing,
     )
+        return new(
+            source, scenario_limit, sys, case_name, case_category, case_dir,
+            data_center_buses, data_center_pmax, frequency_parameters, data_centers, horizon, data_file,
+        )
+    end
 end
 
 struct UCSolveRequest
@@ -141,16 +147,17 @@ struct UCSolveRequest
     output_dir::Union{Nothing, String}
     verbosity::Symbol
     optimizer::Any
-end
 
-function UCSolveRequest(
-    algorithm::Symbol,
-    input::UCInputSpec,
-    calibration::Any,
-    output_dir::Union{Nothing, String},
-    verbosity::Symbol,
-)
-    return UCSolveRequest(algorithm, input, calibration, output_dir, verbosity, nothing)
+    function UCSolveRequest(
+        algorithm::Symbol,
+        input::UCInputSpec,
+        calibration::Any,
+        output_dir::Union{Nothing, String},
+        verbosity::Symbol,
+        optimizer::Any = nothing,
+    )
+        return new(algorithm, input, calibration, output_dir, verbosity, optimizer)
+    end
 end
 
 """Stable public result envelope; algorithm-specific fields live in `details`."""

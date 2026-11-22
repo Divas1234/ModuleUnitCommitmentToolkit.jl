@@ -13,7 +13,6 @@
 """
 
 const _UC_ALGORITHM_MODULES_READY = Ref(false)
-const _UC_ALGORITHM_REGISTRY = Dict{Symbol, Function}()
 const _UC_ALGORITHM_ALIASES = Dict{String, Symbol}(
     "benchmark" => :benchmark,
     "benchmark_uc" => :benchmark,
@@ -44,95 +43,6 @@ function _normalize_algorithm_key(name)
     return lowercase(replace(string(name), '-' => '_', ' ' => '_'))
 end
 
-"""
-    register_uc_algorithm!(name::Symbol, handler::Function; aliases = String[])
-
-Register a solver backend under `name` so `solve_uc(algorithm = name, ...)` can dispatch
-to `handler(request::UCSolveRequest)` without modifying core solver routing code.
-"""
-function register_uc_algorithm!(name::Symbol, handler::Function; aliases = String[])
-    canonical = Symbol(_normalize_algorithm_key(name))
-    _UC_ALGORITHM_REGISTRY[canonical] = handler
-    _UC_ALGORITHM_ALIASES[String(canonical)] = canonical
-    for alias in aliases
-        _UC_ALGORITHM_ALIASES[_normalize_algorithm_key(alias)] = canonical
-    end
-    return canonical
-end
-
-"""
-    unregister_uc_algorithm!(name::Symbol)
-
-Remove a previously registered custom algorithm and its aliases from the solver registry.
-"""
-function unregister_uc_algorithm!(name::Symbol)
-    canonical = Symbol(_normalize_algorithm_key(name))
-    delete!(_UC_ALGORITHM_REGISTRY, canonical)
-    for (alias, target) in collect(_UC_ALGORITHM_ALIASES)
-        if target === canonical && !(canonical in _BUILTIN_UC_ALGORITHMS)
-            delete!(_UC_ALGORITHM_ALIASES, alias)
-        end
-    end
-    return canonical
-end
-
-"""
-    registered_uc_algorithms()
-
-Return the sorted list of canonical algorithm names supported by `solve_uc`.
-"""
-function registered_uc_algorithms()
-    return sort!(collect(union(Set(_BUILTIN_UC_ALGORITHMS), keys(_UC_ALGORITHM_REGISTRY))))
-end
-
-const _UC_EXPORTER_REGISTRY = Dict{Symbol, Function}()
-
-"""
-    register_uc_exporter!(name::Symbol, exporter::Function)
-
-Register a result exporter hook `exporter(result::UCSolveResult; output_dir = nothing)`
-for external pipelines (e.g. Parquet, JSON telemetry, database, or GUI sinks).
-"""
-function register_uc_exporter!(name::Symbol, exporter::Function)
-    canonical = Symbol(_normalize_algorithm_key(name))
-    _UC_EXPORTER_REGISTRY[canonical] = exporter
-    return canonical
-end
-
-"""
-    unregister_uc_exporter!(name::Symbol)
-
-Remove a previously registered result exporter hook.
-"""
-function unregister_uc_exporter!(name::Symbol)
-    canonical = Symbol(_normalize_algorithm_key(name))
-    delete!(_UC_EXPORTER_REGISTRY, canonical)
-    return canonical
-end
-
-"""
-    registered_uc_exporters()
-
-Return the sorted list of registered result exporter names.
-"""
-function registered_uc_exporters()
-    return sort!(collect(keys(_UC_EXPORTER_REGISTRY)))
-end
-
-"""
-    run_uc_exporters(result::UCSolveResult; output_dir = nothing)
-
-Invoke all registered result exporters on `result` and return a `Dict{Symbol, Any}`
-mapping exporter names to their return values.
-"""
-function run_uc_exporters(result::UCSolveResult; output_dir = nothing)
-    outputs = Dict{Symbol, Any}()
-    for name in registered_uc_exporters()
-        outputs[name] = _UC_EXPORTER_REGISTRY[name](result; output_dir = output_dir)
-    end
-    return outputs
-end
-
 function _resolve_tools_path(project_root::AbstractString, parts::AbstractString...)
     for dir_name in ("tools", "Tools")
         candidate = joinpath(project_root, dir_name, parts...)
@@ -154,7 +64,7 @@ end
 function _normalize_solver_algorithm(algorithm)
     name = _normalize_algorithm_key(algorithm)
     haskey(_UC_ALGORITHM_ALIASES, name) || throw(
-        ArgumentError("algorithm must be one of $(registered_uc_algorithms()); got $(algorithm)"),
+        ArgumentError("algorithm must be one of $(collect(_BUILTIN_UC_ALGORITHMS)); got $(algorithm)"),
     )
     return _UC_ALGORITHM_ALIASES[name]
 end
@@ -387,9 +297,6 @@ end
 function _solve_uc_selected(request::UCSolveRequest)
     return with_uc_optimizer(request.optimizer) do
         algorithm = request.algorithm
-        if haskey(_UC_ALGORITHM_REGISTRY, algorithm)
-            return _UC_ALGORITHM_REGISTRY[algorithm](request)
-        end
         input = request.input
         _ensure_uc_algorithm_modules!()
         if algorithm == :benchmark
@@ -491,17 +398,14 @@ function _algorithm_to_request_args(alg::CCGAlgorithm)
 end
 
 function _algorithm_to_request_args(alg::PCMAlgorithm)
-    algo_sym = if alg.method === :standard
-        :pcm_standard
-    elseif alg.method in (:clustered, :clustered_pcm)
-        :pcm_clustered
-    elseif alg.method === :adaptive_overlap
-        :pcm_adaptive_overlap
-    elseif alg.method === :clustered_adaptive_overlap
-        :pcm_clustered_adaptive
-    else
-        :pcm_integrated
-    end
+    canon = pcm_method_spec(alg.method)[1]
+    algo_sym = Dict(
+        :standard => :pcm_standard,
+        :clustered => :pcm_clustered,
+        :adaptive_overlap => :pcm_adaptive_overlap,
+        :clustered_overlap => :pcm_clustered_adaptive,
+        :benchmark => :pcm_integrated,
+    )[canon]
     cal = Pair{Symbol, Any}[
         :PCM_LOAD_PROFILE => String(alg.profile),
         :PCM_PERFORMANCE_MODE => String(alg.performance_mode),

@@ -53,14 +53,8 @@ end
 
 function _print_runtime_configuration()
     _print_section("Runtime Configuration (effective values)")
-    default_config_path = isdefined(@__MODULE__, :DEFAULT_RUNTIME_CONFIG_PATH) ? DEFAULT_RUNTIME_CONFIG_PATH : "config/runtime_config.toml"
-    config_path = get(ENV, "MODULE_UC_CONFIG_FILE", default_config_path)
+    config_path = get(ENV, "MODULE_UC_CONFIG_FILE", DEFAULT_RUNTIME_CONFIG_PATH)
     _print_kv("config file", config_path)
-
-    if !isdefined(@__MODULE__, :runtime_config_entries)
-        println("  runtime_config_entries is unavailable; showing current ENV only")
-        return nothing
-    end
 
     entries = try
         runtime_config_entries(config_path)
@@ -100,13 +94,7 @@ function _print_runtime_configuration()
     return nothing
 end
 
-function boundary_env_bool(name::String, default::Bool)
-    if isdefined(@__MODULE__, :uc_env_bool)
-        return uc_env_bool(name, default)
-    end
-    value = lowercase(strip(get(ENV, name, default ? "1" : "0")))
-    return value in ("1", "true", "yes", "y", "on")
-end
+boundary_env_bool(name::String, default::Bool) = uc_env_bool(name, default)
 
 function maybe_print_boundarycondition(
     NB::Int64,

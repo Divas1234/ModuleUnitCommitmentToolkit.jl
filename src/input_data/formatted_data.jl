@@ -89,13 +89,8 @@ function uc_wind_curtailment_penalty(config_param::UCConfig)
     return Float64(config_param.wind_cutting_coefficient)
 end
 
-function model_env_int(name::String, default::Int64)
-    return isdefined(@__MODULE__, :uc_env_int) ? uc_env_int(name, default) : parse(Int64, get(ENV, name, string(default)))
-end
-
-function model_env_float(name::String, default::Float64)
-    return isdefined(@__MODULE__, :uc_env_float) ? uc_env_float(name, default) : parse(Float64, get(ENV, name, string(default)))
-end
+model_env_int(name::String, default::Int64) = uc_env_int(name, default)
+model_env_float(name::String, default::Float64) = uc_env_float(name, default)
 
 function config_from_env()
     consider_bess = model_env_int("MODEL_CONSIDER_BESS", parse(Int64, get(ENV, "BENDERS_CONSIDER_BESS", get(ENV, "CONSIDER_BESS", "0"))))

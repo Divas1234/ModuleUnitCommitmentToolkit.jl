@@ -1,14 +1,5 @@
-function frequency_env_float(name::String, default::Float64)
-    return isdefined(@__MODULE__, :uc_env_float) ? uc_env_float(name, default) : parse(Float64, get(ENV, name, string(default)))
-end
-
-function frequency_env_bool(name::String, default::Bool)
-    if isdefined(@__MODULE__, :uc_env_bool)
-        return uc_env_bool(name, default)
-    end
-    value = lowercase(strip(get(ENV, name, default ? "1" : "0")))
-    return value in ("1", "true", "yes", "y", "on")
-end
+frequency_env_float(name::String, default::Float64) = uc_env_float(name, default)
+frequency_env_bool(name::String, default::Bool) = uc_env_bool(name, default)
 
 """
     frequency_model_mode() -> Symbol

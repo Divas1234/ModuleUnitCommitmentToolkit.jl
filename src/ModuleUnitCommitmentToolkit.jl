@@ -26,9 +26,6 @@ include("core/solver_interface.jl")
 include("core/execution_diagnostics.jl")
 include("core/deprecations.jl")
 
-# Backwards-compatible namespace alias for legacy `ModuleUnitCommitmentToolkit.SequentialPCM` callers
-const SequentialPCM = ModuleUnitCommitmentToolkit
-
 # Public package-level entry points. Algorithm drivers under `tools/` remain the
 # implementation and compatibility layer behind the unified entry point.
 export SUC_scucmodel,
@@ -80,26 +77,6 @@ export SUC_scucmodel,
     uc_variable,
     has_uc_variable,
     LEGACY_NAMING_MIGRATION,
-    register_uc_algorithm!,
-    unregister_uc_algorithm!,
-    registered_uc_algorithms,
-    register_uc_data_loader!,
-    unregister_uc_data_loader!,
-    registered_uc_data_loaders,
-    register_uc_exporter!,
-    unregister_uc_exporter!,
-    registered_uc_exporters,
-    run_uc_exporters,
-    register_uc_constraint_hook!,
-    registered_uc_constraint_hooks,
-    clear_uc_constraint_hooks!,
-    register_uc_variable_hook!,
-    registered_uc_variable_hooks,
-    clear_uc_variable_hooks!,
-    register_uc_objective_hook!,
-    registered_uc_objective_hooks,
-    clear_uc_objective_hooks!,
-    clear_all_uc_hooks!,
     ClusteredDisaggregation,
     ClusterSpec,
     InitialUnitState,
@@ -116,7 +93,6 @@ export SUC_scucmodel,
     solve_unit_disaggregation,
     run_cluster_disaggregation,
     validate_disaggregation,
-    SequentialPCM,
     AbstractPCMFormulation,
     SingleUnitFormulation,
     ClusteredFormulation,

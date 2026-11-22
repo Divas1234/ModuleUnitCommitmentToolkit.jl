@@ -201,12 +201,6 @@ function _print_constraint_inventory(log_lines::Vector{String}, cfg::UCConfig, p
         tag = enabled ? "[ ON  ]" : "[ OFF ]"
         _diag_emit(log_lines, "  $tag $name")
     end
-    hooks = registered_uc_constraint_hooks()
-    if isempty(hooks)
-        _diag_emit(log_lines, "  [NONE ] Custom Constraint Hooks (register via register_uc_constraint_hook!)")
-    else
-        _diag_emit(log_lines, "  [HOOKS] Registered Custom Constraint Hooks: $(join(string.(hooks), ", "))")
-    end
     _diag_emit(log_lines, "  Summary: $(active_count)/$(length(items)) built-in constraint groups active.")
     return nothing
 end

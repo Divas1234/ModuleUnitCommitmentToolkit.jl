@@ -1,5 +1,4 @@
 function add_optimitycut_constraints!(scuc_masterproblem::JuMP.Model, sub_model_struct::SCUC_Model, ret, iter_value)
-    # @assert termination_status(sub_model_struct[1].model)
     x⁽⁰⁾ = iter_value[1]
     u⁽⁰⁾ = iter_value[2]
     v⁽⁰⁾ = iter_value[3]
@@ -16,8 +15,6 @@ function add_optimitycut_constraints!(scuc_masterproblem::JuMP.Model, sub_model_
 end
 
 function add_feasibilitycut_constraints!(scuc_masterproblem::JuMP.Model, sub_model_struct::SCUC_Model, ret, iter_value)
-    # @assert!(ret.is_feasible)
-    # @assert !termination_status(sub_model_struct[1].model)
     x⁽⁰⁾ = iter_value[1]
     u⁽⁰⁾ = iter_value[2]
     v⁽⁰⁾ = iter_value[3]
