@@ -140,7 +140,7 @@ function load_pcm_excel_data(;
     end
     UnitsFreqParam, WindsFreqParam, StrogeData, DataGen, GenCost, DataBranch, LoadCurve, DataLoad, Datacentra_Data = raw[1:9]
 
-    config_param, units, lines, loads, stroges, NB, NG, NL, ND, NT, NC, ND2, DataCentras =
+    config_param, units, lines, loads, storages, NB, NG, NL, ND, NT, NC, ND2, data_centers =
         withenv("MODEL_IS_NETWORK_CON" => net_flag) do
             forminputdata(DataGen, DataBranch, DataLoad, LoadCurve, GenCost, UnitsFreqParam, StrogeData, Datacentra_Data)
         end
@@ -158,7 +158,7 @@ function load_pcm_excel_data(;
         units = units,
         lines = lines,
         loads = loads,
-        stroges = stroges,
+        storages = storages,
         NB = NB,
         NG = NG,
         NL = NL,
@@ -167,7 +167,7 @@ function load_pcm_excel_data(;
         NC = NC,
         ND2 = ND2,
         NH = NH,
-        DataCentras = DataCentras,
+        data_centers = data_centers,
         hydros = hydros,
         WindsFreqParam = WindsFreqParam,
     )

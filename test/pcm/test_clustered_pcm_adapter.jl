@@ -13,7 +13,7 @@
     loads=(locatebus = [1], load_curve = [40.0 90.0])
     winds=(index = Int[], locatebus = Int[], p_max = Float64[], scenarios_curve = zeros(1, 2))
     lines=(p_min = Float64[], p_max = Float64[])
-    config=(is_NetWorkCon = 0,)
+    config=(is_network_con = 0,)
     report=apply_clustered_pcm_optimization!(results, units, loads, winds, lines, config, 1, 0)
     @test report.feasible
     @test report.stage==:complete

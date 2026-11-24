@@ -73,7 +73,7 @@ end
     	loads::load,
     	winds::wind,
     	lines::transmissionline,
-    	DataCentras::data_centra,
+    	data_centers::data_centra,
     	config_param::config,
     	interval_scheduling_id::Int64,
     	hydros::hydro,
@@ -84,14 +84,14 @@ Compute 1x7 scheduling cost vector for the committed execution period (1:exec_NT
 """
 function compute_committed_cost(
         committed_results::AbstractDict{String}, exec_NT::Int64, units::unit, loads::load, winds::wind, lines::transmissionline,
-        DataCentras::data_centra, config_param::config, interval_scheduling_id::Int64, hydros::hydro, scenarios_prob::Float64)
+        data_centers::data_centra, config_param::config, interval_scheduling_id::Int64, hydros::hydro, scenarios_prob::Float64)
     NS = winds.scenarios_nums
     NW = length(winds.index)
     NG = length(units.index)
     NB = length(units.locatebus)
     ND = length(loads.locatebus)
     NC = 0
-    ND2 = length(DataCentras.locatebus)
+    ND2 = length(data_centers.locatebus)
     NH = length(hydros.locatebus)
 
     refcost, eachslope = linearizationfuelcurve(units, NG)

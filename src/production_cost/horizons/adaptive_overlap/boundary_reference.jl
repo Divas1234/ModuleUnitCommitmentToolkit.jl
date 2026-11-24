@@ -50,8 +50,8 @@ conditions. Its first-period commitment is used as `x_ref_curr`, the local
 benchmark for measuring boundary-state deviation in T_steady.
 """
 function solve_local_reference_commitment(
-        loads::load, winds::wind, units::unit, lines::transmissionline, DataCentras::data_centra, config_param::config,
-        stroges::Any, scenarios_prob::Float64, hydros::hydro, start_time::Int64, exec_NT::Int64, max_overlap::Int64,
+        loads::load, winds::wind, units::unit, lines::transmissionline, data_centers::data_centra, config_param::config,
+        storages::Any, scenarios_prob::Float64, hydros::hydro, start_time::Int64, exec_NT::Int64, max_overlap::Int64,
         NB::Int64, NG::Int64, ND::Int64, NC::Int64, ND2::Int64, NL::Int64, NH::Int64, interval_scheduling_id::Int64 = 1;
         return_results::Bool = false)
     total_time_avail = size(loads.load_curve, 2)
@@ -65,7 +65,7 @@ function solve_local_reference_commitment(
     # 显式注入单机 formulation，避免并行参考任务通过 ENV 相互覆盖。
     ref_results = each_period_scucmodel_modules(
         total_NT_ref, NB, NG, ND, NC, ND2, ref_units, ref_loads, ref_winds,
-        lines, DataCentras, config_param, stroges, scenarios_prob, NL,
+        lines, data_centers, config_param, storages, scenarios_prob, NL,
         interval_scheduling_id, hydros, NH; formulation = :standard)
     if ref_results === nothing || !haskey(ref_results, "x₀")
         return return_results ? (commitment = nothing, results = nothing) : nothing

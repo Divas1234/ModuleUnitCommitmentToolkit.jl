@@ -914,7 +914,13 @@ function solve_subproblem_with_feasibility_cut(
 
     set_optimizer_attribute_if_supported(scuc_subproblem, "InfUnbdInfo", 1)
     set_optimizer_attribute_if_supported(scuc_subproblem, "DualReductions", 0)
-    if Threads.nthreads() > 1
+    opts = isdefined(@__MODULE__, :current_solver_options) ? current_solver_options() : nothing
+    if opts !== nothing && opts.time_limit !== nothing && opts.time_limit > 0
+        set_optimizer_attribute_if_supported(scuc_subproblem, "TimeLimit", opts.time_limit)
+    end
+    if opts !== nothing && opts.threads !== nothing && opts.threads > 0
+        set_optimizer_attribute_if_supported(scuc_subproblem, "Threads", opts.threads)
+    elseif Threads.nthreads() > 1
         subproblem_threads = parse(Int64, get(ENV, "BENDERS_SUBPROBLEM_SOLVER_THREADS", "1"))
         if subproblem_threads > 0
             set_optimizer_attribute_if_supported(scuc_subproblem, "Threads", subproblem_threads)

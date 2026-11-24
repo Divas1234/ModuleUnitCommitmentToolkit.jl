@@ -1,5 +1,5 @@
 
-function reorginze_constraints_sets(all_constraints_dict)
+function reorganize_constraints_sets(all_constraints_dict)
     all_constr_lessthan_sets = Dict{Symbol, T1}()
     all_constr_greaterthan_sets = Dict{Symbol, T2}()
     all_constr_equalto_sets = Dict{Symbol, T0}()
@@ -19,3 +19,5 @@ function reorginze_constraints_sets(all_constraints_dict)
 
     return all_constr_lessthan_sets, all_constr_greaterthan_sets, all_constr_equalto_sets
 end
+
+const reorginze_constraints_sets = reorganize_constraints_sets

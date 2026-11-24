@@ -80,7 +80,7 @@ if !isdefined(@__MODULE__, :_PCM_CLUSTERED_ADAPTER_INCLUDED)
 
 	"""Apply residence-flow, physical path assignment, and PTDF dispatch to a solved PCM window."""
 	function apply_clustered_pcm_optimization!(results, units, loads, winds, lines, config_param, NB, NL; optimizer = GLPK.Optimizer,
-			tolerance = 1e-7, strict = true, stroges = nothing, data_centers = nothing, hydros = nothing)
+			tolerance = 1e-7, strict = true, storages = nothing, data_centers = nothing, hydros = nothing)
 		x=round.(Int, results["x₀"])
 		y=round.(Int, results["u₀"])
 		z=round.(Int, results["v₀"])
@@ -114,7 +114,7 @@ if !isdefined(@__MODULE__, :_PCM_CLUSTERED_ADAPTER_INCLUDED)
 		disaggregated=UnitDisaggregationResult[]
 		# Network constraints are deferred from the compact master to this
 		# physical-unit stage, after unit identities have been recovered.
-		gsdf=(config_param.is_NetWorkCon==1&&NL>0) ? calculate_gsdf(config_param, NL, units, lines, loads, NG, NB, length(loads.locatebus)) :
+		gsdf=(config_param.is_network_con==1&&NL>0) ? calculate_gsdf(config_param, NL, units, lines, loads, NG, NB, length(loads.locatebus)) :
 			 zeros(0, NB)
 		limits=NL>0&&gsdf!==nothing ? min.(abs.(Float64.(lines.p_min)), abs.(Float64.(lines.p_max))) : Float64[]
 		all_strictly_feasible=!residence_diagnostic
@@ -134,15 +134,13 @@ if !isdefined(@__MODULE__, :_PCM_CLUSTERED_ADAPTER_INCLUDED)
 			end
 			for t ∈ 1:T, w ∈ 1:NW
 
-				# Match the legacy PCM network constraint, which maps wind rows
-				# through `winds.index` rather than `winds.locatebus`.
-				fixed[Int(winds.index[w]), t]+=winds.scenarios_curve[scenario, t]*winds.p_max[w]-results["pᵩ"][(scenario - 1) * NW + w, t]
+				fixed[Int(winds.locatebus[w]), t]+=winds.scenarios_curve[scenario, t]*winds.p_max[w]-results["pᵩ"][(scenario - 1) * NW + w, t]
 			end
-			if stroges!==nothing && haskey(results, "pss_charge_p⁺")
-				NC=length(stroges.locatebus)
+			if storages!==nothing && haskey(results, "pss_charge_p⁺")
+				NC=length(storages.locatebus)
 				for t ∈ 1:T, c ∈ 1:NC
 
-					fixed[Int(stroges.locatebus[c]), t]+=results["pss_charge_p⁻"][(scenario - 1) * NC + c, t]-results["pss_charge_p⁺"][(scenario - 1) * NC + c, t]
+					fixed[Int(storages.locatebus[c]), t]+=results["pss_charge_p⁻"][(scenario - 1) * NC + c, t]-results["pss_charge_p⁺"][(scenario - 1) * NC + c, t]
 				end
 			end
 			if data_centers!==nothing && haskey(results, "dc_p")

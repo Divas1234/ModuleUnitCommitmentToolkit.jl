@@ -3,6 +3,37 @@ using JuMP
 # Helper function for transmission line constraints
 
 """
+    device_net_injection(model::Model, dev, s::Int, t::Int, gsdf_line::AbstractVector)
+
+Extensible multiple-dispatch hook returning the GSDF-weighted active power net injection
+(positive = generation/discharge into grid, negative = load/charge from grid) contributed
+by device container `dev` in scenario `s` at period `t` along a transmission line with
+shift-factor row `gsdf_line`.
+
+New flexible resources (e.g. hydrogen electrolyzers, pumped hydro, VPP) only need to
+define a device struct and one method of `device_net_injection` without modifying
+`add_transmission_constraints!`.
+"""
+device_net_injection(::Model, ::Any, ::Int, ::Int, ::AbstractVector) = 0.0
+
+function device_net_injection(scuc::Model, storages::StorageUnits, s::Int, t::Int, gsdf_line::AbstractVector)
+    NC = length(storages.locatebus)
+    NC == 0 && return 0.0
+    (check_var_exists(scuc, "pc⁺") && check_var_exists(scuc, "pc⁻")) || return 0.0
+    pc⁺ = scuc[:pc⁺]
+    pc⁻ = scuc[:pc⁻]
+    return sum(gsdf_line[storages.locatebus[c]] * (pc⁻[(s - 1) * NC + c, t] - pc⁺[(s - 1) * NC + c, t]) for c in 1:NC)
+end
+
+function device_net_injection(scuc::Model, data_centers::DataCenters, s::Int, t::Int, gsdf_line::AbstractVector)
+    ND2 = length(data_centers.locatebus)
+    ND2 == 0 && return 0.0
+    check_var_exists(scuc, "dc_p") || return 0.0
+    dc_p = scuc[:dc_p]
+    return -sum(gsdf_line[data_centers.locatebus[c]] * dc_p[(s - 1) * ND2 + c, t] for c in 1:ND2)
+end
+
+"""
 `add_transmission_constraints!(...)`
 
 Enforces transmission line limits using a DC power flow approximation based on
@@ -13,13 +44,14 @@ or stability limits (p_min) of any transmission line.
 # Logic
 
 Flow(Line l) = Sum(GSDF(l, Bus b) * Net_Injection(Bus b))
-Net_Injection(Bus b) = P_gen + P_wind_net - P_load_net - P_storage_net - P_datacenter_net
+Net_Injection(Bus b) = P_gen + P_wind_net - P_load_net + sum(device_net_injection(dev))
 """
 function add_transmission_constraints!(
     scuc::Model,
     NT, NG, ND, NC, NW, NL, NS, units, loads, winds, lines, storages, Gsdf, config_param,
     ND2 = nothing,
-    data_centers = nothing,
+    data_centers = nothing;
+    extra_devices = (),
 )
 
     # Only apply constraints if network modeling is enabled and GSDF data is available
@@ -31,34 +63,30 @@ function add_transmission_constraints!(
         Δpd = scuc[:Δpd] # Load shedding slack
         Δpw = scuc[:Δpw] # Wind curtailment slack
 
-        # Retrieve storage variable references if they exist in the model
-        pc⁺ = check_var_exists(scuc, "pc⁺") ? scuc[:pc⁺] : nothing
-        pc⁻ = check_var_exists(scuc, "pc⁻") ? scuc[:pc⁻] : nothing
-        storage_enabled = NC > 0 && pc⁺ !== nothing && pc⁻ !== nothing && !isempty(storages.locatebus)
-
-        dc_enabled =
-            config_param.consider_data_center == 1 && ND2 !== nothing && ND2 > 0 && data_centers !== nothing && check_var_exists(scuc, "dc_p")
-        dc_p = dc_enabled ? scuc[:dc_p] : nothing
+        active_devices = Any[]
+        if NC > 0 && storages !== nothing && !isempty(storages.locatebus)
+            push!(active_devices, storages)
+        end
+        if config_param.consider_data_center == 1 && ND2 !== nothing && ND2 > 0 && data_centers !== nothing
+            push!(active_devices, data_centers)
+        end
+        for dev in extra_devices
+            dev !== nothing && push!(active_devices, dev)
+        end
 
         for l in 1:NL
+            gsdf_row = @view Gsdf[l, :]
             subGsdf_units = Gsdf[l, units.locatebus]
             subGsdf_winds = Gsdf[l, winds.locatebus]
             subGsdf_loads = Gsdf[l, loads.locatebus]
-            subGsdf_psses = storage_enabled ? Gsdf[l, storages.locatebus] : Float64[]
-            subGsdf_dc = dc_enabled ? Gsdf[l, data_centers.locatebus] : Float64[]
 
             flow = @expression(
                 scuc,
                 [s = 1:NS, t = 1:NT],
                 sum(subGsdf_units[i] * pg₀[i + (s - 1) * NG, t] for i in 1:NG) +
                 sum(subGsdf_winds[w] * (winds.scenarios_curve[s, t] * winds.p_max[w, 1] - Δpw[(s - 1) * NW + w, t]) for w in 1:NW) -
-                sum(subGsdf_loads[d] * (loads.load_curve[d, t] - Δpd[(s - 1) * ND + d, t]) for d in 1:ND) - (
-                    dc_enabled ? sum(subGsdf_dc[c] * dc_p[(s - 1) * ND2 + c, t] for c in 1:ND2) : 0.0
-                ) + (
-                    storage_enabled ?
-                    sum(subGsdf_psses[c] * (pc⁻[(s - 1) * NC + c, t] - pc⁺[(s - 1) * NC + c, t]) for c in 1:min(NC, length(subGsdf_psses))) :
-                    0.0
-                )
+                sum(subGsdf_loads[d] * (loads.load_curve[d, t] - Δpd[(s - 1) * ND + d, t]) for d in 1:ND) +
+                (isempty(active_devices) ? 0.0 : sum(device_net_injection(scuc, dev, s, t, gsdf_row) for dev in active_devices))
             )
             push!(transmissionline_powerflow_upbound_constr, @constraint(scuc, [s = 1:NS, t = 1:NT], flow[s, t] <= lines.p_max[l, 1]))
             push!(transmissionline_powerflow_downbound_constr, @constraint(scuc, [s = 1:NS, t = 1:NT], flow[s, t] >= lines.p_min[l, 1]))

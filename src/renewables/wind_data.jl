@@ -17,9 +17,14 @@ mutable struct WindUnits
     Mw::Vector{Float64}
     Dw::Vector{Float64}
     Tw::Vector{Float64}
+    area::Vector{Int}
 
-    function WindUnits(index, locatebus, p_max, scenarios_prob, scenarios_nums, scenarios_curve, Fcmode, Kw, Rw, Mw, Dw, Tw)
-        return new(index, locatebus, p_max, scenarios_prob, scenarios_nums, scenarios_curve, Fcmode, Kw, Rw, Mw, Dw, Tw)
+    function WindUnits(
+        index, locatebus, p_max, scenarios_prob, scenarios_nums, scenarios_curve,
+        Fcmode, Kw, Rw, Mw, Dw, Tw;
+        area = ones(Int, length(index)),
+    )
+        return new(index, locatebus, p_max, scenarios_prob, scenarios_nums, scenarios_curve, Fcmode, Kw, Rw, Mw, Dw, Tw, Int.(area))
     end
 end
 

@@ -48,6 +48,33 @@ function _validate_benders_subproblem_dims(NT, NG, ND, NW, NS, scenarios_prob; N
     return nothing
 end
 
+if isdefined(@__MODULE__, :UCProblemData)
+    function bd_subfunction(data::UCProblemData; scenarios_prob::Float64 = 1.0 / max(1, data.NS))
+        return bd_subfunction(
+            data.NT,
+            data.NB,
+            data.NL,
+            data.NG,
+            data.ND,
+            data.NC,
+            data.ND2,
+            data.NS,
+            data.NW,
+            data.units,
+            data.winds,
+            data.loads,
+            data.lines,
+            data.data_centers,
+            data.storages,
+            scenarios_prob,
+            data.config_param,
+        )
+    end
+
+    bd_subfunction(data::UCProblemData, scenarios_prob::Float64) =
+        bd_subfunction(data; scenarios_prob = scenarios_prob)
+end
+
 function bd_subfunction(
     NT::Int64,
     NB::Int64,
@@ -199,7 +226,7 @@ function bd_subfunction(
     sub_cons = build_constraints(; (f => all_constraints_dict[Symbol("key_", f)] for f in fields)...)
 
     # NOTE - save the reformated constraints in a dictionary for easy access
-    all_constr_lessthan_sets, all_constr_greaterthan_sets, all_constr_equalto_sets = reorginze_constraints_sets(all_constraints_dict)
+    all_constr_lessthan_sets, all_constr_greaterthan_sets, all_constr_equalto_sets = reorganize_constraints_sets(all_constraints_dict)
     sub_reformat_cons = SCUCModel_reformat_constraints(all_constr_equalto_sets, all_constr_greaterthan_sets, all_constr_lessthan_sets)
 
     # NOTE - save all scuc model components in struct! SCUC_model
@@ -222,7 +249,7 @@ function flatten_constraint_refs(constr)
 end
 
 function get_reorganize_constraints_struct(all_constraints_dict) #depreated
-    all_constr_lessthan_sets, all_constr_greaterthan_sets, all_constr_equalto_sets = reorginze_constraints_sets(all_constraints_dict)
+    all_constr_lessthan_sets, all_constr_greaterthan_sets, all_constr_equalto_sets = reorganize_constraints_sets(all_constraints_dict)
 
     all_reorginzed_constraints_dict = Dict{Symbol, Dict{Symbol, Any}}()
     all_reorginzed_constraints_dict[:LessThan] = collect(Iterators.flatten(all_constr_lessthan_sets))

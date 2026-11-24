@@ -245,20 +245,17 @@ function _print_key_results(log_lines::Vector{String}, result::UCSolveResult, el
     _diag_emit(log_lines, "\n[4/6] Key Optimization Results")
     _diag_emit(log_lines, "-"^72)
     details = result.details
-    status = hasproperty(details, :status) ? details.status : "UNKNOWN"
-    lb = hasproperty(details, :lower_bound) ? details.lower_bound : nothing
-    ub = hasproperty(details, :upper_bound) ? details.upper_bound : nothing
-    gap = hasproperty(details, :gap) ? details.gap : nothing
     iters = hasproperty(details, :iterations) ? details.iterations : nothing
 
     _diag_emit(log_lines, "  Algorithm       : $(result.algorithm)")
     _diag_emit(log_lines, "  Input Source    : $(result.input)")
-    _diag_emit(log_lines, "  Status          : $(status)")
-    lb !== nothing && _diag_emit(log_lines, @sprintf("  Lower Bound     : %.4f", Float64(lb)))
-    ub !== nothing && _diag_emit(log_lines, @sprintf("  Upper Bound     : %.4f", Float64(ub)))
-    gap !== nothing && _diag_emit(log_lines, @sprintf("  Optimality Gap  : %.6e", Float64(gap)))
+    _diag_emit(log_lines, "  Status          : $(result.status)")
+    result.lower_bound !== nothing && _diag_emit(log_lines, @sprintf("  Lower Bound     : %.4f", result.lower_bound))
+    result.objective !== nothing && _diag_emit(log_lines, @sprintf("  Objective       : %.4f", result.objective))
+    result.gap !== nothing && _diag_emit(log_lines, @sprintf("  Optimality Gap  : %.6e", result.gap))
     iters !== nothing && _diag_emit(log_lines, "  Iterations      : $(iters)")
-    _diag_emit(log_lines, @sprintf("  Wall Time       : %.3f s", elapsed_sec))
+    wall_time = result.runtime_seconds !== nothing ? result.runtime_seconds : elapsed_sec
+    _diag_emit(log_lines, @sprintf("  Wall Time       : %.3f s", wall_time))
 
     if hasproperty(details, :cost_summary) && details.cost_summary !== nothing
         cs = details.cost_summary

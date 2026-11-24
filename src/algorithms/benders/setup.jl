@@ -67,8 +67,7 @@ function build_benders_setup(;
     scuc_masterproblem, master_model_struct = bd_masterfunction(NT, NB, NG, ND, NC, ND2, NS, NW, units, loads, winds, config_param, scenarios_prob)
 
     # Construct the Benders Base Subproblem algebraically
-    scuc_subproblem, sub_model_struct =
-        bd_subfunction(NT, NB, NL, NG, ND, NC, ND2, NS, NW, units, winds, loads, lines, data_centers, psses, scenarios_prob, config_param)
+    scuc_subproblem, sub_model_struct = bd_subfunction(UCProblemData(data); scenarios_prob = scenarios_prob)
 
     # Fallback initialization validation for scenario probabilities
     if !@isdefined(scenarios_prob)

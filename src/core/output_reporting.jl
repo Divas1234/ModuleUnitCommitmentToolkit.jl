@@ -231,12 +231,13 @@ function print_uc_result(result::UCSolveResult; io::IO = stdout, diagnostics::In
         "Status",
         "02_status",
         _uc_result_table(
-            (:status, :upper_bound, :lower_bound, :gap),
+            (:status, :objective, :lower_bound, :gap, :runtime_seconds),
             (
-                _uc_result_value(result, :status),
-                _uc_result_value(result, :upper_bound),
-                _uc_result_value(result, :lower_bound),
-                _uc_result_value(result, :gap),
+                result.status,
+                result.objective,
+                result.lower_bound,
+                result.gap,
+                result.runtime_seconds,
             ),
         ),
         result.output_dir,

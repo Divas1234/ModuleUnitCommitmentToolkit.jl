@@ -104,7 +104,7 @@ function bd_masterfunction(
     master_cons = build_constraints(; (f => all_constraints_dict[Symbol("key_", f)] for f in fields)...)
 
     # NOTE - save the reformated constraints in a dictionary for easy access
-    all_constr_lessthan_sets, all_constr_greaterthan_sets, all_constr_equalto_sets = reorginze_constraints_sets(all_constraints_dict)
+    all_constr_lessthan_sets, all_constr_greaterthan_sets, all_constr_equalto_sets = reorganize_constraints_sets(all_constraints_dict)
     master_reformat_cons = SCUCModel_reformat_constraints(all_constr_equalto_sets, all_constr_greaterthan_sets, all_constr_lessthan_sets)
 
     # all_reorginzed_constraints_dict = Dict{Symbol, Any}()

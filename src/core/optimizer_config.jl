@@ -5,6 +5,69 @@ using MathOptInterface
 
 const _DEFAULT_UC_OPTIMIZER = Ref{Any}(nothing)
 const _UC_OPTIMIZER_TLS_KEY = :_MODULE_UC_OPTIMIZER
+const _UC_SOLVER_OPTIONS_TLS_KEY = :_MODULE_UC_SOLVER_OPTIONS
+
+"""
+    SolverOptions(; optimizer = nothing, mip_gap = nothing, threads = nothing, time_limit = nothing, silent = false)
+
+Immutable, thread/task-safe solver configuration replacing scattered `ENV` lookups
+inside optimization loops. Bind per-task via `with_solver_options` or pass directly
+to `build_uc_model(; options = opts)`.
+"""
+Base.@kwdef struct SolverOptions
+    optimizer::Any = nothing
+    mip_gap::Union{Nothing, Float64} = nothing
+    threads::Union{Nothing, Int} = nothing
+    time_limit::Union{Nothing, Float64} = nothing
+    silent::Bool = false
+end
+
+"""Return the active task-local `SolverOptions`, or `nothing` if unbound."""
+function current_solver_options()
+    tls = task_local_storage()
+    return get(tls, _UC_SOLVER_OPTIONS_TLS_KEY, nothing)
+end
+
+"""
+    with_solver_options(fn::Function, opts::Union{Nothing, SolverOptions})
+
+Execute `fn()` with `opts` bound in task-local storage so concurrent `Threads.@spawn`
+sweeps can use independent MIP gaps, thread counts, time limits, and optimizers without
+mutating global `ENV`.
+"""
+function with_solver_options(fn::Function, opts::Union{Nothing, SolverOptions})
+    opts === nothing && return fn()
+    return task_local_storage(_UC_SOLVER_OPTIONS_TLS_KEY, opts) do
+        return opts.optimizer === nothing ? fn() : with_uc_optimizer(fn, opts.optimizer)
+    end
+end
+
+"""
+    solver_options_from_env(; prefix = "UC", optimizer = nothing, silent = false) -> SolverOptions
+
+Construct an immutable `SolverOptions` snapshot once at entry from environment variables
+(`\$(prefix)_MIP_GAP`, `\$(prefix)_SOLVER_THREADS`, `\$(prefix)_SOLVER_TIME_LIMIT_SECONDS`).
+"""
+function solver_options_from_env(;
+    prefix::AbstractString = "UC",
+    optimizer = nothing,
+    silent::Bool = false,
+)
+    _parse_opt(T, key) = begin
+        raw = strip(get(ENV, key, ""))
+        isempty(raw) ? nothing : tryparse(T, raw)
+    end
+    mip_gap = _parse_opt(Float64, "$(prefix)_MIP_GAP")
+    threads = _parse_opt(Int, "$(prefix)_SOLVER_THREADS")
+    time_limit = _parse_opt(Float64, "$(prefix)_SOLVER_TIME_LIMIT_SECONDS")
+    return SolverOptions(
+        optimizer = optimizer,
+        mip_gap = mip_gap,
+        threads = threads,
+        time_limit = time_limit,
+        silent = silent,
+    )
+end
 
 """
     default_uc_optimizer()
@@ -75,19 +138,69 @@ function uc_set_optimizer_attribute!(model::Model, attribute_name::AbstractStrin
 end
 
 """
-    build_uc_model(; optimizer = nothing, silent = false, attributes = Pair{String, Any}[])
+    apply_solver_options!(model::Model, options::Union{Nothing, SolverOptions}; default_mip_gap = nothing, default_threads = nothing, default_time_limit = nothing, default_silent = false)
 
-Construct a JuMP `Model` using the active UC optimizer factory, optionally
-silencing output and applying backend-safe optimizer attributes.
+Apply explicit `SolverOptions` to `model` using backend-safe attribute setters,
+falling back to the caller-supplied defaults only for fields left `nothing`.
+"""
+function apply_solver_options!(
+    model::Model,
+    options::Union{Nothing, SolverOptions};
+    default_mip_gap::Union{Nothing, Real} = nothing,
+    default_threads::Union{Nothing, Integer} = nothing,
+    default_time_limit::Union{Nothing, Real} = nothing,
+    default_silent::Bool = false,
+)
+    is_silent = options === nothing ? default_silent : (options.silent || default_silent)
+    is_silent && set_silent(model)
+
+    mip_gap = (options !== nothing && options.mip_gap !== nothing) ? options.mip_gap : default_mip_gap
+    if mip_gap !== nothing
+        uc_set_optimizer_attribute!(model, "MIPGap", Float64(mip_gap))
+        uc_set_optimizer_attribute!(model, "mip_gap", Float64(mip_gap))
+    end
+
+    threads = (options !== nothing && options.threads !== nothing) ? options.threads : default_threads
+    if threads !== nothing && threads > 0
+        uc_set_optimizer_attribute!(model, "Threads", Int(threads))
+    end
+
+    time_limit = (options !== nothing && options.time_limit !== nothing) ? options.time_limit : default_time_limit
+    if time_limit !== nothing && time_limit > 0
+        uc_set_optimizer_attribute!(model, "TimeLimit", Float64(time_limit))
+        uc_set_optimizer_attribute!(model, "tm_lim", round(Int, Float64(time_limit) * 1000))
+    end
+    return model
+end
+
+"""
+    build_uc_model(; options = current_solver_options(), optimizer = nothing, silent = nothing, attributes = ())
+
+Construct a JuMP `Model` using the active UC optimizer factory and optional `SolverOptions`,
+applying backend-safe solver attributes (`MIPGap`, `Threads`, `TimeLimit`).
 """
 function build_uc_model(;
+    options::Union{Nothing, SolverOptions} = current_solver_options(),
     optimizer = nothing,
-    silent::Bool = false,
+    silent::Union{Nothing, Bool} = nothing,
     attributes = (),
 )
-    opt = optimizer === nothing ? default_uc_optimizer() : optimizer
-    model = Model(opt)
-    silent && set_silent(model)
+    resolved_opt = if optimizer !== nothing
+        optimizer
+    elseif options !== nothing && options.optimizer !== nothing
+        options.optimizer
+    else
+        default_uc_optimizer()
+    end
+    model = Model(resolved_opt)
+    apply_solver_options!(
+        model,
+        options;
+        default_silent = silent === nothing ? false : silent,
+    )
+    if silent === false && options !== nothing && options.silent
+        unset_silent(model)
+    end
     for (attr_name, attr_val) in attributes
         uc_set_optimizer_attribute!(model, attr_name, attr_val)
     end

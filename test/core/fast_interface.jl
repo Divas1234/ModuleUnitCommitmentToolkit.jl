@@ -28,9 +28,28 @@ using ModuleUnitCommitmentToolkit
     @test data.NT == 24
 
     details = (status = "OPTIMAL", upper_bound = 1.0, lower_bound = 1.0, gap = 0.0)
-    result = UCSolveResult(:benchmark, :excel, "/tmp/output", details)
+    result = UCSolveResult(:benchmark, :excel, "/tmp/output", details; runtime_seconds = 0.25)
     @test result.status == "OPTIMAL"
+    @test result.objective == 1.0
+    @test result.lower_bound == 1.0
+    @test result.gap == 0.0
+    @test result.runtime_seconds == 0.25
+    @test result.upper_bound == 1.0
     @test result[:gap] == 0.0
+
+    pcm_result = UCSolveResult(:pcm_standard, :excel, "/tmp/output", (status = "OPTIMAL", total_cost = 42.5, runtime_seconds = 1.5))
+    @test pcm_result.objective == 42.5
+    @test pcm_result.lower_bound === nothing
+    @test pcm_result.runtime_seconds == 1.5
+
+    bench_result = UCSolveResult(:benchmark, :excel, "/tmp/output", (status = "OPTIMAL", cost_summary = (total_cost = 99.0,)))
+    @test bench_result.objective == 99.0
+
+    prob = UCProblemData(data)
+    @test UCProblemData(prob) === prob
+    @test hasmethod(ModuleUnitCommitmentToolkit.apply_scuc_constraints!, Tuple{ModuleUnitCommitmentToolkit.JuMP.Model, UCProblemData, Any, Any, Any})
+    @test hasmethod(ModuleUnitCommitmentToolkit.bd_subfunction, Tuple{UCProblemData})
+    @test hasmethod(ModuleUnitCommitmentToolkit.each_period_scucmodel_modules, Tuple{UCProblemData})
 
     rendered = sprint() do io
         print_uc_result(result; io = io, diagnostics = 2)
@@ -78,4 +97,63 @@ using ModuleUnitCommitmentToolkit
     )
     @test setup.data == :named_data
     @test length(collect(setup)) == 20
+
+    # #7: Task-local SolverOptions isolation & UCSolveRequest wiring
+    @test current_solver_options() === nothing
+    opts_a = SolverOptions(mip_gap = 0.02, threads = 2, time_limit = 30.0, silent = true)
+    opts_b = SolverOptions(mip_gap = 0.05, threads = 1, silent = false)
+    req_with_opts = UCSolveRequest(algorithm = :benchmark, solver_options = opts_a)
+    @test req_with_opts.solver_options == opts_a
+    with_solver_options(opts_a) do
+        @test current_solver_options() == opts_a
+        with_solver_options(opts_b) do
+            @test current_solver_options() == opts_b
+        end
+        @test current_solver_options() == opts_a
+    end
+    @test current_solver_options() === nothing
+
+    # #8: Multiple-dispatch device_net_injection default fallback
+    dummy_m = ModuleUnitCommitmentToolkit.JuMP.Model()
+    @test device_net_injection(dummy_m, nothing, 1, 1, [0.5, -0.5]) == 0.0
+    @test device_net_injection(dummy_m, :custom_unregistered, 1, 1, [0.5, -0.5]) == 0.0
+
+    # #9: Multi-area H-D frequency parameter extraction and MILP cut injection
+    u_multi = deepcopy(data.units)
+    @test u_multi.area == ones(Int, length(u_multi.index))
+    @test data.winds.area == ones(Int, length(data.winds.index))
+    u_multi.area = [i == 1 ? 1 : 2 for i in eachindex(u_multi.index)]
+    area_params = extract_uc_hd_parameters_by_area(u_multi, data.winds, Dict(1 => 10.0, 2 => 15.0))
+    @test sort(collect(keys(area_params))) == [1, 2]
+    @test area_params[1].area_id == 1
+    @test area_params[2].area_id == 2
+    m_hd = ModuleUnitCommitmentToolkit.JuMP.Model()
+    ModuleUnitCommitmentToolkit.JuMP.@variable(m_hd, x[1:data.NG, 1:2], Bin)
+    area_constrs = add_multi_area_hd_frequency_constraints!(
+        m_hd, Int64(2), prob.NG, prob.NC, prob.NS, u_multi, prob.storages, prob.config_param, Dict(1 => 10.0, 2 => 15.0);
+        winds = prob.winds, max_cuts = 3,
+    )
+    @test sort(collect(keys(area_constrs))) == [1, 2]
+    @test area_constrs[1].unit_indices == [1]
+    @test area_constrs[2].unit_indices == collect(2:data.NG)
+
+    # #2: ASCII UCScheduleResult wrapper with Unicode dict-key compatibility
+    sched = UCScheduleResult(Dict{String, Any}(
+        "x₀" => [1.0 0.0],
+        "u₀" => [1.0 0.0],
+        "v₀" => [0.0 1.0],
+        "p₀" => [50.0 0.0],
+        "pᵨ" => [0.0 2.0],
+        "pᵩ" => [1.5 0.0],
+        "seq_sr⁺" => [5.0 0.0],
+        "seq_sr⁻" => [3.0 0.0],
+        "total_cost" => 1234.5,
+    ))
+    @test sched.commitment == [1.0 0.0]
+    @test sched.load_shed == [0.0 2.0]
+    @test sched.wind_curtail == [1.5 0.0]
+    @test sched.total_cost == 1234.5
+    @test sched["x₀"] == [1.0 0.0]
+    @test haskey(sched, "pᵨ")
+    @test UCScheduleResult(sched) === sched
 end

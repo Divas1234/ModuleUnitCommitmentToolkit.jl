@@ -265,3 +265,138 @@ function add_hd_frequency_constraints!(
         sfr = sfr_constr,
     )
 end
+
+function _entity_areas(obj, n::Int)
+    obj === nothing && return Int[]
+    hasproperty(obj, :area) && length(obj.area) == n && return Int.(obj.area)
+    return ones(Int, n)
+end
+
+function _slice_units_for_area(units, idxs::Vector{Int})
+    return (
+        index = units.index[idxs],
+        p_max = units.p_max[idxs],
+        Hg = units.Hg[idxs],
+        Dg = units.Dg[idxs],
+        Kg = units.Kg[idxs],
+        Fg = units.Fg[idxs],
+        Tg = units.Tg[idxs],
+        Rg = units.Rg[idxs],
+    )
+end
+
+function _slice_winds_for_area(winds, idxs::Vector{Int})
+    (winds === nothing || isempty(idxs)) && return nothing
+    return (
+        index = winds.index[idxs],
+        p_max = winds.p_max[idxs],
+        Fcmode = winds.Fcmode[idxs],
+        Kw = winds.Kw[idxs],
+        Rw = winds.Rw[idxs],
+        Mw = winds.Mw[idxs],
+        Dw = winds.Dw[idxs],
+        Tw = winds.Tw[idxs],
+    )
+end
+
+"""
+    extract_uc_hd_parameters_by_area(units, winds, Δp_contingency; kwargs...) -> Dict{Int, HDFrequencyParameters}
+
+Group thermal and wind units by their `area` vector (defaulting to single area `1`) and
+return per-area `HDFrequencyParameters`. `Δp_contingency` may be a scalar `Real` (applied
+per area) or a `Dict{Int, <:Real}` mapping each `area_id` to its area contingency size.
+"""
+function extract_uc_hd_parameters_by_area(
+    units,
+    winds,
+    Δp_contingency;
+    kwargs...,
+)
+    NG = length(units.index)
+    u_areas = _entity_areas(units, NG)
+    w_areas = winds === nothing ? Int[] : _entity_areas(winds, length(winds.index))
+    area_ids = sort!(unique(u_areas))
+    params_by_area = Dict{Int, HDFrequencyParameters}()
+    for a in area_ids
+        u_idx = findall(==(a), u_areas)
+        w_idx = findall(==(a), w_areas)
+        area_units = _slice_units_for_area(units, u_idx)
+        area_winds = _slice_winds_for_area(winds, w_idx)
+        area_dp = Δp_contingency isa AbstractDict ? Δp_contingency[a] : Δp_contingency
+        params_by_area[a] = extract_uc_hd_parameters(area_units, area_winds, area_dp; area_id = a, kwargs...)
+    end
+    return params_by_area
+end
+
+"""
+    add_multi_area_hd_frequency_constraints!(scuc::Model, NT, NG, NC, NS, units, storages, config_param, Δp_contingency; winds = nothing, max_cuts = ...)
+
+Inject independent H–D Frequency Security Region MILP cuts for every frequency-control area
+defined by `units.area` (and `winds.area`), returning a `Dict{Int, NamedTuple}` keyed by `area_id`.
+"""
+function add_multi_area_hd_frequency_constraints!(
+    scuc::Model,
+    NT::Int64,
+    NG::Int64,
+    NC::Int64,
+    NS::Int64,
+    units,
+    storages,
+    config_param,
+    Δp_contingency;
+    winds = nothing,
+    max_cuts::Int = max(1, floor(Int, frequency_env_float("FREQUENCY_HD_MAX_CUTS", 6.0))),
+    kwargs...,
+)
+    haskey(JuMP.object_dictionary(scuc), :x) || return Dict{Int, NamedTuple}()
+    x = scuc[:x]
+    u_areas = _entity_areas(units, NG)
+    w_areas = winds === nothing ? Int[] : _entity_areas(winds, length(winds.index))
+    params_by_area = extract_uc_hd_parameters_by_area(units, winds, Δp_contingency; kwargs...)
+    enforce_upper = frequency_env_bool("FREQUENCY_HD_ENFORCE_UPPER_BOUNDS", true)
+
+    results = Dict{Int, NamedTuple}()
+    for (a, hd_params) in sort!(collect(params_by_area); by = first)
+        u_idx = findall(==(a), u_areas)
+        w_idx = findall(==(a), w_areas)
+        area_units = _slice_units_for_area(units, u_idx)
+        area_winds = _slice_winds_for_area(winds, w_idx)
+        hd_region = assess_hd_frequency_region(hd_params)
+        cuts = build_hd_linear_cuts(hd_region; max_cuts = max_cuts)
+        s_base = frequency_sum_apparent_power(area_units, area_winds)
+
+        H_sync_a = @expression(
+            scuc,
+            [t = 1:NT],
+            sum(safe_frequency_coeff(units.Hg, i) * safe_frequency_coeff(units.p_max, i) * x[i, t] for i in u_idx) / s_base
+        )
+        D_sync_a = @expression(
+            scuc,
+            [t = 1:NT],
+            sum(safe_frequency_coeff(units.Dg, i) * safe_frequency_coeff(units.p_max, i) * x[i, t] for i in u_idx) / s_base
+        )
+        rocof_c = @constraint(scuc, [t = 1:NT], H_sync_a[t] >= cuts.H_min_sync)
+        damping_c = cuts.D_min_sync > 0.0 ? @constraint(scuc, [t = 1:NT], D_sync_a[t] >= cuts.D_min_sync) : nothing
+        nadir_c = !isempty(cuts.alpha) ?
+            @constraint(scuc, [m = 1:length(cuts.alpha), t = 1:NT], H_sync_a[t] + cuts.beta[m] * D_sync_a[t] >= cuts.alpha[m]) :
+            nothing
+        upper_h = enforce_upper && isfinite(cuts.H_max_sync) ?
+            @constraint(scuc, [t = 1:NT], H_sync_a[t] <= cuts.H_max_sync) : nothing
+        upper_d = enforce_upper && isfinite(cuts.D_max_sync) ?
+            @constraint(scuc, [t = 1:NT], D_sync_a[t] <= cuts.D_max_sync) : nothing
+        results[a] = (
+            area_id = a,
+            unit_indices = u_idx,
+            region = hd_region,
+            cuts = cuts,
+            H_sync = H_sync_a,
+            D_sync = D_sync_a,
+            rocof = rocof_c,
+            damping = damping_c,
+            nadir = nadir_c,
+            inertia_upper = upper_h,
+            damping_upper = upper_d,
+        )
+    end
+    return results
+end

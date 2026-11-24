@@ -4,7 +4,7 @@
 """
 		sample_and_train_loss_models(
 			loads::load, winds::wind, units::unit, lines::transmissionline,
-			DataCentras::data_centra, config_param::config, stroges::Any, scenarios_prob::Float64,
+			data_centers::data_centra, config_param::config, storages::Any, scenarios_prob::Float64,
 			hydros::hydro, exec_NT::Int64, min_overlap::Int64, max_overlap::Int64,
 			NB::Int64, NG::Int64, ND::Int64, NC::Int64, ND2::Int64, NL::Int64, NH::Int64
 		)
@@ -13,8 +13,8 @@
 	online unit configurations, and overlap sizes, solving subproblems and calculating relative cost error.
 	"""
 
-function sample_and_train_loss_models(loads::load, winds::wind, units::unit, lines::transmissionline, DataCentras::data_centra, config_param::config,
-        stroges::Any, scenarios_prob::Float64, hydros::hydro, exec_NT::Int64, min_overlap::Int64,
+function sample_and_train_loss_models(loads::load, winds::wind, units::unit, lines::transmissionline, data_centers::data_centra, config_param::config,
+        storages::Any, scenarios_prob::Float64, hydros::hydro, exec_NT::Int64, min_overlap::Int64,
         max_overlap::Int64, NB::Int64, NG::Int64, ND::Int64, NC::Int64, ND2::Int64, NL::Int64, NH::Int64)
     println("\n" * "="^80)
     println("SAMPLING AND CALIBRATING ACCURACY LOSS MAPPING MODEL...")
@@ -89,7 +89,7 @@ function sample_and_train_loss_models(loads::load, winds::wind, units::unit, lin
                     ref_winds = deepcopy(winds)
                     ref_winds.scenarios_curve = winds.scenarios_curve[:, start_time:base_end_horizon]
                     ref_results = each_period_scucmodel_modules(exec_NT + max_overlap, NB, NG, ND, NC, ND2, ref_units, ref_loads, ref_winds,
-                        lines, DataCentras, config_param, stroges, scenarios_prob, NL, 1, hydros, NH)
+                        lines, data_centers, config_param, storages, scenarios_prob, NL, 1, hydros, NH)
                     if ref_results !== nothing && haskey(ref_results, "x₀")
                         ref_x_curr = Float64.(ref_results["x₀"][:, 1] .> 0.5)
                     end
@@ -131,7 +131,7 @@ function sample_and_train_loss_models(loads::load, winds::wind, units::unit, lin
                     res_true = nothing
                     try
                         res_true = each_period_scucmodel_modules(total_NT_true, NB, NG, ND, NC, ND2, mini_units, mini_loads, mini_winds,
-                            lines, DataCentras, config_param, stroges, scenarios_prob, NL, 1, hydros, NH)
+                            lines, data_centers, config_param, storages, scenarios_prob, NL, 1, hydros, NH)
                     catch e
                         @warn "Calibration true-horizon solve failed" start_time l_scale exception = e
                         continue
@@ -143,7 +143,7 @@ function sample_and_train_loss_models(loads::load, winds::wind, units::unit, lin
 
                     committed_res_true = truncate_and_commit_results(res_true, exec_NT)
                     committed_cost_true = compute_committed_cost(
-                        committed_res_true, exec_NT, mini_units, mini_loads, mini_winds, lines, DataCentras, config_param, 1, hydros, scenarios_prob)
+                        committed_res_true, exec_NT, mini_units, mini_loads, mini_winds, lines, data_centers, config_param, 1, hydros, scenarios_prob)
                     C_true = committed_cost_true[1]
                     if C_true <= 1.0
                         continue
@@ -162,7 +162,7 @@ function sample_and_train_loss_models(loads::load, winds::wind, units::unit, lin
                         else
                             try
                                 res_H = each_period_scucmodel_modules(total_NT_H, NB, NG, ND, NC, ND2, mini_units, mini_loads, mini_winds, lines,
-                                    DataCentras, config_param, stroges, scenarios_prob, NL, 1, hydros, NH)
+                                    data_centers, config_param, storages, scenarios_prob, NL, 1, hydros, NH)
                             catch e
                                 @warn "Calibration candidate overlap solve failed" start_time H exception = e
                                 continue
@@ -175,7 +175,7 @@ function sample_and_train_loss_models(loads::load, winds::wind, units::unit, lin
 
                         committed_res_H = truncate_and_commit_results(res_H, exec_NT)
                         committed_cost_H = compute_committed_cost(
-                            committed_res_H, exec_NT, mini_units, mini_loads, mini_winds, lines, DataCentras, config_param, 1, hydros, scenarios_prob)
+                            committed_res_H, exec_NT, mini_units, mini_loads, mini_winds, lines, data_centers, config_param, 1, hydros, scenarios_prob)
                         C_H = committed_cost_H[1]
 
                         # Accuracy loss combines cost deviation and commitment

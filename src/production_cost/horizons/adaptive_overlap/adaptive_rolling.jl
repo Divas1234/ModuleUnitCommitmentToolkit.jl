@@ -40,9 +40,7 @@ function execute_adaptive_overlap_pcm(
     perf = cfg.performance_mode
 
     project_root = normpath(joinpath(@__DIR__, "..", "..", "..", ".."))
-    default_data = joinpath(project_root, "data", "data_118.xlsx")
-    data_file = cfg.data_file !== nothing ? cfg.data_file :
-        (isfile(default_data) ? default_data : nothing)
+    data_file = cfg.data_file !== nothing ? String(cfg.data_file) : unit_commitment_data_file()
 
     env_overrides = Pair{String, String}[
         "PCM_USE_CLUSTERED_UC" => (is_clustered ? "true" : "false"),
@@ -107,7 +105,7 @@ function execute_adaptive_overlap_pcm(
             input_file = abspath(get(ENV, "MODULE_UC_DATA_FILE", "")),
             load_profile = cfg.load_profile,
             solver = solver_name,
-            network_constraints = string(d.config_param.is_NetWorkCon),
+            network_constraints = string(d.config_param.is_network_con),
             window_hours = exec_NT,
             intervals = n_intervals,
             min_overlap = min_overlap,
@@ -130,12 +128,12 @@ function execute_adaptive_overlap_pcm(
         trained_models = TrainedLossModels(steady_state_mode)
         if steady_state_mode != "decay" && steady_state_mode != "ml_prediction"
             trained_models = sample_and_train_loss_models(
-                d.loads, winds, d.units, d.lines, d.DataCentras, d.config_param, d.stroges, scenarios_prob,
+                d.loads, winds, d.units, d.lines, d.data_centers, d.config_param, d.storages, scenarios_prob,
                 d.hydros, exec_NT, min_overlap, max_overlap, d.NB, d.NG, d.ND, d.NC, d.ND2, d.NL, d.NH,
             )
         elseif steady_state_mode == "ml_prediction" && cached_training_data === nothing
             trained_models = sample_and_train_loss_models(
-                d.loads, winds, d.units, d.lines, d.DataCentras, d.config_param, d.stroges, scenarios_prob,
+                d.loads, winds, d.units, d.lines, d.data_centers, d.config_param, d.storages, scenarios_prob,
                 d.hydros, exec_NT, min_overlap, max_overlap, d.NB, d.NG, d.ND, d.NC, d.ND2, d.NL, d.NH,
             )
             cached_training_data = AdaptiveOverlapTrainingCache.load_cached_dataset(
@@ -180,7 +178,7 @@ function execute_adaptive_overlap_pcm(
                 )
             else
                 solve_local_reference_commitment(
-                    d.loads, winds, d.units, d.lines, d.DataCentras, d.config_param, d.stroges, scenarios_prob,
+                    d.loads, winds, d.units, d.lines, d.data_centers, d.config_param, d.storages, scenarios_prob,
                     d.hydros, start_time, exec_NT, max_overlap, d.NB, d.NG, d.ND, d.NC, d.ND2, d.NL, d.NH, k;
                     return_results = is_clustered,
                 )
@@ -204,7 +202,7 @@ function execute_adaptive_overlap_pcm(
             solve_start = time()
             res = each_period_scucmodel_modules(
                 total_NT, d.NB, d.NG, d.ND, d.NC, d.ND2, mini_units, mini_loads, mini_winds, d.lines,
-                d.DataCentras, d.config_param, d.stroges, scenarios_prob, d.NL, k, d.hydros, d.NH;
+                d.data_centers, d.config_param, d.storages, scenarios_prob, d.NL, k, d.hydros, d.NH;
                 formulation = formulation_sym,
             )
             solve_time = time() - solve_start
@@ -217,11 +215,11 @@ function execute_adaptive_overlap_pcm(
                 reference_committed = truncate_and_commit_results(ref_results, exec_NT)
                 clustered_cost = compute_committed_cost(
                     clustered_committed, exec_NT, mini_units, mini_loads, mini_winds, d.lines,
-                    d.DataCentras, d.config_param, k, d.hydros, scenarios_prob,
+                    d.data_centers, d.config_param, k, d.hydros, scenarios_prob,
                 )[1]
                 reference_cost = compute_committed_cost(
                     reference_committed, exec_NT, mini_units, mini_loads, mini_winds, d.lines,
-                    d.DataCentras, d.config_param, k, d.hydros, scenarios_prob,
+                    d.data_centers, d.config_param, k, d.hydros, scenarios_prob,
                 )[1]
                 reference_gap_pct = 100.0 * (clustered_cost / max(reference_cost, 1.0) - 1.0)
                 repair_tol = parse(Float64, get(ENV, "PCM_CLUSTER_REFERENCE_GAP_TOL", "0.01"))
@@ -230,7 +228,7 @@ function execute_adaptive_overlap_pcm(
                     repair_start = time()
                     physical_repair = each_period_scucmodel_modules(
                         total_NT, d.NB, d.NG, d.ND, d.NC, d.ND2, mini_units, mini_loads, mini_winds, d.lines,
-                        d.DataCentras, d.config_param, d.stroges, scenarios_prob, d.NL, k, d.hydros, d.NH;
+                        d.data_centers, d.config_param, d.storages, scenarios_prob, d.NL, k, d.hydros, d.NH;
                         formulation = :standard,
                     )
                     solve_time += time() - repair_start
@@ -243,7 +241,7 @@ function execute_adaptive_overlap_pcm(
             committed_results = truncate_and_commit_results(res, exec_NT)
             total_scheduled_cost[k, :] = compute_committed_cost(
                 committed_results, exec_NT, mini_units, mini_loads, mini_winds, d.lines,
-                d.DataCentras, d.config_param, k, d.hydros, scenarios_prob,
+                d.data_centers, d.config_param, k, d.hydros, scenarios_prob,
             )
             pre_results = res
 

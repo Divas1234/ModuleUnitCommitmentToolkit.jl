@@ -110,3 +110,50 @@ function apply_scuc_constraints!(
         frequency = freq_constrs,
     )
 end
+
+if isdefined(@__MODULE__, :UCProblemData)
+    """
+        apply_scuc_constraints!(model::Model, data::UCProblemData, onoffinit, gsdf, contingency_size; kwargs...)
+
+    Structured `UCProblemData` overload of `apply_scuc_constraints!`, replacing 16 positional
+    dimension and component arguments with a single strongly typed container.
+    """
+    function apply_scuc_constraints!(
+        model::Model,
+        data::UCProblemData,
+        onoffinit,
+        gsdf,
+        contingency_size;
+        include_unit_operation = true,
+        include_binary_logic_for_storage = true,
+        include_frequency_constraints = true,
+        winds_for_freq = data.winds,
+    )
+        return apply_scuc_constraints!(
+            model,
+            data.NT,
+            data.NB,
+            data.NL,
+            data.NG,
+            data.ND,
+            data.NC,
+            data.ND2,
+            data.NS,
+            data.NW,
+            data.units,
+            data.loads,
+            data.winds,
+            data.lines,
+            data.data_centers,
+            data.storages,
+            data.config_param,
+            onoffinit,
+            gsdf,
+            contingency_size;
+            include_unit_operation = include_unit_operation,
+            include_binary_logic_for_storage = include_binary_logic_for_storage,
+            include_frequency_constraints = include_frequency_constraints,
+            winds_for_freq = winds_for_freq,
+        )
+    end
+end

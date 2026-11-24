@@ -69,12 +69,13 @@ if !isdefined(@__MODULE__, :_TRUE_CLUSTERED_PCM_SOLVER_INCLUDED)
 			expanded_units::Set{Int} = Set{Int}(), targeted_refinements::Int = 0,
 			max_targeted_refinements::Int = parse(Int, get(ENV, "PCM_CLUSTER_MAX_TARGETED_REFINEMENTS", "12")),
 			use_output_state::Bool = true,
-			output_bins::Int = parse(Int, get(ENV, "PCM_CLUSTER_OUTPUT_BINS", "9")))
+			output_bins::Int = parse(Int, get(ENV, "PCM_CLUSTER_OUTPUT_BINS", "9")),
+			solver_options = isdefined(@__MODULE__, :current_solver_options) ? current_solver_options() : nothing)
 		optimizer = _resolve_pcm_optimizer(optimizer)
 		# The clustered master is copper-plate by default. Bus identity is only
 		# part of homogeneity when network constraints are actually represented.
 		cluster_preprocess_start = time()
-		clusters=build_similar_pcm_clusters(units; require_same_bus = config_param.is_NetWorkCon == 1)
+		clusters=build_similar_pcm_clusters(units; require_same_bus = config_param.is_network_con == 1)
 		if !isempty(expanded_units)
 			groups=Vector{Vector{Int}}()
 			for c ∈ clusters
@@ -116,16 +117,31 @@ if !isdefined(@__MODULE__, :_TRUE_CLUSTERED_PCM_SOLVER_INCLUDED)
 		suc=coeffs.startup
 		sdc=coeffs.shutdown
 		U0=[count(i->units.x_0[i]>0.5, c.unit_indices) for c ∈ clusters]
-		m=Model(optimizer)
-		set_silent(m)
-		pcm_solver_name() == "gurobi" && set_optimizer_attribute(
-			m, "MIPGap", parse(Float64, get(ENV, "PCM_MIP_GAP", "0.015")))
-		pcm_solver_name() == "gurobi" && set_optimizer_attribute(
-			m, "Threads", max(1, parse(Int, get(ENV, "PCM_SOLVER_THREADS", "24"))))
-		solver_limit=tryparse(Float64, get(ENV, "PCM_SOLVER_TIME_LIMIT_SECONDS", ""))
-		if solver_limit !== nothing && solver_limit > 0
-			# 与单机 PCM 使用相同的单窗时限，保证大规模性能对比公平。
-			pcm_solver_name() == "gurobi" && set_optimizer_attribute(m, "TimeLimit", solver_limit)
+		opt_factory = (solver_options !== nothing && solver_options.optimizer !== nothing) ? solver_options.optimizer : optimizer
+		m=Model(opt_factory)
+		if isdefined(@__MODULE__, :apply_solver_options!) && solver_options !== nothing
+			default_gap = parse(Float64, get(ENV, "PCM_MIP_GAP", "0.015"))
+			default_threads = pcm_solver_name() == "gurobi" ? max(1, parse(Int, get(ENV, "PCM_SOLVER_THREADS", "24"))) : nothing
+			default_limit = tryparse(Float64, get(ENV, "PCM_SOLVER_TIME_LIMIT_SECONDS", ""))
+			apply_solver_options!(
+				m,
+				solver_options;
+				default_mip_gap = default_gap,
+				default_threads = default_threads,
+				default_time_limit = default_limit,
+				default_silent = true,
+			)
+		else
+			set_silent(m)
+			pcm_solver_name() == "gurobi" && set_optimizer_attribute(
+				m, "MIPGap", parse(Float64, get(ENV, "PCM_MIP_GAP", "0.015")))
+			pcm_solver_name() == "gurobi" && set_optimizer_attribute(
+				m, "Threads", max(1, parse(Int, get(ENV, "PCM_SOLVER_THREADS", "24"))))
+			solver_limit=tryparse(Float64, get(ENV, "PCM_SOLVER_TIME_LIMIT_SECONDS", ""))
+			if solver_limit !== nothing && solver_limit > 0
+				# 与单机 PCM 使用相同的单窗时限，保证大规模性能对比公平。
+				pcm_solver_name() == "gurobi" && set_optimizer_attribute(m, "TimeLimit", solver_limit)
+			end
 		end
 		# Integer counts replace per-unit binaries. For a cluster of n identical
 		# units, U/Y/Z record how many are online/starting/stopping at each hour.
@@ -255,9 +271,9 @@ if !isdefined(@__MODULE__, :_TRUE_CLUSTERED_PCM_SOLVER_INCLUDED)
 			end
 			forecast_reserve=winds.scenarios_curve[1, t]*sum(winds.p_max)*0.05
 			@constraint(m,
-				sum(Rdown[:, t])+sum(H[h, t]-hydros.p_min[h] for h ∈ 1:NH)>=config_param.is_Alpha*forecast_reserve+config_param.is_Belta*demand)
+				sum(Rdown[:, t])+sum(H[h, t]-hydros.p_min[h] for h ∈ 1:NH)>=config_param.alpha*forecast_reserve+config_param.beta*demand)
 		end
-		gsdf_master=config_param.is_NetWorkCon==1 ? calculate_gsdf(config_param, NL, units, lines, loads, NG, NB, ND) : nothing
+		gsdf_master=config_param.is_network_con==1 ? calculate_gsdf(config_param, NL, units, lines, loads, NG, NB, ND) : nothing
 		if gsdf_master!==nothing
 			network_margin=max(10*tolerance, 1e-4)
 			for l ∈ unique(feedback_lines), t ∈ 1:NT
@@ -342,7 +358,7 @@ if !isdefined(@__MODULE__, :_TRUE_CLUSTERED_PCM_SOLVER_INCLUDED)
 		end
 		for w ∈ 1:NW, t ∈ 1:NT
 
-			fixedinj[winds.index[w], t]+=winds.scenarios_curve[1, t]*winds.p_max[w]-value(wc[w, t])
+			fixedinj[winds.locatebus[w], t]+=winds.scenarios_curve[1, t]*winds.p_max[w]-value(wc[w, t])
 		end
 		for h ∈ 1:NH, t ∈ 1:NT
 

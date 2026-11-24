@@ -308,12 +308,16 @@ function build_ccg_extensive_model(
     onoffinit = calculate_initial_unit_status(data.units, data.NG)
     contingency_size = define_contingency_size(data.units, data.NG)
 
+    opts = current_solver_options()
+    master_mip_gap = (opts !== nothing && opts.mip_gap !== nothing) ? opts.mip_gap : parse(Float64, get(ENV, "CCG_MASTER_MIP_GAP", "1e-4"))
+    master_threads = (opts !== nothing && opts.threads !== nothing) ? opts.threads : ccg_optimizer_threads("CCG_MASTER_THREADS", 0)
     model = build_uc_model(;
+        options = opts,
         silent = true,
         attributes = (
-            "MIPGap" => parse(Float64, get(ENV, "CCG_MASTER_MIP_GAP", "1e-4")),
+            "MIPGap" => master_mip_gap,
             "NumericFocus" => parse(Int64, get(ENV, "CCG_NUMERIC_FOCUS", "1")),
-            "Threads" => ccg_optimizer_threads("CCG_MASTER_THREADS", 0),
+            "Threads" => master_threads,
         ),
     )
 
@@ -384,12 +388,16 @@ function build_ccg_recourse_model(data, scenario_winds::wind, scenarios_prob::Fl
     onoffinit = calculate_initial_unit_status(data.units, data.NG)
     contingency_size = define_contingency_size(data.units, data.NG)
 
+    opts = current_solver_options()
+    recourse_mip_gap = (opts !== nothing && opts.mip_gap !== nothing) ? opts.mip_gap : parse(Float64, get(ENV, "CCG_RECOURSE_MIP_GAP", "1e-4"))
+    recourse_threads = (opts !== nothing && opts.threads !== nothing) ? opts.threads : ccg_optimizer_threads("CCG_RECOURSE_THREADS", ccg_parallel_recourse_enabled() ? 1 : 0)
     model = build_uc_model(;
+        options = opts,
         silent = true,
         attributes = (
-            "MIPGap" => parse(Float64, get(ENV, "CCG_RECOURSE_MIP_GAP", "1e-4")),
+            "MIPGap" => recourse_mip_gap,
             "NumericFocus" => parse(Int64, get(ENV, "CCG_NUMERIC_FOCUS", "1")),
-            "Threads" => ccg_optimizer_threads("CCG_RECOURSE_THREADS", ccg_parallel_recourse_enabled() ? 1 : 0),
+            "Threads" => recourse_threads,
         ),
     )
 

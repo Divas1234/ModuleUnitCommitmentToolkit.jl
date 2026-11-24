@@ -70,14 +70,13 @@ if !isdefined(@__MODULE__, :_CLUSTERED_PCM_NETWORK_DISPATCH_INCLUDED)
 				@constraint(m, sum(ru[:, t])+hydro_up>=0.5*units.p_max[i]*x[i, t])
 			end
 			forecast=winds.scenarios_curve[1, t]*sum(winds.p_max)*0.05
-			@constraint(m, sum(rd[:, t])+sum(h[j, t]-hydros.p_min[j] for j ∈ 1:NH)>=config_param.is_Alpha*forecast+config_param.is_Belta*demand)
+			@constraint(m, sum(rd[:, t])+sum(h[j, t]-hydros.p_min[j] for j ∈ 1:NH)>=config_param.alpha*forecast+config_param.beta*demand)
 			# PTDF 符号：发电为正注入、已服务负荷为负注入。
-			# winds.index 沿用旧 PCM 网络模型的风电节点口径。
 			for l ∈ 1:NL
 				flow=@expression(m,
 					sum(gsdf[l, units.locatebus[i]]*p[i, t] for i ∈ 1:NG) +
 					sum(gsdf[l, hydros.locatebus[j]]*h[j, t] for j ∈ 1:NH) +
-					sum(gsdf[l, winds.index[w]]*(winds.scenarios_curve[1, t]*winds.p_max[w]-wc[w, t]) for w ∈ 1:NW) -
+					sum(gsdf[l, winds.locatebus[w]]*(winds.scenarios_curve[1, t]*winds.p_max[w]-wc[w, t]) for w ∈ 1:NW) -
 					sum(gsdf[l, loads.locatebus[d]]*loads.load_curve[d, t] for d ∈ 1:ND))
 				@constraint(m, lines.p_min[l]+tolerance<=flow)
 				@constraint(m, flow<=lines.p_max[l]-tolerance)

@@ -56,7 +56,7 @@ if !isdefined(@__MODULE__, :_PERIOD_SCUC_MODULES_INCLUDED)
     #---------------------------------------------------------------------------------------------------
 
     """
-    	SUC_scucmodel(NT, NB, NG, ND, NC, ND2, units, loads, winds, lines, DataCentras, config_param, stroges, scenarios_prob, NL)
+    	SUC_scucmodel(NT, NB, NG, ND, NC, ND2, units, loads, winds, lines, data_centers, config_param, storages, scenarios_prob, NL)
 
     Stochastic Unit Commitment (SUC) model for power system optimization (Refactored & Modularized).
 
@@ -71,9 +71,9 @@ if !isdefined(@__MODULE__, :_PERIOD_SCUC_MODULES_INCLUDED)
     - `loads::load`: Load data
     - `winds::wind`: Wind generation data
     - `lines::transmissionline`: Transmission line data
-    - `DataCentras::data_centra`: Data center data
+    - `data_centers::data_centra`: Data center data
     - `config_param::config`: Configuration parameters
-    - `stroges::Any`: Storage system data (Type Any for flexibility, consider defining a specific struct)
+    - `storages::Any`: Storage system data (Type Any for flexibility, consider defining a specific struct)
     - `scenarios_prob::Float64`: Probability of scenarios (Assumed equal for now if calculated as 1/NS)
     - `NL::Int64`: Number of transmission lines
 
@@ -144,15 +144,42 @@ if !isdefined(@__MODULE__, :_PERIOD_SCUC_MODULES_INCLUDED)
         return res_up, res_down
     end
 
+    if isdefined(@__MODULE__, :UCProblemData)
+        function each_period_scucmodel_modules(
+                data::UCProblemData;
+                scenarios_prob::Float64 = 1.0 / max(1, data.NS),
+                interval_scheduling_id::Int64 = 1,
+                hydros = nothing,
+                NH::Union{Nothing, Int64} = nothing,
+                formulation::Symbol = :environment)
+            resolved_hydros = hydros === nothing ? (
+                index = Int64[],
+                locatebus = Int64[],
+                p_min = Float64[],
+                p_max = Float64[],
+                inflow = zeros(Float64, 0, data.NT),
+            ) : hydros
+            resolved_NH = NH === nothing ? Int64(length(resolved_hydros.locatebus)) : NH
+            return each_period_scucmodel_modules(
+                data.NT, data.NB, data.NG, data.ND, data.NC, data.ND2,
+                data.units, data.loads, data.winds, data.lines, data.data_centers,
+                data.config_param, data.storages, scenarios_prob, data.NL,
+                interval_scheduling_id, resolved_hydros, resolved_NH;
+                formulation = formulation,
+            )
+        end
+    end
+
     # NOTE - baseline UC function module
     function each_period_scucmodel_modules(NT::Int64, NB::Int64, NG::Int64, ND::Int64, NC::Int64, ND2::Int64, units::unit, loads::load,
-            winds::wind, lines::transmissionline, DataCentras::data_centra, config_param::config, stroges::Any,
+            winds::wind, lines::transmissionline, data_centers::data_centra, config_param::config, storages::Any,
             scenarios_prob::Float64, NL::Int64, interval_scheduling_id::Int64, hydros::hydro, NH::Int64;
-            formulation::Symbol = :environment)
+            formulation::Symbol = :environment,
+            solver_options = isdefined(@__MODULE__, :current_solver_options) ? current_solver_options() : nothing)
         println("Step-3: Creating dispatching model (Refactored & Modularized)")
 
         # --- Input Validation ---
-        if !validate_inputs(NT, NB, NG, ND, NC, ND2, units, loads, winds, lines, DataCentras, config_param, stroges, scenarios_prob, NL)
+        if !validate_inputs(NT, NB, NG, ND, NC, ND2, units, loads, winds, lines, data_centers, config_param, storages, scenarios_prob, NL)
             error("Input validation failed. Check your data.")
         end
 
@@ -166,7 +193,7 @@ if !isdefined(@__MODULE__, :_PERIOD_SCUC_MODULES_INCLUDED)
         if clustered_enabled
             Threads.atomic_add!(PCM_CLUSTER_ATTEMPTS, 1)
             clustered_result=solve_true_clustered_pcm_window(NT, NB, NG, ND, units, loads, winds, lines, config_param, NL, hydros,
-                NH; optimizer = pcm_optimizer())
+                NH; optimizer = pcm_optimizer(), solver_options = solver_options)
             if clustered_result.feasible
                 Threads.atomic_add!(PCM_CLUSTER_SUCCESSES, 1)
                 println("  ✓ True clustered UC completed ($(length(clustered_result.clusters)) virtual units)")
@@ -191,22 +218,36 @@ if !isdefined(@__MODULE__, :_PERIOD_SCUC_MODULES_INCLUDED)
 
         # --- Model Creation ---
         Δp_contingency = define_contingency_size(units, NG)
-        scuc = Model(pcm_optimizer())
-        if get(task_local_storage(), :is_sampling_running, false)
-            set_silent(scuc)
-        end
-        if pcm_solver_name() == "gurobi"
-            set_optimizer_attribute(scuc, "MIPGap", parse(Float64, get(ENV, "PCM_MIP_GAP", "0.015")))
-            solver_threads = max(1, parse(Int, get(ENV, "PCM_SOLVER_THREADS", "24")))
-            set_optimizer_attribute(scuc, "Threads", solver_threads)
-            # 大规模算例可通过环境变量统一限制单个滚动窗口的求解时间。
-            # 默认不设上限，以保持既有小规模算例的对外行为不变。
-            solver_limit = tryparse(Float64, get(ENV, "PCM_SOLVER_TIME_LIMIT_SECONDS", ""))
-            solver_limit !== nothing && solver_limit > 0 &&
-                set_optimizer_attribute(scuc, "TimeLimit", solver_limit)
+        opt_factory = (solver_options !== nothing && solver_options.optimizer !== nothing) ? solver_options.optimizer : pcm_optimizer()
+        scuc = Model(opt_factory)
+        is_sampling_silent = get(task_local_storage(), :is_sampling_running, false)
+        if isdefined(@__MODULE__, :apply_solver_options!) && solver_options !== nothing
+            default_gap = parse(Float64, get(ENV, "PCM_MIP_GAP", "0.015"))
+            default_threads = pcm_solver_name() == "gurobi" ? max(1, parse(Int, get(ENV, "PCM_SOLVER_THREADS", "24"))) : nothing
+            default_limit = tryparse(Float64, get(ENV, "PCM_SOLVER_TIME_LIMIT_SECONDS", ""))
+            apply_solver_options!(
+                scuc,
+                solver_options;
+                default_mip_gap = default_gap,
+                default_threads = default_threads,
+                default_time_limit = default_limit,
+                default_silent = is_sampling_silent,
+            )
         else
-            set_optimizer_attribute(scuc, "tm_lim", 4000)
-            set_optimizer_attribute(scuc, "mip_gap", 0.015)
+            is_sampling_silent && set_silent(scuc)
+            if pcm_solver_name() == "gurobi"
+                set_optimizer_attribute(scuc, "MIPGap", parse(Float64, get(ENV, "PCM_MIP_GAP", "0.015")))
+                solver_threads = max(1, parse(Int, get(ENV, "PCM_SOLVER_THREADS", "24")))
+                set_optimizer_attribute(scuc, "Threads", solver_threads)
+                # 大规模算例可通过环境变量统一限制单个滚动窗口的求解时间。
+                # 默认不设上限，以保持既有小规模算例的对外行为不变。
+                solver_limit = tryparse(Float64, get(ENV, "PCM_SOLVER_TIME_LIMIT_SECONDS", ""))
+                solver_limit !== nothing && solver_limit > 0 &&
+                    set_optimizer_attribute(scuc, "TimeLimit", solver_limit)
+            else
+                set_optimizer_attribute(scuc, "tm_lim", 4000)
+                set_optimizer_attribute(scuc, "mip_gap", 0.015)
+            end
         end
         # --- Define Variables ---
         define_decision_variables!(scuc, NT, NG, ND, NC, ND2, NS, NW, config_param)
@@ -227,29 +268,29 @@ if !isdefined(@__MODULE__, :_PERIOD_SCUC_MODULES_INCLUDED)
             println("\t constraints: 10) transmission limits deferred to unit disaggregation")
         else
             add_transmission_constraints!(
-                scuc, NT, NG, ND, NC, NW, NL, NS, units, loads, winds, lines, stroges, Gsdf, config_param, ND2, DataCentras)
+                scuc, NT, NG, ND, NC, NW, NL, NS, units, loads, winds, lines, storages, Gsdf, config_param, ND2, data_centers)
         end
-        add_storage_constraints!(scuc, NT, NC, NS, config_param, stroges)
-        add_data_center_constraints!(scuc, NT, NS, config_param, ND2, DataCentras)
-        add_frequency_constraints!(scuc, NT, NG, NC, NS, units, stroges, config_param, Δp_contingency)
+        add_storage_constraints!(scuc, NT, NC, NS, config_param, storages)
+        add_data_center_constraints!(scuc, NT, NS, config_param, ND2, data_centers)
+        add_frequency_constraints!(scuc, NT, NG, NC, NS, units, storages, config_param, Δp_contingency)
         # --- Solve and Extract Results ---
         results = solve_and_extract_results(
             scuc, NT, NG, ND, NC, NW, NS, ND2, scenarios_prob, eachslope, refcost, config_param,
-            units, loads, winds, lines, DataCentras; NB = NB)
+            units, loads, winds, lines, data_centers; NB = NB)
         if results !== nothing
             if clustered_enabled
                 cluster_strict=lowercase(get(ENV, "PCM_CLUSTER_STRICT", "false")) in ("1", "true", "yes", "on")
                 clustered=apply_clustered_pcm_optimization!(
                     results, units, loads, winds, lines, config_param, NB, NL; optimizer = pcm_optimizer(),
-                    strict = cluster_strict, stroges = stroges, data_centers = DataCentras, hydros = hydros)
+                    strict = cluster_strict, storages = storages, data_centers = data_centers, hydros = hydros)
                 clustered.feasible||error("Clustered PCM disaggregation failed at $(clustered.stage): $(clustered.feedback)")
-                if !clustered.network_feasible && config_param.is_NetWorkCon==1 && NL>0
+                if !clustered.network_feasible && config_param.is_network_con==1 && NL>0
                     println("  ↻ Network feedback: adding PTDF constraints and re-solving the current PCM window")
                     add_transmission_constraints!(
-                        scuc, NT, NG, ND, NC, NW, NL, NS, units, loads, winds, lines, stroges, Gsdf, config_param, ND2, DataCentras)
+                        scuc, NT, NG, ND, NC, NW, NL, NS, units, loads, winds, lines, storages, Gsdf, config_param, ND2, data_centers)
                     results=solve_and_extract_results(
                         scuc, NT, NG, ND, NC, NW, NS, ND2, scenarios_prob, eachslope, refcost, config_param,
-                        units, loads, winds, lines, DataCentras; NB = NB)
+                        units, loads, winds, lines, data_centers; NB = NB)
                     results===nothing&&error("Network-feedback re-solve failed")
                     repaired_clusters=build_pcm_clusters(units)
                     results["cluster_ids"]=Float64.([only(c.id for c ∈ repaired_clusters if i in c.unit_indices) for i ∈ 1:NG])

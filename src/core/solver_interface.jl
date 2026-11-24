@@ -1,17 +1,3 @@
-
-"""
-    solve_uc(; algorithm = :benchmark, input = :excel, scenario_limit = 20, ...)
-
-    Unified solver entry point for the extensive-form benchmark, Benders, and CCG
-    algorithms. The selected algorithm and input source are routed internally to
-    the existing implementation modules; callers do not need to manage include
-    order or algorithm-specific data-loading branches.
-
-    `calibration` is a named tuple or dictionary of runtime ENV overrides. Values
-    are applied only for the duration of this solve, so a one-off calibration does
-    not leak into later calls in the same Julia process.
-"""
-
 const _UC_ALGORITHM_ALIASES = Dict{String, Symbol}(
     "benchmark" => :benchmark,
     "benchmark_uc" => :benchmark,
@@ -196,6 +182,7 @@ function UCSolveRequest(;
     output_dir = nothing,
     verbosity = :detailed,
     optimizer = nothing,
+    solver_options = nothing,
 )
     _calibration_pairs(calibration; validate_keys = true)
     return UCSolveRequest(
@@ -219,6 +206,7 @@ function UCSolveRequest(;
         output_dir === nothing ? nothing : String(output_dir),
         _normalize_uc_verbosity(verbosity),
         optimizer,
+        solver_options,
     )
 end
 
@@ -268,7 +256,8 @@ function _solve_benders_unified(request::UCSolveRequest)
 end
 
 function _solve_uc_selected(request::UCSolveRequest)
-    return with_uc_optimizer(request.optimizer) do
+    return with_solver_options(request.solver_options) do
+        return with_uc_optimizer(request.optimizer) do
         algorithm = request.algorithm
         input = request.input
         if algorithm == :benchmark
@@ -331,6 +320,7 @@ function _solve_uc_selected(request::UCSolveRequest)
             return _solve_pcm_unified(request)
         else
             return _solve_benders_unified(request)
+        end
         end
     end
 end
@@ -402,6 +392,7 @@ end
 function solve_uc(request::UCSolveRequest)
     configured_output_dir = request.output_dir === nothing ? uc_output_root() : uc_output_dir(request.output_dir)
     verbosity = _normalize_uc_verbosity(request.verbosity)
+    t_start = time()
 
     result = if verbosity === :verbose
         _run_with_uc_context(request.calibration, request.output_dir; detailed = false) do
@@ -429,7 +420,13 @@ function solve_uc(request::UCSolveRequest)
         end
     end
 
-    envelope = UCSolveResult(request.algorithm, request.input.source, configured_output_dir, result)
+    envelope = UCSolveResult(
+        request.algorithm,
+        request.input.source,
+        configured_output_dir,
+        result;
+        runtime_seconds = time() - t_start,
+    )
     verbosity === :summary && print_uc_result(envelope)
     if verbosity === :detailed
         redirect_stderr(devnull) do

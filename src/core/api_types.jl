@@ -26,6 +26,8 @@ struct UCProblemData{C, U, L, D, S, W, DC}
     NS::Int64
 end
 
+UCProblemData(data::UCProblemData) = data
+
 function UCProblemData(data::NamedTuple)
     return UCProblemData(
         data.config_param,
@@ -147,6 +149,7 @@ struct UCSolveRequest
     output_dir::Union{Nothing, String}
     verbosity::Symbol
     optimizer::Any
+    solver_options::Any
 
     function UCSolveRequest(
         algorithm::Symbol,
@@ -155,32 +158,180 @@ struct UCSolveRequest
         output_dir::Union{Nothing, String},
         verbosity::Symbol,
         optimizer::Any = nothing,
+        solver_options::Any = nothing,
     )
-        return new(algorithm, input, calibration, output_dir, verbosity, optimizer)
+        return new(algorithm, input, calibration, output_dir, verbosity, optimizer, solver_options)
     end
 end
 
-"""Stable public result envelope; algorithm-specific fields live in `details`."""
+function _optional_float(val)
+    val === nothing && return nothing
+    val isa Real || return nothing
+    f = Float64(val)
+    return isfinite(f) ? f : nothing
+end
+
+function _extract_uc_result_summary(details::NamedTuple, wall_runtime::Union{Nothing, Real})
+    status = if hasproperty(details, :status) && details.status !== nothing
+        string(details.status)
+    elseif hasproperty(details, :termination_status) && details.termination_status !== nothing
+        string(details.termination_status)
+    else
+        "UNKNOWN"
+    end
+
+    objective = if hasproperty(details, :objective)
+        _optional_float(details.objective)
+    elseif hasproperty(details, :upper_bound)
+        _optional_float(details.upper_bound)
+    elseif hasproperty(details, :total_cost)
+        _optional_float(details.total_cost)
+    elseif hasproperty(details, :cost_summary) && details.cost_summary !== nothing &&
+           hasproperty(details.cost_summary, :total_cost)
+        _optional_float(details.cost_summary.total_cost)
+    else
+        nothing
+    end
+
+    lower_bound = hasproperty(details, :lower_bound) ? _optional_float(details.lower_bound) : nothing
+    gap = hasproperty(details, :gap) ? _optional_float(details.gap) : nothing
+
+    runtime_seconds = if hasproperty(details, :runtime_seconds) && details.runtime_seconds !== nothing
+        _optional_float(details.runtime_seconds)
+    elseif hasproperty(details, :wall_time_sec) && details.wall_time_sec !== nothing
+        _optional_float(details.wall_time_sec)
+    elseif hasproperty(details, :solve_time) && details.solve_time !== nothing
+        _optional_float(details.solve_time)
+    else
+        _optional_float(wall_runtime)
+    end
+
+    return status, objective, lower_bound, gap, runtime_seconds
+end
+
+"""
+    UCSolveResult
+
+Stable public result envelope with a unified minimal contract across all algorithms
+(`status`, `objective`, `lower_bound`, `gap`, `runtime_seconds`). Algorithm-specific
+payloads live in `details` and remain accessible via `getproperty` forwarding.
+"""
 struct UCSolveResult{T <: NamedTuple}
     algorithm::Symbol
     input::Symbol
     output_dir::String
+    status::String
+    objective::Union{Nothing, Float64}
+    lower_bound::Union{Nothing, Float64}
+    gap::Union{Nothing, Float64}
+    runtime_seconds::Union{Nothing, Float64}
     details::T
 end
 
+function UCSolveResult(
+    algorithm::Symbol,
+    input::Symbol,
+    output_dir::String,
+    details::T;
+    runtime_seconds::Union{Nothing, Real} = nothing,
+) where {T <: NamedTuple}
+    status, objective, lower_bound, gap, rt = _extract_uc_result_summary(details, runtime_seconds)
+    return UCSolveResult{T}(
+        algorithm,
+        input,
+        output_dir,
+        status,
+        objective,
+        lower_bound,
+        gap,
+        rt,
+        details,
+    )
+end
+
+const _UC_RESULT_CORE_FIELDS = (
+    :algorithm,
+    :input,
+    :output_dir,
+    :status,
+    :objective,
+    :lower_bound,
+    :gap,
+    :runtime_seconds,
+    :details,
+)
+
 function Base.getproperty(result::UCSolveResult, name::Symbol)
-    name === :algorithm && return getfield(result, :algorithm)
-    name === :input && return getfield(result, :input)
-    name === :output_dir && return getfield(result, :output_dir)
-    name === :details && return getfield(result, :details)
+    name in _UC_RESULT_CORE_FIELDS && return getfield(result, name)
     return getproperty(getfield(result, :details), name)
 end
 
 function Base.propertynames(result::UCSolveResult, private::Bool = false)
-    return (:algorithm, :input, :output_dir, :details, keys(getfield(result, :details))...)
+    detail_keys = Tuple(k for k in keys(getfield(result, :details)) if !(k in _UC_RESULT_CORE_FIELDS))
+    return (_UC_RESULT_CORE_FIELDS..., detail_keys...)
 end
 
 Base.getindex(result::UCSolveResult, name::Symbol) = getproperty(result, name)
+
+function _as_schedule_matrix(raw::AbstractDict{String}, key::String)
+    haskey(raw, key) || return zeros(Float64, 0, 0)
+    val = raw[key]
+    val === nothing && return zeros(Float64, 0, 0)
+    return val isa AbstractMatrix ? Float64.(Matrix(val)) : reshape(Float64.(vec(val)), :, 1)
+end
+
+"""
+    UCScheduleResult
+
+Lightweight ASCII-named schedule result container wrapping a solved UC schedule
+so downstream code can use `res.commitment`, `res.startup`, `res.shutdown`,
+`res.dispatch`, `res.load_shed`, `res.wind_curtail`, `res.reserve_up`,
+`res.reserve_down`, and `res.total_cost` instead of Unicode string keys
+(`"x₀"`, `"pᵨ"`, `"pᵩ"`). Supports dictionary-style lookup (`res["x₀"]`,
+`haskey`, `get`, `keys`) for full backward compatibility.
+"""
+struct UCScheduleResult
+    commitment::Matrix{Float64}
+    startup::Matrix{Float64}
+    shutdown::Matrix{Float64}
+    dispatch::Matrix{Float64}
+    load_shed::Matrix{Float64}
+    wind_curtail::Matrix{Float64}
+    reserve_up::Matrix{Float64}
+    reserve_down::Matrix{Float64}
+    total_cost::Float64
+    raw::Dict{String, Any}
+end
+
+UCScheduleResult(res::UCScheduleResult) = res
+
+function UCScheduleResult(raw::AbstractDict{String})
+    raw_dict = Dict{String, Any}(String(k) => v for (k, v) in pairs(raw))
+    total_cost = if haskey(raw_dict, "total_cost") && raw_dict["total_cost"] isa Real
+        Float64(raw_dict["total_cost"])
+    elseif haskey(raw_dict, "objective_value") && raw_dict["objective_value"] isa Real
+        Float64(raw_dict["objective_value"])
+    else
+        NaN
+    end
+    return UCScheduleResult(
+        _as_schedule_matrix(raw_dict, "x₀"),
+        _as_schedule_matrix(raw_dict, "u₀"),
+        _as_schedule_matrix(raw_dict, "v₀"),
+        _as_schedule_matrix(raw_dict, "p₀"),
+        _as_schedule_matrix(raw_dict, "pᵨ"),
+        _as_schedule_matrix(raw_dict, "pᵩ"),
+        _as_schedule_matrix(raw_dict, "seq_sr⁺"),
+        _as_schedule_matrix(raw_dict, "seq_sr⁻"),
+        total_cost,
+        raw_dict,
+    )
+end
+
+Base.getindex(r::UCScheduleResult, key::AbstractString) = r.raw[String(key)]
+Base.haskey(r::UCScheduleResult, key::AbstractString) = haskey(r.raw, String(key))
+Base.get(r::UCScheduleResult, key::AbstractString, default) = get(r.raw, String(key), default)
+Base.keys(r::UCScheduleResult) = keys(r.raw)
 
 """Named Benders model setup returned by `main`.
 
