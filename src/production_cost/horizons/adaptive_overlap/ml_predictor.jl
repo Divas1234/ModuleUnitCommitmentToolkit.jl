@@ -135,7 +135,7 @@ function train_model(csv_path::String; max_depth::Int = 3, min_samples::Int = 4)
     X = Matrix{Float64}(df[:, feature_names])
     Y = Vector{Float64}(df.To_star)
 
-    finite_rows = [all(isfinite, X[i, :]) && isfinite(Y[i]) for i ∈ 1:size(X, 1)]
+    finite_rows = [all(isfinite, X[i, :]) && isfinite(Y[i]) for i ∈ eachindex(X[:, 1])]
     X = X[finite_rows, :]
     Y = Y[finite_rows]
     if length(Y) < min_samples
@@ -150,7 +150,7 @@ function train_model(csv_path::String; max_depth::Int = 3, min_samples::Int = 4)
     print_tree(tree, feature_names)
 
     # Evaluate R^2 score
-    Y_pred = [predict_tree(tree, X[i, :]) for i ∈ 1:size(X, 1)]
+    Y_pred = [predict_tree(tree, X[i, :]) for i ∈ eachindex(X[:, 1])]
     y_mean = mean(Y)
     ss_tot = sum((Y .- y_mean) .^ 2)
     ss_res = sum((Y .- Y_pred) .^ 2)

@@ -303,7 +303,8 @@ function run_debugging_demo()
     println("\n" * "="^80)
     println("                COMMITMENT SCHEDULE DETAILS (PROPOSED DYNAMIC)                 ")
     println("="^80)
-    for g_idx ∈ 1:length(units)
+    units_num = length(units)
+    for g_idx ∈ 1:units_num
         @printf("  Unit %d (%-12s): ", g_idx, units[g_idx].name)
         for t ∈ 1:12:144 # Sample every 12 hours for output clarity
             state = res_dynamic["commitments"][t][g_idx]

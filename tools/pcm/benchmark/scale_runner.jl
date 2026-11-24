@@ -1,6 +1,6 @@
 """Run the same PCM benchmark independently for the 108-unit and 1080-unit cases."""
 
-include("suite_runner.jl")
+# include("suite_runner.jl")
 
 module PCMTwoScaleBenchmark
 
