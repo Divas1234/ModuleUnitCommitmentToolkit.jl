@@ -12,15 +12,20 @@ isdefined(@__MODULE__, :choose_initial_ccg_scenarios) || include("helpers.jl")
 
 #%%%
 """
-	solve_ccg_unit_commitment(; scenario_limit = 20)
+    solve_ccg_unit_commitment(; input = :excel, scenario_limit = 20, horizon = 24, ...)
 
-Solve stochastic SCUC with column-and-constraint generation.
+Solve finite-scenario stochastic or Wasserstein Distributionally Robust (DRO) SCUC
+via Column-and-Constraint Generation (列与约束生成 C&CG / 分布鲁棒求解器).
 
-The master starts with a small active scenario set. Each iteration fixes the
-first-stage commitment, evaluates every candidate scenario through recourse,
-and appends the worst uncovered scenarios. When DRO is enabled, the upper bound
-uses the Wasserstein worst-case probability vector instead of the nominal
-empirical distribution.
+# Algorithm Flow (算法流程)
+1. **Master (`solve_ccg_master`)**: Solves an extensive-form MIP over the current
+   active scenario subset (retaining full-pool `dro_eta[1:NS]` epigraph variables
+   when DRO is enabled to guarantee a valid lower bound `LB <= UB`).
+2. **Separation (`evaluate_ccg_recourse_pool`)**: Fixes first-stage commitment
+   decisions and evaluates candidate scenarios in parallel (`Threads.@threads`),
+   identifying infeasible or worst-case recourse scenarios.
+3. **Convergence**: Terminates when `(UB - LB) / (|UB| + tol) <= CCG_GAP_TOL`
+   with `LB <= UB + tol`, or when all scenarios are internalized.
 """
 function solve_ccg_unit_commitment(;
     input::Union{Symbol, AbstractString} = :excel,

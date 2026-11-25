@@ -1,62 +1,158 @@
-# ModuleUnitCommitmentToolkit
+# ModuleUnitCommitmentToolkit.jl
 
-`ModuleUnitCommitmentToolkit` is a Julia package for stochastic, network-constrained, and security-constrained unit commitment. One function, `solve_uc`, runs three algorithms on one data interface:
+`ModuleUnitCommitmentToolkit` is an industrial-grade Julia package for **Security-Constrained Unit Commitment (SCUC)**, **Stochastic / Wasserstein DRO Unit Commitment**, **Strengthened Multi-Cut Benders Decomposition**, **H–D Frequency Security Region Modeling**, and **2×2 Production Cost Modeling (PCM)**.
+(工业级安全约束机组组合与生产成本模拟工具包，通过统一入口 `solve_uc` 调度四大求解算法族。)
 
-| Algorithm | Selector | What it solves |
+| Algorithm Family | Selector | What It Solves |
 | --- | --- | --- |
-| Benchmark | `:benchmark` | Extensive-form UC over the full scenario set. This is the reference solve. |
-| Benders | `:benders` | Multi-cut Benders decomposition. Commitment stays in the master; scenario recourse stays in the subproblems. |
-| CCG | `:ccg` | Column-and-constraint generation. The master grows by adding the worst unused renewable scenarios. |
-
-Renewable uncertainty can be treated as a Wasserstein distributionally robust problem inside Benchmark and CCG. That robust model is not a fourth solver. It is controlled by `CCG_DRO_ENABLED` and `CCG_DRO_RADIUS`, and documented in [`docs/algorithms/wasserstein_dro_ccg.md`](docs/algorithms/wasserstein_dro_ccg.md).
-
-The same call accepts Excel workbooks or PowerSystems systems. Each run writes the input tables, the effective configuration, and the solver report to an explicit output directory.
+| **Benchmark (Extensive Form)** | `:benchmark` | Full-scenario deterministic-equivalent SCUC reference solve (optional Wasserstein DRO). |
+| **Strengthened Benders** | `:benders` | Multi-cut Benders decomposition with **per-group Jensen inequality cuts**, **monotone frequency commitment logic cuts**, and BESS-aware master adequacy cuts. |
+| **C&CG / Wasserstein DRO** | `:ccg` | Column-and-constraint generation dynamically internalizing worst-case scenarios under empirical or Wasserstein ambiguity sets ([`docs/algorithms/wasserstein_dro_ccg.md`](docs/algorithms/wasserstein_dro_ccg.md)). |
+| **Production Cost Modeling (2×2 PCM)** | `:pcm_standard`, `:pcm_clustered`, `:pcm_adaptive_overlap`, `:pcm_clustered_adaptive`, `:pcm_integrated` | Orthogonal **Single-Unit / Homogeneous-Clustered × Fixed / Adaptive-Overlap** rolling-horizon PCM + integrated full-horizon benchmark. |
 
 ## Status
 
-- Version: `0.1.0`
-- Julia: `1.10` or later
-- License: MIT
-- Solver: JuMP with Gurobi. A separate Gurobi license is required.
-- Module: `ModuleUnitCommitmentToolkit`
+- **Version**: `1.14.0`
+- **Julia**: `1.10+`
+- **License**: MIT
+- **Solvers**: JuMP with Gurobi (default), HiGHS, or GLPK via thread-safe `SolverOptions` / `with_uc_optimizer`.
+- **Module**: `ModuleUnitCommitmentToolkit`
 
-## Installation
+---
 
-After `v0.1.0` is in the Julia General registry:
+## System Architecture & Execution Workflow (系统架构与执行流程)
 
-```julia
-using Pkg
-Pkg.add("ModuleUnitCommitmentToolkit")
+### 1. Overall System Architecture (系统总体架构图)
+
+```mermaid
+flowchart TB
+    subgraph Inputs["Input Adapters (多源数据适配)"]
+        XLS["Excel Workbooks<br/>data/data.xlsx, data_118.xlsx"]
+        PSY["PowerSystems.jl Native / CSV<br/>ieee6 .. ieee118, rts_gmlc"]
+        CFG["Runtime Config & Options<br/>config/runtime_config.toml + SolverOptions"]
+    end
+
+    subgraph Core["Core Orchestration (核心编排层)"]
+        API["Unified Entrypoint: solve_uc()<br/>src/core/solver_interface.jl"]
+        DATA["Typed Container: UCProblemData<br/>src/core/api_types.jl"]
+        OPT["Thread-Safe Optimizer & Options<br/>src/core/optimizer_config.jl"]
+    end
+
+    subgraph Formulation["SCUC Algebraic Library (通用数学约束库)"]
+        CON["Generator / Network / Storage / DataCenter<br/>src/unit_commitment/constraints/"]
+        FREQ["Frequency Security (Legacy & H-D Region)<br/>src/unit_commitment/frequency/"]
+        DEV["Extensible Device Dispatch<br/>device_net_injection()"]
+    end
+
+    subgraph Solvers["Precompiled Solver Engines (核心求解引擎)"]
+        BENCH["Extensive-Form Benchmark<br/>src/algorithms/benchmark/"]
+        BEND["Strengthened Multi-Cut Benders<br/>(Grouped Jensen + Freq Logic Cuts)<br/>src/algorithms/benders/"]
+        CCG["Wasserstein DRO-CCG<br/>src/algorithms/ccg/"]
+        PCM["2x2 Orthogonal PCM Engine<br/>src/production_cost/"]
+    end
+
+    subgraph Outputs["Reporting, Persistence & Dashboard (结果导出与可视化)"]
+        RES["UCSolveResult / UCScheduleResult<br/>output/<algorithm>/<run_id>/"]
+        GUI["Local Dashboard (Hardened HTTP)<br/>gui/server.py + gui/index.html"]
+    end
+
+    XLS --> DATA
+    PSY --> DATA
+    CFG --> OPT
+    API --> DATA
+    API --> OPT
+    DATA --> Formulation
+    OPT --> Solvers
+    Formulation --> Solvers
+    Solvers --> RES
+    RES --> GUI
 ```
 
-Before that, install a checkout or a release tag:
+### 2. Module Dependency Graph (模块加载与依赖关系)
+
+```mermaid
+flowchart LR
+    CORE["src/core/<br/>runtime_config, optimizer_config,<br/>api_types, output_reporting"]
+    REN["src/renewables/<br/>wind_data, wind_profiles,<br/>wind_scenario_generation"]
+    INP["src/input_data/<br/>excel_reader, formatted_data,<br/>powersystems_bridge/reader"]
+    UC["src/unit_commitment/<br/>constraints, frequency, data_centers,<br/>objectives, utilities, validation"]
+    PCM["src/production_cost/<br/>formulations/{single_unit,clustered},<br/>horizons/{fixed,adaptive_overlap}"]
+    ALG["src/algorithms/<br/>benders, ccg, benchmark"]
+    ORCH["src/core/solver_interface.jl<br/>execution_diagnostics.jl"]
+
+    CORE --> REN --> INP --> UC
+    UC --> PCM
+    UC --> ALG
+    PCM --> ORCH
+    ALG --> ORCH
+```
+
+### 3. Core Execution & Data Flow Sequence (核心业务与数据流转时序图)
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor User as User / CLI / GUI
+    participant API as solve_uc() [solver_interface.jl]
+    participant Loader as load_uc_data() [readers.jl]
+    participant Builder as apply_scuc_constraints!() [modular_activator.jl]
+    participant Solver as Benchmark / Benders / CCG / PCM
+    participant Report as print_uc_result() [output_reporting.jl]
+
+    User->>API: UCSolveRequest(algorithm, input, calibration, solver_options)
+    API->>API: Validate calibration keys & bind task-local SolverOptions
+    API->>Loader: Load Excel or PowerSystems case + generate wind scenarios
+    Loader-->>API: UCProblemData (units, loads, winds, lines, storages, data_centers)
+    API->>Solver: Dispatch by algorithm (:benchmark / :benders / :ccg / :pcm_*)
+    Solver->>Builder: Assemble JuMP variables, objectives & modular constraints
+    Note over Solver,Builder: Benders adds grouped Jensen cuts + monotone frequency logic cuts;<br/>CCG adds worst-case recourse scenarios; PCM rolls across horizons.
+    Builder-->>Solver: Solved JuMP model / converged decomposition bounds
+    Solver-->>API: Algorithm payload (status, objective, lower_bound, gap, details)
+    API->>Report: Wrap in UCSolveResult & persist CSV/JSON artifacts to output_dir
+    Report-->>User: UCSolveResult + formatted summary tables
+```
+
+### 4. Stage-to-Code Quick Reference (各阶段核心文件与入口速查)
+
+| Pipeline Stage | Key File(s) | Primary Entrypoint(s) |
+| --- | --- | --- |
+| Package Root & Exports | [`src/ModuleUnitCommitmentToolkit.jl`](src/ModuleUnitCommitmentToolkit.jl) | `using ModuleUnitCommitmentToolkit` |
+| Unified Request & Dispatch | [`src/core/solver_interface.jl`](src/core/solver_interface.jl), [`src/core/api_types.jl`](src/core/api_types.jl) | `solve_uc`, `UCSolveRequest`, `UCProblemData`, `UCSolveResult`, `UCScheduleResult` |
+| Thread-Safe Solver Config | [`src/core/optimizer_config.jl`](src/core/optimizer_config.jl), [`config/runtime_config.toml`](config/runtime_config.toml) | `SolverOptions`, `with_solver_options`, `build_uc_model`, `load_runtime_config!` |
+| Multi-Source Data Ingestion | [`src/input_data/readers.jl`](src/input_data/readers.jl), [`src/input_data/excel_reader.jl`](src/input_data/excel_reader.jl), [`src/input_data/powersystems_bridge.jl`](src/input_data/powersystems_bridge.jl) | `load_uc_data`, `read_excel_sheets`, `format_uc_input_data`, `build_system_from_powersystems` |
+| SCUC Constraints & H–D Frequency | [`src/unit_commitment/constraints/modular_activator.jl`](src/unit_commitment/constraints/modular_activator.jl), [`src/unit_commitment/constraints/network.jl`](src/unit_commitment/constraints/network.jl), [`src/unit_commitment/frequency/hd_estimation/hd_uc_adapter.jl`](src/unit_commitment/frequency/hd_estimation/hd_uc_adapter.jl) | `apply_scuc_constraints!`, `device_net_injection`, `add_hd_frequency_constraints!`, `add_multi_area_hd_frequency_constraints!` |
+| Extensive-Form Benchmark | [`src/algorithms/benchmark/extensive_uc.jl`](src/algorithms/benchmark/extensive_uc.jl) | `solve_benchmark_uc`, `solve_benchmark_uc_powersystems` |
+| Strengthened Benders | [`src/algorithms/benders/setup.jl`](src/algorithms/benders/setup.jl), [`src/algorithms/benders/decomposition.jl`](src/algorithms/benders/decomposition.jl), [`src/algorithms/benders/models/master_problem.jl`](src/algorithms/benders/models/master_problem.jl) | `build_benders_setup`, `multiple_benders_decomposition_scuc`, `build_jensen_subproblem_groups`, `add_master_frequency_logic_cuts!` |
+| Wasserstein DRO-CCG | [`src/algorithms/ccg/solver.jl`](src/algorithms/ccg/solver.jl), [`src/algorithms/ccg/dro_uncertainty.jl`](src/algorithms/ccg/dro_uncertainty.jl) | `solve_ccg_unit_commitment` |
+| 2×2 Production Cost Modeling | [`src/production_cost/rolling_engine.jl`](src/production_cost/rolling_engine.jl), [`src/production_cost/formulations/clustered/master_solver.jl`](src/production_cost/formulations/clustered/master_solver.jl) | `run_pcm`, `run_pcm_benchmark`, `PCMConfig` |
+| Local Web Dashboard | [`gui/server.py`](gui/server.py), [`gui/build_html.py`](gui/build_html.py) | `./gui/start.sh` |
+
+---
+
+## Installation
 
 ```julia
 using Pkg
 Pkg.develop(path = "/path/to/ModuleUnitCommitmentToolkit.jl")
-
-# or a tagged release
-Pkg.add(url = "https://github.com/Divas1234/ModuleUnitCommitmentToolkit.jl.git", rev = "v0.1.0")
 ```
 
-From a clone, instantiate the project and check Gurobi:
+From a clone, instantiate the project and verify the solver:
 
 ```bash
 julia --project=. -e 'using Pkg; Pkg.instantiate()'
 julia --project=. -e 'using Gurobi; println(Gurobi.Env())'
 ```
 
-The package can be loaded without solving. An optimization run needs Julia 1.10+, a working Gurobi installation, and a license that Julia can see. This package does not distribute Gurobi.
-
-## Quick start
+## Quick Start
 
 ```julia
 using ModuleUnitCommitmentToolkit
 
 result = solve_uc(
-    algorithm = :benchmark,       # :benchmark, :benders, or :ccg
+    algorithm = :benchmark,       # :benchmark, :benders, :ccg, or :pcm_*
     input = :excel,               # :excel, :powersystems, or :powersystems_csv
     scenario_limit = 1,
+    solver_options = SolverOptions(mip_gap = 0.01, threads = 4, silent = true),
     calibration = (
         MODEL_CONSIDER_BESS = false,
         MODEL_CONSIDER_FREQUENCY_CONTROL = false,
@@ -66,190 +162,110 @@ result = solve_uc(
     verbosity = :summary,
 )
 
-println(result.status)
-println(result.upper_bound)
+println(result.status)            # Unified contract across all algorithms
+println(result.objective)         # Optimal / best incumbent objective
+println(result.runtime_seconds)   # Wall-clock solve time
 println(result.output_dir)
 ```
 
-`solve_uc` validates the request, loads the data, applies calibration only for that call, dispatches to Benchmark, Benders, or CCG, and returns a `UCSolveResult`. Algorithm modules under `tools/` load on the first solve.
-
-Build the request first when it will be stored or reused:
+### Strengthened Benders & Frequency Security
 
 ```julia
-request = UCSolveRequest(
-    algorithm = :ccg,
+result = solve_uc(
+    algorithm = :benders,
     input = :excel,
-    scenario_limit = 3,
+    scenario_limit = 6,
     calibration = (
-        CCG_INITIAL_SCENARIOS = 1,
-        CCG_SCENARIOS_PER_ITERATION = 1,
-        CCG_MAX_ITERATIONS = 5,
-        CCG_DRO_ENABLED = false,
+        MODEL_CONSIDER_FREQUENCY_CONTROL = true,
+        FREQUENCY_MODEL_MODE = "hd_region",
+        FREQUENCY_NADIR_LIMIT_HZ = 0.8,
+        BENDERS_ENABLE_JENSEN_CUTS = true,
+        BENDERS_ENABLE_FREQUENCY_LOGIC_CUTS = true,
     ),
-    output_dir = "output/ccg_demo",
-    verbosity = :silent,
+    verbosity = :summary,
 )
-
-result = solve_uc(request)
-print_uc_result(result; detail = true)
 ```
 
-`"extensive-form"` is accepted and normalized to `:benchmark`.
-
-## PowerSystems
-
-Only the input arguments change:
+### PowerSystems.jl Native Cases
 
 ```julia
-using ModuleUnitCommitmentToolkit
-
 sys = build_system_from_powersystems(:ieee30)
-frequency_parameters = generate_frequency_parameters(sys)
-data_centers = [(
-    bus = 5,
-    p_max = 20.0,
-    p_min = 0.0,
-    idle_power = 0.0,
-    server_energy = 0.0,
-    lambda = 0.0,
-    mu = 1.0,
-    workload = fill(0.0, 24),
-)]
-
 result = solve_uc(
     algorithm = :benchmark,
     input = :powersystems,
     sys = sys,
     scenario_limit = 1,
     horizon = 24,
-    frequency_parameters = frequency_parameters,
-    data_centers = data_centers,
-    calibration = (
-        MODEL_CONSIDER_DATA_CENTER = true,
-        MODEL_CONSIDER_FREQUENCY_CONTROL = true,
-    ),
+    frequency_parameters = generate_frequency_parameters(sys),
+    calibration = (MODEL_CONSIDER_FREQUENCY_CONTROL = true,),
     output_dir = "output/powersystems/ieee30/benchmark",
     verbosity = :summary,
 )
 ```
 
-Stable case aliases include `:ieee6`, `:ieee14`, `:ieee24`, `:ieee30`, `:ieee118`, `:c_sys5_all_components`, `:rts_gmlc`, `:activsg2000`, and `:activsg10k` when the installed PowerSystems test data provides them. Inspect the catalog with `powersystems_case_catalog()` and `list_powersystems_cases()`.
+Supported case aliases include `:ieee6`, `:ieee14`, `:ieee24`, `:ieee30`, `:ieee118`, `:c_sys5_all_components`, `:rts_gmlc`, `:activsg2000`, and `:activsg10k` (inspect via `list_powersystems_cases()`).
 
-The worked IEEE 30-bus example adds wind, frequency response, and a data center, then writes input snapshots before the solve:
+## Calibration Keys
 
-```bash
-UC_HORIZON=4 julia --project=. examples/unified_api/07_ieee30_frequency_datacenter_uc.jl
-```
-
-`UC_ALGORITHM`, `UC_HORIZON`, `UC_SCENARIO_LIMIT`, `UC_WIND_PENETRATION`, `UC_FREQUENCY_CONTINGENCY_FRACTION`, and `UC_RUN_SOLVE` control that example.
-
-## Calibration
-
-Calibration values last for one `solve_uc` call. They do not rewrite the global environment for later calls.
+Calibration values apply only to a single `solve_uc` call without leaking into global `ENV`. Full reference: [`config/runtime_config.toml`](config/runtime_config.toml) and [`docs/guides/runtime_configuration.md`](docs/guides/runtime_configuration.md).
 
 | Parameter | Effect |
 | --- | --- |
-| `MODEL_CONSIDER_DATA_CENTER` | Data-center load constraints |
-| `MODEL_CONSIDER_FREQUENCY_CONTROL` | Frequency-support constraints |
-| `MODEL_CONSIDER_BESS` | Storage constraints |
-| `MODEL_IS_WIND_UNIT_CON` | Wind-unit constraints |
-| `MODEL_IS_NETWORK_CON` | Network constraints |
-| `MODEL_IS_THERMAL_UNIT_CON` | Thermal-unit constraints |
-| `BENCHMARK_UC_USE_DRO` | Use DRO scenario probabilities in the extensive form |
-| `BENDERS_MAX_ITERATIONS` | Benders iteration limit |
-| `BENDERS_PARALLEL_SUBPROBLEMS` | Solve Benders subproblems in parallel |
-| `CCG_INITIAL_SCENARIOS` | Scenarios in the first CCG master |
-| `CCG_SCENARIOS_PER_ITERATION` | Scenarios added after each separation |
-| `CCG_MAX_ITERATIONS` | CCG iteration limit |
-| `CCG_GAP_TOL` | CCG convergence tolerance |
-| `CCG_DRO_ENABLED` | Wasserstein worst-case distribution inside CCG |
-| `CCG_DRO_RADIUS` | Wasserstein radius. `0` recovers the empirical distribution |
+| `MODEL_CONSIDER_DATA_CENTER` / `MODEL_CONSIDER_BESS` | Enable data-center flexible load / energy storage constraints |
+| `MODEL_CONSIDER_FREQUENCY_CONTROL` / `FREQUENCY_MODEL_MODE` | Enable frequency security (`"legacy"`, `"hd_region"`, `"hybrid"`) |
+| `MODEL_IS_NETWORK_CON` / `MODEL_NUM_SEGMENTS` | Enable DC-OPF GSDF network limits / PWL fuel-cost segments |
+| `BENDERS_ENABLE_JENSEN_CUTS` / `BENDERS_JENSEN_MAX_GROUPS` | Enable per-group Jensen inequality cuts in Benders (default: enabled, up to 4 groups) |
+| `BENDERS_ENABLE_FREQUENCY_LOGIC_CUTS` | Enable static cardinality/cover & dynamic time-lifted monotone frequency logic cuts |
+| `CCG_DRO_ENABLED` / `CCG_DRO_RADIUS` | Enable Wasserstein DRO worst-case distribution in CCG & Benchmark |
+| `PCM_METHOD` / `PCM_OVERLAP_MODE` / `PCM_LOAD_PROFILE` | Configure 2×2 PCM formulation, overlap selector, and load profile |
 
-The full key list is in [`config/runtime_config.toml`](config/runtime_config.toml) and [`docs/runtime_configuration.md`](docs/runtime_configuration.md).
-
-## Output
-
-Set `output_dir` on the request, or set `MODULE_UC_OUTPUT_DIR`. Relative paths are resolved from the project root. `result.output_dir` is the path to read after the solve.
-
-`print_uc_result(result; detail = true)` prints each section as a DataFrame and writes the same fields under `result.output_dir/result/`:
-
-- `01_request.csv`
-- `02_status.csv`
-- `03_progress.csv`
-- `04_input_data.csv`
-- `05_effective_config.csv`
-- `06_model_solver.csv`
-- `07_iteration_history.csv`
-- `08_cost_breakdown.csv`
-- `09_algorithm_diagnostics.csv`
-
-Benchmark and CCG also write scheduling files under `<output_dir>/<algorithm>/<run_id>/scheduling/`. The Benders entry currently returns the in-memory result and the configured output directory.
-
-## Repository layout
+## Repository Layout
 
 ```text
-src/                         package module and UC model
-tools/benchmark/             extensive-form reference solver
-tools/benders/               Benders master, subproblems, and cuts
-tools/ccg/                   CCG solver and Wasserstein DRO
-examples/unified_api/        runnable solve_uc examples
-data/data.xlsx               default Excel case
-config/runtime_config.toml   default runtime switches
-test/                        unit, interface, smoke, and GUI tests
-docs/                        API, configuration, and algorithm notes
-gui/                         optional local dashboard
+src/
+├── ModuleUnitCommitmentToolkit.jl    Package root & centralized exports
+├── core/                             API types, SolverOptions, runtime config, unified dispatch
+├── input_data/                       Excel & PowerSystems.jl readers and boundary checks
+├── renewables/                       Wind profiles & stochastic scenario simulation
+├── unit_commitment/                  SCUC constraints, H–D frequency security, data centers, utilities
+├── algorithms/                       Precompiled Benchmark, Strengthened Benders, and DRO-CCG
+├── production_cost/                  2×2 orthogonal PCM engine (single/clustered × fixed/adaptive)
+└── visualization/                    Standalone plotting utilities
+tools/                                CLI drivers & PCM benchmark comparison runners
+examples/unified_api/                 Runnable `solve_uc` examples
+config/runtime_config.toml            Default runtime switches
+docs/                                 Guides, algorithm notes, and development docs
+test/                                 Core, algorithm, PCM, PowerSystems, and GUI test suites
+gui/                                  Optional local HTML dashboard (hardened HTTP server)
 ```
 
-New application code should call `solve_uc` or `load_uc_data`. The `tools/` drivers remain available for algorithm debugging:
+## Documentation & Examples
 
-```bash
-julia --project=. tools/benchmark/run_algorithm_comparison.jl
-julia --project=. tools/benders/driver.jl
-julia --project=. tools/ccg/driver.jl
-```
-
-## Examples and further reading
-
-- [`examples/unified_api/README.md`](examples/unified_api/README.md) — how to call the unified API
-- [`examples/unified_api/01_excel_single_solve.jl`](examples/unified_api/01_excel_single_solve.jl) — one Excel solve
-- [`examples/unified_api/03_three_algorithm_comparison.jl`](examples/unified_api/03_three_algorithm_comparison.jl) — Benchmark, Benders, and CCG on the same data
-- [`examples/unified_api/04_powersystems_native.jl`](examples/unified_api/04_powersystems_native.jl) — native PowerSystems input
-- [`docs/api_reference.md`](docs/api_reference.md) — public functions, fields, and command-line entry points
-- [`docs/powersystems_algorithms_guide.md`](docs/powersystems_algorithms_guide.md) — PowerSystems bridge and frequency parameters
-- [`docs/testing.md`](docs/testing.md) — what each test file covers
-- [`docs/juliahub_publishing.md`](docs/juliahub_publishing.md) — registry release steps
+- [`examples/unified_api/README.md`](examples/unified_api/README.md) — unified API walkthroughs
+- [`docs/guides/api_reference.md`](docs/guides/api_reference.md) — public functions, types, and CLI entry points
+- [`docs/guides/runtime_configuration.md`](docs/guides/runtime_configuration.md) — calibration keys and TOML precedence
+- [`docs/guides/powersystems_algorithms_guide.md`](docs/guides/powersystems_algorithms_guide.md) — PowerSystems bridge and frequency parameters
+- [`docs/guides/clustered_pcm_engineering_guide.md`](docs/guides/clustered_pcm_engineering_guide.md) — clustered PCM architecture and disaggregation
+- [`docs/development/testing.md`](docs/development/testing.md) — test suite organization
+- [`docs/development/juliahub_publishing.md`](docs/development/juliahub_publishing.md) — registry release guide
 
 ## Testing
 
-Run the same checks that CI runs, from the repository root:
-
 ```bash
-julia --project=. test/runtests.jl
-julia --project=. test/fast_interface.jl
-julia --project=. test/smoke_algorithms.jl
-python3 -m unittest discover -s test -p 'test_gui_security.py'
+julia --project=. -e 'using Pkg; Pkg.test()'
+julia --project=. test/core/test_fast_interface.jl
+julia --project=. test/algorithms/test_smoke_algorithms.jl
+python3 -m unittest discover -s test/gui -v
 ```
 
-`test/runtests.jl` covers data loading, the PowerSystems bridge, model helpers, DRO and CCG helpers, and Benders structures. `test/fast_interface.jl` checks request validation and result rendering without a full solve. `test/smoke_algorithms.jl` solves one Excel scenario with each algorithm and needs Gurobi. `test/test_gui_security.py` checks the local dashboard's bind address, token, and request limits.
-
-`Pkg.test()` runs `test/runtests.jl`. The fast interface, smoke, and GUI checks are separate CI steps because they load the package as an external caller or use Python.
-
-## Local dashboard
-
-The HTML dashboard is optional and is not part of the solver API:
+## Local Dashboard
 
 ```bash
 ./gui/start.sh
 ```
 
-It listens on `127.0.0.1` by default. A remote bind requires `MODULE_UC_GUI_ALLOW_REMOTE=1`, a bearer token, and an origin allow-list together.
-
-## Development
-
-Keep new behavior behind `solve_uc` and `load_uc_data`. Add a test for a new route, and add an example under `examples/unified_api/` when the public behavior changes. The root `Project.toml` is the only package environment.
+Listens on `127.0.0.1` by default. Remote binding requires `MODULE_UC_GUI_ALLOW_REMOTE=1`, a bearer token (`MODULE_UC_GUI_TOKEN`), and an explicit origin allow-list (`MODULE_UC_GUI_ALLOWED_ORIGINS`).
 
 ## License
 
-Project source is under the MIT License. See [`LICENSE`](LICENSE).
-
-Gurobi, PowerSystems, and other dependencies keep their own licenses. Gurobi is proprietary: install it separately and supply a valid license. This package does not redistribute solver binaries or third-party licenses.
+MIT License — see [`LICENSE`](LICENSE). Third-party solvers (Gurobi, HiGHS, GLPK) and dependencies retain their own licenses.

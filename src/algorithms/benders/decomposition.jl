@@ -4,8 +4,8 @@
 # Scenario subproblems evaluate recourse dispatch, curtailment, network, storage,
 # and auxiliary constraints under fixed commitment. Violated recourse estimates
 # are returned as feasibility, optimality, Jensen, or logic-dominance cuts.
-isdefined(@__MODULE__, :bd_masterfunction) || include("models/construct_models.jl")
-isdefined(@__MODULE__, :add_benders_multicuts_constraints!) || include("cuts/construct_cuts.jl")
+isdefined(@__MODULE__, :bd_masterfunction) || include("models/entry.jl")
+isdefined(@__MODULE__, :add_benders_multicuts_constraints!) || include("cuts/entry.jl")
 
 using Printf
 using DataStructures
@@ -925,6 +925,9 @@ function check_Bender_convergence(best_upper_bound, best_lower_bound, current_up
     end
     return flag
 end
+
+"""Canonical BlueStyle alias for `check_Bender_convergence` (标准命名入口: 检查 Benders 收敛判据)."""
+const check_benders_convergence = check_Bender_convergence
 
 """
 `batch_solve_subproblem_with_feasibility_cut(...)`

@@ -137,6 +137,9 @@ function bd_masterfunction(
     return scuc_masterproblem, master_scuc_struct
 end
 
+"""Canonical BlueStyle alias for `bd_masterfunction` (标准命名入口: 构建 Benders 主问题)."""
+const build_benders_master = bd_masterfunction
+
 function add_master_storage_binary_constraints!(scuc_masterproblem::Model, NT::Int64, NC::Int64, NS::Int64, config_param::config)
     if config_param.consider_bess == 0 || NC == 0
         return nothing

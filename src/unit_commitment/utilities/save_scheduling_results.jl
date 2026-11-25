@@ -212,3 +212,8 @@ function savebalance_result(
     end
     return println("details [unit_commtiemnt] scheduling results have been saved!")
 end
+
+"""Canonical BlueStyle aliases for scheduling result persistence helpers (标准命名入口: 调度结果读写与平衡导出)."""
+const save_uc_results = save_UCresults
+const read_uc_results = read_UCresults
+const save_power_balance_result = savebalance_result

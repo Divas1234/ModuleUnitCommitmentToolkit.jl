@@ -1,3 +1,21 @@
+"""
+    ModuleUnitCommitmentToolkit
+
+Industrial-grade Julia package for Security-Constrained Unit Commitment (SCUC),
+Stochastic / Distributionally Robust UC (Wasserstein DRO-CCG), Strengthened
+Multi-Cut Benders Decomposition, and 2×2 Production Cost Modeling (PCM).
+(工业级安全约束机组组合工具包：覆盖扩展型基准、强化多割 Benders、Wasserstein DRO-CCG 与 2×2 生产成本模拟。)
+
+Module Load & Dependency Architecture (模块加载与依赖架构):
+  core/{environment,runtime,optimizer,api_types,reporting}
+      │
+      ├──► renewables/stochastic_simulation.jl        (风电场景生成)
+      ├──► input_data/readers.jl                      (Excel / PowerSystems 数据适配)
+      ├──► unit_commitment/scuc_model.jl              (约束库: 机组/网络/储能/数据中心/H-D 频率域)
+      ├──► production_cost/entry.jl                   (2×2 PCM: 单机/聚类 × 固定/自适应交叠)
+      ├──► algorithms/entry.jl                        (Benchmark / 强化 Benders / DRO-CCG)
+      └──► core/{solver_interface,execution_diagnostics,deprecations}.jl  (统一 solve_uc 入口)
+"""
 module ModuleUnitCommitmentToolkit
 
 # Core infrastructure: environment, runtime config, optimizer, API types, reporting
@@ -28,10 +46,20 @@ include("core/solver_interface.jl")
 include("core/execution_diagnostics.jl")
 include("core/deprecations.jl")
 
-# Public package-level entry points. Algorithm drivers under `tools/` remain the
-# implementation and compatibility layer behind the unified entry point.
-export SUC_scucmodel,
+# Public package-level entry points (canonical BlueStyle names + legacy aliases).
+export solve_scuc_model,
+    SUC_scucmodel,
     validate_inputs,
+    read_excel_sheets,
+    format_uc_input_data,
+    linearize_fuel_cost_curve,
+    build_benders_master,
+    build_benders_subproblem,
+    check_benders_convergence,
+    save_uc_results,
+    read_uc_results,
+    save_power_balance_result,
+    plot_unicode_profiles,
     readxlssheet,
     forminputdata,
     genscenario,

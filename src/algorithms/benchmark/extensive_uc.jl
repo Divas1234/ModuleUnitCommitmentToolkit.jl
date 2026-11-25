@@ -1,14 +1,14 @@
 """
-Benchmark extensive-form SCUC solver.
+    src/algorithms/benchmark/extensive_uc.jl
 
-This module builds one full scenario model and solves it directly. It is used as
-the reference UC baseline when comparing decomposition methods:
-- Benders: first-stage master plus scenario subproblems;
-- CCG: active-scenario master plus separation;
-- Benchmark UC: all scenarios in a single extensive-form model.
+Extensive-form Security-Constrained Unit Commitment (SCUC) reference solver
+(全场景扩展型基准机组组合求解器).
 
-The formulation reuses the same data loader and constraint builders as CCG, so
-differences in reports reflect algorithm strategy rather than algebra drift.
+Assembles a single deterministic-equivalent MIP across all scenarios `1:NS`
+(optionally weighted by the Wasserstein DRO worst-case distribution when
+`BENCHMARK_UC_USE_DRO = 1`). Shares the exact same data loaders and constraint
+builders as Benders and C&CG so cross-algorithm comparisons isolate algorithmic
+efficiency without formulation drift (与 Benders/C&CG 复用同一约束代数库，保证对比口径一致).
 """
 
 function benchmark_uc_use_dro()

@@ -27,9 +27,9 @@ MODULE_UC_TEST_ACTIVATE_LOCAL_PROJECT=1 julia test/runtests.jl
 | `test/test_src_modules.jl` | Base `src` data structures and decision variables. |
 | `test/test_benders.jl` | Benders helper structures and wind scenario helpers. |
 | `test/test_ccg_algorithm.jl` | CCG scenario selection and subset helpers. |
-| `test/fast_interface.jl` | Fast checks for unified input, routing, calibration, and result types. |
-| `test/smoke_algorithms.jl` | One-scenario benchmark, CCG, and Benders end-to-end smoke runs. |
-| `test/test_gui_security.py` | GUI request validation, remote-bind safeguards, and input limits. |
+| `test/core/test_fast_interface.jl` | Fast checks for unified input, routing, calibration, and result types. |
+| `test/algorithms/test_smoke_algorithms.jl` | One-scenario benchmark, CCG, and Benders end-to-end smoke runs. |
+| `test/gui/test_gui_security.py` | GUI request validation, remote-bind safeguards, and input limits. |
 
 ## Design Notes
 
@@ -52,9 +52,9 @@ The CI workflow also runs the fast public-interface checks and the three-algorit
 one-scenario smoke test:
 
 ```bash
-julia --project=. test/fast_interface.jl
-julia --project=. test/smoke_algorithms.jl
-python3 -m unittest discover -s test -p 'test_gui_security.py'
+julia --project=. test/core/test_fast_interface.jl
+julia --project=. test/algorithms/test_smoke_algorithms.jl
+python3 -m unittest discover -s test/gui -v
 ```
 
 ## Expected Runtime

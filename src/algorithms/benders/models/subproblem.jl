@@ -249,6 +249,9 @@ function bd_subfunction(
     return scuc_subproblem, sub_scuc_struct
 end
 
+"""Canonical BlueStyle alias for `bd_subfunction` (标准命名入口: 构建 Benders 连续松弛子问题)."""
+const build_benders_subproblem = bd_subfunction
+
 function flatten_constraint_refs(constr)
     if constr === nothing
         return ConstraintRef[]

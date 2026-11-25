@@ -7,13 +7,24 @@ Integrated UC Benchmark.
 """
 
 """
-    run_pcm(formulation::AbstractPCMFormulation, policy::AbstractPCMHorizonPolicy; cfg = PCMConfig())
+    run_pcm(formulation::AbstractPCMFormulation, policy::AbstractPCMHorizonPolicy; cfg = PCMConfig(), label = "")
 
-Run one of the 4 orthogonal PCM methods:
-1. `(SingleUnitFormulation(), FixedHorizonPolicy())`      — standard (no cluster, no overlap)
-2. `(SingleUnitFormulation(), AdaptiveOverlapPolicy())`   — adaptive_overlap (no cluster, with overlap)
-3. `(ClusteredFormulation(), FixedHorizonPolicy())`       — clustered (cluster, no overlap)
-4. `(ClusteredFormulation(), AdaptiveOverlapPolicy())`    — clustered_overlap (cluster, with overlap)
+Execute one of the four orthogonal Production Cost Modeling (PCM) methods using
+Julia multiple dispatch on `(formulation, policy)` (基于多重派发执行正交 2×2 生产成本模拟):
+
+1. `(SingleUnitFormulation(), FixedHorizonPolicy())`      — `:standard` (单机 + 固定无交叠)
+2. `(SingleUnitFormulation(), AdaptiveOverlapPolicy())`   — `:adaptive_overlap` (单机 + 自适应交叠)
+3. `(ClusteredFormulation(), FixedHorizonPolicy())`       — `:clustered` (同质聚类 + 固定无交叠)
+4. `(ClusteredFormulation(), AdaptiveOverlapPolicy())`    — `:clustered_overlap` (同质聚类 + 自适应交叠)
+
+# Arguments
+- `formulation`: Unit representation (`SingleUnitFormulation` or `ClusteredFormulation`).
+- `policy`: Rolling-horizon policy (`FixedHorizonPolicy` or `AdaptiveOverlapPolicy`).
+- `cfg::PCMConfig`: Immutable case, profile, seed, and solver configuration.
+- `label::String`: Optional display label for logs and summary tables.
+
+# Returns
+A `NamedTuple` containing `:status`, `:total_cost`, `:runtime_seconds`, and method-specific diagnostics.
 """
 function run_pcm(
     formulation::AbstractPCMFormulation,

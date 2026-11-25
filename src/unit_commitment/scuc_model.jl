@@ -126,3 +126,6 @@ function SUC_scucmodel(
     _report_infeasibility_conflict(scuc)
     return nothing
 end # end SUC_scucmodel function
+
+"""Canonical BlueStyle alias for `SUC_scucmodel` (标准命名入口: 构建并求解随机机组组合模型)."""
+const solve_scuc_model = SUC_scucmodel

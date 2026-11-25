@@ -414,3 +414,6 @@ function plt_unicodeplot(winds = nothing, loads = nothing, flag = 0)
     end
     return plt
 end
+
+"""Canonical BlueStyle alias for `plt_unicodeplot` (标准命名入口: 终端字符曲线可视化)."""
+const plot_unicode_profiles = plt_unicodeplot

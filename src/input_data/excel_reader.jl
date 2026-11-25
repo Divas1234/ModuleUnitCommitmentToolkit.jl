@@ -237,3 +237,9 @@ function forminputdata(DataGen, DataBranch, DataLoad, LoadCurve, GenCost, UnitsF
 
     return config_param, units, lines, loads, storages, NB, NG, NL, ND, NT, NC, ND2, data_center_data
 end
+
+"""Canonical BlueStyle alias for `readxlssheet` (标准命名入口: 读取 Excel 原始工作表)."""
+const read_excel_sheets = readxlssheet
+
+"""Canonical BlueStyle alias for `forminputdata` (标准命名入口: 格式化 UC 输入数据结构)."""
+const format_uc_input_data = forminputdata

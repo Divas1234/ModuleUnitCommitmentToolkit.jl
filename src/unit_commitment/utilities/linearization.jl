@@ -24,3 +24,6 @@ function linearizationfuelcurve(units, NG; num_segments::Integer = 3)
     end
     return cost[:, 1], eachslope'
 end
+
+"""Canonical BlueStyle alias for `linearizationfuelcurve` (标准命名入口: 机组二次发电成本分段线性化)."""
+const linearize_fuel_cost_curve = linearizationfuelcurve

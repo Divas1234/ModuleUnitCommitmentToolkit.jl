@@ -1,5 +1,19 @@
 #!/usr/bin/env python3
-"""HTTP server: serves static files + config read/write API + Julia task runner."""
+"""Local/remote-hardened HTTP dashboard server for ModuleUnitCommitmentToolkit.jl.
+
+Serves static dashboard assets under `gui/`, exposes validated read/write TOML
+configuration endpoints (`/api/config`), and orchestrates background Julia
+solver tasks (`/api/run`, `/api/status`, `/api/cancel`) via `RunManager`.
+(本地可视化控制台服务：提供静态页面、`runtime_config.toml` 安全读写与 Julia 求解任务调度。)
+
+Security & Concurrency Boundaries (安全与并发边界):
+- Static file serving is strictly jailed to `(ROOT / "gui").resolve()` to prevent
+  path traversal (静态文件严格限制在 `gui/` 目录内，防路径穿越).
+- Remote binding requires `MODULE_UC_GUI_ALLOW_REMOTE=1`, a bearer token, and an
+  explicit origin allow-list (远程监听必须同时开启显式授权与令牌校验).
+- TOML config writes are type-checked, lock-guarded, and atomically replaced
+  (配置写入经类型校验、加锁与原子替换，杜绝注入与并发损坏).
+"""
 import json
 import hmac
 import ipaddress

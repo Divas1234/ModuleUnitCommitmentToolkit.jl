@@ -1,11 +1,15 @@
-# Central entry point for the Production Cost Modeling (PCM) core library.
-# Organized along two orthogonal axes + full-horizon Benchmark:
-#   - formulations/single_unit/      : Physical single-unit window SCUC
-#   - formulations/clustered/        : Homogeneous clustering, PTDF, disaggregation, costs
-#   - horizons/fixed_rolling.jl      : Non-overlapping fixed rolling horizon
-#   - horizons/adaptive_overlap/     : Adaptive overlapping rolling horizon
-#   - rolling_engine.jl              : Unified `run_pcm` & `run_pcm_benchmark`
-#   - benchmark_comparison.jl        : 4-method PCM vs Benchmark comparison
+# ==============================================================================
+# Production Cost Modeling (PCM) Core Library Entrypoint (生产成本模拟核心入口)
+#
+# Organized along two orthogonal axes plus full-horizon Benchmark
+# (沿“建模粒度 × 滚动时域”正交 2×2 矩阵组织，外加全时域基准):
+#   - formulations/single_unit/      : Physical single-unit window SCUC (物理单机窗口建模)
+#   - formulations/clustered/        : Homogeneous clustering, PTDF, disaggregation, costs (同质聚类与解聚)
+#   - horizons/fixed_rolling.jl      : Non-overlapping fixed rolling horizon (固定无交叠滚动)
+#   - horizons/adaptive_overlap/     : Adaptive overlapping rolling horizon + CART ML (自适应交叠滚动)
+#   - rolling_engine.jl              : Unified `run_pcm` & `run_pcm_benchmark` (统一调度引擎)
+#   - benchmark_comparison.jl        : 4-method PCM vs Benchmark comparison (四方法对比汇总)
+# ==============================================================================
 
 if !isdefined(@__MODULE__, :_PCM_CORE_INCLUDED)
     const _PCM_CORE_INCLUDED = true
