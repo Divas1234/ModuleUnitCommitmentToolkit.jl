@@ -19,7 +19,7 @@ function compute_steady_state_overlap_mapping(
         loads::load, winds::wind, units::unit, start_time::Int64, exec_NT::Int64, epsilon::Float64, min_overlap::Int64, max_overlap::Int64,
         x_0_curr::Vector{Float64}, mode::String = "regression", trained_models = nothing, x_ref_curr::Union{Nothing, Vector{Float64}} = nothing)
     # Estimate system characteristics
-    total_time_avail = size(loads.load_curve, 2)
+    total_time_avail = min(size(loads.load_curve, 2), size(winds.scenarios_curve, 2))
     end_horizon = min(total_time_avail, start_time + exec_NT + max_overlap - 1)
 
     # Peak load for normalization
@@ -120,13 +120,10 @@ function compute_adaptive_overlap_window(
     if startswith(steady_state_mode, "fixed_")
         fixed_val = parse(Int, split(steady_state_mode, "_")[2])
         T_overlap = fixed_val
-        # Clamping at boundary for last interval
-        if interval_scheduling_id == 7
-            total_time_avail = size(loads.load_curve, 2)
-            remaining_time = total_time_avail - (start_time + exec_NT - 1)
-            T_overlap = min(T_overlap, remaining_time)
-            T_overlap = max(0, T_overlap)
-        end
+        # Clamping at boundary so overlap never exceeds remaining available horizon
+        total_time_avail = min(size(loads.load_curve, 2), size(winds.scenarios_curve, 2))
+        remaining_time = total_time_avail - (start_time + exec_NT - 1)
+        T_overlap = max(0, min(T_overlap, remaining_time))
         adaptive_overlap_verbose() &&
             println("[AdaptiveOverlap] interval=$(interval_scheduling_id) criterion=fixed steady=$(fixed_val) final=$(T_overlap)")
         return T_overlap, false, fixed_val, 0, 0
@@ -146,13 +143,14 @@ function compute_adaptive_overlap_window(
         T_dwell_rem = max(0.0, maximum(online_remaining), maximum(offline_remaining))
         X_delta_norm, X_switch_ratio = commitment_boundary_deviation(units, x_0_curr, x_ref_curr)
 
-        end_horizon = min(size(loads.load_curve, 2), start_time + exec_NT + max_overlap - 1)
+        total_time_avail = min(size(loads.load_curve, 2), size(winds.scenarios_curve, 2))
+        end_horizon = min(total_time_avail, start_time + exec_NT + max_overlap - 1)
         total_load_lookahead = sum(loads.load_curve[:, start_time:end_horizon]; dims = 1)[1, :]
         total_wind_cap = sum(winds.p_max)
 
         net_load_lookahead = zeros(length(total_load_lookahead))
         for t ∈ eachindex(total_load_lookahead)
-            scen_curves = winds.scenarios_curve[:, min(size(loads.load_curve, 2), start_time + t - 1)]
+            scen_curves = winds.scenarios_curve[:, min(total_time_avail, start_time + t - 1)]
             avg_wind_factor = mean(scen_curves)
             net_load_lookahead[t] = total_load_lookahead[t] - total_wind_cap * avg_wind_factor
         end
@@ -184,7 +182,6 @@ function compute_adaptive_overlap_window(
         # 物理安全下界。聚类解群尤其依赖 T_unit 覆盖边界驻留约束。
         T_overlap = clamp(max(T_o_pred, T_unit, T_ramp), min_overlap, max_overlap)
 
-        total_time_avail = size(loads.load_curve, 2)
         max_possible_overlap = total_time_avail - (start_time + exec_NT - 1)
         T_overlap = max(0, min(T_overlap, max_possible_overlap))
 
@@ -226,8 +223,10 @@ function compute_adaptive_overlap_window(
     # offline thermal units, t_1_curr is the remaining minimum offline time
     # before they may be started up. These values are already measured at the
     # current interval boundary, so do not subtract exec_NT again here.
-    online_remaining = [x_0_curr[i] > 0.5 ? max(0.0, t_0_curr[i]) : 0.0 for i ∈ 1:NG]
-    offline_remaining = [x_0_curr[i] <= 0.5 ? max(0.0, t_1_curr[i]) : 0.0 for i ∈ 1:NG]
+    online_remaining = [x_0_curr[i] > 0.5 && t_0_curr[i] > 0 ?
+                        max(0.0, units.min_shutup_time[i] - t_0_curr[i]) : 0.0 for i ∈ 1:NG]
+    offline_remaining = [x_0_curr[i] <= 0.5 && t_1_curr[i] > 0 ?
+                         max(0.0, units.min_shutdown_time[i] - t_1_curr[i]) : 0.0 for i ∈ 1:NG]
     T_dwell_rem = max(0.0, maximum(online_remaining), maximum(offline_remaining))
     T_unit = Int64(ceil(T_dwell_rem))
 
@@ -239,7 +238,7 @@ function compute_adaptive_overlap_window(
     T_overlap = clamp(T_overlap_raw, min_overlap, max_overlap)
 
     # Ensure total window does not exceed remaining simulation time
-    total_time_avail = size(loads.load_curve, 2)
+    total_time_avail = min(size(loads.load_curve, 2), size(winds.scenarios_curve, 2))
     max_possible_overlap = total_time_avail - (start_time + exec_NT - 1)
     T_overlap = max(0, min(T_overlap, max_possible_overlap))
 

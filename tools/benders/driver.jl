@@ -6,6 +6,18 @@
 # reflected in the `config` struct returned by `main`.
 include("setup.jl")
 
+using JuMP
+using ModuleUnitCommitmentToolkit:
+    calculate_gsdf,
+    linearizationfuelcurve,
+    calculate_initial_unit_status,
+    define_contingency_size,
+    define_decision_variables!,
+    set_objective!,
+    apply_scuc_constraints!,
+    uc_require_feasible_solution!,
+    build_uc_model
+
 scenario_limit = parse(Int64, get(ENV, "BENDERS_SCENARIO_LIMIT", "50"))
 setup = main(; scenario_limit = scenario_limit)
 scuc_masterproblem = setup.master_model
@@ -55,7 +67,7 @@ the goal is validation rather than decomposition performance.
 function solve_fast_extensive_uc(NT, NB, NG, ND, NC, ND2, NS, NW, NL, units, loads, winds, lines, data_centers, psses, config_param, scenarios_prob)
     println("Starting fast extensive-form UC solve for Benders benchmark/convergence...")
     gsdf = calculate_gsdf(config_param, NL, units, lines, loads, NG, NB, ND)
-    refcost, eachslope = linearizationfuelcurve(units, NG)
+    refcost, eachslope = linearizationfuelcurve(units, NG; num_segments = config_param.num_segments)
     onoffinit = calculate_initial_unit_status(units, NG)
     contingency_size = define_contingency_size(units, NG)
 

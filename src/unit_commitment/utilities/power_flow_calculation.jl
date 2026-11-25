@@ -38,13 +38,10 @@ function linearpowerflow(units::unit, lines::transmissionline, loads::load, NG::
         B1[(Note_slack - 1):(NB - 1), (Note_slack - 1):(NB - 1)] = B[Note_slack:NB, Note_slack:NB]
     end
 
-    Z = inv(B1)
-    M1 = M
-    M1 = M1[1:NB .!= Note_slack, :]
-
-    # Line_power = (M1' * inv(B1) * P_injection) ./ lines.x
-
-    T1 = M1' / B1
+    M1 = M[1:NB .!= Note_slack, :]
+    F_B1 = lu(B1; check = false)
+    issuccess(F_B1) || throw(ArgumentError("DC power flow susceptance matrix is singular (disconnected or unmapped bus)."))
+    T1 = M1' / F_B1
     for k in 1:(NB - 1)
         T1[:, k] = T1[:, k] ./ lines.x
     end

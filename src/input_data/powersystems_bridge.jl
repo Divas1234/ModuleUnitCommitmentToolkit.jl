@@ -301,6 +301,8 @@ function load_native_powersystems_case(
     case_name::Union{Symbol, AbstractString};
     case_category::Type{<:SystemCategory} = MatpowerTestSystems,
     scenario_limit::Int64 = 50,
+    data_center_buses::Vector{Int} = Int[],
+    data_center_pmax::Vector{Float64} = Float64[],
     frequency_parameters = nothing,
     data_centers = NamedTuple[],
     horizon::Int64 = 24,
@@ -310,6 +312,8 @@ function load_native_powersystems_case(
     return _load_native_powersystems_system(
         sys;
         scenario_limit = scenario_limit,
+        data_center_buses = data_center_buses,
+        data_center_pmax = data_center_pmax,
         frequency_parameters = frequency_parameters,
         data_centers = data_centers,
         horizon = horizon,
@@ -371,20 +375,40 @@ function _thermal_cost_coefficients(generator, base_power::Float64)
     a = 0.0
     b = 10.0
     c = 0.0
+    power_scale = base_power
     operation_cost = getproperty(generator, :operation_cost)
     if hasproperty(operation_cost, :fixed)
         c = _finite_float(operation_cost.fixed, c)
     end
     if hasproperty(operation_cost, :variable)
         variable_cost = operation_cost.variable
+        if hasproperty(variable_cost, :power_units)
+            pu = get_power_units(variable_cost)
+            if pu == UnitSystem.SYSTEM_BASE
+                power_scale = 1.0
+            elseif pu == UnitSystem.DEVICE_BASE
+                power_scale = Float64(get_base_power(generator))
+            end
+        end
+        fuel_mult = 1.0
+        if variable_cost isa FuelCurve
+            fc = get_fuel_cost(variable_cost)
+            fc isa Real && (fuel_mult = _finite_float(fc, 1.0))
+        end
         if hasproperty(variable_cost, :value_curve)
             data = variable_cost.value_curve.function_data
-            a = _finite_float(_field_or_default(data, :quadratic_term, a), a)
-            b = _finite_float(_field_or_default(data, :proportional_term, b), b)
-            c += _finite_float(_field_or_default(data, :constant_term, 0.0), 0.0)
+            a = _finite_float(_field_or_default(data, :quadratic_term, a), a) * fuel_mult
+            b = _finite_float(_field_or_default(data, :proportional_term, b), b) * fuel_mult
+            c += _finite_float(_field_or_default(data, :constant_term, 0.0), 0.0) * fuel_mult
+        end
+        if variable_cost isa FuelCurve && hasproperty(variable_cost, :vom_cost)
+            vom = variable_cost.vom_cost
+            if hasproperty(vom, :function_data)
+                b += _finite_float(_field_or_default(vom.function_data, :proportional_term, 0.0), 0.0)
+            end
         end
     end
-    return _finite_float(a * base_power^2, 0.0), _finite_float(b * base_power, 10.0 * base_power), _finite_float(c, 0.0)
+    return _finite_float(a * power_scale^2, 0.0), _finite_float(b * power_scale, 10.0 * base_power), _finite_float(c, 0.0)
 end
 
 function _normalize_data_centers(data_centers, legacy_buses, legacy_pmax)
@@ -450,6 +474,17 @@ division. Power quantities supplied through `data_centers` are in MW and are
 converted with the native system base power. The function keeps a contiguous
 internal bus index so arbitrary PowerSystems bus numbers are supported.
 """
+function _startup_costs(operation_cost)
+    raw = _field_or_default(operation_cost, :start_up, 0.0)
+    if raw isa NamedTuple || hasproperty(raw, :hot)
+        hot = _finite_float(_field_or_default(raw, :hot, 0.0), 0.0)
+        cold = _finite_float(_field_or_default(raw, :cold, hot), hot)
+        return hot, cold
+    end
+    val = _finite_float(raw, 0.0)
+    return val, val
+end
+
 function extract_uc_data_from_powersystems(
     sys::System;
     data_center_buses::Vector{Int} = Int[],
@@ -460,6 +495,7 @@ function extract_uc_data_from_powersystems(
     horizon::Int64 = 24,
 )
     horizon > 0 || throw(ArgumentError("horizon must be positive"))
+    return PowerSystems.with_units_base(sys, UnitSystem.SYSTEM_BASE) do
     base_power = Float64(get_base_power(sys))
     buses = sort(collect(get_components(ACBus, sys)), by = get_number)
     isempty(buses) && throw(ArgumentError("PowerSystems system has no AC buses"))
@@ -497,8 +533,8 @@ function extract_uc_data_from_powersystems(
     droop = Float64[]
     for (index, generator) in enumerate(generators)
         limits = get_active_power_limits(generator)
-        ramps = getproperty(generator, :ramp_limits)
-        time_limits = getproperty(generator, :time_limits)
+        ramps = get_ramp_limits(generator)
+        time_limits = get_time_limits(generator)
         active_limit_max = Float64(limits.max)
         native_rating = max(Float64(get_rating(generator)), 0.0)
         # Some MATPOWER generator rows are parsed by PowerSystems with a zero
@@ -510,26 +546,30 @@ function extract_uc_data_from_powersystems(
         # PowerSystems uses SYSTEM_BASE units for component power values. These
         # quantities are already per-unit on the system base; dividing by
         # `base_power` here would perform a second, incorrect normalization.
+        # PowerSystems ramp_limits are in p.u./min; scale by 60 for hourly UC.
         push!(p_max, maximum_power);
         push!(p_min, Float64(limits.min))
-        push!(ramp_up, Float64(_field_or_default(ramps, :up, maximum_power)))
-        push!(ramp_down, Float64(_field_or_default(ramps, :down, maximum_power)))
+        ru_per_min = ramps === nothing ? nothing : _field_or_default(ramps, :up, nothing)
+        rd_per_min = ramps === nothing ? nothing : _field_or_default(ramps, :down, nothing)
+        push!(ramp_up, ru_per_min === nothing ? maximum_power : Float64(ru_per_min) * 60.0)
+        push!(ramp_down, rd_per_min === nothing ? maximum_power : Float64(rd_per_min) * 60.0)
         push!(startup_ramp, maximum_power);
         push!(shutdown_ramp, maximum_power)
         push!(min_up, Float64(_field_or_default(time_limits, :up, 1.0)));
         push!(min_down, Float64(_field_or_default(time_limits, :down, 1.0)))
-        push!(initial_status, getproperty(generator, :status) ? 1.0 : 0.0);
+        push!(initial_status, get_status(generator) ? 1.0 : 0.0);
         push!(initial_hours, 1.0);
-        push!(initial_power, Float64(getproperty(generator, :active_power)))
+        push!(initial_power, Float64(get_active_power(generator)))
         a, b, c = _thermal_cost_coefficients(generator, base_power)
         push!(cost_a, a);
         push!(cost_b, b);
         push!(cost_c, c)
-        operation_cost = getproperty(generator, :operation_cost)
-        startup_cost_value = _finite_float(_field_or_default(operation_cost, :start_up, 0.0), 0.0)
-        push!(hot_start, startup_cost_value);
-        push!(cold_start, startup_cost_value);
-        push!(shutdown_cost, _finite_float(_field_or_default(operation_cost, :shutdown_ramp, 0.0), 0.0));
+        operation_cost = get_operation_cost(generator)
+        hot_val, cold_val = _startup_costs(operation_cost)
+        push!(hot_start, hot_val);
+        push!(cold_start, cold_val);
+        sd_val = hasproperty(operation_cost, :shut_down) ? get_shut_down(operation_cost) : 0.0
+        push!(shutdown_cost, _finite_float(sd_val, 0.0));
         push!(cold_time, 1.0)
         name = get_name(generator)
         push!(inertia, _frequency_value(frequency_parameters, name, index, :H, 5.0));
@@ -567,14 +607,15 @@ function extract_uc_data_from_powersystems(
 
     storage = sort(collect(get_components(EnergyReservoirStorage, sys)), by = get_name)
     storage_count = length(storage)
+    storage_caps = Float64[Float64(get_storage_capacity(item)) for item in storage]
     psses = pss(
         collect(Int64(1):Int64(storage_count)),
         Int64[bus_index(get_bus(item)) for item in storage],
-        Float64[get_storage_capacity(item) for item in storage],
-        Float64[get_storage_level_limits(item).min for item in storage],
+        Float64[storage_caps[i] * Float64(get_storage_level_limits(storage[i]).max) for i in 1:storage_count],
+        Float64[storage_caps[i] * Float64(get_storage_level_limits(storage[i]).min) for i in 1:storage_count],
         Float64[get_input_active_power_limits(item).max for item in storage],
         Float64[get_output_active_power_limits(item).max for item in storage],
-        Float64[get_initial_storage_capacity_level(item) for item in storage],
+        Float64[storage_caps[i] * Float64(get_initial_storage_capacity_level(storage[i])) for i in 1:storage_count],
         Float64[get_input_active_power_limits(item).max for item in storage],
         Float64[get_output_active_power_limits(item).max for item in storage],
         Float64[get_efficiency(item).in for item in storage],
@@ -610,6 +651,7 @@ function extract_uc_data_from_powersystems(
     return config_parameter,
     units, lines, loads, psses, length(buses), generator_count, branch_count, load_count,
     horizon, storage_count, length(centers), data_center_data, renewable_frequency_parameters, bus_to_index
+    end
 end
 
 function generate_wind_scenarios_from_system(
@@ -620,8 +662,8 @@ function generate_wind_scenarios_from_system(
     bus_to_idx::Dict{Int, Int} = Dict{Int, Int}(),
     scenario_limit::Int64 = 50,
 )
+    return PowerSystems.with_units_base(sys, UnitSystem.SYSTEM_BASE) do
     renewables = sort(collect(get_components(RenewableGen, sys)), by = get_name)
-    base_power = Float64(get_base_power(sys))
     count = length(renewables)
     count == 0 &&
         return wind(Int64[], Int64[], Float64[], 1.0, 1, zeros(1, horizon), Float64[], Float64[], Float64[], Float64[], Float64[], Float64[]), 0
@@ -629,7 +671,7 @@ function generate_wind_scenarios_from_system(
     locatebus = Int64[get(bus_to_idx, get_number(get_bus(item)), get_number(get_bus(item))) for item in renewables]
     p_max = Float64[get_rating(item) for item in renewables]
     base_profile =
-        reshape([clamp(Float64(getproperty(item, :active_power)) / max(Float64(get_rating(item)), eps()), 0.0, 1.0) for item in renewables], :, 1)
+        reshape([clamp(Float64(get_active_power(item)) / max(Float64(get_rating(item)), eps()), 0.0, 1.0) for item in renewables], :, 1)
     profile = repeat(mean(base_profile; dims = 1), 1, horizon)
     scenarios = if mode == 1
         generate_weibull_wind_availability(profile, scenario_limit, horizon)
@@ -657,11 +699,27 @@ function generate_wind_scenarios_from_system(
         frequency[:, 6],
     ),
     count
+    end
 end
 
-function _load_native_powersystems_system(sys::System; scenario_limit::Int64, frequency_parameters, data_centers, horizon::Int64)
+function _load_native_powersystems_system(
+    sys::System;
+    scenario_limit::Int64,
+    data_center_buses::Vector{Int} = Int[],
+    data_center_pmax::Vector{Float64} = Float64[],
+    frequency_parameters,
+    data_centers,
+    horizon::Int64,
+)
     config_parameter, units, lines, loads, psses, NB, NG, NL, ND, NT, NC, ND2, data_center_data, wind_frequency_parameters, bus_to_index =
-        extract_uc_data_from_powersystems(sys; frequency_parameters = frequency_parameters, data_centers = data_centers, horizon = horizon)
+        extract_uc_data_from_powersystems(
+            sys;
+            data_center_buses = data_center_buses,
+            data_center_pmax = data_center_pmax,
+            frequency_parameters = frequency_parameters,
+            data_centers = data_centers,
+            horizon = horizon,
+        )
     winds, NW = generate_wind_scenarios_from_system(sys, wind_frequency_parameters, 1, NT; bus_to_idx = bus_to_index, scenario_limit = scenario_limit)
     NS = Int64(winds.scenarios_nums)
     return (
@@ -671,7 +729,7 @@ function _load_native_powersystems_system(sys::System; scenario_limit::Int64, fr
         loads = loads,
         winds = winds,
         psses = psses,
-        data_center_units = data_center_data,
+        data_centers = data_center_data,
         NB = NB,
         NG = NG,
         NL = NL,

@@ -12,8 +12,6 @@ PRINT_BOUNDARY_CONDITION = true
 BOUNDARY_SHOW_PLOTS = false
 
 [common]
-# Force text-mode output paths where plotting or rich display is optional.
-JULIA_SHOW_ASCII = true
 # Legacy global BESS switch retained for backward compatibility.
 CONSIDER_BESS = 0
 # Use DRO scenario probabilities in the extensive-form benchmark when enabled.

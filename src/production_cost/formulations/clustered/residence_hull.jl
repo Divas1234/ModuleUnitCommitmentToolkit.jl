@@ -139,6 +139,7 @@ if !isdefined(@__MODULE__, :_PCM_RESIDENCE_HULL_INCLUDED)
 					previous=t==1 ? initial[k] : B[k, t-1]
 					@constraint(m, sum(A[k, l, t] for l ∈ 1:K)+SD[k, t]==previous)
 					@constraint(m, sum(A[l, k, t] for l ∈ 1:K)+SU[k, t]==B[k, t])
+					(levels[k] < pmin - tolerance || levels[k] > pmax + tolerance) && @constraint(m, B[k, t] == 0)
 					levels[k]>dr+tolerance && @constraint(m, SD[k, t]==0)
 					levels[k]>sr+tolerance && @constraint(m, SU[k, t]==0)
 				end
@@ -204,6 +205,7 @@ if !isdefined(@__MODULE__, :_PCM_RESIDENCE_HULL_INCLUDED)
 					incoming=a==1 ? SU[l,t] : sum(F[a-1,k,l,t] for k ∈ 1:K)
 					a==L && (incoming += sum(F[L,k,l,t] for k ∈ 1:K))
 					@constraint(m,ON[a,l,t]==incoming)
+					(levels[l] < pmin - tolerance || levels[l] > pmax + tolerance) && @constraint(m, ON[a, l, t] == 0)
 				end
 				for k ∈ 1:K
 					levels[k]>sr+tolerance && @constraint(m,SU[k,t]==0)

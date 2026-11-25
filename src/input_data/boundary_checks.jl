@@ -337,10 +337,18 @@ function boundrycondition(
         _print_df(dc_df; title = "Data Center Sites (ND2=$(length(data_centers.index)))")
 
         task_matrix = data_centers.computational_power_tasks
-        n_rows, n_cols = size(task_matrix)
+        n_dc = length(data_centers.index)
+        oriented = if size(task_matrix, 1) == NT
+            task_matrix
+        elseif size(task_matrix, 2) == NT && size(task_matrix, 1) == n_dc
+            permutedims(task_matrix)
+        else
+            task_matrix
+        end
+        n_rows, n_cols = size(oriented)
         task_df = DataFrame(hour = collect(1:n_rows))
         for j in 1:n_cols
-            task_df[!, Symbol("task_$(j)")] = _round4.(vec(task_matrix[:, j]))
+            task_df[!, Symbol("task_$(j)")] = _round4.(vec(oriented[:, j]))
         end
         _print_df(task_df; title = "Computational Power Tasks ($(n_rows) x $(n_cols))", allcols = (n_cols <= 10))
     end
@@ -366,29 +374,38 @@ function boundary_condition(args...; kwargs...)
 end
 
 function plt_unicodeplot(winds = nothing, loads = nothing, flag = 0)
-    xdata = collect(1:1:24)
+    if !isdefined(@__MODULE__, :lineplot)
+        series = flag == 0 ? winds.scenarios_curve[1, :] : loads.load_curve[1, :]
+        label = flag == 0 ? "wind scenario 1" : "load 1"
+        return "[UnicodePlots not loaded] $(label): len=$(length(series)), min=$(round(minimum(series); digits = 4)), max=$(round(maximum(series); digits = 4))"
+    end
+    lp = getfield(@__MODULE__, :lineplot)
+    lp! = getfield(@__MODULE__, :lineplot!)
     if flag == 0
         NS = size(winds.scenarios_curve, 1)
-        plt = lineplot(
+        nt = size(winds.scenarios_curve, 2)
+        xdata = collect(1:nt)
+        plt = lp(
             xdata,
             winds.scenarios_curve[1, :];
             height = 10,
-            xlim = (0, 25),
+            xlim = (0, nt + 1),
             title = "stochastic realization of renewable resource",
             name = "wind farms",
             xlabel = "t / h",
             ylabel = "output / p.u.",
         )
         for i in 2:NS
-            lineplot!(plt, xdata, winds.scenarios_curve[i, :])
+            lp!(plt, xdata, winds.scenarios_curve[i, :])
         end
     else
-        # ND = size( loads.load_curve,1)
-        plt = lineplot(
+        nt = size(loads.load_curve, 2)
+        xdata = collect(1:nt)
+        plt = lp(
             xdata,
             loads.load_curve[1, :];
             height = 10,
-            xlim = (0, 25),
+            xlim = (0, nt + 1),
             title = "sequential demand curve",
             name = "loads",
             xlabel = "t / h",

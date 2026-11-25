@@ -282,7 +282,9 @@ end
 
 # TODO
 function check_var_alignment_with_constraints(current_model, constr, NG, NT, dec_symbol)
-    g, t = 2, 2
+    g = min(2, NG)
+    t = min(2, NT)
+    (NG < 1 || NT < 1 || isempty(constr)) && return nothing, nothing
     if dec_symbol == "u"
         target_var = current_model[:u][g, t]
     elseif dec_symbol == "v"
@@ -292,14 +294,18 @@ function check_var_alignment_with_constraints(current_model, constr, NG, NT, dec
     end
     _, sort_order_1, is_included_in_current_constr_1 = get_index_in_constraint(target_var, current_model, constr, NG, NT, g, t, -2)
 
-    if dec_symbol == "u"
-        target_var = current_model[:u][g, t - 1]
-    elseif dec_symbol == "v"
-        target_var = current_model[:v][g, t - 1]
-    elseif dec_symbol == "x"
-        target_var = current_model[:x][g, t - 1]
+    is_included_in_current_constr_2 = false
+    sort_order_2 = nothing
+    if t >= 2
+        if dec_symbol == "u"
+            target_var = current_model[:u][g, t - 1]
+        elseif dec_symbol == "v"
+            target_var = current_model[:v][g, t - 1]
+        elseif dec_symbol == "x"
+            target_var = current_model[:x][g, t - 1]
+        end
+        _, sort_order_2, is_included_in_current_constr_2 = get_index_in_constraint(target_var, current_model, constr, NG, NT, g, t, -2)
     end
-    _, sort_order_2, is_included_in_current_constr_2 = get_index_in_constraint(target_var, current_model, constr, NG, NT, g, t, -2)
 
     if is_included_in_current_constr_1 || is_included_in_current_constr_2
         alignment_cons = (is_included_in_current_constr_1) ? 0 : 1 # check current variable decision including mode
@@ -313,16 +319,22 @@ end
 
 function get_index_in_constraint(target_var, current_model, constr, NG, NT, g, t, order = -2)
     if order == -2
-        idx = JuMP.index(constr[NG * (t - 1) + g])
-        func = MOI.get(JuMP.backend(current_model), MOI.ConstraintFunction(), idx)
-        f = get_coeff_from_constr(func, target_var)
-
-        if NT * (g - 1) + t < length(constr)
-            im_idx = JuMP.index(constr[NT * (g - 1) + t])
-            im_func = MOI.get(JuMP.backend(current_model), MOI.ConstraintFunction(), im_idx)
-            im_f = get_coeff_from_constr(im_func, target_var)
+        pos0 = NG * (t - 1) + g
+        f = if 1 <= pos0 <= length(constr)
+            idx = JuMP.index(constr[pos0])
+            func = MOI.get(JuMP.backend(current_model), MOI.ConstraintFunction(), idx)
+            get_coeff_from_constr(func, target_var)
         else
-            im_f = nothing
+            nothing
+        end
+
+        pos1 = NT * (g - 1) + t
+        im_f = if 1 <= pos1 <= length(constr)
+            im_idx = JuMP.index(constr[pos1])
+            im_func = MOI.get(JuMP.backend(current_model), MOI.ConstraintFunction(), im_idx)
+            get_coeff_from_constr(im_func, target_var)
+        else
+            nothing
         end
 
         if !isnothing(f) || !isnothing(im_f)

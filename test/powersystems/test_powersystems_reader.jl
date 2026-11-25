@@ -44,12 +44,12 @@
         available = true,
         status = true,
         bus = bus1,
-        active_power = 20.0,
-        reactive_power = 10.0,
-        rating = 60.0,
-        active_power_limits = (min = 10.0, max = 50.0),
-        reactive_power_limits = (min = -20.0, max = 20.0),
-        ramp_limits = (up = 15.0, down = 15.0),
+        active_power = 0.20,
+        reactive_power = 0.10,
+        rating = 0.60,
+        active_power_limits = (min = 0.10, max = 0.50),
+        reactive_power_limits = (min = -0.20, max = 0.20),
+        ramp_limits = (up = 0.15, down = 0.15),
         operation_cost = ThermalGenerationCost(nothing),
         base_power = 100.0,
         time_limits = (up = 4.0, down = 4.0),
@@ -69,7 +69,7 @@
         x = 0.1,
         b = (from = 0.0, to = 0.0),
         g = (from = 0.0, to = 0.0),
-        rating = 40.0,
+        rating = 0.40,
         angle_limits = (min = -1.5, max = 1.5),
     )
     add_component!(sys, line1; skip_validation = true)
@@ -78,11 +78,11 @@
         name = "Load1",
         available = true,
         bus = bus2,
-        active_power = 25.0,
-        reactive_power = 15.0,
+        active_power = 0.25,
+        reactive_power = 0.15,
         base_power = 100.0,
-        max_active_power = 30.0,
-        max_reactive_power = 18.0,
+        max_active_power = 0.30,
+        max_reactive_power = 0.18,
     )
     add_component!(sys, load1; skip_validation = true)
 
@@ -92,13 +92,13 @@
         bus = bus1,
         prime_mover_type = PrimeMovers.BA,
         storage_technology_type = StorageTech.OTHER_CHEM,
-        storage_capacity = 20.0,
-        storage_level_limits = (min = 2.0, max = 20.0),
-        initial_storage_capacity_level = 10.0,
-        rating = 10.0,
+        storage_capacity = 0.20,
+        storage_level_limits = (min = 0.10, max = 1.0),
+        initial_storage_capacity_level = 0.50,
+        rating = 0.10,
         active_power = 0.0,
-        input_active_power_limits = (min = 0.0, max = 10.0),
-        output_active_power_limits = (min = 0.0, max = 10.0),
+        input_active_power_limits = (min = 0.0, max = 0.10),
+        output_active_power_limits = (min = 0.0, max = 0.10),
         efficiency = (in = 0.9, out = 0.9),
         reactive_power = 0.0,
         reactive_power_limits = nothing,
@@ -110,9 +110,9 @@
         name = "Wind1",
         available = true,
         bus = bus1,
-        active_power = 5.0,
+        active_power = 0.05,
         reactive_power = 0.0,
-        rating = 15.0,
+        rating = 0.15,
         prime_mover_type = PrimeMovers.WT,
         reactive_power_limits = nothing,
         power_factor = 1.0,
@@ -255,7 +255,7 @@
         # Storage
         @test storages.locatebus == [1]
         @test storages.Q_max == [20.0 / 100.0]
-        @test storages.Q_min == [2.0 / 100.0]
+        @test storages.Q_min ≈ [2.0 / 100.0]
         @test storages.p⁺ == [10.0 / 100.0]
         @test storages.p⁻ == [10.0 / 100.0]
         @test storages.P₀ == [8.0 / 100.0]

@@ -18,15 +18,18 @@ end
 DecisionNode(val::Float64) = DecisionNode(0, 0.0, val, nothing, nothing)
 
 # In-memory global model reference
+const _PREDICTOR_LOCK = ReentrantLock()
 const GLOBAL_MODEL = Ref{Union{DecisionNode, Nothing}}(nothing)
 const TRAINING_CACHE_ROOT = Ref{Union{Nothing, String}}(nothing)
 const EXPECTED_TRAINING_METADATA = Ref{Any}(nothing)
 
 function configure_training_cache!(cache_root::AbstractString, expected_metadata::AbstractDict)
-    TRAINING_CACHE_ROOT[] = String(cache_root)
-    EXPECTED_TRAINING_METADATA[] = Dict{String, String}(String(key) => string(value) for (key, value) ∈ expected_metadata)
-    GLOBAL_MODEL[] = nothing
-    nothing
+    lock(_PREDICTOR_LOCK) do
+        TRAINING_CACHE_ROOT[] = String(cache_root)
+        EXPECTED_TRAINING_METADATA[] = Dict{String, String}(String(key) => string(value) for (key, value) in expected_metadata)
+        GLOBAL_MODEL[] = nothing
+    end
+    return nothing
 end
 
 # Predict using a DecisionNode
@@ -44,6 +47,7 @@ end
 # Fit a Decision Tree recursively
 function fit_tree(X::Matrix{Float64}, Y::Vector{Float64}, depth::Int; max_depth::Int = 3, min_samples::Int = 4)::DecisionNode
     n_samples, n_features = size(X)
+    n_samples > 0 || throw(ArgumentError("Cannot fit decision tree on empty training set."))
 
     # Base cases: leaf node conditions
     if depth >= max_depth || n_samples < min_samples || all(Y .== Y[1])
@@ -57,13 +61,13 @@ function fit_tree(X::Matrix{Float64}, Y::Vector{Float64}, depth::Int; max_depth:
     best_right_idx = Int[]
 
     # Scan all features and thresholds to minimize sum of squared errors
-    for f ∈ 1:n_features
+    for f in 1:n_features
         feat_vals = X[:, f]
         unique_vals = unique(feat_vals)
         sort!(unique_vals)
 
         # Test split thresholds at midpoints
-        for i ∈ 1:(length(unique_vals) - 1)
+        for i in 1:(length(unique_vals) - 1)
             thresh = (unique_vals[i] + unique_vals[i + 1]) / 2.0
 
             left_idx = findall(v -> v <= thresh, feat_vals)
@@ -110,7 +114,7 @@ function print_tree(node::DecisionNode, feature_names::Vector{String}, indent::S
     print(indent, "  L: ")
     print_tree(node.left, feature_names, indent * "    ")
     print(indent, "  R: ")
-    print_tree(node.right, feature_names, indent * "    ")
+    return print_tree(node.right, feature_names, indent * "    ")
 end
 
 # Train the CART decision tree from the generated CSV
@@ -131,26 +135,27 @@ function train_model(csv_path::String; max_depth::Int = 3, min_samples::Int = 4)
         error("Training dataset is missing required columns: $(join(missing_cols, ", "))")
     end
 
-    # Extract X (features) and Y (target optimal overlap)
-    X = Matrix{Float64}(df[:, feature_names])
-    Y = Vector{Float64}(df.To_star)
-
-    finite_rows = [all(isfinite, X[i, :]) && isfinite(Y[i]) for i ∈ eachindex(X[:, 1])]
-    X = X[finite_rows, :]
-    Y = Y[finite_rows]
-    if length(Y) < min_samples
-        error("Training dataset has only $(length(Y)) valid rows; at least $min_samples are required.")
+    # Extract X (features) and Y (target optimal overlap), filtering missing/non-finite rows before Float64 conversion
+    required_cols = [feature_names; ["To_star"]]
+    complete_rows = [all(col -> !ismissing(df[i, col]) && df[i, col] isa Real && isfinite(Float64(df[i, col])), required_cols) for i in 1:nrow(df)]
+    df_valid = df[complete_rows, :]
+    if nrow(df_valid) < min_samples
+        error("Training dataset has only $(nrow(df_valid)) valid rows; at least $min_samples are required.")
     end
+    X = Matrix{Float64}(df_valid[:, feature_names])
+    Y = Vector{Float64}(df_valid.To_star)
 
     # Fit the CART tree
     tree = fit_tree(X, Y, 0; max_depth = max_depth, min_samples = min_samples)
-    GLOBAL_MODEL[] = tree
+    lock(_PREDICTOR_LOCK) do
+        GLOBAL_MODEL[] = tree
+    end
 
     println("Model training complete. Trained Tree Structure:")
     print_tree(tree, feature_names)
 
     # Evaluate R^2 score
-    Y_pred = [predict_tree(tree, X[i, :]) for i ∈ eachindex(X[:, 1])]
+    Y_pred = [predict_tree(tree, X[i, :]) for i in eachindex(X[:, 1])]
     y_mean = mean(Y)
     ss_tot = sum((Y .- y_mean) .^ 2)
     ss_res = sum((Y .- Y_pred) .^ 2)
@@ -160,38 +165,30 @@ function train_model(csv_path::String; max_depth::Int = 3, min_samples::Int = 4)
     return tree
 end
 
-# Pre-trained fallback model structure based on typical 118-bus power system rules
-# Features: [U_norm = 1, T_dwell_rem = 2, L_norm = 3, sigma_load = 4,
-# R_wind_max = 5, X_delta_norm = 6, X_switch_ratio = 7]
-function get_fallback_tree()::DecisionNode
-    # Split on L_norm <= 0.18
-    #   Left: prediction 6.0
-    #   Right: split on R_wind_max <= 0.05
-    #     Right-Left: prediction 8.0
-    #     Right-Right: prediction 10.0
-    right_right = DecisionNode(10.0)
-    right_left = DecisionNode(8.0)
-    right_node = DecisionNode(5, 0.05, 0.0, right_left, right_right)
-    left_node = DecisionNode(6.0)
-
-    return DecisionNode(3, 0.18, 0.0, left_node, right_node)
-end
-
 # Loader helper
 function _configured_dataset_path(csv_path::AbstractString)
-    expected = EXPECTED_TRAINING_METADATA[]
+    expected, configured_root = lock(_PREDICTOR_LOCK) do
+        EXPECTED_TRAINING_METADATA[], TRAINING_CACHE_ROOT[]
+    end
     expected === nothing && return isfile(csv_path) ? csv_path : nothing
-    cache_root = TRAINING_CACHE_ROOT[] === nothing ? dirname(csv_path) : TRAINING_CACHE_ROOT[]
-    cached = AdaptiveOverlapTrainingCache.load_cached_dataset(cache_root; expected_metadata = expected,
+    cache_root = configured_root === nothing ? dirname(csv_path) : configured_root
+    cached = AdaptiveOverlapTrainingCache.load_cached_dataset(
+        cache_root;
+        expected_metadata = expected,
         required_columns = [:U_norm, :T_dwell_rem, :L_norm, :sigma_load, :R_wind_max, :X_delta_norm, :X_switch_ratio, :To_star],
-        min_samples = 4)
-    cached === nothing ? nothing : AdaptiveOverlapTrainingCache.cache_paths(cache_root, expected).dataset_path
+        min_samples = 4,
+    )
+    return cached === nothing ? nothing : AdaptiveOverlapTrainingCache.cache_paths(cache_root, expected).dataset_path
 end
 
-function load_trained_model_or_fallback(csv_path::String = normpath(joinpath(
-        @__DIR__, "..", "..", "..", "..", "output", "details_schedule_results", "offline_training_dataset.csv")))
-    if GLOBAL_MODEL[] !== nothing
-        return GLOBAL_MODEL[]
+function load_trained_model_or_fallback(
+    csv_path::String = normpath(joinpath(@__DIR__, "..", "..", "..", "..", "output", "details_schedule_results", "offline_training_dataset.csv")),
+)
+    existing = lock(_PREDICTOR_LOCK) do
+        GLOBAL_MODEL[]
+    end
+    if existing !== nothing
+        return existing
     end
 
     dataset_path = _configured_dataset_path(csv_path)
@@ -209,6 +206,7 @@ end
 
 # Inline inference function
 function predict_overlap(features::Vector{Float64}; min_overlap::Int = 2, max_overlap::Int = 12)::Int
+    all(isfinite, features) || throw(ArgumentError("ML overlap features contain non-finite values: $features"))
     model = load_trained_model_or_fallback()
     pred_val = predict_tree(model, features)
     if !isfinite(pred_val)

@@ -2,15 +2,18 @@ function add_optimitycut_constraints!(scuc_masterproblem::JuMP.Model, sub_model_
     x⁽⁰⁾ = iter_value[1]
     u⁽⁰⁾ = iter_value[2]
     v⁽⁰⁾ = iter_value[3]
-    add_optimity_cut = @constraint(
+    cut_expr = @expression(
         scuc_masterproblem,
-        scuc_masterproblem[:θ] >=
         ret.θ + sum(
             ret.ray_x .* (scuc_masterproblem[:x] - x⁽⁰⁾) +
             ret.ray_u .* (scuc_masterproblem[:u] - u⁽⁰⁾) +
             ret.ray_v .* (scuc_masterproblem[:v] - v⁽⁰⁾),
         )
     )
+    if isdefined(@__MODULE__, :add_storage_reduced_cost_terms!)
+        cut_expr = add_storage_reduced_cost_terms!(cut_expr, scuc_masterproblem, ret, Int64(get(ret, :scenario_id, 1)))
+    end
+    add_optimity_cut = @constraint(scuc_masterproblem, scuc_masterproblem[:θ] >= cut_expr)
     return scuc_masterproblem, add_optimity_cut
 end
 
@@ -18,15 +21,18 @@ function add_feasibilitycut_constraints!(scuc_masterproblem::JuMP.Model, sub_mod
     x⁽⁰⁾ = iter_value[1]
     u⁽⁰⁾ = iter_value[2]
     v⁽⁰⁾ = iter_value[3]
-
-    add_feasibility_cut = @constraint(
+    cut_expr = @expression(
         scuc_masterproblem,
         ret.dual_θ + sum(
             ret.ray_x .* (scuc_masterproblem[:x] - x⁽⁰⁾) +
             ret.ray_u .* (scuc_masterproblem[:u] - u⁽⁰⁾) +
             ret.ray_v .* (scuc_masterproblem[:v] - v⁽⁰⁾),
-        ) <= 0
+        )
     )
+    if isdefined(@__MODULE__, :add_storage_reduced_cost_terms!)
+        cut_expr = add_storage_reduced_cost_terms!(cut_expr, scuc_masterproblem, ret, Int64(get(ret, :scenario_id, 1)))
+    end
+    add_feasibility_cut = @constraint(scuc_masterproblem, cut_expr <= 0)
 
     return scuc_masterproblem, add_feasibility_cut
 end

@@ -15,6 +15,7 @@ using CSV
             "PCM_LOAD_PROFILE" => "baseline",
             "PCM_SOLVER" => "auto",
             "PCM_OVERLAP_MODE" => "decay",
+            "PCM_SOLVER_TIME_LIMIT_SECONDS" => "30",
             "MODULE_UC_DATA_FILE" => joinpath(project_root, "data", "data_118.xlsx")
         ) do
             # Test that main.jl executes without error

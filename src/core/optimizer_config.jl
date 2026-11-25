@@ -143,6 +143,16 @@ end
 Apply explicit `SolverOptions` to `model` using backend-safe attribute setters,
 falling back to the caller-supplied defaults only for fields left `nothing`.
 """
+function _uc_set_moi_attribute!(model::Model, attr, value)
+    try
+        set_attribute(model, attr, value)
+        return true
+    catch err
+        @debug "Skipping unsupported MOI attribute" attr value err
+        return false
+    end
+end
+
 function apply_solver_options!(
     model::Model,
     options::Union{Nothing, SolverOptions};
@@ -156,22 +166,33 @@ function apply_solver_options!(
 
     mip_gap = (options !== nothing && options.mip_gap !== nothing) ? options.mip_gap : default_mip_gap
     if mip_gap !== nothing
-        uc_set_optimizer_attribute!(model, "MIPGap", Float64(mip_gap))
-        uc_set_optimizer_attribute!(model, "mip_gap", Float64(mip_gap))
+        if !_uc_set_moi_attribute!(model, MOI.RelativeGapTolerance(), Float64(mip_gap))
+            uc_set_optimizer_attribute!(model, "MIPGap", Float64(mip_gap))
+            uc_set_optimizer_attribute!(model, "mip_gap", Float64(mip_gap))
+            uc_set_optimizer_attribute!(model, "mip_rel_gap", Float64(mip_gap))
+        end
     end
 
     threads = (options !== nothing && options.threads !== nothing) ? options.threads : default_threads
     if threads !== nothing && threads > 0
-        uc_set_optimizer_attribute!(model, "Threads", Int(threads))
+        if !_uc_set_moi_attribute!(model, MOI.NumberOfThreads(), Int(threads))
+            uc_set_optimizer_attribute!(model, "Threads", Int(threads))
+            uc_set_optimizer_attribute!(model, "threads", Int(threads))
+        end
     end
 
     time_limit = (options !== nothing && options.time_limit !== nothing) ? options.time_limit : default_time_limit
     if time_limit !== nothing && time_limit > 0
-        uc_set_optimizer_attribute!(model, "TimeLimit", Float64(time_limit))
-        uc_set_optimizer_attribute!(model, "tm_lim", round(Int, Float64(time_limit) * 1000))
+        if !_uc_set_moi_attribute!(model, MOI.TimeLimitSec(), Float64(time_limit))
+            uc_set_optimizer_attribute!(model, "TimeLimit", Float64(time_limit))
+            uc_set_optimizer_attribute!(model, "tm_lim", round(Int, Float64(time_limit) * 1000))
+            uc_set_optimizer_attribute!(model, "time_limit", Float64(time_limit))
+        end
     end
     return model
 end
+
+const _UNSET_SOLVER_OPTIONS = :_unset_solver_options
 
 """
     build_uc_model(; options = current_solver_options(), optimizer = nothing, silent = nothing, attributes = ())
@@ -180,25 +201,27 @@ Construct a JuMP `Model` using the active UC optimizer factory and optional `Sol
 applying backend-safe solver attributes (`MIPGap`, `Threads`, `TimeLimit`).
 """
 function build_uc_model(;
-    options::Union{Nothing, SolverOptions} = current_solver_options(),
+    options = _UNSET_SOLVER_OPTIONS,
     optimizer = nothing,
     silent::Union{Nothing, Bool} = nothing,
     attributes = (),
 )
+    explicit_options = options !== _UNSET_SOLVER_OPTIONS
+    resolved_options::Union{Nothing, SolverOptions} = explicit_options ? options : current_solver_options()
     resolved_opt = if optimizer !== nothing
         optimizer
-    elseif options !== nothing && options.optimizer !== nothing
-        options.optimizer
+    elseif explicit_options && resolved_options !== nothing && resolved_options.optimizer !== nothing
+        resolved_options.optimizer
     else
         default_uc_optimizer()
     end
     model = Model(resolved_opt)
     apply_solver_options!(
         model,
-        options;
+        resolved_options;
         default_silent = silent === nothing ? false : silent,
     )
-    if silent === false && options !== nothing && options.silent
+    if silent === false && resolved_options !== nothing && resolved_options.silent
         unset_silent(model)
     end
     for (attr_name, attr_val) in attributes

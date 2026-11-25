@@ -1,62 +1,8 @@
 """
-using DataStructures
+    get_batch_scuc_subproblems_for_scenario(NT, NB, NL, NG, ND, NC, ND2, NW, units, winds, loads, lines, data_centers, psses, scenarios_prob, config_param)
 
-`get_batch_scuc_subproblems_for_scenario(...)`
-
-Generates a collection of scenario-specific subproblems by cloning a base subproblem
-and updating its right-hand side (RHS) values to reflect different wind power realizations.
-
-# Arguments
-
-  - `scuc_subproblem`: The template JuMP model for the recourse stage.
-  - `sub_model_struct`: Structural metadata for the subproblem.
-  - `winds`: Stochastic wind generation data.
-  - `NS`: Number of scenarios to generate.
-
-# Returns
-
-  - A dictionary mapping scenario IDs to updated `SCUC_Model` structures.
+Build independent per-scenario LP recourse subproblems for multi-cut Benders decomposition.
 """
-function get_batch_scuc_subproblems_for_scenario(
-    scuc_subproblem::Model,
-    sub_model_struct::SCUC_Model,
-    winds::wind,
-    config_param::config,
-    NS::Int64,
-    NT::Int64,
-    NW::Int64,
-)
-
-    # batch_scuc_subproblem_dic = OrderedDict{Int64, Any}()
-    batch_scuc_model_structure_dict = OrderedDict{Int64, SCUC_Model}()
-
-    config_param.consider_multi_cuts == 1 ||
-        throw(ArgumentError("Batch scenario subproblems require config_param.consider_multi_cuts == 1; got $(config_param.consider_multi_cuts)"))
-
-    for s in 1:NS
-        # Deep copy both the JuMP model and the tracking structure to ensure scenario independence
-        ref_subproblem_struct = deepcopy(sub_model_struct)
-        set_optimizer(ref_subproblem_struct.model, default_uc_optimizer())
-        set_silent(ref_subproblem_struct.model)
-
-        # Extract the wind curve for the current scenario
-        scenarios_curve = winds.scenarios_curve[s, :]
-
-        # Update the RHS of wind curtailment constraints in the cloned model
-        modified_model, modified_constr = modify_winds_constr_rhs!(ref_subproblem_struct.model, winds, scenarios_curve, NT, NW)
-
-        # Update internal constraint references after modification
-        ref_subproblem_struct.constraints.winds_curt_constr = modified_constr
-
-        # Ensure the reformatted constraint dictionary (used for Benders cut generation) is synced
-        ref_subproblem_struct.reformated_constraints._smaller_than[:key_winds_curt_constr] = modified_constr
-
-        batch_scuc_model_structure_dict[s] = ref_subproblem_struct
-    end
-
-    return batch_scuc_model_structure_dict
-end
-
 function get_batch_scuc_subproblems_for_scenario(
     NT::Int64,
     NB::Int64,

@@ -57,7 +57,8 @@ function build_hd_linear_cuts(
     D_ceil = res.max_damping_bound
 
     if isempty(res.feasible_indices)
-        return HDLinearCutSet(H_floor, H_ceil, D_floor, D_ceil, Float64[], Float64[], Float64[], Float64[], Float64[], Float64[], 0.0, 0.0)
+        @warn "H-D frequency security region has no feasible (H, D) points; nadir linear cuts cannot be generated."
+        return HDLinearCutSet(H_floor, H_ceil, res.min_damping_demand, D_ceil, Float64[], Float64[], Float64[], Float64[], Float64[], Float64[], 0.0, Inf)
     end
 
     d_pts = res.damping_grid[res.feasible_indices]

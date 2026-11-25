@@ -31,15 +31,17 @@ function build_data_center_response_grid(num_breakpoints::Int, data_center_count
 
     fv2_plus_lb = 0.5 .* (frequency_lb .+ voltage_squared_lb)
     fv2_plus_ub = 0.5 .* (frequency_ub .+ voltage_squared_ub)
-    fv2_minus_lb = 0.5 .* abs.(frequency_lb .- voltage_squared_lb)
-    fv2_minus_ub = 0.5 .* abs.(frequency_ub .- voltage_squared_ub)
+    fv2_minus_lb = zeros(Float64, data_center_count)
+    fv2_minus_ub = 0.5 .* max.(abs.(frequency_ub .- voltage_squared_lb), abs.(voltage_squared_ub .- frequency_lb))
 
+    fv2_lb = frequency_lb .* voltage_squared_lb
+    fv2_ub = frequency_ub .* voltage_squared_ub
     lambda_lb = fill(0.50, data_center_count)
     lambda_ub = fill(1.50, data_center_count)
-    fv2lambda_plus_lb = 0.5 .* (fv2_plus_lb .+ lambda_lb)
-    fv2lambda_plus_ub = 0.5 .* (fv2_plus_ub .+ lambda_ub)
-    fv2lambda_minus_lb = 0.5 .* abs.(fv2_minus_lb .- lambda_lb)
-    fv2lambda_minus_ub = 0.5 .* abs.(fv2_minus_ub .- lambda_ub)
+    fv2lambda_plus_lb = 0.5 .* (fv2_lb .+ lambda_lb)
+    fv2lambda_plus_ub = 0.5 .* (fv2_ub .+ lambda_ub)
+    fv2lambda_minus_lb = zeros(Float64, data_center_count)
+    fv2lambda_minus_ub = 0.5 .* max.(abs.(fv2_ub .- lambda_lb), abs.(lambda_ub .- fv2_lb))
 
     fv2_plus_grid = collect(range(fv2_plus_lb[1], fv2_plus_ub[1]; length = num_breakpoints))
     fv2_minus_grid = collect(range(fv2_minus_lb[1], fv2_minus_ub[1]; length = num_breakpoints))

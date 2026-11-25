@@ -61,7 +61,7 @@ function add_data_center_power_constraints!(
     @constraint(
         model,
         [s = 1:scenario_count, t = 1:time_count, dc = 1:data_center_count],
-        variables.power[(s - 1) * data_center_count + dc, t] >= 0.0
+        variables.power[(s - 1) * data_center_count + dc, t] >= data_centers.p_min[dc]
     )
 
     # Active-response power model from the reference datacentra_uc case:

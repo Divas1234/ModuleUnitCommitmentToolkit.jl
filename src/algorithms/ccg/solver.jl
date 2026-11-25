@@ -82,23 +82,28 @@ function solve_ccg_unit_commitment(;
         evaluation = evaluate_ccg_recourse_pool(data, first_stage)
 
         current_lower_bound = objective_bound(master_model)
-        recourse_costs = [evaluation[s].recourse_cost for s in 1:data.NS]
-        worst_recourse_cost, worst_probability = worst_case_expected_value(
-            recourse_costs,
-            data.dro.nominal_probability,
-            data.dro.enabled ? data.dro.radius : 0.0,
-            data.dro.distance_matrix,
-        )
-        current_upper_bound = first_stage.cost + worst_recourse_cost
+        all_recourse_feasible = all(get(evaluation[s], :is_feasible, true) for s in 1:data.NS)
         best_lower_bound = max(best_lower_bound, current_lower_bound)
-        if current_upper_bound < best_upper_bound
-            best_upper_bound = current_upper_bound
-            best_model = master_model
-            best_evaluation = evaluation
-            best_active_scenarios = copy(selected)
+        if all_recourse_feasible
+            recourse_costs = [evaluation[s].recourse_cost for s in 1:data.NS]
+            worst_recourse_cost, worst_probability = worst_case_expected_value(
+                recourse_costs,
+                data.dro.nominal_probability,
+                data.dro.enabled ? data.dro.radius : 0.0,
+                data.dro.distance_matrix,
+            )
+            current_upper_bound = first_stage.cost + worst_recourse_cost
+            if current_upper_bound < best_upper_bound
+                best_upper_bound = current_upper_bound
+                best_model = master_model
+                best_evaluation = evaluation
+                best_active_scenarios = copy(selected)
+            end
+        else
+            worst_probability = copy(data.dro.nominal_probability)
         end
 
-        gap = abs(best_upper_bound - best_lower_bound) / (abs(best_upper_bound) + numerical_tolerance)
+        gap = isfinite(best_upper_bound) ? abs(best_upper_bound - best_lower_bound) / (abs(best_upper_bound) + numerical_tolerance) : Inf
         inactive_scenarios = setdiff(collect(1:data.NS), selected)
         scenarios_to_add = choose_ccg_scenarios_to_add(evaluation, inactive_scenarios, scenarios_per_iteration, worst_probability)
         push!(
@@ -115,7 +120,8 @@ function solve_ccg_unit_commitment(;
         )
         print_ccg_iteration(iteration, length(selected), best_lower_bound, best_upper_bound, gap, scenarios_to_add)
 
-        if gap <= gap_tolerance || isempty(scenarios_to_add)
+        bounds_consistent = isfinite(best_upper_bound) && best_lower_bound <= best_upper_bound + 1e-4 * (abs(best_upper_bound) + 1.0)
+        if all_recourse_feasible && ((bounds_consistent && gap <= gap_tolerance) || isempty(scenarios_to_add))
             exported_active_scenarios = isempty(best_active_scenarios) ? selected : best_active_scenarios
             cost_summary = export_ccg_schedule_results(best_model, data, exported_active_scenarios)
             println("\n====================================================")
@@ -171,14 +177,15 @@ function export_ccg_schedule_results(model, data, active_scenarios::Vector{Int64
     if model === nothing
         return nothing
     end
-    active_winds = build_ccg_subset_wind(data.winds, active_scenarios, data.full_scenario_probability)
+    active_prob = 1.0 / max(1, length(active_scenarios))
+    active_winds = build_ccg_subset_wind(data.winds, active_scenarios, active_prob)
     return export_solved_uc_model_results(
         model,
         data;
         output_dir = uc_scheduling_output_dir("ccg"),
         winds = active_winds,
         NS = length(active_scenarios),
-        scenarios_prob = data.full_scenario_probability,
+        scenarios_prob = active_prob,
         file_prefix = uc_schedule_file_prefix("ccg", data.NS),
     )
 end
@@ -269,21 +276,21 @@ function load_ccg_data(
 end
 
 function solve_ccg_master(data, selected_scenarios::Vector{Int64})
-    # Build the extensive-form master over only the active scenario subset. The
-    # DRO distance/probability objects are sliced to the same active set so the
-    # objective remains dimensionally consistent.
+    # Build the extensive-form master over only the active scenario subset.
+    # For DRO mode, keep full-pool `nominal_probability` and `distance_matrix`
+    # with epigraph cuts only on `selected_scenarios` so the master remains a
+    # valid lower bound on the full-pool Wasserstein DRO objective.
     active_winds = build_ccg_subset_wind(data.winds, selected_scenarios, data.full_scenario_probability)
-    active_probability = active_nominal_probability(data.dro, selected_scenarios)
-    active_distance = active_wasserstein_distance(data.dro, selected_scenarios)
     model = build_ccg_extensive_model(
         data,
         active_winds,
         length(selected_scenarios),
         data.full_scenario_probability;
-        nominal_probability = active_probability,
+        nominal_probability = data.dro.nominal_probability,
         dro_radius = data.dro.enabled ? data.dro.radius : 0.0,
-        dro_distance_matrix = active_distance,
+        dro_distance_matrix = data.dro.distance_matrix,
         use_dro_objective = data.dro.enabled,
+        selected_scenarios = selected_scenarios,
     )
     optimize!(model)
     uc_require_feasible_solution!(model; context = "CCG master")
@@ -299,6 +306,7 @@ function build_ccg_extensive_model(
     dro_radius::Float64 = 0.0,
     dro_distance_matrix::Matrix{Float64} = zeros(Float64, NS_active, NS_active),
     use_dro_objective::Bool = false,
+    selected_scenarios::Union{Nothing, Vector{Int64}} = nothing,
 )
     # This model is intentionally assembled from the same constraint builders used
     # by Benders. Keeping the algebra shared makes Benders-vs-CCG comparisons about
@@ -323,7 +331,10 @@ function build_ccg_extensive_model(
 
     define_decision_variables!(model, data.NT, data.NG, data.ND, data.NC, data.ND2, NS_active, data.NW, data.config_param)
     if use_dro_objective
-        set_dro_ccg_master_objective!(model, data, NS_active, nominal_probability, dro_radius, dro_distance_matrix)
+        set_dro_ccg_master_objective!(
+            model, data, NS_active, nominal_probability, dro_radius, dro_distance_matrix;
+            selected_scenarios = selected_scenarios,
+        )
     else
         set_objective!(model, data.NT, data.NG, data.ND, data.NW, NS_active, data.units, data.config_param, scenarios_prob, refcost, eachslope)
     end
@@ -365,8 +376,14 @@ function evaluate_ccg_recourse_pool(data, first_stage)
     end
 
     result_vector = Vector{Any}(undef, data.NS)
+    parent_opts = current_solver_options()
+    parent_opt = default_uc_optimizer()
     Threads.@threads for scenario_id in 1:data.NS
-        result_vector[scenario_id] = solve_ccg_single_scenario_recourse(data, first_stage, scenario_id)
+        result_vector[scenario_id] = with_solver_options(parent_opts) do
+            with_uc_optimizer(parent_opt) do
+                solve_ccg_single_scenario_recourse(data, first_stage, scenario_id)
+            end
+        end
     end
     return OrderedDict(scenario_id => result_vector[scenario_id] for scenario_id in 1:data.NS)
 end
@@ -379,8 +396,12 @@ function solve_ccg_single_scenario_recourse(data, first_stage, scenario_id::Int6
     model = build_ccg_recourse_model(data, scenario_winds, 1.0)
     fix_first_stage_commitment!(model, first_stage)
     optimize!(model)
+    status = termination_status(model)
+    if status in (MOI.INFEASIBLE, MOI.INFEASIBLE_OR_UNBOUNDED)
+        return (is_feasible = false, recourse_cost = Inf, objective_bound = Inf, status = status)
+    end
     uc_require_feasible_solution!(model; context = "CCG recourse (scenario $(scenario_id))")
-    return (recourse_cost = objective_value(model), objective_bound = objective_bound(model), status = termination_status(model))
+    return (is_feasible = true, recourse_cost = objective_value(model), objective_bound = objective_bound(model), status = status)
 end
 
 function build_ccg_recourse_model(data, scenario_winds::wind, scenarios_prob::Float64)
@@ -436,7 +457,7 @@ function set_ccg_recourse_objective!(model::Model, data, NS::Int64, scenarios_pr
     wind_curtailment_penalty = uc_wind_curtailment_penalty(data.config_param)
     reserve_cost_positive = 2 * c0
     reserve_cost_negative = 2 * c0
-    refcost, eachslope = linearizationfuelcurve(data.units, data.NG)
+    refcost, eachslope = linearizationfuelcurve(data.units, data.NG; num_segments = data.config_param.num_segments)
 
     x = model[:x]
     pgk = model[:pgₖ]

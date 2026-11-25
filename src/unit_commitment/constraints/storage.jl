@@ -39,8 +39,6 @@ function add_storage_constraints!(scuc::Model, NT, NC, NS, config_param, storage
         Q_max = storages.Q_max
         Q_min = storages.Q_min
         Q_initial = storages.P₀
-        # storages.Q₀
-        P_initial = storages.P₀
         eta_plus = storages.η⁺
         eta_minus = storages.η⁻
 
@@ -51,16 +49,26 @@ function add_storage_constraints!(scuc::Model, NT, NC, NS, config_param, storage
         discharge_power_limit =
             @constraint(scuc, [s = 1:NS, t = 1:NT], pc⁻[((s - 1) * NC + 1):(s * NC), t] .<= p_minus[:, 1] .* κ⁻[((s - 1) * NC + 1):(s * NC), t])
 
-        # coupling limits for adjacent discharge/charge constraints (Ramping for storage)
+        # Inter-period charge/discharge ramping constraints (t >= 2; P₀ is initial SoC energy, not t=0 power)
         charge_ramp_up = @constraint(
             scuc,
-            [s = 1:NS, t = 1:NT],
-            pc⁺[((s - 1) * NC + 1):(s * NC), t] - ((t == 1) ? P_initial[:, 1] : pc⁺[((s - 1) * NC + 1):(s * NC), t - 1]) .<= gamma_plus[:, 1]
+            [s = 1:NS, t = 2:NT],
+            pc⁺[((s - 1) * NC + 1):(s * NC), t] - pc⁺[((s - 1) * NC + 1):(s * NC), t - 1] .<= gamma_plus[:, 1]
         )
         charge_ramp_down = @constraint(
             scuc,
-            [s = 1:NS, t = 1:NT],
-            ((t == 1) ? P_initial[:, 1] : pc⁺[((s - 1) * NC + 1):(s * NC), t - 1]) - pc⁺[((s - 1) * NC + 1):(s * NC), t] .<= gamma_minus[:, 1]
+            [s = 1:NS, t = 2:NT],
+            pc⁺[((s - 1) * NC + 1):(s * NC), t - 1] - pc⁺[((s - 1) * NC + 1):(s * NC), t] .<= gamma_plus[:, 1]
+        )
+        discharge_ramp_up = @constraint(
+            scuc,
+            [s = 1:NS, t = 2:NT],
+            pc⁻[((s - 1) * NC + 1):(s * NC), t] - pc⁻[((s - 1) * NC + 1):(s * NC), t - 1] .<= gamma_minus[:, 1]
+        )
+        discharge_ramp_down = @constraint(
+            scuc,
+            [s = 1:NS, t = 2:NT],
+            pc⁻[((s - 1) * NC + 1):(s * NC), t - 1] - pc⁻[((s - 1) * NC + 1):(s * NC), t] .<= gamma_minus[:, 1]
         )
 
         # Mutual exclusion constraints in charge and discharge states

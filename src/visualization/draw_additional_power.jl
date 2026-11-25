@@ -1,27 +1,31 @@
 using Plots
+using LaTeXStrings
 
 function calculate_sum_additionalpower(units, winds, Sampling_Statue, bess, δf_positor)
     current_Rc = 0.5
-    Sampling_Statue = [1, 1, 0]
-    current_Kg, current_Rg, current_Kw, current_Rw, current_Dw = calculate_diffdynamicparameter(units, winds, Sampling_Statue, 1)
+    thermal_cap = max(sum(units.p_max), eps(Float64))
+    wind_cap = sum(winds.p_max)
+    active_p = units.p_max .* Sampling_Statue
+    current_Kg = sum(units.Kg .* active_p) / thermal_cap
+    valid_rg = [units.Rg[i] > 0 ? active_p[i] / units.Rg[i] : 0.0 for i in eachindex(units.p_max)]
+    current_Rg = sum(valid_rg) > 0 ? thermal_cap / sum(valid_rg) : 1.0
+    current_Kw = isempty(winds.Kw) ? 0.0 : sum(winds.Kw .* winds.p_max) / max(wind_cap, eps(Float64))
+    valid_rw = [winds.Rw[i] > 0 ? winds.p_max[i] / winds.Rw[i] : 0.0 for i in eachindex(winds.p_max)]
+    current_Rw = sum(valid_rw) > 0 ? max(wind_cap, eps(Float64)) / sum(valid_rw) : 1.0
     sum_conventionalunit_power = sum(units.p_max)
-    sum_windfarms_power = sum(winds.p_max)
-    # sum_bess_power = sum(bench_pss_charge_p⁺)
-    ratio_1, ratio_2 = sum_conventionalunit_power / (sum_conventionalunit_power + sum_windfarms_power),
-    sum_windfarms_power / (sum_conventionalunit_power + sum_windfarms_power)
-    conventionalunits_addpower = zeros(1201, 1)
-    windfarms_addpower = zeros(1201, 1)
-    bess_addpower = zeros(1201, 1)
+    sum_windfarms_power = wind_cap
+    total_cap = max(sum_conventionalunit_power + sum_windfarms_power, eps(Float64))
+    ratio_1, ratio_2 = sum_conventionalunit_power / total_cap, sum_windfarms_power / total_cap
+    n_steps = size(δf_positor, 1)
+    conventionalunits_addpower = zeros(n_steps, 1)
+    windfarms_addpower = zeros(n_steps, 1)
+    bess_addpower = zeros(n_steps, 1)
 
-    for t in 1:1201
+    for t in 1:n_steps
         conventionalunits_addpower[t, 1] = 0.5 * current_Kg / current_Rg * δf_positor[t, 1] * ratio_1 / 100 * 2
         windfarms_addpower[t, 1] = current_Kw / current_Rw * δf_positor[t, 1] * ratio_2 / 100 * 2
         bess_addpower[t, 1] = 0.5 * 1 / current_Rc * δf_positor[t, 1] / 100 * 2
     end
-
-    # Plots.plot(conventionalunits_addpower)
-    # Plots.plot!(windfarms_addpower)
-    # Plots.plot!(bess_addpower)
 
     return conventionalunits_addpower, windfarms_addpower, bess_addpower
 end

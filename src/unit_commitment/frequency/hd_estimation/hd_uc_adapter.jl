@@ -42,6 +42,7 @@ function extract_uc_hd_parameters(
         "FREQUENCY_HD_CONVERTER_ENABLED",
         true,
     ),
+    use_env_contingency_override::Bool = true,
     area_id::Int = 1,
 )
     NG = length(units.index)
@@ -74,7 +75,7 @@ function extract_uc_hd_parameters(
     D_vsm = wind_support.damping / sum_apparent_power
     K_conv = wind_support.primary / sum_apparent_power
 
-    contingency_mw = frequency_contingency_size(units, Δp_contingency)
+    contingency_mw = frequency_contingency_size(units, Δp_contingency; use_env_override = use_env_contingency_override)
     delta_p_pu = contingency_mw / sum_apparent_power
 
     # Ensure damping search range covers both fleet damping capability and QSS minimum damping
@@ -145,6 +146,9 @@ function add_hd_frequency_constraints!(
     x = scuc[:x]
     hd_params = extract_uc_hd_parameters(units, winds, Δp_contingency)
     hd_region = assess_hd_frequency_region(hd_params)
+    isempty(hd_region.feasible_indices) && throw(
+        ArgumentError("H-D frequency security region is infeasible for the configured contingency and nadir/RoCoF/QSS limits."),
+    )
     max_cuts = max(1, floor(Int, frequency_env_float("FREQUENCY_HD_MAX_CUTS", 6.0)))
     cuts = build_hd_linear_cuts(hd_region; max_cuts = max_cuts)
 
@@ -233,8 +237,11 @@ function add_hd_frequency_constraints!(
     end
 
     fcr_threshold = frequency_env_float("FREQUENCY_FCR_THRESHOLD", 0.025)
-    qss_constr =
-        add_qss_frequency_constraints!(scuc, NT, NG, NS, units, x, hd_params.qss_limit_hz)
+    contingency_mw = hd_params.delta_p_pu * sum_apparent_power
+    qss_constr = add_qss_frequency_constraints!(
+        scuc, NT, NG, NS, units, x, hd_params.qss_limit_hz;
+        contingency = contingency_mw, f0_hz = hd_params.f0_hz,
+    )
     sfr_constr = add_sfr_reserve_constraints!(
         scuc,
         NT,
@@ -323,7 +330,13 @@ function extract_uc_hd_parameters_by_area(
         area_units = _slice_units_for_area(units, u_idx)
         area_winds = _slice_winds_for_area(winds, w_idx)
         area_dp = Δp_contingency isa AbstractDict ? Δp_contingency[a] : Δp_contingency
-        params_by_area[a] = extract_uc_hd_parameters(area_units, area_winds, area_dp; area_id = a, kwargs...)
+        is_explicit_dict = Δp_contingency isa AbstractDict
+        params_by_area[a] = extract_uc_hd_parameters(
+            area_units, area_winds, area_dp;
+            area_id = a,
+            use_env_contingency_override = !is_explicit_dict,
+            kwargs...,
+        )
     end
     return params_by_area
 end
@@ -362,6 +375,9 @@ function add_multi_area_hd_frequency_constraints!(
         area_units = _slice_units_for_area(units, u_idx)
         area_winds = _slice_winds_for_area(winds, w_idx)
         hd_region = assess_hd_frequency_region(hd_params)
+        isempty(hd_region.feasible_indices) && throw(
+            ArgumentError("H-D frequency security region is infeasible for area $(a)."),
+        )
         cuts = build_hd_linear_cuts(hd_region; max_cuts = max_cuts)
         s_base = frequency_sum_apparent_power(area_units, area_winds)
 
@@ -384,6 +400,33 @@ function add_multi_area_hd_frequency_constraints!(
             @constraint(scuc, [t = 1:NT], H_sync_a[t] <= cuts.H_max_sync) : nothing
         upper_d = enforce_upper && isfinite(cuts.D_max_sync) ?
             @constraint(scuc, [t = 1:NT], D_sync_a[t] <= cuts.D_max_sync) : nothing
+        hd_upper_c = (enforce_upper && !isempty(cuts.alpha_upper)) ?
+            @constraint(scuc, [m = 1:length(cuts.alpha_upper), t = 1:NT], H_sync_a[t] - cuts.beta_upper[m] * D_sync_a[t] <= cuts.alpha_upper[m]) :
+            nothing
+        fcr_threshold = frequency_env_float("FREQUENCY_FCR_THRESHOLD", 0.025)
+        qss_c = if haskey(JuMP.object_dictionary(scuc), :sr⁺)
+            sr_pos = scuc[:sr⁺]
+            damping_pu = hd_params.qss_limit_hz / max(hd_params.f0_hz, eps(Float64))
+            @constraint(
+                scuc,
+                [s = 1:NS, t = 1:NT],
+                sum(sr_pos[(s - 1) * NG + i, t] for i in u_idx) +
+                sum(safe_frequency_coeff(units.Dg, i) * safe_frequency_coeff(units.p_max, i) * x[i, t] for i in u_idx) * damping_pu >=
+                hd_params.delta_p_pu * s_base
+            )
+        else
+            nothing
+        end
+        sfr_c = if haskey(JuMP.object_dictionary(scuc), :sr⁺)
+            sr_pos = scuc[:sr⁺]
+            @constraint(
+                scuc,
+                [s = 1:NS, t = 1:NT, i = u_idx],
+                sr_pos[(s - 1) * NG + i, t] >= unit_primary_response_coeff(units, i) * hd_params.nadir_limit_hz * fcr_threshold * x[i, t]
+            )
+        else
+            nothing
+        end
         results[a] = (
             area_id = a,
             unit_indices = u_idx,
@@ -396,6 +439,9 @@ function add_multi_area_hd_frequency_constraints!(
             nadir = nadir_c,
             inertia_upper = upper_h,
             damping_upper = upper_d,
+            hd_upper = hd_upper_c,
+            qss = qss_c,
+            sfr = sfr_c,
         )
     end
     return results

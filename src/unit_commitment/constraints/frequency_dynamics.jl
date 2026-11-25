@@ -41,7 +41,7 @@ function add_frequency_constraints!(scuc::Model, NT, NG, NC, NS, units, storages
     nadir_inertia_term = @expression(
         scuc,
         [t = 1:NT],
-        (sum(safe_frequency_coeff(units.Hg, i) * safe_frequency_coeff(units.p_max, i) * x[i, t] for i in 1:NG) + wind_capacity_support.inertia) /
+        (sum(safe_frequency_coeff(units.Hg, i) * safe_frequency_coeff(units.p_max, i) * x[i, t] for i in 1:NG) + 0.5 * wind_capacity_support.inertia) /
         sum_apparent_power
     )
     nadir_fg_response_term = @expression(
@@ -58,7 +58,7 @@ function add_frequency_constraints!(scuc::Model, NT, NG, NC, NS, units, storages
     rocof_constr = @constraint(
         scuc,
         [s = 1:NS, t = 1:NT],
-        wind_capacity_support.inertia + 2.0 * thermal_inertia[t] >= contingency * frequency_base_hz / rocof_limit_hz_per_s * sum_apparent_power
+        wind_capacity_support.inertia + 2.0 * thermal_inertia[t] >= contingency * frequency_base_hz / rocof_limit_hz_per_s
     )
     nadir_constr = @constraint(
         scuc,
@@ -68,7 +68,7 @@ function add_frequency_constraints!(scuc::Model, NT, NG, NC, NS, units, storages
         nadir_coefficients[k, 3] * nadir_primary_term[t] +
         nadir_coefficients[k, 4] <= frequency_nadir_limit * imbalance_scaling
     )
-    qss_constr = add_qss_frequency_constraints!(scuc, NT, NG, NS, units, x, qss_limit_hz)
+    qss_constr = add_qss_frequency_constraints!(scuc, NT, NG, NS, units, x, qss_limit_hz; contingency = contingency, f0_hz = frequency_base_hz)
     sfr_constr = add_sfr_reserve_constraints!(scuc, NT, NG, NS, units, x, frequency_nadir_limit, fcr_threshold)
 
     println("\t constraints: 13) frequency control constraints\t\t\t done")

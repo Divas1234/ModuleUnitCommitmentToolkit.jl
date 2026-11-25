@@ -36,6 +36,8 @@ function _normalize_solver_algorithm(algorithm)
     return _UC_ALGORITHM_ALIASES[name]
 end
 
+const _UC_CONTEXT_LOCK = ReentrantLock()
+
 const _EXTRA_CALIBRATION_KEYS = Set{String}([
     "BENCHMARK_UC_USE_DRO",
     "DATA_CENTER_NUM_SOS",
@@ -51,6 +53,14 @@ const _EXTRA_CALIBRATION_KEYS = Set{String}([
     "PCM_INTERVALS",
     "PCM_WINDOW_HOURS",
     "PCM_PERFORMANCE_MODE",
+    "PCM_NETWORK_CONSTRAINTS",
+    "PCM_RANDOM_SEED",
+    "PCM_INTEGRATED_HORIZON_HOURS",
+    "PCM_MIP_GAP",
+    "PCM_SOLVER_THREADS",
+    "PCM_SOLVER_TIME_LIMIT_SECONDS",
+    "PCM_OVERLAP_MODE",
+    "PCM_TRAINING_FORMULATION",
 ])
 
 const _CALIBRATION_KEY_SUGGESTIONS = Dict{String, String}(
@@ -105,10 +115,14 @@ end
 function _run_with_uc_context(fn::Function, calibration, output_dir; detailed::Bool = false)
     overrides = _calibration_pairs(calibration)
     output_dir === nothing || push!(overrides, "MODULE_UC_OUTPUT_DIR" => String(output_dir))
-    detailed && push!(overrides, "PRINT_BOUNDARY_CONDITION" => "1")
+    if detailed && !any(first(p) == "PRINT_BOUNDARY_CONDITION" for p in overrides)
+        push!(overrides, "PRINT_BOUNDARY_CONDITION" => "1")
+    end
     isempty(overrides) && return fn()
-    return withenv(overrides...) do
-        return fn()
+    return lock(_UC_CONTEXT_LOCK) do
+        withenv(overrides...) do
+            return fn()
+        end
     end
 end
 
@@ -212,6 +226,18 @@ end
 
 function _solve_benders_unified(request::UCSolveRequest)
     input = request.input
+    if uc_env_bool("BENDERS_FAST_DIRECT_SOLVE", false)
+        fast_request = UCSolveRequest(
+            :benchmark,
+            request.input,
+            request.calibration,
+            request.output_dir,
+            request.verbosity,
+            request.optimizer,
+            request.solver_options,
+        )
+        return _solve_uc_selected(fast_request)
+    end
     setup = build_benders_setup(;
         input = input.source,
         scenario_limit = input.scenario_limit,
@@ -227,6 +253,7 @@ function _solve_benders_unified(request::UCSolveRequest)
         data_file = input.data_file,
     )
 
+    jensen_sub = uc_env_bool("BENDERS_ENABLE_JENSEN_CUT", false) ? setup.jensen_subproblem_struct : nothing
     decomposition_result = multiple_benders_decomposition_scuc(
         setup.master_model,
         setup.sub_model,
@@ -238,7 +265,8 @@ function _solve_benders_unified(request::UCSolveRequest)
         setup.NT,
         length(setup.winds.index),
         setup.ND,
-        setup.NL,
+        setup.NL;
+        jensen_subproblem_struct = jensen_sub,
     )
     if setup.config_param.consider_frequency_control == 1 &&
        frequency_model_mode() in (:hd_region, :hybrid) &&
@@ -291,6 +319,7 @@ function _solve_uc_selected(request::UCSolveRequest)
                     horizon = input.horizon,
                 )
             else
+                input.sys === nothing && throw(ArgumentError("sys or case_name is required when input=:powersystems"))
                 return solve_benchmark_uc_powersystems(
                     input.sys;
                     scenario_limit = input.scenario_limit,
@@ -390,30 +419,38 @@ function solve_uc(alg::AbstractUCAlgorithm; calibration = NamedTuple(), kwargs..
 end
 
 function solve_uc(request::UCSolveRequest)
-    configured_output_dir = request.output_dir === nothing ? uc_output_root() : uc_output_dir(request.output_dir)
     verbosity = _normalize_uc_verbosity(request.verbosity)
     t_start = time()
+    configured_output_dir = Ref{String}("")
+
+    _run_inner() = begin
+        configured_output_dir[] = request.output_dir === nothing ? uc_output_root() : uc_output_dir(request.output_dir)
+        return _solve_uc_selected(request)
+    end
 
     result = if verbosity === :verbose
         _run_with_uc_context(request.calibration, request.output_dir; detailed = false) do
-            _solve_uc_selected(request)
+            _run_inner()
         end
     elseif verbosity === :detailed
-        redirect_stderr(devnull) do
-            _run_with_uc_context(request.calibration, request.output_dir; detailed = true) do
-                _solve_uc_selected(request)
+        lock(_UC_CONTEXT_LOCK) do
+            redirect_stderr(devnull) do
+                _run_with_uc_context(request.calibration, request.output_dir; detailed = true) do
+                    _run_inner()
+                end
             end
         end
     else
         try
-            captured_result = redirect_stdout(devnull) do
-                redirect_stderr(devnull) do
-                    _run_with_uc_context(request.calibration, request.output_dir; detailed = false) do
-                        _solve_uc_selected(request)
+            lock(_UC_CONTEXT_LOCK) do
+                redirect_stdout(devnull) do
+                    redirect_stderr(devnull) do
+                        _run_with_uc_context(request.calibration, request.output_dir; detailed = false) do
+                            _run_inner()
+                        end
                     end
                 end
             end
-            captured_result
         catch error
             println(stderr, "[UC solve failed] ", sprint(showerror, error))
             rethrow()
@@ -423,14 +460,16 @@ function solve_uc(request::UCSolveRequest)
     envelope = UCSolveResult(
         request.algorithm,
         request.input.source,
-        configured_output_dir,
+        configured_output_dir[],
         result;
         runtime_seconds = time() - t_start,
     )
     verbosity === :summary && print_uc_result(envelope)
     if verbosity === :detailed
-        redirect_stderr(devnull) do
-            print_uc_result(envelope; detail = true)
+        lock(_UC_CONTEXT_LOCK) do
+            redirect_stderr(devnull) do
+                print_uc_result(envelope; detail = true)
+            end
         end
     end
     return envelope

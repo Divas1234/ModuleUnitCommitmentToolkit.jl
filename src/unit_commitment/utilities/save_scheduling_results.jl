@@ -16,8 +16,8 @@ function save_details_scheduled_results(config_param, results; winds = nothing, 
         bench_sd_cost = results["sd_cost"]
 
         if config_param.consider_bess == 1
-            bench_pss_charge_p⁺ = results["pss_charge_p⁺"]
-            bench_pss_charge_p⁻ = results["pss_charge_p⁻"]
+            bench_pss_charge_p⁺ = get(results, "pss_charge_p⁺", nothing)
+            bench_pss_charge_p⁻ = get(results, "pss_charge_p⁻", nothing)
         else
             bench_pss_charge_p⁺ = nothing
             bench_pss_charge_p⁻ = nothing
@@ -112,47 +112,9 @@ function save_UCresults(
     )
 end
 
-#LINK -  sub exported modelue for saving results as .txt file
-function read_UCresults()
-    output_path = joinpath(uc_output_dir(), "pros", "mydata_1.jld")
-    mkpath(dirname(output_path))
-    jldopen(output_path, "w") do file
-        write(file, "x₀", x₀)
-        write(file, "bench_x₀", bench_x₀)
-        write(file, "p₀", p₀)
-        write(file, "pᵨ", pᵨ)
-        write(file, "pᵩ", pᵩ)
-        write(file, "seq_sr⁺", seq_sr⁺)
-        write(file, "seq_sr⁻", seq_sr⁻)
-        write(file, "pss_charge_p⁺", pss_charge_p⁺)
-        write(file, "pss_charge_p⁻", pss_charge_p⁻)
-        write(file, "su_cost", su_cost)
-        write(file, "sd_cost", sd_cost)
-        write(file, "prod_cost", prod_cost)
-        write(file, "cost_sr⁺", cost_sr⁺)
-        write(file, "cost_sr⁻", cost_sr⁻)
-        write(file, "NT", NT)
-        write(file, "NG", NG)
-        write(file, "ND", ND)
-        write(file, "NW", NW)
-        write(file, "winds", winds)
-        write(file, "units", units)
-        write(file, "bench_p₀", bench_p₀)
-        write(file, "bench_pᵨ", bench_pᵨ)
-        write(file, "bench_pᵩ", bench_pᵩ)
-        write(file, "bench_seq_sr⁺", bench_seq_sr⁺)
-        write(file, "bench_seq_sr⁻", bench_seq_sr⁻)
-        write(file, "bench_pss_charge_p⁺", bench_pss_charge_p⁺)
-        write(file, "bench_pss_charge_p⁻", bench_pss_charge_p⁻)
-        write(file, "bench_su_cost", bench_su_cost)
-        write(file, "bench_sd_cost", bench_sd_cost)
-        write(file, "bench_prod_cost", bench_prod_cost)
-        write(file, "bench_cost_sr⁺", bench_cost_sr⁺)
-        return write(file, "bench_cost_sr⁻", bench_cost_sr⁻)
-    end
-    return x₀, bench_x₀, p₀, pᵨ, pᵩ, seq_sr⁺, seq_sr⁻, pss_charge_p⁺, pss_charge_p⁻, su_cost, sd_cost, prod_cost, cost_sr⁺, cost_sr⁻,
-    bench_p₀, bench_pᵨ, bench_pᵩ, bench_seq_sr⁺, bench_seq_sr⁻, bench_pss_charge_p⁺, bench_pss_charge_p⁻, bench_su_cost, bench_sd_cost, bench_prod_cost, bench_cost_sr⁺, bench_cost_sr⁻,
-    NT, NG, ND, NW, units, winds
+function read_UCresults(output_path::AbstractString = joinpath(uc_output_dir(), "bench", "mydata_1.jld"))
+    isfile(output_path) || throw(ArgumentError("UC results file not found: $(output_path)"))
+    return JLD2.load(output_path)
 end
 
 function savebalance_result(
@@ -165,33 +127,48 @@ function savebalance_result(
     config_param = nothing,
     winds = nothing,
     output_dir = nothing,
+    scenario_index::Int = 1,
 )
     nt = size(bench_p₀, 2)
+    ns = (winds !== nothing && hasproperty(winds, :scenarios_nums)) ? max(1, Int(winds.scenarios_nums)) : 1
+    s = clamp(scenario_index, 1, ns)
+    _scenario_slice(mat) = begin
+        nrows = size(mat, 1)
+        (nrows == 0 || ns <= 1 || nrows % ns != 0) && return 1:nrows
+        per = div(nrows, ns)
+        return ((s - 1) * per + 1):(s * per)
+    end
+    gen_rows = _scenario_slice(bench_p₀)
+    load_rows = _scenario_slice(bench_pᵨ)
     thermalunits_output = zeros(nt, 1)
     for i in 1:nt
-        thermalunits_output[i, 1] = sum(@view bench_p₀[:, i])
+        thermalunits_output[i, 1] = isempty(gen_rows) ? 0.0 : sum(@view bench_p₀[gen_rows, i])
     end
 
     windunits_output = zeros(nt, 1)
-    if winds !== nothing
+    if winds !== nothing && !isempty(winds.p_max)
         total_wind_cap = sum(winds.p_max)
-        nw = min(length(winds.p_max), size(bench_pᵩ, 1))
+        nw = length(winds.p_max)
+        w_start = (s - 1) * nw + 1
+        w_stop = min(s * nw, size(bench_pᵩ, 1))
         for i in 1:nt
-            windunits_output[i, 1] = total_wind_cap * winds.scenarios_curve[1, i] - sum(@view bench_pᵩ[1:nw, i])
+            spill = w_start <= w_stop ? sum(@view bench_pᵩ[w_start:w_stop, i]) : 0.0
+            windunits_output[i, 1] = total_wind_cap * winds.scenarios_curve[s, i] - spill
         end
     end
 
     forceloadcurtailment = zeros(nt, 1)
     for i in 1:nt
-        forceloadcurtailment[i, 1] = sum(@view bench_pᵨ[:, i])
+        forceloadcurtailment[i, 1] = isempty(load_rows) ? 0.0 : sum(@view bench_pᵨ[load_rows, i])
     end
 
     BESScharging_output, BESSdischarging_output = zeros(nt, 1), zeros(nt, 1)
     consider_bess = config_param !== nothing && config_param.consider_bess == 1
     if consider_bess && bench_pss_charge_p⁺ !== nothing && bench_pss_charge_p⁻ !== nothing
+        bess_rows = _scenario_slice(bench_pss_charge_p⁺)
         for i in 1:nt
-            BESScharging_output[i, 1] = sum(@view bench_pss_charge_p⁺[:, i])
-            BESSdischarging_output[i, 1] = sum(@view bench_pss_charge_p⁻[:, i])
+            BESScharging_output[i, 1] = isempty(bess_rows) ? 0.0 : sum(@view bench_pss_charge_p⁺[bess_rows, i])
+            BESSdischarging_output[i, 1] = isempty(bess_rows) ? 0.0 : sum(@view bench_pss_charge_p⁻[bess_rows, i])
         end
     end
     # Plots.plot(-bench_pss_charge_p⁺[1,:])

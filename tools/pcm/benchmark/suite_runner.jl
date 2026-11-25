@@ -194,8 +194,8 @@ function add_relative_metrics(summary::DataFrame)
 end
 
 function _metric_value(metrics, name, default = missing)
-	name ∈ propertynames(metrics) || return default
-	value = metrics[1, name]
+	(nrow(metrics) > 0 && name ∈ propertynames(metrics)) || return default
+	value = metrics[end, name]
 	ismissing(value) ? default : value
 end
 
@@ -275,8 +275,20 @@ function _run_row(metrics, profile, method, run_number, run_dir)
 	equivalent = method_equivalent_units(method, physical, virtual)
 	cost_vector = read_cost_vector(_cost_path(run_dir, method))
 	metric_cost = _safe_float(_metric_value(metrics, :total_cost))
-	total_cost = cost_vector === nothing ? metric_cost : sum(cost_vector)
+	is_adaptive_cost = method in ("adaptive_overlap", "clustered_adaptive_overlap")
+	total_cost = if cost_vector === nothing
+		metric_cost
+	elseif is_adaptive_cost
+		cost_vector[1]
+	else
+		sum(cost_vector)
+	end
 	components = cost_vector === nothing ? fill(missing, 7) : cost_vector
+	startup_shutdown_cost = is_adaptive_cost ? (components[2] + components[3]) : (components[1] + components[2])
+	fuel_cost = is_adaptive_cost ? components[4] : components[3]
+	reserve_cost = is_adaptive_cost ? components[5] : (components[4] + components[5])
+	load_shed_cost = components[6]
+	wind_curtail_cost = components[7]
 	overlap = _overlap_metrics(run_dir, method)
 	(
 		profile = profile,
@@ -291,11 +303,11 @@ function _run_row(metrics, profile, method, run_number, run_dir)
 		allocated_mb = _safe_float(_metric_value(metrics, :allocated_mb)),
 		peak_rss_mb = _safe_float(_metric_value(metrics, :peak_rss_mb)),
 		total_cost = total_cost,
-		startup_shutdown_cost = components[1] + components[2],
-		fuel_cost = components[3],
-		reserve_cost = components[4] + components[5],
-		load_shed_cost = components[6],
-		wind_curtail_cost = components[7],
+		startup_shutdown_cost = startup_shutdown_cost,
+		fuel_cost = fuel_cost,
+		reserve_cost = reserve_cost,
+		load_shed_cost = load_shed_cost,
+		wind_curtail_cost = wind_curtail_cost,
 		physical_units = physical,
 		equivalent_units = equivalent,
 		state_reduction_pct = ismissing(physical) || ismissing(equivalent) || physical == 0 ? missing :
@@ -312,7 +324,7 @@ function _run_row(metrics, profile, method, run_number, run_dir)
 		pre_repair_cost_gap_pct = overlap.pre_repair_gap)
 end
 
-function run_one(; project_root = PROJECT_ROOT, julia_project = joinpath(project_root, "pkg"), output_root, input_file,
+function run_one(; project_root = PROJECT_ROOT, julia_project = project_root, output_root, input_file,
 		profile, method, run_number, intervals, window_hours, network_constraints, random_seed, overlap_mode, solver)
 	run_dir = benchmark_run_dir(output_root, profile, method, run_number)
 	mkpath(run_dir)
@@ -321,7 +333,7 @@ function run_one(; project_root = PROJECT_ROOT, julia_project = joinpath(project
 	resume_existing = lowercase(strip(get(ENV, "PCM_BENCHMARK_RESUME", "false"))) in ("1", "true", "yes", "on")
 	if resume_existing && isfile(metrics_path)
 		metrics = CSV.read(metrics_path, DataFrame)
-		status = nrow(metrics) > 0 && :status in propertynames(metrics) ? uppercase(strip(string(metrics.status[1]))) : ""
+		status = nrow(metrics) > 0 && :status in propertynames(metrics) ? uppercase(strip(string(metrics.status[end]))) : ""
 		if status == "OK"
 			println("[$(now())] profile=$(profile) method=$(method) run=$(run_number) RESUME successful metrics")
 			return _run_row(metrics, profile, method, run_number, run_dir)
@@ -329,6 +341,7 @@ function run_one(; project_root = PROJECT_ROOT, julia_project = joinpath(project
 		# A failed/partial result is a checkpoint, not a completed experiment.
 		# Re-run it after a code or solver-policy fix while preserving successful
 		# methods in the same batch directory.
+		rm(metrics_path; force = true)
 		println("[$(now())] profile=$(profile) method=$(method) run=$(run_number) RESUME retry status=$(isempty(status) ? "UNKNOWN" : status)")
 	end
 	command = `$(Base.julia_cmd()) --project=$(julia_project) $(joinpath(project_root, "tools", "pcm", "benchmark", "method_worker.jl"))`
@@ -450,10 +463,9 @@ function rebuild_outputs(output_root::AbstractString; input_file = "unknown", pr
 end
 
 function main(; project_root = PROJECT_ROOT,
-		julia_project = get(ENV, "PCM_JULIA_PROJECT", joinpath(project_root, "pkg")),
+		julia_project = get(ENV, "PCM_JULIA_PROJECT", project_root),
 		input_file = abspath(get(ENV, "PCM_INPUT_XLSX", joinpath(project_root, "data", "data_118_clustered_pcm.xlsx"))),
-		output_root = abspath(get(ENV, "PCM_THREE_METHOD_OUTPUT",
-			joinpath(project_root, "output", "pcm_runs", "pcm4_$(Dates.format(now(), "yyyymmdd_HHMMSS"))"))),
+		output_root = nothing,
 		profiles = parse_list(get(ENV, "PCM_BENCHMARK_PROFILES", join(DEFAULT_PROFILES, ","))),
 		methods = parse_list(get(ENV, "PCM_BENCHMARK_METHODS", join(DEFAULT_METHODS, ","))),
 		runs = parse(Int, get(ENV, "PCM_BENCHMARK_RUNS", "1")),
@@ -467,8 +479,15 @@ function main(; project_root = PROJECT_ROOT,
 	isempty(profiles) && error("PCM_BENCHMARK_PROFILES is empty")
 	isempty(methods) && error("PCM_BENCHMARK_METHODS is empty")
 	runs >= 1 || error("PCM_BENCHMARK_RUNS must be positive")
-	if isempty(get(ENV, "PCM_THREE_METHOD_OUTPUT", ""))
-		output_root = benchmark_output_root(project_root, methods, profiles; horizon_hours = intervals * window_hours)
+	if output_root === nothing
+		env_out = strip(get(ENV, "PCM_THREE_METHOD_OUTPUT", ""))
+		output_root = isempty(env_out) ?
+			(length(profiles) == 1 ?
+				benchmark_output_root(project_root, methods, profiles; horizon_hours = intervals * window_hours) :
+				abspath(joinpath(project_root, "output", "pcm_runs", "pcm4_$(Dates.format(now(), "yyyymmdd_HHMMSS"))"))) :
+			abspath(env_out)
+	else
+		output_root = abspath(String(output_root))
 	end
 	mkpath(output_root)
 

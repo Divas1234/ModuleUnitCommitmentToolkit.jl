@@ -26,34 +26,46 @@ function add_unit_operation_constraints!(scuc::Model, NT, NG, units, onoffinit)
     su₀ = scuc[:su₀]
     sd₀ = scuc[:sd₀]
 
-    Lupmin = zeros(NG, 1)     # Minimum startup time
-    Ldownmin = zeros(NG, 1)   # Minimum shutdown time
-
-    for i in 1:NG
-        # Uncomment if initial status is provided
-        # onoffinit[i] = ((units.x_0[i, 1] > 0.5) ? 1 : 0)
-        # Calculate minimum up/down time limits
-        Lupmin[i] = min(NT, units.min_up_time[i] * onoffinit[i])
-        Ldownmin[i] = min(NT, (units.min_down_time[i, 1]) * (1 - onoffinit[i]))
-    end
-
     units_minuptime_constr = Vector{ConType}()
     units_mindowntime_constr = Vector{ConType}()
 
     # --- Minimum Up and Down Time Constraints ---
+    has_t0 = hasproperty(units, :t_0) && length(units.t_0) >= NG
+    has_t1 = hasproperty(units, :t_1) && length(units.t_1) >= NG
     for i in 1:NG
-        # Minimum Up Time: If a unit starts, it must remain on for units.min_up_time
-        for t in Int64(max(1, Lupmin[i])):NT
-            LB = Int64(max(t - units.min_up_time[i, 1] + 1, 1))
-            con = @constraint(scuc, sum(u[i, r] for r in LB:t) <= x[i, t])
-            push!(units_minuptime_constr, con)
+        tu = ceil(Int64, Float64(units.min_up_time[i]))
+        td = ceil(Int64, Float64(units.min_down_time[i]))
+        init_on = onoffinit[i] > 0.5
+
+        elapsed_up = (init_on && has_t0) ? Float64(units.t_0[i]) : 0.0
+        L_up = (init_on && tu > 0 && elapsed_up > 0.0) ? min(NT, max(Int64(0), ceil(Int64, Float64(units.min_up_time[i]) - elapsed_up))) : Int64(0)
+        for t in 1:L_up
+            push!(units_minuptime_constr, @constraint(scuc, x[i, t] >= 1.0))
+        end
+        if tu >= 1
+            for t in (L_up + 1):NT
+                LB = max(Int64(1), t - tu + 1)
+                con = @constraint(scuc, sum(u[i, r] for r in LB:t) <= x[i, t])
+                push!(units_minuptime_constr, con)
+            end
         end
 
-        # Minimum Down Time: If a unit stops, it must remain off for units.min_down_time
-        for t in Int64(max(1, Ldownmin[i])):NT
-            LB = Int64(max(t - units.min_down_time[i, 1] + 1, 1))
-            con = @constraint(scuc, sum(v[i, r] for r in LB:t) <= (1 - x[i, t]))
-            push!(units_mindowntime_constr, con)
+        elapsed_down = if !init_on
+            t1_val = has_t1 ? Float64(units.t_1[i]) : 0.0
+            t1_val > 0.0 ? t1_val : (has_t0 ? Float64(units.t_0[i]) : 0.0)
+        else
+            0.0
+        end
+        L_down = (!init_on && td > 0 && elapsed_down > 0.0) ? min(NT, max(Int64(0), ceil(Int64, Float64(units.min_down_time[i]) - elapsed_down))) : Int64(0)
+        for t in 1:L_down
+            push!(units_mindowntime_constr, @constraint(scuc, x[i, t] <= 0.0))
+        end
+        if td >= 1
+            for t in (L_down + 1):NT
+                LB = max(Int64(1), t - td + 1)
+                con = @constraint(scuc, sum(v[i, r] for r in LB:t) <= (1 - x[i, t]))
+                push!(units_mindowntime_constr, con)
+            end
         end
     end
 
@@ -150,8 +162,8 @@ function add_ramp_constraints!(scuc::Model, NT, NG, NS, units, onoffinit)
         [s = 1:NS, t = 1:NT],
         pg₀[(1 + (s - 1) * NG):(s * NG), t] - ((t == 1) ? units.p_0[:, 1] : pg₀[(1 + (s - 1) * NG):(s * NG), t - 1]) .<=
         ramp_up[:, 1] .* ((t == 1) ? onoffinit[:, 1] : x[:, t - 1]) +
-        startup_ramp[:, 1] .* ((t == 1) ? ones(NG, 1) : u[:, t - 1]) +
-        p_max[:, 1] .* (ones(NG, 1) - ((t == 1) ? onoffinit[:, 1] : x[:, t - 1])) +
+        startup_ramp[:, 1] .* u[:, t] +
+        p_max[:, 1] .* (ones(NG, 1) - x[:, t]) +
         (
             if ramp_violation⁺ === nothing
                 zeros(NG)
@@ -165,7 +177,9 @@ function add_ramp_constraints!(scuc::Model, NT, NG, NS, units, onoffinit)
         scuc,
         [s = 1:NS, t = 1:NT],
         ((t == 1) ? units.p_0[:, 1] : pg₀[(1 + (s - 1) * NG):(s * NG), t - 1]) - pg₀[(1 + (s - 1) * NG):(s * NG), t] .<=
-        ramp_down[:, 1] .* x[:, t] + shutdown_ramp[:, 1] .* v[:, t] + p_max[:, 1] .* (x[:, t]) + (
+        ramp_down[:, 1] .* x[:, t] +
+        shutdown_ramp[:, 1] .* v[:, t] +
+        p_max[:, 1] .* (ones(NG, 1) - ((t == 1) ? onoffinit[:, 1] : x[:, t - 1])) + (
             if ramp_violation⁻ === nothing
                 zeros(NG)
             else

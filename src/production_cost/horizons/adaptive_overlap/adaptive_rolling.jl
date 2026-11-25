@@ -75,7 +75,7 @@ function execute_adaptive_overlap_pcm(
         apply_pcm_load_profile!(d.loads, cfg.load_profile)
 
         winds, NW = genscenario(d.WindsFreqParam, 0; scenario_limit = 1)
-        scenarios_prob = 1.0
+        scenarios_prob = 1.0 / max(1, winds.scenarios_nums)
 
         exec_NT = policy.window_hours
         n_intervals = policy.intervals
@@ -87,6 +87,7 @@ function execute_adaptive_overlap_pcm(
         slow_threshold = 4.0
         training_mode = lowercase(strip(get(ENV, "PCM_TRAINING_MODE", "sweep")))
         steady_state_mode = lowercase(strip(get(ENV, "PCM_OVERLAP_MODE", policy.overlap_mode)))
+        training_formulation = lowercase(strip(get(ENV, "PCM_TRAINING_FORMULATION", is_clustered ? "clustered" : "single")))
 
         if size(d.loads.load_curve, 2) < required_horizon
             d.loads.load_curve = _repeat_time_series_to_horizon(d.loads.load_curve, required_horizon)
@@ -95,7 +96,10 @@ function execute_adaptive_overlap_pcm(
             winds.scenarios_curve = _repeat_time_series_to_horizon(winds.scenarios_curve, required_horizon)
         end
 
-        cache_root = joinpath(project_root, "output", "ml_trainningdata_res")
+        output_root = let out_env = strip(get(ENV, "MODULE_UC_OUTPUT_DIR", ""))
+            isempty(out_env) ? joinpath(project_root, "output") : out_env
+        end
+        cache_root = joinpath(output_root, "ml_trainningdata_res")
         solver_name = try
             pcm_solver_name()
         catch
@@ -114,7 +118,7 @@ function execute_adaptive_overlap_pcm(
             load_curve = d.loads.load_curve,
             wind_curve = winds.scenarios_curve,
             training_mode = training_mode,
-            formulation = is_clustered ? "clustered" : "single",
+            formulation = training_formulation,
             sampling_version = "hourly-v5-strict-boundary-unknown-initial-candidate3",
         )
         cached_training_data = AdaptiveOverlapTrainingCache.load_cached_dataset(
@@ -162,6 +166,7 @@ function execute_adaptive_overlap_pcm(
         )
 
         pre_results = nothing
+        current_units = d.units
         total_scheduled_cost = zeros(n_intervals + 1, 7)
 
         for k in 1:n_intervals
@@ -171,14 +176,14 @@ function execute_adaptive_overlap_pcm(
             local_reference = if reference_mode == "load_following"
                 (
                     commitment = load_following_commitment(
-                        d.units,
+                        current_units,
                         maximum(sum(d.loads.load_curve[:, start_time:(start_time + exec_NT - 1)]; dims = 1)),
                     ),
                     results = nothing,
                 )
             else
                 solve_local_reference_commitment(
-                    d.loads, winds, d.units, d.lines, d.data_centers, d.config_param, d.storages, scenarios_prob,
+                    d.loads, winds, current_units, d.lines, d.data_centers, d.config_param, d.storages, scenarios_prob,
                     d.hydros, start_time, exec_NT, max_overlap, d.NB, d.NG, d.ND, d.NC, d.ND2, d.NL, d.NH, k;
                     return_results = is_clustered,
                 )
@@ -187,7 +192,7 @@ function execute_adaptive_overlap_pcm(
             ref_results = local_reference isa NamedTuple ? local_reference.results : nothing
 
             T_overlap, is_ramp, T_steady, T_unit, T_ramp = compute_adaptive_overlap_window(
-                d.loads, winds, d.units, start_time, exec_NT, alpha, epsilon, min_overlap,
+                d.loads, winds, current_units, start_time, exec_NT, alpha, epsilon, min_overlap,
                 max_overlap, pre_results, k, steady_state_mode, trained_models, x_ref_curr,
             )
             select_time = time() - select_start
@@ -196,7 +201,7 @@ function execute_adaptive_overlap_pcm(
             limiting_factor = _overlap_limiting_factor(T_steady, T_unit, T_ramp)
 
             mini_units, mini_loads, mini_winds = update_adaptive_boundary_conditions(
-                k, d.NG, exec_NT, total_NT, start_time, d.units, d.loads, winds, pre_results,
+                k, d.NG, exec_NT, total_NT, start_time, current_units, d.loads, winds, pre_results,
             )
 
             solve_start = time()
@@ -244,6 +249,7 @@ function execute_adaptive_overlap_pcm(
                 d.data_centers, d.config_param, k, d.hydros, scenarios_prob,
             )
             pre_results = res
+            current_units = mini_units
 
             push!(df_stats, (
                 k, start_time, exec_NT, T_steady, T_unit, is_ramp, T_ramp, raw_max, limiting_factor,
@@ -257,9 +263,6 @@ function execute_adaptive_overlap_pcm(
         sim_time = max(0.0, sum(df_stats.Overlap_SelectionTime_sec) + sum(df_stats.Subproblem_SolveTime_sec) - preprocess_time)
 
         out_folder = is_clustered ? "clustered_adaptive_pcm_simulation_results" : "adaptive_pcm_simulation_results"
-        output_root = let out_env = strip(get(ENV, "MODULE_UC_OUTPUT_DIR", ""))
-            isempty(out_env) ? joinpath(project_root, "output") : out_env
-        end
         outdir = joinpath(output_root, "details_schedule_results", out_folder)
         mkpath(outdir)
         CSV.write(joinpath(outdir, "total_scheduled_results.csv"), DataFrame(total_scheduled_cost, :auto); header = false)

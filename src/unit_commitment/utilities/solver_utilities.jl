@@ -21,13 +21,12 @@ function solve_and_extract_results(
     println("+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++\n")
 
     # Check termination status
-    @show assert_is_solved_and_feasible(scuc)
     @show solution_summary(scuc)
     println("\n")
     status = termination_status(scuc)
     println("Termination Status: ", status)
 
-    if status == MOI.OPTIMAL || status == MOI.LOCALLY_SOLVED || status == MOI.TIME_LIMIT || status == MOI.OBJECTIVE_LIMIT # Added OBJECTIVE_LIMIT as acceptable status
+    if uc_has_feasible_solution(scuc)
         println("Acceptable solution found (Status: $status).")
 
         # Extract values

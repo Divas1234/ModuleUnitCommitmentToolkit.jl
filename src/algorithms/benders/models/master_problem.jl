@@ -25,7 +25,8 @@ function bd_masterfunction(
     loads::load,
     winds::wind,
     config_param::config,
-    scenarios_prob::Float64,
+    scenarios_prob::Float64;
+    storages = nothing,
 )
     println("Initializing Benders Master Problem construction...")
     Δp_contingency = define_contingency_size(units, NG)
@@ -67,10 +68,14 @@ function bd_masterfunction(
     _units_init_shutdown_cost_constr,
     _units_shutup_cost_constr,
     _units_shutdown_cost_constr = add_unit_operation_constraints!(scuc_masterproblem, NT, NG, units, onoffinit)
-    _master_supply_adequacy_constr = add_master_supply_adequacy_constraints!(scuc_masterproblem, NT, NG, ND, NW, units, loads, winds)
+    _master_supply_adequacy_constr =
+        add_master_supply_adequacy_constraints!(
+            scuc_masterproblem, NT, NG, ND, NW, units, loads, winds;
+            storages = storages, NC = NC, NS = NS, consider_bess = config_param.consider_bess,
+        )
     _master_storage_binary_constr = add_master_storage_binary_constraints!(scuc_masterproblem, NT, NC, NS, config_param)
     _frequency_constr = add_frequency_constraints!(scuc_masterproblem, NT, NG, NC, NS, units, nothing, config_param, Δp_contingency; winds = winds)
-    _master_freq_feas_constr = add_master_frequency_feasibility_cuts!(scuc_masterproblem, NT, NG, units, config_param)
+    _master_freq_feas_constr = add_master_frequency_feasibility_cuts!(scuc_masterproblem, NT, NG, units, config_param; Δp_contingency = Δp_contingency)
     # add_curtailment_constraints!(scuc_masterproblem, NT, ND, NW, NS, loads, winds)
     # add_generator_power_constraints!(scuc_masterproblem, NT, NG, NS, units)
     # add_reserve_constraints!(scuc_masterproblem, NT, NG, NC, NS, units, loads, winds, config_param)
@@ -182,19 +187,47 @@ function add_master_supply_adequacy_constraints!(
     NW::Int64,
     units::unit,
     loads::load,
-    winds::wind,
+    winds::wind;
+    storages = nothing,
+    NC::Int64 = 0,
+    NS::Int64 = 1,
+    consider_bess::Int64 = 0,
 )
     x = scuc_masterproblem[:x]
-    wind_capacity = sum(winds.p_max[:, 1])
+    wind_capacity = isempty(winds.p_max) ? 0.0 : sum(winds.p_max[:, 1])
     conservative_wind = [minimum(winds.scenarios_curve[:, t]) * wind_capacity for t in 1:NT]
-    demand = [sum(loads.load_curve[d, t] for d in 1:ND) for t in 1:NT]
+    demand = [ND == 0 ? 0.0 : sum(loads.load_curve[d, t] for d in 1:ND) for t in 1:NT]
+    max_fleet_pmax = sum(units.p_max[:, 1])
+    use_bess = consider_bess == 1 && NC > 0 && storages !== nothing && !isempty(storages.p⁻) && haskey(JuMP.object_dictionary(scuc_masterproblem), :κ⁻)
+    max_bess_discharge = use_bess ? sum(storages.p⁻; init = 0.0) : 0.0
+    if any(t -> max_fleet_pmax + max_bess_discharge + conservative_wind[t] < demand[t], 1:NT)
+        return nothing
+    end
 
-    supply_adequacy = @constraint(scuc_masterproblem, [t = 1:NT], sum(units.p_max[g, 1] * x[g, t] for g in 1:NG) + conservative_wind[t] >= demand[t])
-    reserve_adequacy = @constraint(
-        scuc_masterproblem,
-        [i = 1:NG, t = 1:NT],
-        sum(units.p_max[g, 1] * x[g, t] for g in 1:NG) + conservative_wind[t] >= demand[t] + 0.5 * units.p_max[i, 1] * x[i, t]
-    )
+    if use_bess
+        κ⁻ = scuc_masterproblem[:κ⁻]
+        supply_adequacy = @constraint(
+            scuc_masterproblem,
+            [s = 1:NS, t = 1:NT],
+            sum(units.p_max[g, 1] * x[g, t] for g in 1:NG) +
+            sum(storages.p⁻[c] * κ⁻[(s - 1) * NC + c, t] for c in 1:NC) +
+            conservative_wind[t] >= demand[t]
+        )
+        reserve_adequacy = @constraint(
+            scuc_masterproblem,
+            [s = 1:NS, i = 1:NG, t = 1:NT],
+            sum(units.p_max[g, 1] * x[g, t] for g in 1:NG) +
+            sum(storages.p⁻[c] * κ⁻[(s - 1) * NC + c, t] for c in 1:NC) +
+            conservative_wind[t] >= demand[t] + 0.5 * units.p_max[i, 1] * x[i, t]
+        )
+    else
+        supply_adequacy = @constraint(scuc_masterproblem, [t = 1:NT], sum(units.p_max[g, 1] * x[g, t] for g in 1:NG) + conservative_wind[t] >= demand[t])
+        reserve_adequacy = @constraint(
+            scuc_masterproblem,
+            [i = 1:NG, t = 1:NT],
+            sum(units.p_max[g, 1] * x[g, t] for g in 1:NG) + conservative_wind[t] >= demand[t] + 0.5 * units.p_max[i, 1] * x[i, t]
+        )
+    end
     println("\t constraints: master supply adequacy cuts\t\t\t\t done")
     return (supply = supply_adequacy, reserve = reserve_adequacy)
 end
@@ -204,16 +237,19 @@ function add_master_frequency_feasibility_cuts!(
     NT::Int64,
     NG::Int64,
     units::unit,
-    config_param::config,
+    config_param::config;
+    Δp_contingency::Real = maximum(units.p_max),
 )
     if config_param.consider_frequency_control == 0 || !haskey(JuMP.object_dictionary(scuc_masterproblem), :x)
         return nothing
     end
     x = scuc_masterproblem[:x]
+    frequency_base_hz = frequency_env_float("FREQUENCY_BASE_HZ", 50.0)
     qss_limit_hz = frequency_env_float("FREQUENCY_QSS_LIMIT_HZ", 5.0)
     nadir_limit_hz = max(frequency_env_float("FREQUENCY_NADIR_LIMIT_HZ", qss_limit_hz), eps(Float64))
     fcr_threshold = frequency_env_float("FREQUENCY_FCR_THRESHOLD", 0.025)
-    qss_contingency = frequency_contingency_size(units, 0.0)
+    qss_contingency = frequency_contingency_size(units, Δp_contingency)
+    damping_pu = qss_limit_hz / max(frequency_base_hz, eps(Float64))
 
     # Exact first-stage projections of subproblem (sr⁺, x) frequency reserve bounds:
     # 1) Per-unit SFR reserve lower bound <= generator headroom (p_max - p_min)
@@ -234,7 +270,7 @@ function add_master_frequency_feasibility_cuts!(
         [t = 1:NT],
         sum(
             (max(0.0, safe_frequency_coeff(units.p_max, i) - safe_frequency_coeff(units.p_min, i)) +
-             safe_frequency_coeff(units.Dg, i) * safe_frequency_coeff(units.p_max, i) * qss_limit_hz) * x[i, t] for i in 1:NG
+             safe_frequency_coeff(units.Dg, i) * safe_frequency_coeff(units.p_max, i) * damping_pu) * x[i, t] for i in 1:NG
         ) >= qss_contingency
     )
     println("\t constraints: master frequency reserve feasibility cuts\t\t done")

@@ -34,9 +34,9 @@ function choose_ccg_scenarios_to_add(
         throw(ArgumentError("inactive_scenarios must be valid indices for worst_probability"))
     all(haskey(evaluation, s) for s in inactive_scenarios) || throw(ArgumentError("evaluation is missing one or more inactive scenarios"))
 
-    candidates = [(worst_probability[s], evaluation[s].recourse_cost, s) for s in inactive_scenarios]
-    sort!(candidates; by = item -> (item[1], item[2]), rev = true)
-    return [s for (_, _, s) in first(candidates, min(scenarios_per_iteration, length(candidates)))]
+    candidates = [(!get(evaluation[s], :is_feasible, true), worst_probability[s], evaluation[s].recourse_cost, s) for s in inactive_scenarios]
+    sort!(candidates; by = item -> (item[1], item[2], item[3]), rev = true)
+    return [s for (_, _, _, s) in first(candidates, min(scenarios_per_iteration, length(candidates)))]
 end
 
 function build_ccg_subset_wind(winds::wind, selected_scenarios::Vector{Int64}, scenarios_prob::Float64)

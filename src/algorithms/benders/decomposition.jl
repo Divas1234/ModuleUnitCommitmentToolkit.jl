@@ -81,9 +81,8 @@ function multiple_benders_decomposition_scuc(
 
         uc_require_feasible_solution!(scuc_masterproblem; context = "Benders master")
 
-        # The master objective is a lower bound because recourse is represented
-        # by accumulated cuts rather than the complete scenario response.
-        lower_bound = objective_value(scuc_masterproblem)
+        # The master objective bound is a valid lower bound even with nonzero MIP gap or time limit.
+        lower_bound = objective_bound(scuc_masterproblem)
 
         # Extract solution from master problem
         x⁽⁰⁾ = value.(scuc_masterproblem[:x])
@@ -249,7 +248,7 @@ function multiple_benders_decomposition_scuc(
             last_ret_dic = added_cuts > 0 ? ret_dic : nothing
             last_iter_value = added_cuts > 0 ? iter_value : nothing
             if !all_subproblems_feasibility_flag
-                add_no_good_cut!(scuc_masterproblem, x⁽⁰⁾, u⁽⁰⁾, v⁽⁰⁾)
+                add_no_good_cut!(scuc_masterproblem, x⁽⁰⁾, u⁽⁰⁾, v⁽⁰⁾; storage_binary_values = storage_binary_values)
             elseif added_cuts == 0 && isempty(logic_cut_refs)
                 println("No violated Benders cuts found at iteration ", iteration, "; stopping to avoid cycling.")
                 termination_reason = "no_violated_cuts"
@@ -262,7 +261,7 @@ function multiple_benders_decomposition_scuc(
                 if ret.is_feasible == true
                     scuc_masterproblem, _ = add_optimitycut_constraints!(scuc_masterproblem, batch_scuc_subproblem_dic[s], ret, iter_value)
                 else
-                    add_no_good_cut!(scuc_masterproblem, x⁽⁰⁾, u⁽⁰⁾, v⁽⁰⁾)
+                    add_no_good_cut!(scuc_masterproblem, x⁽⁰⁾, u⁽⁰⁾, v⁽⁰⁾; storage_binary_values = storage_binary_values)
                 end
             end
         end
@@ -380,7 +379,9 @@ function add_storage_mode_dominance_cut!(
     mismatch_expr += storage_mismatch_expression(start, ret.storage_values.start, Set{CartesianIndex{2}}(), tolerance)
     mismatch_expr += storage_mismatch_expression(stop, ret.storage_values.stop, Set{CartesianIndex{2}}(), tolerance)
 
-    prune_expr = sum(1 - charge[idx] for idx in unused_charge) + sum(1 - discharge[idx] for idx in unused_discharge)
+    prune_expr =
+        sum((1 - charge[idx] for idx in unused_charge); init = AffExpr(0.0)) +
+        sum((1 - discharge[idx] for idx in unused_discharge); init = AffExpr(0.0))
     return @constraint(model, mismatch_expr + prune_expr >= 1)
 end
 
@@ -549,7 +550,7 @@ function get_reduced_cost_optimality_cut_expression(model::Model, ret, iter_valu
     end
     cut_expr =
         @expression(model, ret.θ + sum(ret.ray_x .* (model[:x] - x⁽⁰⁾)) + sum(ret.ray_u .* (model[:u] - u⁽⁰⁾)) + sum(ret.ray_v .* (model[:v] - v⁽⁰⁾)))
-    add_storage_reduced_cost_terms!(cut_expr, model, ret, scenario_id)
+    cut_expr = add_storage_reduced_cost_terms!(cut_expr, model, ret, scenario_id)
     return cut_expr
 end
 
@@ -592,16 +593,22 @@ function evaluate_reduced_cost_optimality_cut(ret, incumbent)
     return cut_value
 end
 
-function add_no_good_cut!(model::Model, x_value, u_value, v_value; tolerance::Float64 = 0.5)
+function add_no_good_cut!(model::Model, x_value, u_value, v_value; tolerance::Float64 = 0.5, storage_binary_values = nothing)
     x = model[:x]
     u = model[:u]
     v = model[:v]
-    return @constraint(
-        model,
+    expr =
         sum((x_value[i] >= tolerance) ? (1 - x[i]) : x[i] for i in eachindex(x)) +
         sum((u_value[i] >= tolerance) ? (1 - u[i]) : u[i] for i in eachindex(u)) +
-        sum((v_value[i] >= tolerance) ? (1 - v[i]) : v[i] for i in eachindex(v)) >= 1
-    )
+        sum((v_value[i] >= tolerance) ? (1 - v[i]) : v[i] for i in eachindex(v))
+    if storage_binary_values !== nothing && has_master_storage_binary_variables(model)
+        empty_excl = Set{CartesianIndex{2}}()
+        expr += storage_mismatch_expression(model[:κ⁺], storage_binary_values.charge, empty_excl, tolerance)
+        expr += storage_mismatch_expression(model[:κ⁻], storage_binary_values.discharge, empty_excl, tolerance)
+        expr += storage_mismatch_expression(model[:α], storage_binary_values.start, empty_excl, tolerance)
+        expr += storage_mismatch_expression(model[:β], storage_binary_values.stop, empty_excl, tolerance)
+    end
+    return @constraint(model, expr >= 1)
 end
 
 function has_master_storage_binary_variables(model::Model)
@@ -806,10 +813,12 @@ function batch_solve_subproblem_with_feasibility_cut(
         # to load-balance heterogeneous LP solve times.
         submodels = SCUC_Model[batch_scuc_subproblem_dic[s] for s in 1:NS]
         ret_vec = Vector{Any}(undef, NS)
+        parent_opts = isdefined(@__MODULE__, :current_solver_options) ? current_solver_options() : nothing
+        parent_opt = isdefined(@__MODULE__, :default_uc_optimizer) ? default_uc_optimizer() : nothing
         Threads.@threads :dynamic for s in 1:NS
             submodel = submodels[s]
             scenario_storage_values = select_storage_binary_values_for_subproblem(storage_binary_values, s, submodel.model)
-            ret_vec[s] = solve_subproblem_with_feasibility_cut(
+            run_sub = () -> solve_subproblem_with_feasibility_cut(
                 submodel,
                 x,
                 u,
@@ -819,6 +828,13 @@ function batch_solve_subproblem_with_feasibility_cut(
                 scenario_id = s,
                 storage_binary_values = scenario_storage_values,
             )
+            ret_vec[s] = if isdefined(@__MODULE__, :with_solver_options) && isdefined(@__MODULE__, :with_uc_optimizer)
+                with_solver_options(parent_opts) do
+                    with_uc_optimizer(run_sub, parent_opt)
+                end
+            else
+                run_sub()
+            end
         end
         for s in 1:NS
             ret_dic[s] = ret_vec[s]
@@ -869,7 +885,7 @@ function maybe_get_dual_detail_dictionaries(scuc_subproblem_dic::SCUC_Model, opt
     if !should_collect_dual_details()
         return (smaller = Dict{Symbol, Any}(), greater = Dict{Symbol, Any}(), equal = Dict{Symbol, Any}())
     end
-    dual_getter = opti_termination_status ? dual : shadow_price
+    dual_getter = dual
     return (
         smaller = Dict(k => dual_getter.(v) for (k, v) in scuc_subproblem_dic.reformated_constraints._smaller_than),
         greater = Dict(k => dual_getter.(v) for (k, v) in scuc_subproblem_dic.reformated_constraints._greater_than),
@@ -975,20 +991,21 @@ function solve_subproblem_with_feasibility_cut(
         # Get Farkas certificate (dual rays) for infeasibility
         # farkas_dual = MOI.get(scuc_subproblem, MOI.FarkasDual())
 
-        # Scale and process the Farkas certificate
+        # Extract Farkas certificate (dual rays) safely; never call shadow_price on EqualTo or value on infeasible models
+        duals_available = has_duals(scuc_subproblem)
         return (
             is_feasible = false,
-            dual_θ = dual_objective_value(scuc_subproblem),
+            dual_θ = duals_available ? dual_objective_value(scuc_subproblem) : 0.0,
             scenario_id = scenario_id,
             x⁽⁰⁾ = copy(x),
             u⁽⁰⁾ = copy(u),
             v⁽⁰⁾ = copy(v),
-            ray_x = shadow_price.(link_x),
-            ray_u = shadow_price.(link_u),
-            ray_v = shadow_price.(link_v),
+            ray_x = duals_available ? dual.(link_x) : zeros(size(link_x)),
+            ray_u = duals_available ? dual.(link_u) : zeros(size(link_u)),
+            ray_v = duals_available ? dual.(link_v) : zeros(size(link_v)),
             storage_values = storage_values,
-            storage_rays = get_storage_link_duals(storage_links, false),
-            storage_dispatch = get_storage_dispatch_values(scuc_subproblem),
+            storage_rays = duals_available ? get_storage_link_duals(storage_links, false) : empty_storage_link_values(),
+            storage_dispatch = (charge_power = zeros(0, 0), discharge_power = zeros(0, 0)),
 
             # NOTE - farkas_dual process
             dual_coeffs = final_dual_subproblem_coefficient_results,
@@ -1053,12 +1070,11 @@ function get_storage_link_duals(storage_links, opti_termination_status::Bool)
     if storage_links === nothing
         return empty_storage_link_values()
     end
-    dual_getter = opti_termination_status ? dual : shadow_price
     return (
-        charge = dual_getter.(storage_links.charge),
-        discharge = dual_getter.(storage_links.discharge),
-        start = dual_getter.(storage_links.start),
-        stop = dual_getter.(storage_links.stop),
+        charge = dual.(storage_links.charge),
+        discharge = dual.(storage_links.discharge),
+        start = dual.(storage_links.start),
+        stop = dual.(storage_links.stop),
     )
 end
 

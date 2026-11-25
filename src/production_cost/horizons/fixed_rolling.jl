@@ -79,7 +79,7 @@ function execute_fixed_horizon_pcm(
     return withenv(env_pairs...) do
         d = load_pcm_excel_data(; data_file = cfg.data_file, network_constraints = cfg.network_constraints)
         apply_pcm_load_profile!(d.loads, cfg.load_profile)
-        winds, NW = genscenario(d.WindsFreqParam, 0)
+        winds, NW = genscenario(d.WindsFreqParam, 0; scenario_limit = 1)
         scenarios_prob = 1.0 / max(1, winds.scenarios_nums)
 
         mini_NT = policy.window_hours
@@ -130,6 +130,8 @@ function execute_fixed_horizon_pcm(
                 Float64(results["total_cost"])
             elseif haskey(results, "objective_value")
                 Float64(results["objective_value"])
+            elseif haskey(results, "res_scheduled_costs")
+                Float64(sum(results["res_scheduled_costs"]))
             else
                 error("Fixed-horizon PCM ($method_label) interval $k result is missing total_cost/objective_value.")
             end

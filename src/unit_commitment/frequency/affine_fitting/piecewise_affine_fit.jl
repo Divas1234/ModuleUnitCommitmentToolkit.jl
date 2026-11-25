@@ -29,7 +29,14 @@ function fit_frequency_nadir_least_squares(X::Matrix{Float64}, y::Vector{Float64
 end
 
 function fit_frequency_nadir_max_min_affine(X::Matrix{Float64}, y::Vector{Float64})
+    finite_rows = [isfinite(y[i]) && all(isfinite, @view X[i, :]) for i in axes(X, 1)]
+    if !all(finite_rows)
+        any(finite_rows) || throw(ArgumentError("Frequency nadir sampling produced no finite observations"))
+        X = X[finite_rows, :]
+        y = y[finite_rows]
+    end
     row_count = size(X, 1)
+    row_count > 0 || throw(ArgumentError("Frequency nadir sampling dataset is empty"))
     cut_count = min(row_count, max(1, floor(Int, frequency_env_float("FREQUENCY_NADIR_MAX_CUTS", 4.0))))
     big_m = max(maximum(abs.(y)) + 1.0, frequency_env_float("FREQUENCY_NADIR_FIT_BIG_M", 100.0))
     coefficient_bound = frequency_env_float("FREQUENCY_NADIR_COEFFICIENT_BOUND", 10.0)

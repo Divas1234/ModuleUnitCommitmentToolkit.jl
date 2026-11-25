@@ -51,6 +51,7 @@ GUI_ALLOWED_ORIGINS = {
 }
 RATE_STATE = {}
 RATE_LOCK = threading.Lock()
+CONFIG_LOCK = threading.Lock()
 TASK_OUTPUT_DIRS = {
     "benchmark": ("comparison", "benchmark_uc", "benders", "ccg"),
     "ccg": ("ccg",),
@@ -194,13 +195,6 @@ class RunManager:
 
     def start(self, task, params=None):
         task, params = validate_run_request({"task": task, "params": params or {}})
-        julia_ok, julia_msg = check_julia()
-        if not julia_ok:
-            self.output = [f"[ERROR] {julia_msg}\n"]
-            self.task = task
-            self.status = "failed"
-            return False
-
         with self._lock:
             if self.status == "running":
                 return False
@@ -209,20 +203,32 @@ class RunManager:
             self.status = "running"
             self._run_started_at = time.time()
 
+        julia_ok, julia_msg = check_julia()
+        if not julia_ok:
+            with self._lock:
+                self.output = [f"[ERROR] {julia_msg}\n"]
+                self.status = "failed"
+            return False
+
         def _run():
+            proc = None
             try:
                 cmd, env = self._build_cmd(task, params)
-                self._proc = subprocess.Popen(
-                    cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
-                    text=True, bufsize=1, cwd=str(ROOT), env=env,
-                )
-
-                self._timer = threading.Timer(JULIA_RUN_TIMEOUT, self._timeout_kill)
-                self._timer.start()
+                with self._lock:
+                    if self._cancel_requested or self.status == "cancelled":
+                        self.status = "cancelled"
+                        return
+                    proc = subprocess.Popen(
+                        cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
+                        text=True, bufsize=1, cwd=str(ROOT), env=env,
+                    )
+                    self._proc = proc
+                    self._timer = threading.Timer(JULIA_RUN_TIMEOUT, self._timeout_kill)
+                    self._timer.start()
 
                 structured_lines = []
                 in_structured = False
-                for line in iter(self._proc.stdout.readline, ""):
+                for line in iter(proc.stdout.readline, ""):
                     line = ANSI_RE.sub("", line)
                     stripped = line.strip()
                     with self._lock:
@@ -237,11 +243,13 @@ class RunManager:
                             continue
                         self.output.append(line)
 
-                self._proc.wait()
-                rc = self._proc.returncode
+                proc.wait()
+                rc = proc.returncode
                 with self._lock:
                     if self._cancel_requested or self.status == "cancelled":
                         self.status = "cancelled"
+                    elif self.status == "failed":
+                        pass
                     elif rc == 0:
                         self.status = "completed"
                     else:
@@ -258,10 +266,12 @@ class RunManager:
                 with self._lock:
                     self.output.append(f"\n[ERROR] {e}\n")
                     self.status = "failed"
+                    self._proc = None
             finally:
-                if self._timer:
-                    self._timer.cancel()
-                    self._timer = None
+                with self._lock:
+                    if self._timer:
+                        self._timer.cancel()
+                        self._timer = None
 
         threading.Thread(target=_run, daemon=True).start()
         return True
@@ -272,7 +282,6 @@ class RunManager:
                 self._proc.kill()
                 self.output.append(f"\n[ERROR] Task timed out after {JULIA_RUN_TIMEOUT}s\n")
                 self.status = "failed"
-                self._proc = None
 
     def cancel(self):
         with self._lock:
@@ -453,51 +462,81 @@ def parse_toml_with_lines(path):
             '_raw': {k: v['raw_value'] for k, v in key_lines.items()}}
 
 
+def _known_config_types(parsed):
+    types = {}
+    for sec in parsed["sections"]:
+        for field in sec["fields"]:
+            types[field["key"]] = field["type"]
+    return types
+
+
 def write_toml_values(path, updates):
-    parsed = parse_toml_with_lines(path)
-    lines = parsed['_lines'][:]
-    key_lines = parsed['_key_lines']
+    with CONFIG_LOCK:
+        parsed = parse_toml_with_lines(path)
+        lines = parsed['_lines'][:]
+        key_lines = parsed['_key_lines']
+        key_types = _known_config_types(parsed)
 
-    def _format_toml_value(new_value, old_raw):
-        if new_value is None:
-            raise ValueError("Empty numeric values are not valid TOML values")
-        if isinstance(new_value, bool):
-            return 'true' if new_value else 'false'
-        if isinstance(new_value, str):
-            if old_raw.startswith(("'", '"')):
+        def _format_toml_value(key, new_value):
+            expected_type = key_types.get(key)
+            if new_value is None:
+                raise ValueError(f"Empty value is not valid for {key}")
+            if expected_type == 'bool':
+                if not isinstance(new_value, bool):
+                    raise ValueError(f"Expected boolean value for {key}")
+                return 'true' if new_value else 'false'
+            if expected_type == 'number':
+                if isinstance(new_value, bool) or not isinstance(new_value, (int, float)):
+                    raise ValueError(f"Expected numeric value for {key}")
+                if isinstance(new_value, float) and not math.isfinite(new_value):
+                    raise ValueError(f"Invalid numeric value for {key}")
+                return str(new_value)
+            if expected_type == 'string':
+                if not isinstance(new_value, str) or any(ch in new_value for ch in ("\n", "\r", "\x00")):
+                    raise ValueError(f"Invalid string value for {key}")
                 return json.dumps(new_value)
-            return new_value
-        if isinstance(new_value, (int, float)):
-            return str(new_value)
-        raise ValueError(f"Unsupported value type: {type(new_value).__name__}")
+            raise ValueError(f"Unsupported value type for {key}")
 
-    for key, new_value in updates.items():
-        if key not in key_lines:
-            continue
-        meta = key_lines[key]
-        line_no = meta['line']
-        old_line = lines[line_no]
-        old_raw = meta['raw_value']
-        new_raw = _format_toml_value(new_value, old_raw)
-        lines[line_no] = old_line.replace(old_raw, new_raw, 1)
+        for key, new_value in updates.items():
+            if key not in key_lines:
+                continue
+            line_no = key_lines[key]['line']
+            old_line = lines[line_no]
+            lhs, sep, _ = old_line.partition('=')
+            if not sep:
+                raise ValueError(f"Malformed TOML assignment for {key}")
+            new_raw = _format_toml_value(key, new_value)
+            lines[line_no] = f"{lhs.rstrip()} = {new_raw}"
 
-    path.write_text('\n'.join(lines))
+        new_text = '\n'.join(lines)
+        tomllib.loads(new_text)
+        tmp_path = path.with_suffix(path.suffix + '.tmp')
+        tmp_path.write_text(new_text)
+        os.replace(tmp_path, path)
 
 
 def validate_config_updates(updates):
     if not isinstance(updates, dict):
         raise ValueError("Configuration updates must be a JSON object")
-    known_keys = set(parse_toml_with_lines(CONFIG_PATH)["_key_lines"])
+    parsed = parse_toml_with_lines(CONFIG_PATH)
+    key_types = _known_config_types(parsed)
     for key, value in updates.items():
-        if not isinstance(key, str) or key not in known_keys:
+        if not isinstance(key, str) or key not in key_types:
             raise ValueError(f"Unknown configuration key: {key}")
-        if isinstance(value, bool):
+        expected_type = key_types[key]
+        if expected_type == 'bool':
+            if not isinstance(value, bool):
+                raise ValueError(f"Expected boolean value for {key}")
             continue
-        if isinstance(value, (int, float)):
+        if expected_type == 'number':
+            if isinstance(value, bool) or not isinstance(value, (int, float)):
+                raise ValueError(f"Expected numeric value for {key}")
             if isinstance(value, float) and not math.isfinite(value):
                 raise ValueError(f"Invalid numeric value for {key}")
             continue
-        if isinstance(value, str) and len(value) <= 256:
+        if expected_type == 'string':
+            if not isinstance(value, str) or len(value) > 256 or any(ch in value for ch in ("\n", "\r", "\x00")):
+                raise ValueError(f"Invalid string value for {key}")
             continue
         raise ValueError(f"Invalid value for {key}")
 
@@ -656,6 +695,11 @@ class Handler(SimpleHTTPRequestHandler):
         if path in ('/', '/gui', '/gui/', '/GUI', '/GUI/'):
             self.path = '/gui/index.html'
         if self.path.startswith('/gui/'):
+            gui_root = (ROOT / 'gui').resolve()
+            resolved = Path(self.translate_path(self.path)).resolve()
+            if not resolved.is_relative_to(gui_root):
+                self.send_error(403, 'Forbidden')
+                return
             super().do_GET()
             return
         self.send_error(404, 'Not found')

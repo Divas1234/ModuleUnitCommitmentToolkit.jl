@@ -60,20 +60,33 @@ function print_example_run_usage(script_path::AbstractString; supports_fast::Boo
     return nothing
 end
 
-function parse_example_run_args(args::AbstractVector{<:AbstractString}; default_scenarios::Int = 2)
+function parse_example_run_args(
+    args::AbstractVector{<:AbstractString};
+    default_scenarios::Int = 2,
+    fast_direct::Bool = false,
+    show_constraints::Bool = false,
+    show_integrity::Bool = false,
+    show_solver_log::Bool = false,
+    show_results::Bool = true,
+    show_artifacts::Bool = true,
+    save_log::Bool = true,
+    log_file::Union{Nothing, String} = nothing,
+    verbosity::Symbol = :summary,
+)
     all_env = _example_env_flag("UC_EXAMPLE_DETAILS", false)
+    resolved_solver_log = show_solver_log || all_env || _example_env_flag("UC_SHOW_SOLVER_LOG", false)
     opts = UCExampleOptions(
         scenario_limit = default_scenarios,
-        show_constraints = all_env || _example_env_flag("UC_SHOW_CONSTRAINTS", false),
-        show_integrity = all_env || _example_env_flag("UC_SHOW_INTEGRITY", false),
-        show_solver_log = all_env || _example_env_flag("UC_SHOW_SOLVER_LOG", false),
-        show_results = true,
-        show_artifacts = true,
-        save_log = true,
+        fast_direct = fast_direct,
+        verbosity = (all_env || resolved_solver_log) ? :verbose : verbosity,
+        show_constraints = show_constraints || all_env || _example_env_flag("UC_SHOW_CONSTRAINTS", false),
+        show_integrity = show_integrity || all_env || _example_env_flag("UC_SHOW_INTEGRITY", false),
+        show_solver_log = resolved_solver_log,
+        show_results = show_results,
+        show_artifacts = show_artifacts,
+        save_log = save_log,
+        log_file = log_file,
     )
-    if all_env
-        opts.verbosity = :verbose
-    end
 
     for raw in args
         arg = String(raw)
@@ -152,21 +165,19 @@ function resolve_uc_example_options(
     log_file::Union{Nothing, String} = nothing,
     verbosity::Symbol = :summary,
 )
-    if isempty(args)
-        return UCExampleOptions(
-            scenario_limit = scenario_limit,
-            fast_direct = fast_direct,
-            verbosity = show_solver_log ? :verbose : verbosity,
-            show_constraints = show_constraints,
-            show_integrity = show_integrity,
-            show_solver_log = show_solver_log,
-            show_results = show_results,
-            show_artifacts = show_artifacts,
-            save_log = save_log,
-            log_file = log_file,
-        )
-    end
-    return parse_example_run_args(args; default_scenarios = scenario_limit)
+    return parse_example_run_args(
+        args;
+        default_scenarios = scenario_limit,
+        fast_direct = fast_direct,
+        show_constraints = show_constraints,
+        show_integrity = show_integrity,
+        show_solver_log = show_solver_log,
+        show_results = show_results,
+        show_artifacts = show_artifacts,
+        save_log = save_log,
+        log_file = log_file,
+        verbosity = verbosity,
+    )
 end
 
 function _diag_emit(log_lines::Vector{String}, msg::AbstractString)
@@ -357,7 +368,11 @@ function run_uc_example_workflow(
 )
     log_lines = String[]
     ts_tag = Dates.format(now(), "yyyymmdd_HHMMSS")
-    output_root = uc_output_root()
+    extra_dict = Dict{Symbol, Any}(pairs(extra_kwargs))
+    explicit_out = get(extra_dict, :output_dir, nothing)
+    output_root = _run_with_uc_context(calibration, explicit_out; detailed = false) do
+        explicit_out === nothing ? uc_output_root() : uc_output_dir(explicit_out)
+    end
     resolved_log = opts.save_log ? something(opts.log_file, joinpath(output_root, "logs", "$(algo_name)_example_$(ts_tag).log")) : nothing
 
     _diag_emit(log_lines, "="^72)
@@ -366,7 +381,15 @@ function run_uc_example_workflow(
     _diag_emit(log_lines, "="^72)
 
     if opts.show_constraints || opts.show_integrity
-        raw_data = load_uc_data(input = input, scenario_limit = opts.scenario_limit)
+        input_kw_keys = (
+            :use_powersystems, :sys, :case_name, :case_category, :case_dir,
+            :data_center_buses, :data_center_pmax, :frequency_parameters,
+            :data_centers, :horizon, :data_file,
+        )
+        load_kwargs = (; (k => extra_dict[k] for k in input_kw_keys if haskey(extra_dict, k))...)
+        raw_data = _run_with_uc_context(calibration, explicit_out; detailed = false) do
+            load_uc_data(; input = input, scenario_limit = opts.scenario_limit, load_kwargs...)
+        end
         prob = UCProblemData(raw_data)
         opts.show_constraints && _print_constraint_inventory(log_lines, prob.config_param, prob)
         opts.show_integrity && _print_integrity_report(log_lines, prob)

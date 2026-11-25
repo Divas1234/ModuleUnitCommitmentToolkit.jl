@@ -42,8 +42,13 @@ Adapts a `PowerSystems.System` and project-specific CSV files inside `case_dir`
 to the legacy unit commitment data structures.
 """
 function read_powersystems_case(sys::System, case_dir::String; scenario_limit::Int64 = 50)
-    sys_base_power = get_base_power(sys)
+    return PowerSystems.with_units_base(sys, UnitSystem.SYSTEM_BASE) do
+    sys_base_power = Float64(get_base_power(sys))
     config_param = config_from_env()
+    buses_all = sort(collect(get_components(ACBus, sys)), by = get_number)
+    isempty(buses_all) && throw(ArgumentError("PowerSystems system has no AC buses"))
+    bus_to_index = Dict{Int, Int}(get_number(b) => idx for (idx, b) in enumerate(buses_all))
+    bus_index(b) = bus_to_index[get_number(b)]
 
     # Helpers for column retrieval with aliases and case insensitivity
     function get_col_name(df::DataFrame, possible_names::Vector{String})
@@ -101,7 +106,7 @@ function read_powersystems_case(sys::System, case_dir::String; scenario_limit::I
 
     # Populate units struct arrays
     Gens_Index = collect(1:NG)
-    Gens_LocateBus = [get_number(get_bus(g)) for g in gens]
+    Gens_LocateBus = [bus_index(get_bus(g)) for g in gens]
     Gens_Pmax = Float64[]
     Gens_Pmin = Float64[]
     Gens_RU = Float64[]
@@ -129,13 +134,13 @@ function read_powersystems_case(sys::System, case_dir::String; scenario_limit::I
         row = uc_row_by_name[g_name]
 
         p_lim = get_active_power_limits(g)
-        push!(Gens_Pmax, p_lim.max / sys_base_power)
-        push!(Gens_Pmin, p_lim.min / sys_base_power)
+        push!(Gens_Pmax, Float64(p_lim.max))
+        push!(Gens_Pmin, Float64(p_lim.min))
 
         push!(Gens_RU, row[Symbol(get_col_name(df_uc, ["ramp_up"]))] / sys_base_power)
         push!(Gens_RD, row[Symbol(get_col_name(df_uc, ["ramp_down"]))] / sys_base_power)
-        push!(Gens_SU, row[Symbol(get_col_name(df_uc, ["startup_ramp", "startup_ramp"]))] / sys_base_power)
-        push!(Gens_SD, row[Symbol(get_col_name(df_uc, ["shutdown_ramp", "shutdown_ramp"]))] / sys_base_power)
+        push!(Gens_SU, row[Symbol(get_col_name(df_uc, ["startup_ramp"]))] / sys_base_power)
+        push!(Gens_SD, row[Symbol(get_col_name(df_uc, ["shutdown_ramp"]))] / sys_base_power)
 
         push!(Gens_TU, Float64(row[Symbol(get_col_name(df_uc, ["min_uptime", "min_up_time"]))]))
         push!(Gens_TD, Float64(row[Symbol(get_col_name(df_uc, ["min_downtime", "min_down_time"]))]))
@@ -266,14 +271,14 @@ function read_powersystems_case(sys::System, case_dir::String; scenario_limit::I
     )
 
     # --- 2. Map Transmission Lines ---
-    branches = sort(collect(get_components(Line, sys)), by = get_name)
+    branches = sort(collect(get_components(ACBranch, sys)), by = get_name)
     NL = length(branches)
     Trans_index = collect(1:NL)
-    Trans_From = [get_number(get_from(get_arc(b))) for b in branches]
-    Trans_To = [get_number(get_to(get_arc(b))) for b in branches]
-    Trans_x = [get_x(b) for b in branches]
-    Trans_Pmax = [get_rating(b) / sys_base_power for b in branches]
-    Trans_Pmin = [-get_rating(b) / sys_base_power for b in branches]
+    Trans_From = [bus_index(get_from(get_arc(b))) for b in branches]
+    Trans_To = [bus_index(get_to(get_arc(b))) for b in branches]
+    Trans_x = [Float64(get_x(b)) for b in branches]
+    Trans_Pmax = [Float64(get_rating(b)) for b in branches]
+    Trans_Pmin = [-Float64(get_rating(b)) for b in branches]
 
     # Validate branch values
     for i in 1:NL
@@ -287,7 +292,7 @@ function read_powersystems_case(sys::System, case_dir::String; scenario_limit::I
     loads_sys = sort(collect(get_components(PowerLoad, sys)), by = get_name)
     ND = length(loads_sys)
     Loads_Index = collect(1:ND)
-    Loads_LocateBus = [get_number(get_bus(ld)) for ld in loads_sys]
+    Loads_LocateBus = [bus_index(get_bus(ld)) for ld in loads_sys]
 
     loads_curves_list = Vector{Vector{Float64}}()
     NT = 0
@@ -311,7 +316,8 @@ function read_powersystems_case(sys::System, case_dir::String; scenario_limit::I
                 throw(ArgumentError("Load $(get_name(ld)) has empty time series keys"))
             end
         end
-        vals = get_time_series_values(SingleTimeSeries, ld, found_key)
+        ts_obj = get_time_series(SingleTimeSeries, ld, found_key)
+        vals = Float64.(collect(get_time_series_values(SingleTimeSeries, ld, found_key)))
         if i == 1
             NT = length(vals)
             if NT == 0
@@ -322,8 +328,9 @@ function read_powersystems_case(sys::System, case_dir::String; scenario_limit::I
                 throw(ArgumentError("Time series length mismatch for load $(get_name(ld)): got $(length(vals)), expected $NT"))
             end
         end
-        max_ap = get_max_active_power(ld)
-        push!(loads_curves_list, vals .* max_ap / sys_base_power)
+        has_mult = hasproperty(ts_obj, :scaling_factor_multiplier) && getfield(ts_obj, :scaling_factor_multiplier) !== nothing
+        curve_pu = has_mult ? vals : (vals .* Float64(get_max_active_power(ld)))
+        push!(loads_curves_list, curve_pu)
     end
 
     Loads_PerLoad = zeros(ND, NT)
@@ -346,12 +353,12 @@ function read_powersystems_case(sys::System, case_dir::String; scenario_limit::I
                 throw(ArgumentError("Missing required file: storage_uc.csv because MODEL_CONSIDER_BESS is enabled"))
             else
                 Pss_index = collect(1:NC)
-                Pss_locatebus = [get_number(get_bus(s)) for s in storages_sys]
-                Pss_q_max = [get_storage_capacity(s) / sys_base_power for s in storages_sys]
-                Pss_q_min = [get_storage_level_limits(s).min / sys_base_power for s in storages_sys]
-                Pss_p⁺ = [get_input_active_power_limits(s).max / sys_base_power for s in storages_sys]
-                Pss_p⁻ = [get_output_active_power_limits(s).max / sys_base_power for s in storages_sys]
-                Pss_P₀ = [get_initial_storage_capacity_level(s) / sys_base_power for s in storages_sys]
+                Pss_locatebus = [bus_index(get_bus(s)) for s in storages_sys]
+                Pss_q_max = [Float64(get_storage_capacity(s)) * Float64(get_storage_level_limits(s).max) for s in storages_sys]
+                Pss_q_min = [Float64(get_storage_capacity(s)) * Float64(get_storage_level_limits(s).min) for s in storages_sys]
+                Pss_p⁺ = [Float64(get_input_active_power_limits(s).max) for s in storages_sys]
+                Pss_p⁻ = [Float64(get_output_active_power_limits(s).max) for s in storages_sys]
+                Pss_P₀ = [Float64(get_storage_capacity(s)) * Float64(get_initial_storage_capacity_level(s)) for s in storages_sys]
                 Pss_γ⁺ = copy(Pss_p⁺)
                 Pss_γ⁻ = copy(Pss_p⁻)
                 Pss_η⁺ = [get_efficiency(s).in for s in storages_sys]
@@ -375,7 +382,7 @@ function read_powersystems_case(sys::System, case_dir::String; scenario_limit::I
             end
 
             Pss_index = collect(1:NC)
-            Pss_locatebus = [get_number(get_bus(s)) for s in storages_sys]
+            Pss_locatebus = [bus_index(get_bus(s)) for s in storages_sys]
             Pss_q_max = Float64[]
             Pss_q_min = Float64[]
             Pss_p⁺ = Float64[]
@@ -393,32 +400,33 @@ function read_powersystems_case(sys::System, case_dir::String; scenario_limit::I
                     throw(ArgumentError("Storage '$s_name' not found in storage_uc.csv"))
                 end
                 srow = storage_row_by_name[s_name]
+                cap_pu = Float64(get_storage_capacity(s))
 
                 qmax = if has_column(df_storage, ["q_max", "storage_capacity"])
                     srow[Symbol(get_col_name(df_storage, ["q_max", "storage_capacity"]))] / sys_base_power
                 else
-                    get_storage_capacity(s) / sys_base_power
+                    cap_pu * Float64(get_storage_level_limits(s).max)
                 end
                 push!(Pss_q_max, qmax)
 
                 qmin = if has_column(df_storage, ["q_min"])
                     srow[Symbol(get_col_name(df_storage, ["q_min"]))] / sys_base_power
                 else
-                    get_storage_level_limits(s).min / sys_base_power
+                    cap_pu * Float64(get_storage_level_limits(s).min)
                 end
                 push!(Pss_q_min, qmin)
 
                 p_charge = if has_column(df_storage, ["p_charge_max", "p⁺"])
                     srow[Symbol(get_col_name(df_storage, ["p_charge_max", "p⁺"]))] / sys_base_power
                 else
-                    get_input_active_power_limits(s).max / sys_base_power
+                    Float64(get_input_active_power_limits(s).max)
                 end
                 push!(Pss_p⁺, p_charge)
 
                 p_discharge = if has_column(df_storage, ["p_discharge_max", "p⁻"])
                     srow[Symbol(get_col_name(df_storage, ["p_discharge_max", "p⁻"]))] / sys_base_power
                 else
-                    get_output_active_power_limits(s).max / sys_base_power
+                    Float64(get_output_active_power_limits(s).max)
                 end
                 push!(Pss_p⁻, p_discharge)
 
@@ -450,8 +458,8 @@ function read_powersystems_case(sys::System, case_dir::String; scenario_limit::I
             Pss_P₀[i] >= 0 || throw(ArgumentError("Invalid initial SoC for storage index $i"))
             Pss_γ⁺[i] >= 0 || throw(ArgumentError("Invalid charge ramp rate for storage index $i"))
             Pss_γ⁻[i] >= 0 || throw(ArgumentError("Invalid discharge ramp rate for storage index $i"))
-            0 <= Pss_η⁺[i] <= 1 || throw(ArgumentError("Invalid charge efficiency for storage index $i"))
-            0 <= Pss_η⁻[i] <= 1 || throw(ArgumentError("Invalid discharge efficiency for storage index $i"))
+            0 < Pss_η⁺[i] <= 1 || throw(ArgumentError("Invalid charge efficiency for storage index $i"))
+            0 < Pss_η⁻[i] <= 1 || throw(ArgumentError("Invalid discharge efficiency for storage index $i"))
             0 <= Pss_δₛ[i] <= 1 || throw(ArgumentError("Invalid self-discharge rate for storage index $i"))
         end
 
@@ -478,6 +486,7 @@ function read_powersystems_case(sys::System, case_dir::String; scenario_limit::I
         ren_by_name = Dict(get_name(r) => r for r in renewables)
 
         ren_profiles = Dict{String, Vector{Float64}}()
+        ren_seen = Dict{String, BitVector}()
         for row in eachrow(df_ren)
             name = row[gen_col]
             t = row[time_col]
@@ -487,29 +496,33 @@ function read_powersystems_case(sys::System, case_dir::String; scenario_limit::I
                 throw(ArgumentError("Renewable generator '$name' in renewable_profiles.csv not found in PowerSystems RenewableGen components"))
 
             profile = get!(ren_profiles, name, zeros(NT))
+            seen = get!(ren_seen, name, falses(NT))
             if t < 1 || t > NT
                 throw(ArgumentError("Time index $t in renewable_profiles.csv out of bounds [1, $NT] for generator $name"))
             end
-            if profile[t] != 0.0
+            if seen[t]
                 throw(ArgumentError("Duplicate entry for generator $name at time $t in renewable_profiles.csv"))
             end
+            seen[t] = true
             profile[t] = val
         end
 
         for r in renewables
             r_name = get_name(r)
             haskey(ren_profiles, r_name) || throw(ArgumentError("Renewable generator '$r_name' is missing from renewable_profiles.csv"))
+            all(ren_seen[r_name]) || throw(ArgumentError("Renewable generator '$r_name' has missing time steps in renewable_profiles.csv"))
         end
 
         Wind_index = collect(1:NW)
-        Wind_locatebus = [get_number(get_bus(ren_by_name[name])) for name in get_name.(renewables)]
-        Wind_pmax = [get_rating(r) / sys_base_power for r in renewables]
+        Wind_locatebus = [bus_index(get_bus(ren_by_name[name])) for name in get_name.(renewables)]
+        Wind_pmax = [Float64(get_rating(r)) for r in renewables]
 
         cf_profiles = zeros(NW, NT)
         for (i, r) in enumerate(renewables)
             r_name = get_name(r)
             profile_mw = ren_profiles[r_name]
-            rating_mw = get_rating(r)
+            rating_mw = Float64(get_rating(r)) * sys_base_power
+            rating_mw > 0 || throw(ArgumentError("Renewable generator '$r_name' must have positive rating; got $(rating_mw)"))
             cf_profiles[i, :] = profile_mw ./ rating_mw
         end
 
@@ -539,7 +552,7 @@ function read_powersystems_case(sys::System, case_dir::String; scenario_limit::I
                     throw(ArgumentError("Renewable generator '$r_name' not found in frequency_parameters.csv"))
                 end
                 frow = freq_row_by_name[r_name]
-                Fcmode[i] = frow[Symbol(get_col_name(df_freq, ["Fcmode", "H"]))]
+                Fcmode[i] = has_column(df_freq, ["Fcmode"]) ? Float64(frow[Symbol(get_col_name(df_freq, ["Fcmode"]))]) : 1.0
                 Kw[i] = frow[Symbol(get_col_name(df_freq, ["Kw", "K"]))]
                 Rw[i] = frow[Symbol(get_col_name(df_freq, ["Rw", "R"]))]
                 Mw[i] = frow[Symbol(get_col_name(df_freq, ["Mw", "M"]))]
@@ -570,8 +583,7 @@ function read_powersystems_case(sys::System, case_dir::String; scenario_limit::I
 
         ND2 = size(df_dc, 1)
 
-        buses = get_components(ACBus, sys)
-        bus_by_name = Dict(get_name(b) => get_number(b) for b in buses)
+        bus_by_name = Dict(get_name(b) => bus_index(b) for b in buses_all)
 
         dc_index = collect(1:ND2)
         dc_locatebus = zeros(Int64, ND2)
@@ -586,7 +598,9 @@ function read_powersystems_case(sys::System, case_dir::String; scenario_limit::I
                     throw(ArgumentError("Bus name '$bus_val' for data center not found in PowerSystems buses"))
                 end
             else
-                dc_locatebus[i] = Int64(bus_val)
+                bus_num = Int64(bus_val)
+                haskey(bus_to_index, bus_num) || throw(ArgumentError("Bus number $bus_num for data center not found in PowerSystems buses"))
+                dc_locatebus[i] = bus_to_index[bus_num]
             end
         end
 
@@ -606,6 +620,7 @@ function read_powersystems_case(sys::System, case_dir::String; scenario_limit::I
         wl_val_col = Symbol(get_col_name(df_workload, ["workload", "value"]))
 
         dc_workloads = Dict{String, Vector{Float64}}()
+        dc_seen = Dict{String, BitVector}()
         for row in eachrow(df_workload)
             name = row[wl_dc_col]
             t = row[wl_time_col]
@@ -614,17 +629,20 @@ function read_powersystems_case(sys::System, case_dir::String; scenario_limit::I
             name in dc_names || throw(ArgumentError("Data center '$name' in workloads not found in data_centers.csv"))
 
             profile = get!(dc_workloads, name, zeros(NT))
+            seen = get!(dc_seen, name, falses(NT))
             if t < 1 || t > NT
                 throw(ArgumentError("Time index $t in data_center_workloads.csv out of bounds [1, $NT] for data center $name"))
             end
-            if profile[t] != 0.0
+            if seen[t]
                 throw(ArgumentError("Duplicate entry for data center $name at time $t in workloads"))
             end
+            seen[t] = true
             profile[t] = val
         end
 
         for name in dc_names
             haskey(dc_workloads, name) || throw(ArgumentError("Data center '$name' is missing from workloads"))
+            all(dc_seen[name]) || throw(ArgumentError("Data center '$name' has missing time steps in workloads"))
         end
 
         dc_computational_power_tasks = zeros(ND2, NT)
@@ -637,7 +655,7 @@ function read_powersystems_case(sys::System, case_dir::String; scenario_limit::I
             dc_idle_power[i] >= 0 || throw(ArgumentError("Invalid idle power for data center index $i"))
             dc_sv_constant[i] >= 0 || throw(ArgumentError("Invalid server constant for data center index $i"))
             dc_λ[i] >= 0 || throw(ArgumentError("Invalid task arrival rate for data center index $i"))
-            dc_μ[i] >= 0 || throw(ArgumentError("Invalid service rate for data center index $i"))
+            dc_μ[i] > 0 || throw(ArgumentError("Invalid service rate for data center index $i"))
         end
 
         data_center_struct = DataCenters(
@@ -654,7 +672,8 @@ function read_powersystems_case(sys::System, case_dir::String; scenario_limit::I
         )
     end
 
-    NB = maximum(get_number(b) for b in get_components(ACBus, sys))
+    NB = length(buses_all)
 
     return config_param, units_struct, lines_struct, loads_struct, storage_struct, winds_struct, NB, NG, NL, ND, NT, NC, ND2, data_center_struct
+    end
 end

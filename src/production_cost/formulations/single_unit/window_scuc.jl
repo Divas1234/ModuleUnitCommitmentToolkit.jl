@@ -16,7 +16,10 @@ if !isdefined(@__MODULE__, :_PERIOD_SCUC_MODULES_INCLUDED)
         pcm_optimizer() = _resolve_pcm_optimizer(nothing)
     end
     if !isdefined(@__MODULE__, :pcm_solver_name)
-        pcm_solver_name() = occursin("gurobi", lowercase(string(pcm_optimizer()))) ? "gurobi" : "glpk"
+        function pcm_solver_name()
+            s = lowercase(string(pcm_optimizer()))
+            return occursin("gurobi", s) ? "gurobi" : (occursin("highs", s) ? "highs" : "glpk")
+        end
     end
     const PCM_CLUSTER_ATTEMPTS = Threads.Atomic{Int}(0)
     const PCM_CLUSTER_SUCCESSES = Threads.Atomic{Int}(0)
@@ -221,9 +224,9 @@ if !isdefined(@__MODULE__, :_PERIOD_SCUC_MODULES_INCLUDED)
         opt_factory = (solver_options !== nothing && solver_options.optimizer !== nothing) ? solver_options.optimizer : pcm_optimizer()
         scuc = Model(opt_factory)
         is_sampling_silent = get(task_local_storage(), :is_sampling_running, false)
-        if isdefined(@__MODULE__, :apply_solver_options!) && solver_options !== nothing
+        if isdefined(@__MODULE__, :apply_solver_options!)
             default_gap = parse(Float64, get(ENV, "PCM_MIP_GAP", "0.015"))
-            default_threads = pcm_solver_name() == "gurobi" ? max(1, parse(Int, get(ENV, "PCM_SOLVER_THREADS", "24"))) : nothing
+            default_threads = pcm_solver_name() == "gurobi" ? max(1, parse(Int, get(ENV, "PCM_SOLVER_THREADS", string(min(Sys.CPU_THREADS, 8))))) : nothing
             default_limit = tryparse(Float64, get(ENV, "PCM_SOLVER_TIME_LIMIT_SECONDS", ""))
             apply_solver_options!(
                 scuc,
@@ -237,14 +240,12 @@ if !isdefined(@__MODULE__, :_PERIOD_SCUC_MODULES_INCLUDED)
             is_sampling_silent && set_silent(scuc)
             if pcm_solver_name() == "gurobi"
                 set_optimizer_attribute(scuc, "MIPGap", parse(Float64, get(ENV, "PCM_MIP_GAP", "0.015")))
-                solver_threads = max(1, parse(Int, get(ENV, "PCM_SOLVER_THREADS", "24")))
+                solver_threads = max(1, parse(Int, get(ENV, "PCM_SOLVER_THREADS", string(min(Sys.CPU_THREADS, 8)))))
                 set_optimizer_attribute(scuc, "Threads", solver_threads)
-                # 大规模算例可通过环境变量统一限制单个滚动窗口的求解时间。
-                # 默认不设上限，以保持既有小规模算例的对外行为不变。
                 solver_limit = tryparse(Float64, get(ENV, "PCM_SOLVER_TIME_LIMIT_SECONDS", ""))
                 solver_limit !== nothing && solver_limit > 0 &&
                     set_optimizer_attribute(scuc, "TimeLimit", solver_limit)
-            else
+            elseif pcm_solver_name() == "glpk"
                 set_optimizer_attribute(scuc, "tm_lim", 4000)
                 set_optimizer_attribute(scuc, "mip_gap", 0.015)
             end
@@ -264,12 +265,8 @@ if !isdefined(@__MODULE__, :_PERIOD_SCUC_MODULES_INCLUDED)
         add_power_balance_constraints!(scuc, NT, NG, ND, NC, NW, NS, loads, winds, config_param, ND2)
         add_ramp_constraints!(scuc, NT, NG, NS, units, onoffinit)
         add_pwl_constraints!(scuc, NT, NG, NS, units)
-        if clustered_enabled
-            println("\t constraints: 10) transmission limits deferred to unit disaggregation")
-        else
-            add_transmission_constraints!(
-                scuc, NT, NG, ND, NC, NW, NL, NS, units, loads, winds, lines, storages, Gsdf, config_param, ND2, data_centers)
-        end
+        add_transmission_constraints!(
+            scuc, NT, NG, ND, NC, NW, NL, NS, units, loads, winds, lines, storages, Gsdf, config_param, ND2, data_centers)
         add_storage_constraints!(scuc, NT, NC, NS, config_param, storages)
         add_data_center_constraints!(scuc, NT, NS, config_param, ND2, data_centers)
         add_frequency_constraints!(scuc, NT, NG, NC, NS, units, storages, config_param, Δp_contingency)
@@ -278,28 +275,6 @@ if !isdefined(@__MODULE__, :_PERIOD_SCUC_MODULES_INCLUDED)
             scuc, NT, NG, ND, NC, NW, NS, ND2, scenarios_prob, eachslope, refcost, config_param,
             units, loads, winds, lines, data_centers; NB = NB)
         if results !== nothing
-            if clustered_enabled
-                cluster_strict=lowercase(get(ENV, "PCM_CLUSTER_STRICT", "false")) in ("1", "true", "yes", "on")
-                clustered=apply_clustered_pcm_optimization!(
-                    results, units, loads, winds, lines, config_param, NB, NL; optimizer = pcm_optimizer(),
-                    strict = cluster_strict, storages = storages, data_centers = data_centers, hydros = hydros)
-                clustered.feasible||error("Clustered PCM disaggregation failed at $(clustered.stage): $(clustered.feedback)")
-                if !clustered.network_feasible && config_param.is_network_con==1 && NL>0
-                    println("  ↻ Network feedback: adding PTDF constraints and re-solving the current PCM window")
-                    add_transmission_constraints!(
-                        scuc, NT, NG, ND, NC, NW, NL, NS, units, loads, winds, lines, storages, Gsdf, config_param, ND2, data_centers)
-                    results=solve_and_extract_results(
-                        scuc, NT, NG, ND, NC, NW, NS, ND2, scenarios_prob, eachslope, refcost, config_param,
-                        units, loads, winds, lines, data_centers; NB = NB)
-                    results===nothing&&error("Network-feedback re-solve failed")
-                    repaired_clusters=build_pcm_clusters(units)
-                    results["cluster_ids"]=Float64.([only(c.id for c ∈ repaired_clusters if i in c.unit_indices) for i ∈ 1:NG])
-                    results["cluster_disaggregation_feasible"]=ones(Float64, NS, 1)
-                    clustered=(feasible = true, strictly_feasible = true, network_feasible = true, stage = :network_feedback_repaired,
-                        clusters = repaired_clusters, checks = clustered.checks, results = nothing, feedback = nothing)
-                end
-                println("  ✓ Clustered UC residence/network disaggregation completed ($(length(clustered.clusters)) clusters, stage=$(clustered.stage))")
-            end
             return results
         end
         println("Optimization failed, returning nothing.")

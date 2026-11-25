@@ -9,11 +9,14 @@ Build wind availability scenarios and attach frequency-control parameters.
 other modes use fixed benchmark scenarios.
 """
 function generate_wind_scenarios(WindsFreqParam, mode, NT::Int64 = 24; scenario_limit::Int64 = 50, seed::Int64 = 123)
-    index, locatebus, NW, p_max, base_profile = default_wind_farm_config(NT)
+    scenario_limit > 0 || throw(ArgumentError("scenario_limit must be positive; got $(scenario_limit)"))
+    nw_target = size(WindsFreqParam, 1)
+    index, locatebus, NW, p_max, base_profile = default_wind_farm_config(NT; NW = nw_target)
     scenarios_curve = if mode == 1
         generate_weibull_wind_availability(base_profile, scenario_limit, NT; seed = seed)
     else
-        copy(FIXED_WIND_AVAILABILITY_SCENARIOS)
+        n_rows = min(Int(scenario_limit), size(FIXED_WIND_AVAILABILITY_SCENARIOS, 1))
+        _tile_or_slice_cols(FIXED_WIND_AVAILABILITY_SCENARIOS[1:n_rows, :], NT)
     end
 
     scenarios_nums = size(scenarios_curve, 1)

@@ -79,6 +79,8 @@ function load_uc_data(;
                 String(case_name);
                 case_category = case_category,
                 scenario_limit = scenario_limit,
+                data_center_buses = data_center_buses,
+                data_center_pmax = data_center_pmax,
                 frequency_parameters = frequency_parameters,
                 data_centers = data_centers,
                 horizon = horizon,
@@ -113,7 +115,7 @@ function load_uc_data(;
         UnitsFreqParam, WindsFreqParam, storage_data, DataGen, GenCost, DataBranch, LoadCurve, DataLoad, data_center_data = readxlssheet(resolved_excel)
         config_param, units, lines, loads, psses, NB, NG, NL, ND, NT, NC, ND2, data_center_units =
             forminputdata(DataGen, DataBranch, DataLoad, LoadCurve, GenCost, UnitsFreqParam, storage_data, data_center_data; horizon = horizon)
-        winds, NW = genscenario(WindsFreqParam, 1; scenario_limit = scenario_limit)
+        winds, NW = genscenario(WindsFreqParam, 1, NT; scenario_limit = scenario_limit)
         NS = Int64(winds.scenarios_nums)
     end
 

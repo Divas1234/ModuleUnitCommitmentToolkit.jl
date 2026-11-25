@@ -173,7 +173,7 @@ function get_benders_multicuts_expression(scuc_masterproblem::JuMP.Model, coeff,
                             end
                         ) +
                         ((
-                            if isnothing(x_order)
+                            if isnothing(x_order) || x_order == 0
                                 (dual_coefficient[(t - 1) * NG + g, 1] * operator_precedence[(t - 1) * NG + g, 1] * rhs[(t - 1) * NG + g, 1])
                             else
                                 (dual_coefficient[(g - 1) * NT + t, 1] * operator_precedence[(g - 1) * NT + t, 1] * rhs[(g - 1) * NT + t, 1])
@@ -198,9 +198,8 @@ function get_benders_multicuts_expression(scuc_masterproblem::JuMP.Model, coeff,
                 sum(
                     sum(
                         sum(
-                            (operator_precedence[t, 1] * dual_coefficient[t, 1] * rhs[t, 1]) +
                             (
-                                if x_order == 0
+                                if isnothing(x_order) || x_order == 0
                                     (
                                         dual_coefficient[(NG * NT) * (k - 1) + (t - 1) * NG + g, 1] *
                                         operator_precedence[(NG * NT) * (k - 1) + (t - 1) * NG + g, 1] *
@@ -209,7 +208,7 @@ function get_benders_multicuts_expression(scuc_masterproblem::JuMP.Model, coeff,
                                     )
                                 else
                                     (
-                                        dual_coefficient[(g - 1) * NT + t, 1] *
+                                        dual_coefficient[(NG * NT) * (k - 1) + (g - 1) * NT + t, 1] *
                                         operator_precedence[(NG * NT) * (k - 1) + (g - 1) * NT + t, 1] *
                                         x_coefficient[(g - 1) * NT + t, 1] *
                                         scuc_masterproblem[:x][g, t]
@@ -217,7 +216,7 @@ function get_benders_multicuts_expression(scuc_masterproblem::JuMP.Model, coeff,
                                 end
                             ) +
                             (
-                                if x_order == 0
+                                if isnothing(x_order) || x_order == 0
                                     (
                                         dual_coefficient[(NG * NT) * (k - 1) + (t - 1) * NG + g, 1] *
                                         operator_precedence[(NG * NT) * (k - 1) + (t - 1) * NG + g, 1] *
@@ -255,28 +254,14 @@ function get_benders_multicuts_expression(scuc_masterproblem::JuMP.Model, coeff,
                                             dual_coefficient[(t - 1) * NG + g, 1] *
                                             operator_precedence[(t - 1) * NG + g, 1] *
                                             x_coefficient[(t - 1) * NG + g, 1] *
-                                            (1) *
-                                            (
-                                                if (t == 1)
-                                                    0
-                                                else
-                                                    scuc_masterproblem[:x][g, t - 1]
-                                                end
-                                            )
+                                            (t == 1 ? 0 : scuc_masterproblem[:x][g, t - 1])
                                         )
                                     else
                                         (
                                             dual_coefficient[(g - 1) * NT + t, 1] *
                                             operator_precedence[(g - 1) * NT + t, 1] *
                                             x_coefficient[(g - 1) * NT + t, 1] *
-                                            (1) *
-                                            (
-                                                if (t == 1)
-                                                    0
-                                                else
-                                                    scuc_masterproblem[:x][g, t - 1]
-                                                end
-                                            )
+                                            (t == 1 ? 0 : scuc_masterproblem[:x][g, t - 1])
                                         )
                                     end
                                 )
@@ -292,28 +277,14 @@ function get_benders_multicuts_expression(scuc_masterproblem::JuMP.Model, coeff,
                                             dual_coefficient[(t - 1) * NG + g, 1] *
                                             operator_precedence[(t - 1) * NG + g, 1] *
                                             u_coefficient[(t - 1) * NG + g, 1] *
-                                            (1) *
-                                            (
-                                                if (t == 1)
-                                                    0
-                                                else
-                                                    scuc_masterproblem[:x][g, t - 1]
-                                                end
-                                            )
+                                            scuc_masterproblem[:u][g, t]
                                         )
                                     else
                                         (
                                             dual_coefficient[(g - 1) * NT + t, 1] *
                                             operator_precedence[(g - 1) * NT + t, 1] *
                                             u_coefficient[(g - 1) * NT + t, 1] *
-                                            (1) *
-                                            (
-                                                if (t == 1)
-                                                    0
-                                                else
-                                                    scuc_masterproblem[:x][g, t - 1]
-                                                end
-                                            )
+                                            scuc_masterproblem[:u][g, t]
                                         )
                                     end
                                 )
@@ -329,35 +300,21 @@ function get_benders_multicuts_expression(scuc_masterproblem::JuMP.Model, coeff,
                                             dual_coefficient[(t - 1) * NG + g, 1] *
                                             operator_precedence[(t - 1) * NG + g, 1] *
                                             v_coefficient[(t - 1) * NG + g, 1] *
-                                            (1) *
-                                            (
-                                                if (t == 1)
-                                                    0
-                                                else
-                                                    scuc_masterproblem[:x][g, t - 1]
-                                                end
-                                            )
+                                            scuc_masterproblem[:v][g, t]
                                         )
                                     else
                                         (
                                             dual_coefficient[(g - 1) * NT + t, 1] *
                                             operator_precedence[(g - 1) * NT + t, 1] *
                                             v_coefficient[(g - 1) * NT + t, 1] *
-                                            (1) *
-                                            (
-                                                if (t == 1)
-                                                    0
-                                                else
-                                                    scuc_masterproblem[:x][g, t - 1]
-                                                end
-                                            )
+                                            scuc_masterproblem[:v][g, t]
                                         )
                                     end
                                 )
                             end
                         ) +
                         ((
-                            if isnothing(x_order)
+                            if isnothing(x_order) || x_order == 0
                                 (dual_coefficient[(t - 1) * NG + g, 1] * operator_precedence[(t - 1) * NG + g, 1] * rhs[(t - 1) * NG + g, 1])
                             else
                                 (dual_coefficient[(g - 1) * NT + t, 1] * operator_precedence[(g - 1) * NT + t, 1] * rhs[(g - 1) * NT + t, 1])
@@ -367,6 +324,10 @@ function get_benders_multicuts_expression(scuc_masterproblem::JuMP.Model, coeff,
                 )
             )
         end
+    end
+
+    if !@isdefined(dual_expression_cut)
+        dual_expression_cut = @expression(scuc_masterproblem, 0.0)
     end
 
     return scuc_masterproblem, dual_expression_cut

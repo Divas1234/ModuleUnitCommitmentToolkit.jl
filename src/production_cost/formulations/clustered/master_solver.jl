@@ -103,6 +103,12 @@ if !isdefined(@__MODULE__, :_TRUE_CLUSTERED_PCM_SOLVER_INCLUDED)
 		NW=length(winds.index)
 		NS=winds.scenarios_nums
 		NS==1||return (feasible = false, stage = :unsupported_scenarios, message = "true clustered master currently requires one PCM scenario")
+		if (hasproperty(config_param, :consider_bess) && config_param.consider_bess == 1) ||
+		   (hasproperty(config_param, :consider_data_center) && config_param.consider_data_center == 1) ||
+		   (hasproperty(config_param, :consider_frequency_control) && config_param.consider_frequency_control == 1)
+			return (feasible = false, stage = :unsupported_devices,
+				message = "true clustered master does not model BESS/data-center/frequency constraints; falling back to single-unit SCUC")
+		end
 		n=[length(c.unit_indices) for c ∈ clusters]
 		coeffs=clustered_pcm_cost_coefficients(units, clusters)
 		pmin=coeffs.pmin
@@ -121,8 +127,12 @@ if !isdefined(@__MODULE__, :_TRUE_CLUSTERED_PCM_SOLVER_INCLUDED)
 		m=Model(opt_factory)
 		if isdefined(@__MODULE__, :apply_solver_options!) && solver_options !== nothing
 			default_gap = parse(Float64, get(ENV, "PCM_MIP_GAP", "0.015"))
-			default_threads = pcm_solver_name() == "gurobi" ? max(1, parse(Int, get(ENV, "PCM_SOLVER_THREADS", "24"))) : nothing
-			default_limit = tryparse(Float64, get(ENV, "PCM_SOLVER_TIME_LIMIT_SECONDS", ""))
+			default_threads = pcm_solver_name() == "gurobi" ? max(1, parse(Int, get(ENV, "PCM_SOLVER_THREADS", string(min(Sys.CPU_THREADS, 8))))) : nothing
+			default_limit = something(
+				tryparse(Float64, get(ENV, "PCM_SOLVER_TIME_LIMIT_SECONDS", "")),
+				tryparse(Float64, get(ENV, "PCM_CLUSTER_MASTER_TIME_LIMIT_SECONDS", "60.0")),
+				60.0,
+			)
 			apply_solver_options!(
 				m,
 				solver_options;
@@ -136,10 +146,14 @@ if !isdefined(@__MODULE__, :_TRUE_CLUSTERED_PCM_SOLVER_INCLUDED)
 			pcm_solver_name() == "gurobi" && set_optimizer_attribute(
 				m, "MIPGap", parse(Float64, get(ENV, "PCM_MIP_GAP", "0.015")))
 			pcm_solver_name() == "gurobi" && set_optimizer_attribute(
-				m, "Threads", max(1, parse(Int, get(ENV, "PCM_SOLVER_THREADS", "24"))))
-			solver_limit=tryparse(Float64, get(ENV, "PCM_SOLVER_TIME_LIMIT_SECONDS", ""))
-			if solver_limit !== nothing && solver_limit > 0
-				# 与单机 PCM 使用相同的单窗时限，保证大规模性能对比公平。
+				m, "Threads", max(1, parse(Int, get(ENV, "PCM_SOLVER_THREADS", string(min(Sys.CPU_THREADS, 8))))))
+			solver_limit=something(
+				tryparse(Float64, get(ENV, "PCM_SOLVER_TIME_LIMIT_SECONDS", "")),
+				tryparse(Float64, get(ENV, "PCM_CLUSTER_MASTER_TIME_LIMIT_SECONDS", "60.0")),
+				60.0,
+			)
+			if solver_limit > 0
+				# 与单机 PCM 使用相同的单窗时限，保证大规模性能对比公平并避免扩展凸包无上限卡死。
 				pcm_solver_name() == "gurobi" && set_optimizer_attribute(m, "TimeLimit", solver_limit)
 			end
 		end
@@ -198,7 +212,7 @@ if !isdefined(@__MODULE__, :_TRUE_CLUSTERED_PCM_SOLVER_INCLUDED)
 			# coupled to the energy ramp constraint, so this hull must constrain P
 			# (not P+R) to preserve exact formulation parity.
 			@constraint(m, P[g, t]<=sr[g]*Y[g, t]+pmax[g]*(U[g, t]-Y[g, t]))
-			previous_power=t==1 ? sum(units.p_0[clusters[g].unit_indices]) : P[g, t-1]
+			previous_power=t==1 ? sum(units.p_0[i] for i ∈ clusters[g].unit_indices if units.x_0[i] > 0.5; init = 0.0) : P[g, t-1]
 			# Workbook/rolling boundaries may carry nonzero p₀ on an offline
 			# record.  The legacy physical model accepts that boundary, so apply
 			# the shutdown hull only after the first optimized period.
@@ -262,16 +276,17 @@ if !isdefined(@__MODULE__, :_TRUE_CLUSTERED_PCM_SOLVER_INCLUDED)
 			@constraint(m, hydros.q_0[h]+sum(hydros.reservoircurve[t, 1]-H[h, t] for t ∈ 1:NT)<=hydros.q_max[h])
 		end
 		for t ∈ 1:NT
-			demand=sum(loads.load_curve[:, t])
-			wind=sum(winds.scenarios_curve[1, t]*winds.p_max[w] for w ∈ 1:NW)
-			@constraint(m, sum(P[:, t])+sum(H[:, t])+wind-sum(wc[:, t])+sum(ls[:, t])==demand)
-			hydro_up=sum(min(hydros.p_max[h], hydros.reservoircurve[t, 1])-H[h, t] for h ∈ 1:NH)
+			demand=sum(loads.load_curve[:, t]; init = 0.0)
+			wind=NW == 0 ? 0.0 : sum(winds.scenarios_curve[1, t]*winds.p_max[w] for w ∈ 1:NW)
+			@constraint(m, sum(P[:, t])+(NH == 0 ? 0.0 : sum(H[:, t]))+wind-(NW == 0 ? 0.0 : sum(wc[:, t]))+sum(ls[:, t])==demand)
+			hydro_up=NH == 0 ? 0.0 : sum(min(hydros.p_max[h], hydros.reservoircurve[t, 1])-H[h, t] for h ∈ 1:NH)
 			for g ∈ 1:C
 				@constraint(m,sum(R[:,t])+hydro_up>=0.5*pmax[g]*cluster_online[g,t])
 			end
-			forecast_reserve=winds.scenarios_curve[1, t]*sum(winds.p_max)*0.05
+			forecast_reserve=NW == 0 ? 0.0 : winds.scenarios_curve[1, t]*sum(winds.p_max)*0.05
+			hydro_down=NH == 0 ? 0.0 : sum(H[h, t]-hydros.p_min[h] for h ∈ 1:NH)
 			@constraint(m,
-				sum(Rdown[:, t])+sum(H[h, t]-hydros.p_min[h] for h ∈ 1:NH)>=config_param.alpha*forecast_reserve+config_param.beta*demand)
+				sum(Rdown[:, t])+hydro_down>=config_param.alpha*forecast_reserve+config_param.beta*demand)
 		end
 		gsdf_master=config_param.is_network_con==1 ? calculate_gsdf(config_param, NL, units, lines, loads, NG, NB, ND) : nothing
 		if gsdf_master!==nothing
@@ -280,8 +295,8 @@ if !isdefined(@__MODULE__, :_TRUE_CLUSTERED_PCM_SOLVER_INCLUDED)
 
 				flow=@expression(m,
 					sum(gsdf_master[l, units.locatebus[first(clusters[g].unit_indices)]]*P[g, t] for g ∈ 1:C) +
-					sum(gsdf_master[l, hydros.locatebus[h]]*H[h, t] for h ∈ 1:NH) +
-					sum(gsdf_master[l, winds.locatebus[w]]*(winds.scenarios_curve[1, t]*winds.p_max[w]-wc[w, t]) for w ∈ 1:NW) -
+					(NH == 0 ? 0.0 : sum(gsdf_master[l, hydros.locatebus[h]]*H[h, t] for h ∈ 1:NH)) +
+					(NW == 0 ? 0.0 : sum(gsdf_master[l, winds.locatebus[w]]*(winds.scenarios_curve[1, t]*winds.p_max[w]-wc[w, t]) for w ∈ 1:NW)) -
 					sum(gsdf_master[l, loads.locatebus[d]]*(loads.load_curve[d, t]-ls[d, t]) for d ∈ 1:ND))
 				@constraint(m, lines.p_min[l]+network_margin<=flow)
 				@constraint(m, flow<=lines.p_max[l]-network_margin)
@@ -293,7 +308,7 @@ if !isdefined(@__MODULE__, :_TRUE_CLUSTERED_PCM_SOLVER_INCLUDED)
 			Threads.atomic_xchg!(PCM_CLUSTER_EXTENDED_INTEGER_VARIABLES, JuMP.num_constraints(m, JuMP.VariableRef, MOI.Integer))
 		end
 		optimize!(m)
-		if !(termination_status(m) in (MOI.OPTIMAL, MOI.TIME_LIMIT))
+		if !(termination_status(m) in (MOI.OPTIMAL, MOI.TIME_LIMIT) && has_values(m))
 			if use_extended_hull && use_output_state && termination_status(m) in (MOI.INFEASIBLE, MOI.INFEASIBLE_OR_UNBOUNDED)
 				max_bins=parse(Int, get(ENV, "PCM_CLUSTER_MAX_OUTPUT_BINS", "17"))
 				refine_grid=output_bins<max_bins
@@ -309,7 +324,7 @@ if !isdefined(@__MODULE__, :_TRUE_CLUSTERED_PCM_SOLVER_INCLUDED)
 					max_physical_iterations=max_physical_iterations, expanded_units=expanded_units,
 					targeted_refinements=targeted_refinements,
 					max_targeted_refinements=max_targeted_refinements, use_output_state=refine_grid,
-					output_bins=refined_bins)
+					output_bins=refined_bins, solver_options=solver_options)
 			end
 			return (feasible=false, stage=:cluster_master, message=string(termination_status(m)))
 		end
@@ -405,7 +420,7 @@ if !isdefined(@__MODULE__, :_TRUE_CLUSTERED_PCM_SOLVER_INCLUDED)
 						refinement_used=refinement_used, physical_cuts=NamedTuple[], physical_iteration=1,
 						max_physical_iterations=max_physical_iterations, expanded_units=new_expanded,
 						targeted_refinements=targeted_refinements+1, max_targeted_refinements=max_targeted_refinements,
-						use_output_state=use_output_state, output_bins=output_bins)
+						use_output_state=use_output_state, output_bins=output_bins, solver_options=solver_options)
 				end
 			end
 			if dis.feedback.failure_stage==:count_trajectory &&
@@ -425,7 +440,7 @@ if !isdefined(@__MODULE__, :_TRUE_CLUSTERED_PCM_SOLVER_INCLUDED)
 						physical_iteration=physical_iteration+1, max_physical_iterations=max_physical_iterations,
 						expanded_units=expanded_units, targeted_refinements=targeted_refinements,
 						max_targeted_refinements=max_targeted_refinements, use_output_state=use_output_state,
-						output_bins=output_bins)
+						output_bins=output_bins, solver_options=solver_options)
 				end
 			end
 			allow_refinement=lowercase(get(ENV, "PCM_CLUSTER_ALLOW_GLOBAL_REFINEMENT", "false")) in ("1", "true", "yes", "on")
@@ -439,7 +454,7 @@ if !isdefined(@__MODULE__, :_TRUE_CLUSTERED_PCM_SOLVER_INCLUDED)
 					physical_iteration=1, max_physical_iterations=max_physical_iterations,
 					expanded_units=expanded_units, targeted_refinements=targeted_refinements,
 					max_targeted_refinements=max_targeted_refinements, use_output_state=use_output_state,
-					output_bins=output_bins)
+					output_bins=output_bins, solver_options=solver_options)
 			end
 			new_lines=unique(vcat(feedback_lines, dis.feedback.affected_lines))
 			if dis.feedback.failure_stage==:network && iteration<max_iterations && length(new_lines)>length(feedback_lines)
@@ -451,7 +466,7 @@ if !isdefined(@__MODULE__, :_TRUE_CLUSTERED_PCM_SOLVER_INCLUDED)
 					physical_cuts=physical_cuts, physical_iteration=physical_iteration,
 					max_physical_iterations=max_physical_iterations, expanded_units=expanded_units,
 					targeted_refinements=targeted_refinements, max_targeted_refinements=max_targeted_refinements,
-					use_output_state=use_output_state, output_bins=output_bins)
+					use_output_state=use_output_state, output_bins=output_bins, solver_options=solver_options)
 			end
 			return (feasible = false,
 				stage = dis.feedback.failure_stage == :network ? :network_disaggregation : :physical_disaggregation,
@@ -495,7 +510,7 @@ if !isdefined(@__MODULE__, :_TRUE_CLUSTERED_PCM_SOLVER_INCLUDED)
 							expanded_units=union(expanded_units,Set(clusters[bad].unit_indices)),
 							targeted_refinements=targeted_refinements+1,
 							max_targeted_refinements=max_targeted_refinements,
-							use_output_state=use_output_state,output_bins=output_bins)
+							use_output_state=use_output_state,output_bins=output_bins,solver_options=solver_options)
 					end
 				end
 				return (feasible=false,stage=:physical_continuous_dispatch,
@@ -536,7 +551,7 @@ if !isdefined(@__MODULE__, :_TRUE_CLUSTERED_PCM_SOLVER_INCLUDED)
 						max_physical_iterations=max_physical_iterations,expanded_units=expanded_units,
 						targeted_refinements=targeted_refinements,
 						max_targeted_refinements=max_targeted_refinements,
-						use_output_state=use_output_state,output_bins=output_bins)
+						use_output_state=use_output_state,output_bins=output_bins,solver_options=solver_options)
 				end
 			end
 		end
@@ -573,9 +588,10 @@ if !isdefined(@__MODULE__, :_TRUE_CLUSTERED_PCM_SOLVER_INCLUDED)
 				available>tolerance&&foreach(i->rdphys[i, t]=rdown[g, t]*max(0.0, p[i, t]-units.p_min[i]*x[i, t])/available, ids)
 			end
 		end
-		results=Dict{String, Array{Float64}}(
+		results=Dict{String, Any}(
 			"x₀"=>x, "u₀"=>y, "v₀"=>z, "p₀"=>p, "pₖ"=>pk, "su_cost"=>su, "sd_cost"=>sd, "seq_sr⁺"=>r, "seq_sr⁻"=>rdphys,
 			"pᵨ"=>JuMP.value.(ls), "pᵩ"=>wind_curtailment, "hydros_output"=>hydro_values, "res_scheduled_costs"=>costs,
+			"total_cost"=>physical_cost, "objective_value"=>physical_cost,
 			"cluster_ids"=>Float64.([only(c.id for c ∈ clusters if i in c.unit_indices) for i ∈ 1:NG]),
 			"cluster_disaggregation_feasible"=>ones(1, 1))
 		return (feasible = true, stage = :complete, results = results, clusters = clusters, checks = checks,

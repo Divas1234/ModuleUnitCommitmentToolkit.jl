@@ -24,8 +24,9 @@ physical_units = (res !== nothing && hasproperty(res, :physical_units)) ? res.ph
                  (isdefined(@__MODULE__, :NG) ? NG : missing)
 units_obj = (res !== nothing && hasproperty(res, :units)) ? res.units :
             (isdefined(@__MODULE__, :units) ? units : nothing)
-virtual_units = units_obj !== nothing && isdefined(@__MODULE__, :build_similar_pcm_clusters) ?
-                length(build_similar_pcm_clusters(units_obj)) : missing
+_uc_pkg = isdefined(@__MODULE__, :ModuleUnitCommitmentToolkit) ? ModuleUnitCommitmentToolkit : @__MODULE__
+virtual_units = units_obj !== nothing && isdefined(_uc_pkg, :build_similar_pcm_clusters) ?
+                length(_uc_pkg.build_similar_pcm_clusters(units_obj)) : missing
 is_clustered_method = METHOD in ("clustered", "clustered_pcm", "cluster", "clustered_overlap", "clustered_adaptive_overlap")
 integer_variables = physical_units === missing || virtual_units === missing ? missing :
                     3 * WINDOW_HOURS * (is_clustered_method ? virtual_units : physical_units)
@@ -33,11 +34,11 @@ total_cost = (res !== nothing && hasproperty(res, :total_cost)) ? res.total_cost
              isdefined(@__MODULE__, :PCM_TOTAL_SCHEDULED_COST) ? PCM_TOTAL_SCHEDULED_COST[end, 1] :
              isdefined(@__MODULE__, :total_scheduled_cost) ? total_scheduled_cost[end, 1] : missing
 solver = try
-    isdefined(@__MODULE__, :pcm_solver_name) ? pcm_solver_name() : get(ENV, "PCM_SOLVER", "unknown")
+    isdefined(_uc_pkg, :pcm_solver_name) ? _uc_pkg.pcm_solver_name() : get(ENV, "PCM_SOLVER", "unknown")
 catch
     get(ENV, "PCM_SOLVER", "unknown")
 end
-cluster_stats = isdefined(@__MODULE__, :snapshot_pcm_cluster_stats) ? snapshot_pcm_cluster_stats() : nothing
+cluster_stats = isdefined(_uc_pkg, :snapshot_pcm_cluster_stats) ? _uc_pkg.snapshot_pcm_cluster_stats() : nothing
 cluster_attempts = cluster_stats !== nothing ? cluster_stats.attempts : 0
 cluster_successes = cluster_stats !== nothing ? cluster_stats.successes : 0
 cluster_fallbacks = cluster_stats !== nothing ? cluster_stats.fallbacks : 0

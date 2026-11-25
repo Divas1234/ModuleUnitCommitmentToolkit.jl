@@ -93,7 +93,7 @@ model_env_int(name::String, default::Int64) = uc_env_int(name, default)
 model_env_float(name::String, default::Float64) = uc_env_float(name, default)
 
 function config_from_env()
-    consider_bess = model_env_int("MODEL_CONSIDER_BESS", parse(Int64, get(ENV, "BENDERS_CONSIDER_BESS", get(ENV, "CONSIDER_BESS", "0"))))
+    consider_bess = model_env_int("MODEL_CONSIDER_BESS", model_env_int("BENDERS_CONSIDER_BESS", model_env_int("CONSIDER_BESS", 0)))
     return UCConfig(
         model_env_int("MODEL_IS_NETWORK_CON", 1),
         model_env_int("MODEL_IS_THERMAL_UNIT_CON", 1),

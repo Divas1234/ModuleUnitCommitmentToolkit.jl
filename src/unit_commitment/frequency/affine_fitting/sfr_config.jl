@@ -21,9 +21,9 @@ function frequency_model_mode()
     throw(ArgumentError("Unsupported FREQUENCY_MODEL_MODE=$(raw); expected one of: affine_fitting (legacy), hd_region, hybrid"))
 end
 
-function frequency_contingency_size(units, Δp_contingency)
-    contingency_fraction = get(ENV, "FREQUENCY_CONTINGENCY_FRACTION", "")
-    raw_contingency = if isempty(strip(contingency_fraction))
+function frequency_contingency_size(units, Δp_contingency; use_env_override::Bool = true)
+    contingency_fraction = use_env_override ? strip(get(ENV, "FREQUENCY_CONTINGENCY_FRACTION", "")) : ""
+    raw_contingency = if isempty(contingency_fraction)
         Float64(Δp_contingency)
     else
         maximum(units.p_max) * parse(Float64, contingency_fraction)

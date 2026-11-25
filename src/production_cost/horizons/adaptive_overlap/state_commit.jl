@@ -51,10 +51,14 @@ end
 
 Extract and return only the committed execution period (1:exec_NT) from total window results.
 """
+const _PCM_NON_TIME_RESULT_KEYS = Set(["res_scheduled_costs", "cluster_ids", "cluster_disaggregation_feasible"])
+
 function truncate_and_commit_results(results::AbstractDict{String}, exec_NT::Int64)
     committed_results = Dict{String, Any}()
     for (k, v) ∈ results
-        if v isa AbstractArray && ndims(v) == 2 && size(v, 2) >= exec_NT
+        if k in _PCM_NON_TIME_RESULT_KEYS
+            committed_results[k] = v
+        elseif v isa AbstractArray && ndims(v) == 2 && size(v, 2) >= exec_NT
             committed_results[k] = v[:, 1:exec_NT]
         elseif v isa AbstractArray && ndims(v) == 3 && size(v, 2) >= exec_NT
             committed_results[k] = v[:, 1:exec_NT, :]

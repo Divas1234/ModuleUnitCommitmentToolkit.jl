@@ -79,7 +79,7 @@ Both net-load ramp rate variations (|P_net(s, t+1) - P_net(s, t)|) and multi-sce
 """
 function detect_ramp_events_and_overlap(loads::load, winds::wind, start_time::Int64, exec_NT::Int64, max_lookahead::Int64,
         ramp_threshold_ratio::Float64 = 2.0, uncertainty_threshold_ratio::Float64 = 1.50)
-    total_time_avail = size(loads.load_curve, 2)
+    total_time_avail = min(size(loads.load_curve, 2), size(winds.scenarios_curve, 2))
     end_horizon = min(total_time_avail, start_time + exec_NT + max_lookahead - 1)
 
     if end_horizon <= start_time + exec_NT

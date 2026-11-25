@@ -246,8 +246,8 @@ function _dispatch(schedules, pathpairs, units, net, diag, optimizer)
 	pos=Dict(u.id=>i for (i, u) ∈ enumerate(units))
 	bpos=Dict(b=>i for (i, b) ∈ enumerate(net.buses))
 	U=zeros(Int, I, T)
-	Y=similar(U)
-	Z=similar(U)
+	Y=zeros(Int, I, T)
+	Z=zeros(Int, I, T)
 	for (p, id) ∈ pathpairs
 		i       = pos[id]
 		U[i, :] .= p.u
@@ -399,6 +399,9 @@ function solve_exact_unit_disaggregation(solutions, data;
 	@variable(m, dm[1:C, 1:T]>=0)
 	@variable(m, balance_plus[1:T]>=0)
 	@variable(m, balance_minus[1:T]>=0)
+	L=size(net.ptdf, 1)
+	@variable(m, line_plus[1:L, 1:T]>=0)
+	@variable(m, line_minus[1:L, 1:T]>=0)
 	if diagnose_counts
 		@variable(m, uplus[1:C, 1:T]>=0, Int)
 		@variable(m, uminus[1:C, 1:T]>=0, Int)
@@ -418,12 +421,12 @@ function solve_exact_unit_disaggregation(solutions, data;
 		previous_power=t==1 ? units[i].initial_power : p[i, t - 1]
 		@constraint(m, p[i, t]-previous_power<=units[i].ramp_up*previous+units[i].startup_ramp*Y[i, t])
 		@constraint(m, previous_power-p[i, t]<=units[i].ramp_down*U[i, t]+units[i].shutdown_ramp*Z[i, t])
-		L=max(1, units[i].min_up)
-		D=max(1, units[i].min_down)
-		@constraint(m, sum(Y[i, k] for k ∈ max(1, t - L + 1):t)<=U[i, t])
-		@constraint(m, sum(Z[i, k] for k ∈ max(1, t - D + 1):t)<=1-U[i, t])
+		min_up_i=max(1, units[i].min_up)
+		min_down_i=max(1, units[i].min_down)
+		@constraint(m, sum(Y[i, k] for k ∈ max(1, t - min_up_i + 1):t)<=U[i, t])
+		@constraint(m, sum(Z[i, k] for k ∈ max(1, t - min_down_i + 1):t)<=1-U[i, t])
 		if units[i].initial_duration>0
-			remaining=units[i].initial_on ? max(0, L-units[i].initial_duration) : max(0, D-units[i].initial_duration)
+			remaining=units[i].initial_on ? max(0, min_up_i-units[i].initial_duration) : max(0, min_down_i-units[i].initial_duration)
 			t<=remaining && @constraint(m, U[i, t]==Int(units[i].initial_on))
 		end
 	end
@@ -449,7 +452,6 @@ function solve_exact_unit_disaggregation(solutions, data;
 		@constraint(m, sum(r[:, t])>=sum(s.reserve[t] for s ∈ schedules))
 	end
 	fixed=size(net.fixed_injection, 2)==0 ? zeros(length(net.buses), T) : net.fixed_injection
-	L=size(net.ptdf, 1)
 	flows=Matrix{AffExpr}(undef, L, T)
 	for t ∈ 1:T
 		@constraint(m, sum(p[:, t])+sum(fixed[:, t])+balance_plus[t]-balance_minus[t]==0)
@@ -457,8 +459,8 @@ function solve_exact_unit_disaggregation(solutions, data;
 			flows[l, t]=@expression(m,
 				sum(net.ptdf[l, bpos[units[i].bus]]*p[i, t] for i ∈ 1:I) +
 				sum(net.ptdf[l, b]*fixed[b, t] for b ∈ eachindex(net.buses)))
-			@constraint(m, -net.line_limits[l]<=flows[l, t])
-			@constraint(m, flows[l, t]<=net.line_limits[l])
+			@constraint(m, flows[l, t]<=net.line_limits[l]+line_plus[l, t])
+			@constraint(m, -flows[l, t]<=net.line_limits[l]+line_minus[l, t])
 		end
 	end
 	marginal_scale=max(maximum(abs(u.marginal_cost) for u ∈ units; init = 1.0), 1.0)
@@ -467,7 +469,7 @@ function solve_exact_unit_disaggregation(solutions, data;
 		# Exact lexicographic diagnosis: never trade many commitment changes
 		# against a small MW balance residual.  First find the minimum discrete
 		# deviation, lock it, then diagnose the continuous power trajectory.
-		@objective(m, Min, countdev)
+		@objective(m, Min, countdev + 1e-4 * (sum(line_plus; init = 0.0) + sum(line_minus; init = 0.0)))
 		optimize!(m)
 		first_status=termination_status(m)
 		# 计数松弛的 incumbent 不是“最小偏差证书”。只有求解器证明最优后
@@ -476,11 +478,12 @@ function solve_exact_unit_disaggregation(solutions, data;
 		first_ok || return UnitDisaggregationResult(; feasible = false,
 			feedback = DisaggregationFeedback(; feasible = false, failure_stage = :exact_assignment,
 				message = "exact disaggregation count-diagnosis status $first_status"))
-		minimum_count_deviation=objective_value(m)
+		minimum_count_deviation=value(countdev)
 		@constraint(m, countdev<=minimum_count_deviation+tolerance)
 	end
 	@objective(m, Min,
 		1e6*(sum(balance_plus)+sum(balance_minus)) +
+		1e4*(sum(line_plus; init = 0.0)+sum(line_minus; init = 0.0)) +
 		1e3*(sum(dp)+sum(dm)) +
 		sum((units[i].marginal_cost/marginal_scale)*p[i, t] for i ∈ 1:I, t ∈ 1:T))
 	optimize!(m)
@@ -542,6 +545,21 @@ function solve_exact_unit_disaggregation(solutions, data;
 					message = "minimum-deviation certificate rejects local U/Y/Z tuple at cluster $(cut.cluster), period $(cut.period); total_count_deviation=$(round(total_count_deviation; digits=3)), max_balance_deviation=$(round(maximum(abs.(balance_candidate); init=0.0); digits=6))"))
 		end
 	end
+	line_viol = L == 0 ? zeros(Float64, 0, T) : (value.(line_plus) .+ value.(line_minus))
+	overloaded_lines = unique([l for l ∈ 1:L, t ∈ 1:T if line_viol[l, t] > tolerance])
+	if !isempty(overloaded_lines)
+		overloaded_periods = unique([t for l ∈ 1:L, t ∈ 1:T if line_viol[l, t] > tolerance])
+		overloaded_buses = unique(units[i].bus for i ∈ eachindex(units) if any(l -> abs(net.ptdf[l, bpos[units[i].bus]]) > tolerance, overloaded_lines))
+		return UnitDisaggregationResult(; feasible = false, diagnostic = true,
+			commitment = round.(Int, value.(U)), startup = round.(Int, value.(Y)),
+			shutdown = round.(Int, value.(Z)), power = value.(p), reserve = value.(r),
+			line_flow = value.(flows),
+			feedback = DisaggregationFeedback(; feasible = false, failure_stage = :network,
+				affected_lines = overloaded_lines,
+				affected_periods = overloaded_periods,
+				affected_buses = collect(overloaded_buses),
+				message = "exact disaggregation detected transmission line overloads on lines $(overloaded_lines)"))
+	end
 	balance_dev=value.(balance_plus) .- value.(balance_minus)
 	if maximum(abs.(balance_dev); init = 0.0)>tolerance
 		periods=findall(x->abs(x)>tolerance, balance_dev)
@@ -598,7 +616,18 @@ function run_cluster_disaggregation(clusters, schedules, initial, units, network
 			result = nothing,
 			feedback = DisaggregationFeedback(; feasible = false, failure_stage = :physical_assignment, affected_clusters = [c.id],
 				suggested_cluster_splits = [(cluster = c.id, reason = :incompatible_units)], message = "path assignment infeasible"))
-		append!(assigned, [p=>m[p.id] for p ∈ q.paths])
+		append!(assigned, [
+			AnonymousUnitPath(;
+				id = c.id * 10000 + p.id,
+				initial_on = p.initial_on,
+				initial_duration = p.initial_duration,
+				u = p.u,
+				y = p.y,
+				z = p.z,
+				age = p.age,
+				states = p.states,
+			) => m[p.id] for p ∈ q.paths
+		])
 	end
 	r=solve_unit_disaggregation(schedules, assigned, units; network_data = network, optimizer = optimizer, tolerance = tolerance)
 	(feasible = r.feasible, checks = checks, result = r, feedback = r.feedback)

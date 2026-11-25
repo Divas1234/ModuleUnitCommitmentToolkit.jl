@@ -27,6 +27,12 @@ function _read_excel_sheet(workbook, preferred::AbstractString, legacy::Union{No
     error("Required Excel sheet `$(preferred)` not found in workbook (available: $(sheets))")
 end
 
+function _read_sheet_matrix(sheet, last_col::AbstractString, ncols::Int)
+    nrows = size(sheet[:], 1)
+    nrows < 2 && return zeros(Float64, 0, ncols)
+    return convert(Array{Float64, 2}, sheet[string("A2:", last_col, nrows)])
+end
+
 function readxlssheet(data_file::AbstractString = unit_commitment_data_file())
     println("Step-1: Pkgs and functions are loaded")
     resolved_file = String(data_file)
@@ -34,44 +40,19 @@ function readxlssheet(data_file::AbstractString = unit_commitment_data_file())
     df = XLSX.readxlsx(resolved_file)
 
     # Part 1: Extract generation and wind frequency parameter matrices
-    units_freq_param = _read_excel_sheet(df, "units_frequencyparam")
-    winds_freq_param = _read_excel_sheet(df, "winds_frequencyparam")
-
-    sheet1_range = string("A2", ":", "G", string(size(units_freq_param[:], 1)))
-    sheet2_range = string("A2", ":", "F", string(size(winds_freq_param[:], 1)))
-
-    units_freq_param = convert(Array{Float64, 2}, units_freq_param[sheet1_range])
-    winds_freq_param = convert(Array{Float64, 2}, winds_freq_param[sheet2_range])
+    units_freq_param = _read_sheet_matrix(_read_excel_sheet(df, "units_frequencyparam"), "G", 7)
+    winds_freq_param = _read_sheet_matrix(_read_excel_sheet(df, "winds_frequencyparam"), "F", 6)
 
     # Part 2: Extract energy storage system parameters
-    storage_system_data = _read_excel_sheet(df, "storage_system_data", "strogesystem_data")
-    sheet3_range = string("A2", ":", "L", string(size(storage_system_data[:], 1)))
-    storage_system_data = convert(Array{Float64, 2}, storage_system_data[sheet3_range])
+    storage_system_data = _read_sheet_matrix(_read_excel_sheet(df, "storage_system_data", "strogesystem_data"), "L", 12)
 
     # Part 3: Extract conventional unit, transmission network, and electrical load data
-    gen_data = _read_excel_sheet(df, "units_data")
-    sheet4_range = string("A2", ":", "M", string(size(gen_data[:], 1)))
-    gen_data = convert(Array{Float64, 2}, gen_data[sheet4_range])
-
-    gen_cost = _read_excel_sheet(df, "units_cost")
-    sheet5_range = string("A2", ":", "H", string(size(gen_cost[:], 1)))
-    gen_cost = convert(Array{Float64, 2}, gen_cost[sheet5_range])
-
-    line_data = _read_excel_sheet(df, "branch_data")
-    sheet6_range = string("A2", ":", "E", string(size(line_data[:], 1)))
-    line_data = convert(Array{Float64, 2}, line_data[sheet6_range])
-
-    load_curve = _read_excel_sheet(df, "load_curve")
-    sheet7_range = string("A2", ":", "B", string(size(load_curve[:], 1)))
-    load_curve = convert(Array{Float64, 2}, load_curve[sheet7_range])
-
-    load_data = _read_excel_sheet(df, "load_data")
-    sheet8_range = string("A2", ":", "C", string(size(load_data[:], 1)))
-    load_data = convert(Array{Float64, 2}, load_data[sheet8_range])
-
-    data_center_sheet = _read_excel_sheet(df, "data_centers", "data_centra")
-    sheet9_range = string("A2", ":", "I", string(size(data_center_sheet[:], 1)))
-    data_center_data = convert(Array{Float64, 2}, data_center_sheet[sheet9_range])
+    gen_data = _read_sheet_matrix(_read_excel_sheet(df, "units_data"), "M", 13)
+    gen_cost = _read_sheet_matrix(_read_excel_sheet(df, "units_cost"), "H", 8)
+    line_data = _read_sheet_matrix(_read_excel_sheet(df, "branch_data"), "E", 5)
+    load_curve = _read_sheet_matrix(_read_excel_sheet(df, "load_curve"), "B", 2)
+    load_data = _read_sheet_matrix(_read_excel_sheet(df, "load_data"), "C", 3)
+    data_center_data = _read_sheet_matrix(_read_excel_sheet(df, "data_centers", "data_centra"), "I", 9)
 
     return units_freq_param, winds_freq_param, storage_system_data, gen_data, gen_cost, line_data, load_curve, load_data, data_center_data
 end
@@ -90,11 +71,19 @@ A consolidated tuple of physical component structs, optimization parameters, and
 function forminputdata(DataGen, DataBranch, DataLoad, LoadCurve, GenCost, UnitsFreqParam, storage_data, data_center_data; horizon::Union{Nothing, Integer} = nothing)
 
     # Topological dimension mappings (DataGen,DataBranch,DataLoad,LoadCurve,GenCost = IEEE_RTS6())
-    NB = Int64(maximum([maximum(DataBranch[:, 2]), maximum(DataBranch[:, 3])]))::Int64 # Number of Buses
     NL = Int64(size(DataBranch)[1])::Int64 # Number of Transmission Lines
     NG = Int64(size(DataGen)[1])::Int64    # Number of Generators
     ND = Int64(size(DataLoad)[1])::Int64   # Number of Loads
     NC = Int64(size(storage_data)[1])::Int64 # Number of Storage Units
+    bus_candidates = Int64[]
+    NL > 0 && append!(bus_candidates, Int64.(DataBranch[:, 2]), Int64.(DataBranch[:, 3]))
+    NG > 0 && append!(bus_candidates, Int64.(DataGen[:, 2]))
+    ND > 0 && append!(bus_candidates, Int64.(DataLoad[:, 2]))
+    NC > 0 && append!(bus_candidates, Int64.(storage_data[:, 2]))
+    size(data_center_data, 1) > 0 && append!(bus_candidates, Int64.(data_center_data[:, 2]))
+    isempty(bus_candidates) && throw(ArgumentError("Input workbook defines no buses"))
+    minimum(bus_candidates) >= 1 || throw(ArgumentError("Bus indices must be >= 1; got minimum $(minimum(bus_candidates))"))
+    NB = Int64(maximum(bus_candidates))::Int64 # Number of Buses
     available_periods = Int64(size(LoadCurve, 1))
     NT = horizon === nothing ? Int64(24) : Int64(horizon)
     if NT <= 0 || NT > available_periods

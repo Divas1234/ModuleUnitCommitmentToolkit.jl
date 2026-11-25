@@ -11,23 +11,26 @@ renewable generation at a penalty cost.
 """
 
 function add_curtailment_constraints!(scuc::Model, NT, ND, NW, NS, loads, winds)
-    # Check if variables exist
-    if isempty(scuc[:Δpd])
-        return println("\t constraints: 4) Curtailment skipped (Δpd not defined)")
-    end
-
     Δpd = scuc[:Δpd]
     Δpw = scuc[:Δpw]
 
     wind_pmax = winds.p_max
     load_curve = loads.load_curve
 
-    winds_curt_constr = @constraint(
-        scuc,
-        winds_curt_constr_for_eachscenario[s = 1:NS, t = 1:NT],
-        Δpw[(1 + (s - 1) * NW):(s * NW), t] .<= winds.scenarios_curve[s, t] * wind_pmax[:, 1]
-    )
-    loads_curt_const = @constraint(scuc, [s = 1:NS, t = 1:NT], Δpd[(1 + (s - 1) * ND):(s * ND), t] .<= load_curve[:, t])
+    winds_curt_constr = if NW > 0 && !isempty(Δpw)
+        @constraint(
+            scuc,
+            winds_curt_constr_for_eachscenario[s = 1:NS, t = 1:NT],
+            Δpw[(1 + (s - 1) * NW):(s * NW), t] .<= winds.scenarios_curve[s, t] * wind_pmax[:, 1]
+        )
+    else
+        Any[]
+    end
+    loads_curt_const = if ND > 0 && !isempty(Δpd)
+        @constraint(scuc, [s = 1:NS, t = 1:NT], Δpd[(1 + (s - 1) * ND):(s * ND), t] .<= load_curve[:, t])
+    else
+        Any[]
+    end
     println("\t constraints: 4) loadcurtailments and spoliedwinds\t\t\t done")
     return scuc, winds_curt_constr, loads_curt_const
 end
@@ -132,15 +135,17 @@ function add_power_balance_constraints!(scuc::Model, NT, NG, ND, NC, NW, NS, loa
         common_balance = @expression(
             scuc,
             [s = 1:NS, t = 1:NT],
-            sum(pg₀[(1 + (s - 1) * NG):(s * NG), t]) + sum(winds.scenarios_curve[s, t] * wind_pmax[w, 1] - Δpw[(s - 1) * NW + w, t] for w in 1:NW) -
-            sum(load_curve[d, t] - Δpd[(s - 1) * ND + d, t] for d in 1:ND)
+            sum(pg₀[(1 + (s - 1) * NG):(s * NG), t]) +
+            (NW > 0 ? sum(winds.scenarios_curve[s, t] * wind_pmax[w, 1] - Δpw[(s - 1) * NW + w, t] for w in 1:NW) : 0.0) -
+            (ND > 0 ? sum(load_curve[d, t] - Δpd[(s - 1) * ND + d, t] for d in 1:ND) : 0.0)
         ) # Net Load
     else
         common_balance = @expression(
             scuc,
             [s = 1:NS, t = 1:NT],
-            sum(pg₀[(1 + (s - 1) * NG):(s * NG), t]) + sum(winds.scenarios_curve[s, t] * wind_pmax[w, 1] - Δpw[(s - 1) * NW + w, t] for w in 1:NW) -
-            sum(load_curve[d, t] - Δpd[(s - 1) * ND + d, t] for d in 1:ND) + (
+            sum(pg₀[(1 + (s - 1) * NG):(s * NG), t]) +
+            (NW > 0 ? sum(winds.scenarios_curve[s, t] * wind_pmax[w, 1] - Δpw[(s - 1) * NW + w, t] for w in 1:NW) : 0.0) -
+            (ND > 0 ? sum(load_curve[d, t] - Δpd[(s - 1) * ND + d, t] for d in 1:ND) : 0.0) + (
                 if NC > 0 && pc⁻ !== nothing
                     sum(pc⁻[((s - 1) * NC + 1):(s * NC), t])
                 else
@@ -157,7 +162,7 @@ function add_power_balance_constraints!(scuc::Model, NT, NG, ND, NC, NW, NS, loa
     end
 
     sys_balance_constr = []
-    dc_enabled = config_param.consider_data_center == 1 && ND2 > 0 && check_var_exists(scuc, "dc_p")
+    dc_enabled = config_param.consider_data_center == 1 && ND2 !== nothing && ND2 > 0 && check_var_exists(scuc, "dc_p")
     if dc_enabled
         dc_p = scuc[:dc_p]
         # Add data center load if considered

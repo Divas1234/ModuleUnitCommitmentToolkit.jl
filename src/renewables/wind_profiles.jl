@@ -13,11 +13,22 @@ const FIXED_WIND_AVAILABILITY_SCENARIOS = [
     0.475002833720225 0.437617623292143 0.434471584469213 0.439971226562153 0.454329370050504 0.436312054145452 0.445440779281991 0.463144009687827 0.433153030072578 0.484931467718911 0.413222836444571 0.443268354334839 0.459751329710262 0.449325345517610 0.451073618934457 0.440806883197305 0.432345533655294 0.461416346612016 0.458566667364229 0.391262069079400 0.459153578592304 0.463514158218735 0.416622458118542 0.457798005720119
 ]
 
-function default_wind_farm_config(NT::Int64 = 24)
-    index = [1, 2]
-    locatebus = [1, 1]
-    p_max = fill(2.5, length(index))
-    base_profile = reshape(DEFAULT_WIND_AVAILABILITY_PROFILE, 1, NT)
+function _tile_or_slice_cols(mat::AbstractMatrix{Float64}, NT::Int64)
+    NT > 0 || throw(ArgumentError("NT must be positive; got $(NT)"))
+    n_cols = size(mat, 2)
+    n_cols == NT && return Matrix{Float64}(mat)
+    n_cols > NT && return Matrix{Float64}(mat[:, 1:NT])
+    reps = cld(NT, n_cols)
+    return Matrix{Float64}(repeat(mat, 1, reps)[:, 1:NT])
+end
+
+function default_wind_farm_config(NT::Int64 = 24; NW::Int64 = 2)
+    nw = max(0, Int64(NW))
+    index = collect(Int64(1):nw)
+    locatebus = ones(Int64, nw)
+    p_max = fill(2.5, nw)
+    chronological = reshape(vec(permutedims(DEFAULT_WIND_AVAILABILITY_PROFILE)), 1, :)
+    base_profile = _tile_or_slice_cols(chronological, NT)
     return index, locatebus, length(index), p_max, base_profile
 end
 

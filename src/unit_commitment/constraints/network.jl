@@ -84,8 +84,8 @@ function add_transmission_constraints!(
                 scuc,
                 [s = 1:NS, t = 1:NT],
                 sum(subGsdf_units[i] * pg₀[i + (s - 1) * NG, t] for i in 1:NG) +
-                sum(subGsdf_winds[w] * (winds.scenarios_curve[s, t] * winds.p_max[w, 1] - Δpw[(s - 1) * NW + w, t]) for w in 1:NW) -
-                sum(subGsdf_loads[d] * (loads.load_curve[d, t] - Δpd[(s - 1) * ND + d, t]) for d in 1:ND) +
+                (NW > 0 ? sum(subGsdf_winds[w] * (winds.scenarios_curve[s, t] * winds.p_max[w, 1] - Δpw[(s - 1) * NW + w, t]) for w in 1:NW) : 0.0) -
+                (ND > 0 ? sum(subGsdf_loads[d] * (loads.load_curve[d, t] - Δpd[(s - 1) * ND + d, t]) for d in 1:ND) : 0.0) +
                 (isempty(active_devices) ? 0.0 : sum(device_net_injection(scuc, dev, s, t, gsdf_row) for dev in active_devices))
             )
             push!(transmissionline_powerflow_upbound_constr, @constraint(scuc, [s = 1:NS, t = 1:NT], flow[s, t] <= lines.p_max[l, 1]))
@@ -94,6 +94,7 @@ function add_transmission_constraints!(
         println("\t constraints: 10) transmissionline limits for basline\t\t\t done")
         return scuc, transmissionline_powerflow_upbound_constr, transmissionline_powerflow_downbound_constr
     else
-        return println("\t constraints: 10) transmissionline limits skipped (is_network_con != 1 or Gsdf missing or NL=0)")
+        println("\t constraints: 10) transmissionline limits skipped (is_network_con != 1 or Gsdf missing or NL=0)")
+        return scuc, Any[], Any[]
     end
 end

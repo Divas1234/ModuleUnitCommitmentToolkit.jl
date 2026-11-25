@@ -49,11 +49,39 @@ function validate_inputs(NT, NB, NG, ND, NC, ND2, units, loads, winds, lines, da
         @warn "Number of wind scenarios `winds.scenarios_nums` ($(winds.scenarios_nums)) must be positive."
         return false
     end
+    if size(winds.scenarios_curve, 1) < winds.scenarios_nums || size(winds.scenarios_curve, 2) < NT
+        @warn "Wind scenario curve dimensions ($(size(winds.scenarios_curve))) are incompatible with NS=$(winds.scenarios_nums), NT=$NT."
+        return false
+    end
+
+    # Bus bounds & branch reactance checks
+    if any(b -> b < 1 || b > NB, units.locatebus)
+        @warn "Generator bus index out of bounds 1:$NB."
+        return false
+    end
+    if ND > 0 && any(b -> b < 1 || b > NB, loads.locatebus)
+        @warn "Load bus index out of bounds 1:$NB."
+        return false
+    end
+    if NW > 0 && any(b -> b < 1 || b > NB, winds.locatebus)
+        @warn "Wind bus index out of bounds 1:$NB."
+        return false
+    end
 
     # Transmission line dimensions
-    if NL > 0 && (length(lines.index) != NL || length(lines.from) != NL || length(lines.to) != NL || length(lines.p_max) != NL)
-        @warn "Transmission line dimensions (index=$(length(lines.index)), from=$(length(lines.from)), to=$(length(lines.to)), p_max=$(length(lines.p_max))) do not match NL ($NL)."
-        return false
+    if NL > 0
+        if length(lines.index) != NL || length(lines.from) != NL || length(lines.to) != NL || length(lines.p_max) != NL
+            @warn "Transmission line dimensions (index=$(length(lines.index)), from=$(length(lines.from)), to=$(length(lines.to)), p_max=$(length(lines.p_max))) do not match NL ($NL)."
+            return false
+        end
+        if any(b -> b < 1 || b > NB, lines.from) || any(b -> b < 1 || b > NB, lines.to)
+            @warn "Transmission line bus index out of bounds 1:$NB."
+            return false
+        end
+        if any(x -> !isfinite(x) || x == 0.0, lines.x)
+            @warn "Transmission line reactance must be finite and non-zero."
+            return false
+        end
     end
 
     # Storage dimensions
@@ -62,12 +90,20 @@ function validate_inputs(NT, NB, NG, ND, NC, ND2, units, loads, winds, lines, da
             @warn "Storage input `psses` is missing or its index length does not match NC ($NC)."
             return false
         end
+        if hasproperty(psses, :η⁻) && any(e -> !isfinite(e) || e <= 0.0, psses.η⁻)
+            @warn "Storage discharge efficiency η⁻ must be positive."
+            return false
+        end
     end
 
     # Data center dimensions
     if ND2 > 0
         if data_centers === nothing || !hasproperty(data_centers, :index) || length(data_centers.index) != ND2
             @warn "Data center input `data_centers` is missing or its index length does not match ND2 ($ND2)."
+            return false
+        end
+        if hasproperty(data_centers, :μ) && any(m -> !isfinite(m) || m <= 0.0, data_centers.μ)
+            @warn "Data center service rate μ must be positive."
             return false
         end
     end

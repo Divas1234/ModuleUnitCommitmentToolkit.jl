@@ -49,11 +49,7 @@ function get_dual_constrs_coefficient(current_model::SCUC_Model, constrs, opti_t
         length(Set([x_sort_order, u_sort_order, v_sort_order])) <= 2 ||
             error("Conflicting dual variable sort orders for constraint $(key): x=$(x_sort_order), u=$(u_sort_order), v=$(v_sort_order)")
 
-        if opti_termination_status == true
-            dual_coeff = dual.(value) #strong convex
-        else
-            dual_coeff = shadow_price.(value) #farkas convex
-        end
+        dual_coeff = dual.(value)
 
         dual_results[key] = build_dual_cuts_expr_coefficient(;
             rhs = rhs_constr,

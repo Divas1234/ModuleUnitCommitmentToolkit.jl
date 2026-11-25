@@ -20,7 +20,7 @@ function load_config()
     profile_names = env_list("PCM_BENCHMARK_PROFILES", "baseline,smooth,extreme_ramp")
     return (;
         project_root = PROJECT_ROOT,
-        julia_project = abspath(get(ENV, "PCM_JULIA_PROJECT", joinpath(PROJECT_ROOT, "pkg"))),
+        julia_project = abspath(get(ENV, "PCM_JULIA_PROJECT", PROJECT_ROOT)),
         input_file = abspath(get(ENV, "PCM_INPUT_XLSX", joinpath(PROJECT_ROOT, "data", "data_118_clustered_pcm.xlsx"))),
         output_root = abspath(get(ENV, "PCM_SUITE_OUTPUT", joinpath(PROJECT_ROOT, "output", "pcm_com4_loadall_h$(intervals * window_hours)_$stamp"))),
         profiles = profile_names,

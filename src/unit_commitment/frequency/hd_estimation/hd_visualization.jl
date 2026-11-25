@@ -221,7 +221,10 @@ Render a clear 2x2 publication-style figure showing:
 - (c) Time-varying synchronous damping `D_sync(t)` vs `[D_min, D_max]` bounds;
 - (d) Post-dispatch physical frequency metrics (`Δf_nadir(t)`, `Δf_qss(t)`, `RoCoF(t)`).
 """
+const _HD_PLOT_ENV_LOCK = ReentrantLock()
+
 function plot_hd_time_varying_region(analysis, save_path::AbstractString; title_suffix::AbstractString = "")
+    return lock(_HD_PLOT_ENV_LOCK) do
     prev_gks = get(ENV, "GKSwstype", nothing)
     ENV["GKSwstype"] = "100"
     try
@@ -427,6 +430,7 @@ function plot_hd_time_varying_region(analysis, save_path::AbstractString; title_
         else
             ENV["GKSwstype"] = prev_gks
         end
+    end
     end
 end
 

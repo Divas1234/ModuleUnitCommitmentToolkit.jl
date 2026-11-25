@@ -64,7 +64,7 @@ function build_benders_setup(;
     refcost, eachslope = linearizationfuelcurve(units, NG)
 
     # Construct the Benders Master Problem algebraically
-    scuc_masterproblem, master_model_struct = bd_masterfunction(NT, NB, NG, ND, NC, ND2, NS, NW, units, loads, winds, config_param, scenarios_prob)
+    scuc_masterproblem, master_model_struct = bd_masterfunction(NT, NB, NG, ND, NC, ND2, NS, NW, units, loads, winds, config_param, scenarios_prob; storages = psses)
 
     # Construct the Benders Base Subproblem algebraically
     scuc_subproblem, sub_model_struct = bd_subfunction(UCProblemData(data); scenarios_prob = scenarios_prob)

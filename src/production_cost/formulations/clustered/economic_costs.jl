@@ -30,12 +30,21 @@ if !isdefined(@__MODULE__, :_CLUSTERED_PCM_COSTS_INCLUDED)
 			shutdown = cluster_shutdown, pmin = cluster_pmin, pmax = cluster_pmax)
 	end
 
+	_pcm_load_curtailment_penalty(config_param) =
+		isdefined(@__MODULE__, :UCConfig) && config_param isa UCConfig ?
+			uc_load_curtailment_penalty(config_param) :
+			Float64(config_param.is_LoadsCuttingCoefficient) * 1e4
+	_pcm_wind_curtailment_penalty(config_param) =
+		isdefined(@__MODULE__, :UCConfig) && config_param isa UCConfig ?
+			uc_wind_curtailment_penalty(config_param) :
+			Float64(config_param.is_WindsCuttingCoefficient) * 1e0
+
 	"""Return the same economic objective used by the physical PCM master."""
 	function clustered_pcm_economic_expression(config_param, coeffs, U, Y, Z, Q, R, Rdown, ls, wc;
 			scenarios_prob = 1.0)
 		c₀ = config_param.is_CoalPrice
-		load_penalty = config_param.is_LoadsCuttingCoefficient * 1e10
-		base_wind_penalty = config_param.is_WindsCuttingCoefficient * 1e0
+		load_penalty = _pcm_load_curtailment_penalty(config_param)
+		base_wind_penalty = _pcm_wind_curtailment_penalty(config_param)
 		# In the compact model a coarse output state can otherwise make wind
 		# curtailment cheaper than replacing thermal fuel.  Use a master-only
 		# economic floor; physical result reporting below keeps the common project
@@ -46,25 +55,25 @@ if !isdefined(@__MODULE__, :_CLUSTERED_PCM_COSTS_INCLUDED)
 		configured_floor=parse(Float64, get(ENV, "PCM_CLUSTER_WIND_PENALTY_FLOOR", string(auto_floor)))
 		wind_penalty = max(base_wind_penalty, configured_floor)
 		C, T = size(U)
-		startup_shutdown = sum(coeffs.startup[g] * Y[g, t] + coeffs.shutdown[g] * Z[g, t] for g ∈ 1:C, t ∈ 1:T)
-		fuel = c₀ * (sum(coeffs.refcost[g] * U[g, t] for g ∈ 1:C, t ∈ 1:T) +
-					 scenarios_prob * sum(coeffs.eachslope[k, g] * Q[g, t, k] for g ∈ 1:C, t ∈ 1:T, k ∈ axes(Q, 3)) +
-					 scenarios_prob * 2c₀ * sum(R[g, t] + Rdown[g, t] for g ∈ 1:C, t ∈ 1:T))
-		startup_shutdown + fuel + scenarios_prob * (load_penalty * sum(ls) + wind_penalty * sum(wc))
+		startup_shutdown = sum(coeffs.startup[g] * Y[g, t] + coeffs.shutdown[g] * Z[g, t] for g ∈ 1:C, t ∈ 1:T; init = 0.0)
+		fuel = c₀ * scenarios_prob * (sum(coeffs.refcost[g] * U[g, t] for g ∈ 1:C, t ∈ 1:T; init = 0.0) +
+					 sum(coeffs.eachslope[k, g] * Q[g, t, k] for g ∈ 1:C, t ∈ 1:T, k ∈ axes(Q, 3); init = 0.0) +
+					 2c₀ * sum(R[g, t] + Rdown[g, t] for g ∈ 1:C, t ∈ 1:T; init = 0.0))
+		startup_shutdown + fuel + scenarios_prob * (load_penalty * sum(ls; init = 0.0) + wind_penalty * sum(wc; init = 0.0))
 	end
 
 	# display each cost-term for clustered pcm
 	function clustered_pcm_economic_cost(config_param, coeffs, U, Y, Z, Q, R, Rdown, ls, wc;
 			scenarios_prob = 1.0)
 		c₀ = config_param.is_CoalPrice
-		startup = sum(coeffs.startup[g] * Y[g, t] for g ∈ axes(U, 1), t ∈ axes(U, 2))
-		shutdown = sum(coeffs.shutdown[g] * Z[g, t] for g ∈ axes(U, 1), t ∈ axes(U, 2))
-		production = c₀ * (sum(coeffs.refcost[g] * U[g, t] for g ∈ axes(U, 1), t ∈ axes(U, 2)) +
-						   scenarios_prob * sum(coeffs.eachslope[k, g] * Q[g, t, k] for g ∈ axes(U, 1), t ∈ axes(U, 2), k ∈ axes(Q, 3)))
-		reserve_up = scenarios_prob * c₀ * 2c₀ * sum(R)
-		reserve_down = scenarios_prob * c₀ * 2c₀ * sum(Rdown)
-		load_cost = scenarios_prob * config_param.is_LoadsCuttingCoefficient * 1e10 * sum(ls)
-		wind_cost = scenarios_prob * config_param.is_WindsCuttingCoefficient * 1e0 * sum(wc)
+		startup = sum(coeffs.startup[g] * Y[g, t] for g ∈ axes(U, 1), t ∈ axes(U, 2); init = 0.0)
+		shutdown = sum(coeffs.shutdown[g] * Z[g, t] for g ∈ axes(U, 1), t ∈ axes(U, 2); init = 0.0)
+		production = c₀ * scenarios_prob * (sum(coeffs.refcost[g] * U[g, t] for g ∈ axes(U, 1), t ∈ axes(U, 2); init = 0.0) +
+						   sum(coeffs.eachslope[k, g] * Q[g, t, k] for g ∈ axes(U, 1), t ∈ axes(U, 2), k ∈ axes(Q, 3); init = 0.0))
+		reserve_up = scenarios_prob * c₀ * 2c₀ * sum(R; init = 0.0)
+		reserve_down = scenarios_prob * c₀ * 2c₀ * sum(Rdown; init = 0.0)
+		load_cost = scenarios_prob * _pcm_load_curtailment_penalty(config_param) * sum(ls; init = 0.0)
+		wind_cost = scenarios_prob * _pcm_wind_curtailment_penalty(config_param) * sum(wc; init = 0.0)
 		reshape([startup, shutdown, production, reserve_up, reserve_down, load_cost, wind_cost], 1, 7)
 	end
 
@@ -89,14 +98,14 @@ if !isdefined(@__MODULE__, :_CLUSTERED_PCM_COSTS_INCLUDED)
 		refcost, eachslope = linearizationfuelcurve(units, NG)
 		Q = _physical_pcm_pwl_segments(units, x, p)
 		c₀ = config_param.is_CoalPrice
-		startup = sum(units.coffi_cold_shutup_1[i] * y[i, t] for i ∈ 1:NG, t ∈ 1:T)
-		shutdown = sum(units.coffi_cold_shutdown_1[i] * z[i, t] for i ∈ 1:NG, t ∈ 1:T)
-		production = c₀ * (sum(refcost[i] * x[i, t] for i ∈ 1:NG, t ∈ 1:T) +
-						   scenarios_prob * sum(eachslope[k, i] * Q[i, t, k] for i ∈ 1:NG, t ∈ 1:T, k ∈ 1:3))
-		reserve_up_cost = scenarios_prob * c₀ * 2c₀ * sum(reserve_up)
-		reserve_down_cost = scenarios_prob * c₀ * 2c₀ * sum(reserve_down)
-		load_cost = scenarios_prob * config_param.is_LoadsCuttingCoefficient * 1e10 * sum(load_shed)
-		wind_cost = scenarios_prob * config_param.is_WindsCuttingCoefficient * 1e0 * sum(wind_curtail)
+		startup = sum(units.coffi_cold_shutup_1[i] * y[i, t] for i ∈ 1:NG, t ∈ 1:T; init = 0.0)
+		shutdown = sum(units.coffi_cold_shutdown_1[i] * z[i, t] for i ∈ 1:NG, t ∈ 1:T; init = 0.0)
+		production = c₀ * scenarios_prob * (sum(refcost[i] * x[i, t] for i ∈ 1:NG, t ∈ 1:T; init = 0.0) +
+						   sum(eachslope[k, i] * Q[i, t, k] for i ∈ 1:NG, t ∈ 1:T, k ∈ 1:3; init = 0.0))
+		reserve_up_cost = scenarios_prob * c₀ * 2c₀ * sum(reserve_up; init = 0.0)
+		reserve_down_cost = scenarios_prob * c₀ * 2c₀ * sum(reserve_down; init = 0.0)
+		load_cost = scenarios_prob * _pcm_load_curtailment_penalty(config_param) * sum(load_shed; init = 0.0)
+		wind_cost = scenarios_prob * _pcm_wind_curtailment_penalty(config_param) * sum(wind_curtail; init = 0.0)
 		reshape([startup, shutdown, production, reserve_up_cost, reserve_down_cost, load_cost, wind_cost], 1, 7)
 	end
 end

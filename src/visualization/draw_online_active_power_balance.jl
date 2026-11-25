@@ -1,4 +1,5 @@
 using Plots
+using LaTeXStrings
 
 function draw_powerbalance(
     bench_x₀,
@@ -14,28 +15,33 @@ function draw_powerbalance(
     bench_prod_cost,
     bench_cost_sr⁺,
     bench_cost_sr⁻,
-    secnairos,
+    secnairos;
+    winds,
+    loads,
+    NG::Int = size(bench_x₀, 1),
+    NW::Int = length(winds.p_max),
+    NT::Int = size(bench_p₀, 2),
+    ND::Int = size(loads.load_curve, 1),
+    NC::Int = div(size(bench_pss_charge_p⁺, 1), max(1, winds.scenarios_nums)),
 )
     #! Plots power balance
     selected_scenarios = secnairos
-    NS = winds.scenarios_nums
     #! calculate different output of grid-connected generators
-    conventional_generators_output = bench_p₀[(NG * (selected_scenarios - 1) + 1):(NG * selected_scenarios), :]
+    conventional_generators_output = bench_p₀[(NG * (selected_scenarios - 1) + 1):(NG * selected_scenarios), 1:NT]
     winds_generators_mppt_output = zeros(NW, NT)
     for w in 1:NW
-        winds_generators_mppt_output[w, :] = winds.scenarios_curve[w, :] * winds.p_max[w, 1]
+        winds_generators_mppt_output[w, :] = winds.scenarios_curve[selected_scenarios, 1:NT] * winds.p_max[w, 1]
     end
-    winds_generators_output = winds_generators_mppt_output .- bench_pᵩ[(NW * (selected_scenarios - 1) + 1):(NW * selected_scenarios), :]
-    load_curve = loads.load_curve
-    loadcurtailments = bench_pᵨ[(ND * (selected_scenarios - 1) + 1):(ND * selected_scenarios), :]
-    bess_discharge_power = bench_pss_charge_p⁻[(NC * (selected_scenarios - 1) + 1):(NC * selected_scenarios), :]
-    bess_charge_power = bench_pss_charge_p⁺[(NC * (selected_scenarios - 1) + 1):(NC * selected_scenarios), :]
+    winds_generators_output = winds_generators_mppt_output .- bench_pᵩ[(NW * (selected_scenarios - 1) + 1):(NW * selected_scenarios), 1:NT]
+    loadcurtailments = bench_pᵨ[(ND * (selected_scenarios - 1) + 1):(ND * selected_scenarios), 1:NT]
+    bess_discharge_power = NC > 0 ? bench_pss_charge_p⁻[(NC * (selected_scenarios - 1) + 1):(NC * selected_scenarios), 1:NT] : zeros(0, NT)
+    bess_charge_power = NC > 0 ? bench_pss_charge_p⁺[(NC * (selected_scenarios - 1) + 1):(NC * selected_scenarios), 1:NT] : zeros(0, NT)
     #! calculate different output of samilar generators
-    sum_conventional_generators_output = sum(conventional_generators_output; dims = 1)[1, :]
-    sum_winds_generators_output = sum(winds_generators_output; dims = 1)[1, :]
-    sum_loadcurtailments = sum(loadcurtailments; dims = 1)[1, :]
-    sum_bess_discharge_power = sum(bess_discharge_power; dims = 1)[1, :]
-    sum_bess_charge_power = sum(bess_charge_power; dims = 1)[1, :]
+    sum_conventional_generators_output = NG > 0 ? sum(conventional_generators_output; dims = 1)[1, :] : zeros(NT)
+    sum_winds_generators_output = NW > 0 ? sum(winds_generators_output; dims = 1)[1, :] : zeros(NT)
+    sum_loadcurtailments = ND > 0 ? sum(loadcurtailments; dims = 1)[1, :] : zeros(NT)
+    sum_bess_discharge_power = NC > 0 ? sum(bess_discharge_power; dims = 1)[1, :] : zeros(NT)
+    sum_bess_charge_power = NC > 0 ? sum(bess_charge_power; dims = 1)[1, :] : zeros(NT)
     #! NOTE: ploting
     basline_output = zeros(1, NT)[1, :]
     xdata = collect(1:NT)
@@ -92,7 +98,7 @@ function draw_powerbalance(
     )
     p1 = Plots.plot!(
         xdata,
-        sum_conventional_generators_output .+ sum_winds_generators_output .+ sum_bess_discharge_power .+ sum_loadcurtailments;
+        sum_conventional_generators_output .+ sum_winds_generators_output .+ sum_bess_discharge_power;
         fillrange = sum_conventional_generators_output .+ sum_winds_generators_output .+ sum_bess_discharge_power .+ sum_loadcurtailments,
         fillalpha = 0.95,
         ls = :dash,

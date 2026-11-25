@@ -152,7 +152,7 @@ function export_solved_uc_model_results(
     file_prefix::AbstractString = "",
 )
     resolved_output_dir = output_dir === nothing ? uc_output_root() : String(output_dir)
-    refcost, eachslope = linearizationfuelcurve(data.units, data.NG)
+    refcost, eachslope = linearizationfuelcurve(data.units, data.NG; num_segments = data.config_param.num_segments)
     config_param = data.config_param
 
     x₀ = model_value(model, :x)
@@ -295,8 +295,8 @@ function write_power_balance_summary_csv(
         thermal_generation = sum(pg[scenario_row(NG, s, g), t] for g in 1:NG)
         wind_available = NW == 0 ? 0.0 : sum(winds.scenarios_curve[s, t] * winds.p_max[w] for w in 1:NW)
         wind_spill = NW == 0 ? 0.0 : sum(wind_curtailment[scenario_row(NW, s, w), t] for w in 1:NW)
-        load_total = sum(loads.load_curve[d, t] for d in 1:ND)
-        load_shed = sum(load_curtailment[scenario_row(ND, s, d), t] for d in 1:ND)
+        load_total = ND == 0 ? 0.0 : sum(loads.load_curve[d, t] for d in 1:ND)
+        load_shed = ND == 0 ? 0.0 : sum(load_curtailment[scenario_row(ND, s, d), t] for d in 1:ND)
         bess_charge_total = if (config_param.consider_bess == 1 && NC > 0 && bess_charge !== nothing)
             sum(bess_charge[scenario_row(NC, s, c), t] for c in 1:NC)
         else

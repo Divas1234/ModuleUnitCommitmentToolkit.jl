@@ -29,8 +29,7 @@ function sample_and_train_loss_models(loads::load, winds::wind, units::unit, lin
         lowercase(old_clustered_flag) in ("1", "true", "yes", "on") ? "clustered" : "single")))
     training_formulation in ("single", "clustered") ||
         throw(ArgumentError("PCM_TRAINING_FORMULATION must be single or clustered"))
-    ENV["PCM_USE_CLUSTERED_UC"] = training_formulation == "clustered" ? "true" : "false"
-    task_local_storage(:is_sampling_running, true)
+    training_formulation_sym = training_formulation == "clustered" ? :clustered : :standard
 
     ml_training = lowercase(get(ENV, "PCM_OVERLAP_MODE", "ml_prediction")) == "ml_prediction"
     training_mode = lowercase(strip(get(ENV, "PCM_TRAINING_MODE", "sweep")))
@@ -38,8 +37,7 @@ function sample_and_train_loss_models(loads::load, winds::wind, units::unit, lin
         throw(ArgumentError("Unsupported PCM_TRAINING_MODE='$training_mode'"))
     # ML 数据集要求逐时覆盖，但不需要再与人为负荷倍率和边界扰动做笛卡尔积。
     # 使用真实曲线、真实边界，并以短/中/长三档真实 UC 求解确定 To_star。
-    load_scales = ml_training ? [1.0] : [0.90, 1.0, 1.10]
-    source_time_avail = size(loads.load_curve, 2)
+    source_time_avail = min(size(loads.load_curve, 2), size(winds.scenarios_curve, 2))
     execution_hours = max(1, parse(Int, get(ENV, "PCM_INTERVALS", "3"))) * exec_NT
     # 训练范围必须与本次声明的执行时域一致，仅额外保留最大交叠所需前瞻。
     total_time_avail = min(source_time_avail, execution_hours + max_overlap)
@@ -52,11 +50,19 @@ function sample_and_train_loss_models(loads::load, winds::wind, units::unit, lin
     else
         unique(vcat(collect(1:start_stride:latest_start), latest_start))
     end
+    load_scales = if ml_training && length(start_time_candidates) >= 4
+        [1.0]
+    elseif ml_training
+        [0.95, 1.0, 1.05, 1.10]
+    else
+        [0.90, 1.0, 1.10]
+    end
     overlap_sizes = training_mode == "fast_max_overlap" ? [max_overlap] :
                     ml_training ? unique(sort([min_overlap, (min_overlap + max_overlap) ÷ 2, max_overlap])) : collect(min_overlap:max_overlap)
 
     X_list = Vector{Float64}[]
     Y_list = Float64[]
+    extra_features_by_key = Dict{Tuple{Float64, Float64, Float64, Float64}, Tuple{Float64, Float64, Float64}}()
 
     peak_load = maximum(sum(loads.load_curve; dims = 1))
     if peak_load <= 0.0
@@ -68,134 +74,170 @@ function sample_and_train_loss_models(loads::load, winds::wind, units::unit, lin
     end
 
     sample_count = 0
-    try
-        for start_time ∈ start_time_candidates
-            base_end_horizon = min(total_time_avail, start_time + exec_NT + max_overlap - 1)
-            base_load_slice = sum(loads.load_curve[:, start_time:base_end_horizon]; dims = 1)[1, :]
-            total_wind_cap = sum(winds.p_max)
-            base_net_load = zeros(length(base_load_slice))
-            for t ∈ eachindex(base_load_slice)
-                avg_wind_factor = mean(winds.scenarios_curve[:, min(total_time_avail, start_time + t - 1)])
-                base_net_load[t] = base_load_slice[t] - total_wind_cap * avg_wind_factor
-            end
-
-            for l_scale ∈ load_scales
-                target_capacity = max(mean(base_net_load) * l_scale * 1.15, 0.0)
-                ref_x_curr = load_following_commitment(units, target_capacity)
-                try
-                    ref_units = deepcopy(units)
-                    ref_loads = deepcopy(loads)
-                    ref_loads.load_curve = loads.load_curve[:, start_time:base_end_horizon] .* l_scale
-                    ref_winds = deepcopy(winds)
-                    ref_winds.scenarios_curve = winds.scenarios_curve[:, start_time:base_end_horizon]
-                    ref_results = each_period_scucmodel_modules(exec_NT + max_overlap, NB, NG, ND, NC, ND2, ref_units, ref_loads, ref_winds,
-                        lines, data_centers, config_param, storages, scenarios_prob, NL, 1, hydros, NH)
-                    if ref_results !== nothing && haskey(ref_results, "x₀")
-                        ref_x_curr = Float64.(ref_results["x₀"][:, 1] .> 0.5)
-                    end
-                catch e
-                    @warn "Local no-boundary reference solve failed; keeping load-following reference" exception = e
+    withenv("PCM_USE_CLUSTERED_UC" => (training_formulation == "clustered" ? "true" : "false")) do
+        task_local_storage(:is_sampling_running, true)
+        try
+            for start_time ∈ start_time_candidates
+                base_end_horizon = min(total_time_avail, start_time + exec_NT + max_overlap - 1)
+                base_NT = base_end_horizon - start_time + 1
+                base_NT >= exec_NT || continue
+                base_load_slice = sum(loads.load_curve[:, start_time:base_end_horizon]; dims = 1)[1, :]
+                total_wind_cap = sum(winds.p_max)
+                base_net_load = zeros(length(base_load_slice))
+                for t ∈ eachindex(base_load_slice)
+                    avg_wind_factor = mean(winds.scenarios_curve[:, min(total_time_avail, start_time + t - 1)])
+                    base_net_load[t] = base_load_slice[t] - total_wind_cap * avg_wind_factor
                 end
-                x_perturbations = ml_training ? [Float64.(units.x_0)] : [Float64.(units.x_0), ref_x_curr]
 
-                for x_init ∈ x_perturbations
-                    mini_units = deepcopy(units)
-                    mini_units.x_0 = x_init
-
-                    end_horizon = min(total_time_avail, start_time + exec_NT + max_overlap - 1)
-
-                    mini_loads = deepcopy(loads)
-                    mini_loads.load_curve = loads.load_curve[:, start_time:end_horizon] .* l_scale
-
-                    mini_winds = deepcopy(winds)
-                    mini_winds.scenarios_curve = winds.scenarios_curve[:, start_time:end_horizon]
-
-                    # 使用最大交叠窗的结果作为精度损失标定基准。
-                    total_NT_true = exec_NT + max_overlap
-
-                    # 计算描述当前调度场景的归一化输入特征。
-                    total_load_lookahead = sum(mini_loads.load_curve; dims = 1)[1, :]
-                    total_wind_cap = sum(winds.p_max)
-                    net_load_lookahead = zeros(length(total_load_lookahead))
-                    for t ∈ eachindex(total_load_lookahead)
-                        avg_wind_factor = mean(winds.scenarios_curve[:, min(total_time_avail, start_time + t - 1)])
-                        net_load_lookahead[t] = total_load_lookahead[t] - total_wind_cap * avg_wind_factor
-                    end
-                    avg_net_load = mean(net_load_lookahead)
-                    L_norm = clamp(avg_net_load / peak_load, 0.0, 1.0)
-
-                    online_capacity = sum(units.p_max[i] * x_init[i] for i ∈ 1:NG)
-                    U_norm = clamp(online_capacity / total_capacity, 0.0, 1.0)
-                    X_delta_norm, X_switch_ratio = commitment_boundary_deviation(units, x_init, ref_x_curr)
-
-                    res_true = nothing
+                for l_scale ∈ load_scales
+                    target_capacity = max(mean(base_net_load) * l_scale * 1.15, 0.0)
+                    ref_x_curr = load_following_commitment(units, target_capacity)
                     try
-                        res_true = each_period_scucmodel_modules(total_NT_true, NB, NG, ND, NC, ND2, mini_units, mini_loads, mini_winds,
-                            lines, data_centers, config_param, storages, scenarios_prob, NL, 1, hydros, NH)
+                        ref_units = deepcopy(units)
+                        ref_loads = deepcopy(loads)
+                        ref_loads.load_curve = loads.load_curve[:, start_time:base_end_horizon] .* l_scale
+                        ref_winds = deepcopy(winds)
+                        ref_winds.scenarios_curve = winds.scenarios_curve[:, start_time:base_end_horizon]
+                        ref_results = each_period_scucmodel_modules(base_NT, NB, NG, ND, NC, ND2, ref_units, ref_loads, ref_winds,
+                            lines, data_centers, config_param, storages, scenarios_prob, NL, 1, hydros, NH;
+                            formulation = :standard)
+                        if ref_results !== nothing && haskey(ref_results, "x₀")
+                            ref_x_curr = Float64.(ref_results["x₀"][:, 1] .> 0.5)
+                        end
                     catch e
-                        @warn "Calibration true-horizon solve failed" start_time l_scale exception = e
-                        continue
+                        @warn "Local no-boundary reference solve failed; keeping load-following reference" exception = e
                     end
+                    x_perturbations = ml_training ? [Float64.(units.x_0)] : [Float64.(units.x_0), ref_x_curr]
 
-                    if res_true === nothing
-                        continue
-                    end
-
-                    committed_res_true = truncate_and_commit_results(res_true, exec_NT)
-                    committed_cost_true = compute_committed_cost(
-                        committed_res_true, exec_NT, mini_units, mini_loads, mini_winds, lines, data_centers, config_param, 1, hydros, scenarios_prob)
-                    C_true = committed_cost_true[1]
-                    if C_true <= 1.0
-                        continue
-                    end
-
-                    sample_count += 1
-
-                    #%% Evaluate each candidate overlap size
-
-                    for H ∈ overlap_sizes
-                        total_NT_H = exec_NT + H
-                        res_H = nothing
-                        if H == max_overlap
-                            # 最大交叠候选就是上方已求得的精度参考，避免重复构建同一 UC。
-                            res_H = res_true
-                        else
-                            try
-                                res_H = each_period_scucmodel_modules(total_NT_H, NB, NG, ND, NC, ND2, mini_units, mini_loads, mini_winds, lines,
-                                    data_centers, config_param, storages, scenarios_prob, NL, 1, hydros, NH)
-                            catch e
-                                @warn "Calibration candidate overlap solve failed" start_time H exception = e
-                                continue
+                    for x_init ∈ x_perturbations
+                        mini_units = deepcopy(units)
+                        mini_units.x_0 = copy(x_init)
+                        for i ∈ 1:NG
+                            if mini_units.x_0[i] <= 0.5
+                                mini_units.p_0[i] = 0.0
+                                if units.x_0[i] > 0.5
+                                    mini_units.t_0[i] = 0.0
+                                    mini_units.t_1[i] = Float64(units.min_shutdown_time[i])
+                                end
+                            else
+                                if units.x_0[i] <= 0.5
+                                    mini_units.p_0[i] = Float64(units.p_min[i])
+                                    mini_units.t_0[i] = Float64(units.min_shutup_time[i])
+                                    mini_units.t_1[i] = 0.0
+                                else
+                                    mini_units.p_0[i] = clamp(mini_units.p_0[i], units.p_min[i], units.p_max[i])
+                                end
                             end
                         end
 
-                        if res_H === nothing
+                        end_horizon = min(total_time_avail, start_time + exec_NT + max_overlap - 1)
+                        total_NT_true = end_horizon - start_time + 1
+                        total_NT_true >= exec_NT || continue
+
+                        mini_loads = deepcopy(loads)
+                        mini_loads.load_curve = loads.load_curve[:, start_time:end_horizon] .* l_scale
+
+                        mini_winds = deepcopy(winds)
+                        mini_winds.scenarios_curve = winds.scenarios_curve[:, start_time:end_horizon]
+
+                        # 计算描述当前调度场景的归一化输入特征。
+                        total_load_lookahead = sum(mini_loads.load_curve; dims = 1)[1, :]
+                        total_wind_cap = sum(winds.p_max)
+                        net_load_lookahead = zeros(length(total_load_lookahead))
+                        for t ∈ eachindex(total_load_lookahead)
+                            avg_wind_factor = mean(mini_winds.scenarios_curve[:, t])
+                            net_load_lookahead[t] = total_load_lookahead[t] - total_wind_cap * avg_wind_factor
+                        end
+                        avg_net_load = mean(net_load_lookahead)
+                        L_norm = clamp(avg_net_load / peak_load, 0.0, 1.0)
+                        sigma_load_sample = length(total_load_lookahead) > 1 ? Float64(std(total_load_lookahead)) : 0.0
+                        wind_ramps_sample = [abs(mini_winds.scenarios_curve[s, t + 1] - mini_winds.scenarios_curve[s, t])
+                                             for s ∈ 1:mini_winds.scenarios_nums, t ∈ 1:(total_NT_true - 1)]
+                        R_wind_max_sample = isempty(wind_ramps_sample) ? 0.0 : Float64(maximum(wind_ramps_sample))
+
+                        online_rem = [mini_units.x_0[i] > 0.5 && mini_units.t_0[i] > 0 ?
+                                      max(0.0, mini_units.min_shutup_time[i] - mini_units.t_0[i]) : 0.0 for i ∈ 1:NG]
+                        offline_rem = [mini_units.x_0[i] <= 0.5 && mini_units.t_1[i] > 0 ?
+                                       max(0.0, mini_units.min_shutdown_time[i] - mini_units.t_1[i]) : 0.0 for i ∈ 1:NG]
+                        T_dwell_rem_sample = Float64(max(0.0, maximum(online_rem; init = 0.0), maximum(offline_rem; init = 0.0)))
+
+                        online_capacity = sum(units.p_max[i] * x_init[i] for i ∈ 1:NG)
+                        U_norm = clamp(online_capacity / total_capacity, 0.0, 1.0)
+                        X_delta_norm, X_switch_ratio = commitment_boundary_deviation(units, x_init, ref_x_curr)
+                        extra_features_by_key[(L_norm, U_norm, X_delta_norm, X_switch_ratio)] = (
+                            T_dwell_rem_sample, sigma_load_sample, R_wind_max_sample
+                        )
+
+                        res_true = nothing
+                        try
+                            res_true = each_period_scucmodel_modules(total_NT_true, NB, NG, ND, NC, ND2, mini_units, mini_loads, mini_winds,
+                                lines, data_centers, config_param, storages, scenarios_prob, NL, 1, hydros, NH;
+                                formulation = training_formulation_sym)
+                        catch e
+                            @warn "Calibration true-horizon solve failed" start_time l_scale exception = e
                             continue
                         end
 
-                        committed_res_H = truncate_and_commit_results(res_H, exec_NT)
-                        committed_cost_H = compute_committed_cost(
-                            committed_res_H, exec_NT, mini_units, mini_loads, mini_winds, lines, data_centers, config_param, 1, hydros, scenarios_prob)
-                        C_H = committed_cost_H[1]
+                        if res_true === nothing
+                            continue
+                        end
 
-                        # Accuracy loss combines cost deviation and commitment
-                        # state deviation. Cost-only labels often make small
-                        # overlaps look acceptable even when they leave a
-                        # different terminal commitment for the next interval.
-                        cost_loss = abs(C_H - C_true) / C_true
-                        state_loss, switch_loss = commitment_boundary_deviation(units, committed_res_H["x₀"][:, exec_NT], committed_res_true["x₀"][:, exec_NT])
-                        loss_val = cost_loss + 0.05 * state_loss + 0.02 * switch_loss
+                        committed_res_true = truncate_and_commit_results(res_true, exec_NT)
+                        committed_cost_true = compute_committed_cost(
+                            committed_res_true, exec_NT, mini_units, mini_loads, mini_winds, lines, data_centers, config_param, 1, hydros, scenarios_prob)
+                        C_true = committed_cost_true[1]
+                        if C_true <= 1.0
+                            continue
+                        end
 
-                        # Record sample
-                        push!(X_list, [L_norm, U_norm, X_delta_norm, X_switch_ratio, Float64(H)])
-                        push!(Y_list, loss_val)
+                        sample_count += 1
+
+                        #%% Evaluate each candidate overlap size
+
+                        for H ∈ overlap_sizes
+                            total_NT_H = min(total_NT_true, exec_NT + H)
+                            res_H = nothing
+                            if total_NT_H == total_NT_true
+                                # 最大交叠候选就是上方已求得的精度参考，避免重复构建同一 UC。
+                                res_H = res_true
+                            else
+                                try
+                                    res_H = each_period_scucmodel_modules(total_NT_H, NB, NG, ND, NC, ND2, mini_units, mini_loads, mini_winds, lines,
+                                        data_centers, config_param, storages, scenarios_prob, NL, 1, hydros, NH;
+                                        formulation = training_formulation_sym)
+                                catch e
+                                    @warn "Calibration candidate overlap solve failed" start_time H exception = e
+                                    continue
+                                end
+                            end
+
+                            if res_H === nothing
+                                continue
+                            end
+
+                            committed_res_H = truncate_and_commit_results(res_H, exec_NT)
+                            committed_cost_H = compute_committed_cost(
+                                committed_res_H, exec_NT, mini_units, mini_loads, mini_winds, lines, data_centers, config_param, 1, hydros, scenarios_prob)
+                            C_H = committed_cost_H[1]
+
+                            # Accuracy loss combines cost deviation and commitment
+                            # state deviation. Cost-only labels often make small
+                            # overlaps look acceptable even when they leave a
+                            # different terminal commitment for the next interval.
+                            cost_loss = abs(C_H - C_true) / C_true
+                            state_loss, switch_loss = commitment_boundary_deviation(units, committed_res_H["x₀"][:, exec_NT], committed_res_true["x₀"][:, exec_NT])
+                            loss_val = cost_loss + 0.05 * state_loss + 0.02 * switch_loss
+
+                            # Record sample
+                            push!(X_list, [L_norm, U_norm, X_delta_norm, X_switch_ratio, Float64(H)])
+                            push!(Y_list, loss_val)
+                        end
                     end
                 end
             end
+        finally
+            task_local_storage(:is_sampling_running, false)
         end
-    finally
-        ENV["PCM_USE_CLUSTERED_UC"] = old_clustered_flag
-        task_local_storage(:is_sampling_running, false)
     end
 
     println("Sampling completed. Total valid scenarios solved: $sample_count. Samples collected: $(length(Y_list))")
@@ -267,13 +309,14 @@ function sample_and_train_loss_models(loads::load, winds::wind, units::unit, lin
                     break
                 end
             end
+            t_dwell_val, sigma_val, r_wind_val = get(extra_features_by_key, key, (0.0, 0.0, 0.0))
             push!(rows,
                 (
                     U_norm = key[2],
-                    T_dwell_rem = 0.0,
+                    T_dwell_rem = t_dwell_val,
                     L_norm = key[1],
-                    sigma_load = 10.0,
-                    R_wind_max = 0.05,
+                    sigma_load = sigma_val,
+                    R_wind_max = r_wind_val,
                     X_delta_norm = key[3],
                     X_switch_ratio = key[4],
                     To_star = Float64(best_H)
@@ -282,8 +325,12 @@ function sample_and_train_loss_models(loads::load, winds::wind, units::unit, lin
 
         df_train = DataFrame(rows)
         if nrow(df_train) >= 4
-            cache_root = normpath(joinpath(@__DIR__, "..", "..", "..", "..", "output", "ml_trainningdata_res"))
-            expected_meta = OverlapPredictor.EXPECTED_TRAINING_METADATA[]
+            configured_root, expected_meta = lock(OverlapPredictor._PREDICTOR_LOCK) do
+                OverlapPredictor.TRAINING_CACHE_ROOT[], OverlapPredictor.EXPECTED_TRAINING_METADATA[]
+            end
+            cache_root = configured_root !== nothing ? configured_root :
+                joinpath(isdefined(@__MODULE__, :uc_output_root) ? uc_output_root() :
+                    normpath(joinpath(@__DIR__, "..", "..", "..", "..", "output")), "ml_trainningdata_res")
             if expected_meta !== nothing
                 paths = AdaptiveOverlapTrainingCache.cache_paths(cache_root, expected_meta)
                 AdaptiveOverlapTrainingCache.save_cached_dataset(cache_root, df_train, expected_meta)

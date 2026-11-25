@@ -10,8 +10,9 @@ Read a boolean environment variable using consistent truthy spellings
 (`1`, `true`, `yes`, `y`, `on`, case-insensitive).
 """
 function uc_env_bool(name::AbstractString, default::Bool)
-    value = lowercase(strip(get(ENV, String(name), default ? "1" : "0")))
-    return value in _TRUTHY_ENV_VALUES
+    raw = lowercase(strip(get(ENV, String(name), "")))
+    isempty(raw) && return default
+    return raw in _TRUTHY_ENV_VALUES
 end
 
 """
@@ -118,6 +119,7 @@ function load_runtime_config!(;
 
     for (key, value) in entries
         if isempty(value)
+            override && delete!(ENV, key)
             continue
         end
         if !override && haskey(ENV, key)

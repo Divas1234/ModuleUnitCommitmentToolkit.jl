@@ -146,6 +146,7 @@ function worst_case_probabilities(costs::Vector{Float64}, nominal_probability::V
     end
 
     worst_probability = [sum(value(transport[i, j]) for i in 1:scenario_count) for j in 1:scenario_count]
+    worst_probability = [abs(v) <= 1e-9 && v < 0 ? 0.0 : v for v in worst_probability]
     return normalize_probability(worst_probability)
 end
 
@@ -169,13 +170,19 @@ function set_dro_ccg_master_objective!(
     NS_active::Int64,
     nominal_probability::Vector{Float64},
     radius::Float64,
-    distance_matrix::Matrix{Float64},
+    distance_matrix::Matrix{Float64};
+    selected_scenarios::Union{Nothing, Vector{Int64}} = nothing,
 )
     # The master objective embeds the finite-support Wasserstein dual/epigraph form
-    # over active scenarios, keeping UC constraints unchanged while making the
-    # recourse-cost aggregation distributionally robust.
+    # over active scenarios. When `selected_scenarios` is passed with the full-pool
+    # `nominal_probability` and `distance_matrix`, keeping all `1:NS_full` `dro_eta`
+    # variables (>= 0) with epigraph cuts only on active scenarios forms an exact
+    # lower-bound relaxation of the full-pool DRO problem.
     NS_active > 0 || throw(ArgumentError("NS_active must be positive; got $NS_active"))
-    validate_wasserstein_inputs(zeros(Float64, NS_active), nominal_probability, radius, distance_matrix)
+    NS_full = length(nominal_probability)
+    validate_wasserstein_inputs(zeros(Float64, NS_full), nominal_probability, radius, distance_matrix)
+    active_cols = selected_scenarios === nothing ? collect(Int64(1):NS_active) : selected_scenarios
+    length(active_cols) == NS_active || throw(ArgumentError("selected_scenarios length must match NS_active"))
     haskey(JuMP.object_dictionary(model), :x) ||
         throw(ArgumentError("DRO objective requires decision variables to be defined before calling set_dro_ccg_master_objective!"))
 
@@ -184,7 +191,7 @@ function set_dro_ccg_master_objective!(
     wind_curtailment_penalty = uc_wind_curtailment_penalty(data.config_param)
     reserve_cost_positive = 2 * c0
     reserve_cost_negative = 2 * c0
-    refcost, eachslope = linearizationfuelcurve(data.units, data.NG)
+    refcost, eachslope = linearizationfuelcurve(data.units, data.NG; num_segments = data.config_param.num_segments)
 
     x = model[:x]
     su = model[:su₀]
@@ -200,25 +207,32 @@ function set_dro_ccg_master_objective!(
         generator_rows = (1 + (s - 1) * data.NG):(s * data.NG)
         load_rows = (1 + (s - 1) * data.ND):(s * data.ND)
         wind_rows = (1 + (s - 1) * data.NW):(s * data.NW)
+        fuel_term = sum(
+            (sum(pgk[i, t, k] * eachslope[k, local_i] for k in axes(pgk, 3), t in 1:data.NT; init = AffExpr(0.0)) for (local_i, i) in enumerate(generator_rows));
+            init = AffExpr(0.0),
+        )
+        noload_term = sum((sum(x[:, t] .* refcost[:, 1]) for t in 1:data.NT); init = AffExpr(0.0))
+        reserve_term = sum(
+            (reserve_cost_positive * sr_pos[i, t] + reserve_cost_negative * sr_neg[i, t] for i in generator_rows, t in 1:data.NT);
+            init = AffExpr(0.0),
+        )
+        load_shed_term = data.ND == 0 ? AffExpr(0.0) : sum((delta_pd[i, t] for i in load_rows, t in 1:data.NT); init = AffExpr(0.0))
+        wind_curt_term = data.NW == 0 ? AffExpr(0.0) : sum((delta_pw[i, t] for i in wind_rows, t in 1:data.NT); init = AffExpr(0.0))
         scenario_cost[s] =
-            c0 * (
-                sum(sum(pgk[i, t, k] * eachslope[k, local_i] for k in axes(pgk, 3), t in 1:data.NT) for (local_i, i) in enumerate(generator_rows)) +
-                sum(sum(x[:, t] .* refcost[:, 1]) for t in 1:data.NT) +
-                sum(reserve_cost_positive * sr_pos[i, t] + reserve_cost_negative * sr_neg[i, t] for i in generator_rows, t in 1:data.NT)
-            ) +
-            load_curtailment_penalty * sum(delta_pd[i, t] for i in load_rows, t in 1:data.NT) +
-            wind_curtailment_penalty * sum(delta_pw[i, t] for i in wind_rows, t in 1:data.NT)
+            c0 * (fuel_term + noload_term + reserve_term) +
+            load_curtailment_penalty * load_shed_term +
+            wind_curtailment_penalty * wind_curt_term
     end
 
     @variable(model, dro_lambda >= 0)
-    @variable(model, dro_eta[1:NS_active])
-    for i in 1:NS_active
-        for j in 1:NS_active
-            @constraint(model, dro_eta[i] >= scenario_cost[j] - dro_lambda * distance_matrix[i, j])
+    @variable(model, dro_eta[1:NS_full] >= 0)
+    for i in 1:NS_full
+        for (j_local, j_global) in enumerate(active_cols)
+            @constraint(model, dro_eta[i] >= scenario_cost[j_local] - dro_lambda * distance_matrix[i, j_global])
         end
     end
 
     first_stage_cost = sum(su[i, t] + sd[i, t] for i in 1:data.NG, t in 1:data.NT)
-    @objective(model, Min, first_stage_cost + radius * dro_lambda + sum(nominal_probability[i] * dro_eta[i] for i in 1:NS_active),)
+    @objective(model, Min, first_stage_cost + radius * dro_lambda + sum(nominal_probability[i] * dro_eta[i] for i in 1:NS_full))
     return model
 end

@@ -1,6 +1,6 @@
 """Run the same PCM benchmark independently for the 108-unit and 1080-unit cases."""
 
-# include("suite_runner.jl")
+isdefined(@__MODULE__, :PCMThreeMethodBenchmark) || include("suite_runner.jl")
 
 module PCMTwoScaleBenchmark
 
@@ -25,6 +25,9 @@ end
 case_output_root(output_root::AbstractString, label::AbstractString) = joinpath(output_root, label)
 report_filename(case_root::AbstractString) = joinpath(case_root, "analysis_report.md")
 
+_fmt_num(val, fmt) = ismissing(val) ? "NA" : Printf.format(Printf.Format(fmt), Float64(val))
+_fmt_int(val) = ismissing(val) ? "NA" : string(round(Int, val))
+
 function _write_analysis_report(path::AbstractString, comparison_path::AbstractString; label, input_file, profiles, methods, runs, intervals, window_hours, network_constraints)
     comparison = CSV.read(joinpath(dirname(comparison_path), "comparison.csv"), DataFrame)
     standard_rows = comparison[(comparison.method .== "standard"), :]
@@ -40,18 +43,13 @@ function _write_analysis_report(path::AbstractString, comparison_path::AbstractS
         println(io, "## 核心结论\n")
         if nrow(standard_rows) == 1
             standard = standard_rows[1, :]
-            println(io, @sprintf("- standard 基准：总成本 %.4e，耗时 %.2f s，峰值 RSS %.2f MB，物理机组 %d 台。",
-                standard.median_total_cost, standard.median_wall_time_sec, standard.median_peak_rss_mb,
-                round(Int, standard.physical_units)))
+            println(io, "- standard 基准：总成本 $(_fmt_num(standard.median_total_cost, "%.4e"))，耗时 $(_fmt_num(standard.median_wall_time_sec, "%.2f")) s，峰值 RSS $(_fmt_num(standard.median_peak_rss_mb, "%.2f")) MB，物理机组 $(_fmt_int(standard.physical_units)) 台。")
             for row in eachrow(comparison[comparison.method .!= "standard", :])
-                println(io, @sprintf("- %s：总成本 %.4e（相对 standard %+.3f%%），耗时 %.2f s（相对 %+.2f%%），峰值 RSS %.2f MB（相对 %+.2f%%），整数变量缩减 %.2f%%。",
-                    row.method, row.median_total_cost, row.cost_delta_pct, row.median_wall_time_sec,
-                    row.wall_time_delta_pct, row.median_peak_rss_mb, row.peak_rss_delta_pct,
-                    row.integer_reduction_pct))
+                println(io, "- $(row.method)：总成本 $(_fmt_num(row.median_total_cost, "%.4e"))（相对 standard $(_fmt_num(row.cost_delta_pct, "%+.3f"))%），耗时 $(_fmt_num(row.median_wall_time_sec, "%.2f")) s（相对 $(_fmt_num(row.wall_time_delta_pct, "%+.2f"))%），峰值 RSS $(_fmt_num(row.median_peak_rss_mb, "%.2f")) MB（相对 $(_fmt_num(row.peak_rss_delta_pct, "%+.2f"))%），整数变量缩减 $(_fmt_num(row.integer_reduction_pct, "%.2f"))%。")
                 if row.method == "clustered_pcm"
-                    pure_status = row.cluster_fallbacks == 0 ? "本次聚类区间全部通过后验校核" :
-                        @sprintf("发生 %.0f 次回退，不能按纯聚类结果解读", row.cluster_fallbacks)
-                    println(io, "  - 聚类过程：$(pure_status)；等效机组 $(round(Int, row.equivalent_units)) 台，状态缩减 $(round(row.state_reduction_pct; digits=2))%。")
+                    pure_status = ismissing(row.cluster_fallbacks) || row.cluster_fallbacks == 0 ? "本次聚类区间全部通过后验校核" :
+                        "发生 $(_fmt_int(row.cluster_fallbacks)) 次回退，不能按纯聚类结果解读"
+                    println(io, "  - 聚类过程：$(pure_status)；等效机组 $(_fmt_int(row.equivalent_units)) 台，状态缩减 $(_fmt_num(row.state_reduction_pct, "%.2f"))%。")
                 end
             end
         end
@@ -88,10 +86,7 @@ function _write_combined_report(path::AbstractString, output_root::AbstractStrin
             isfile(comparison_path) || continue
             comparison = CSV.read(comparison_path, DataFrame)
             for row in eachrow(comparison)
-                println(io, @sprintf("| %s | %s | %s | %.4e | %.2f | %.2f | %+.3f%% | %+.2f%% | %.1f | %.0f | %.2f%% | %.1f%% |",
-                    label, row.profile, row.method, row.median_total_cost, row.median_wall_time_sec,
-                    row.median_peak_rss_mb, row.cost_delta_pct, row.wall_time_delta_pct,
-                    row.mean_overlap_hours, row.cluster_fallbacks, row.integer_reduction_pct, row.success_rate_pct))
+                println(io, "| $(label) | $(row.profile) | $(row.method) | $(_fmt_num(row.median_total_cost, "%.4e")) | $(_fmt_num(row.median_wall_time_sec, "%.2f")) | $(_fmt_num(row.median_peak_rss_mb, "%.2f")) | $(_fmt_num(row.cost_delta_pct, "%+.3f"))% | $(_fmt_num(row.wall_time_delta_pct, "%+.2f"))% | $(_fmt_num(row.mean_overlap_hours, "%.1f")) | $(_fmt_int(row.cluster_fallbacks)) | $(_fmt_num(row.integer_reduction_pct, "%.2f"))% | $(_fmt_num(row.success_rate_pct, "%.1f"))% |")
             end
         end
         println(io, "\n## 关键判断\n")
@@ -124,7 +119,7 @@ end
 
 function main(; project_root = PROJECT_ROOT,
         output_root = abspath(get(ENV, "PCM_TWO_SCALE_OUTPUT", joinpath(project_root, "output", "pcm_benchmark", "two_scale_$(Dates.format(now(), "yyyymmdd_HHMMSS"))"))),
-        julia_project = get(ENV, "PCM_JULIA_PROJECT", joinpath(project_root, "pkg")),
+        julia_project = get(ENV, "PCM_JULIA_PROJECT", project_root),
         profiles = PCMThreeMethodBenchmark.parse_list(get(ENV, "PCM_BENCHMARK_PROFILES", "baseline,smooth,extreme_ramp")),
         methods = PCMThreeMethodBenchmark.parse_list(get(ENV, "PCM_BENCHMARK_METHODS", "standard,clustered_pcm,adaptive_overlap")),
         runs = parse(Int, get(ENV, "PCM_BENCHMARK_RUNS", "1")),

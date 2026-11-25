@@ -159,13 +159,14 @@ function bd_subfunction(
         include_frequency_constraints = false,
     )
 
-    _winds_curt_constr, _loads_curt_const = constrs.curtailment[2], constrs.curtailment[3]
+    _winds_curt_constr, _loads_curt_const = constrs.curtailment === nothing ? (Any[], Any[]) : (constrs.curtailment[2], constrs.curtailment[3])
     _units_minpower_constr, _units_maxpower_constr = constrs.generator_power[2], constrs.generator_power[3]
     _sys_upreserve_constr, _sys_down_reserve_constr = constrs.reserve[2], constrs.reserve[3]
     _sys_balance_constr = constrs.power_balance[2]
     _units_upramp_constr, _units_downramp_constr = constrs.ramp[2], constrs.ramp[3]
     _units_pwlpower_sum_constr, _units_pwlblock_upbound_constr, _units_pwlblock_dwbound_constr = constrs.pwl[2], constrs.pwl[3], constrs.pwl[4]
-    _transmissionline_powerflow_upbound_constr, _transmissionline_powerflow_downbound_constr = constrs.transmission[2], constrs.transmission[3]
+    _transmissionline_powerflow_upbound_constr, _transmissionline_powerflow_downbound_constr =
+        constrs.transmission === nothing ? (Any[], Any[]) : (constrs.transmission[2], constrs.transmission[3])
 
     # Second-stage frequency reserve constraints (QSS & SFR/FCR) couple sr⁺ with fixed x;
     # first-stage x-only frequency constraints (RoCoF, H-D cuts / affine nadir) live in master.
@@ -175,10 +176,15 @@ function bd_subfunction(
        haskey(JuMP.object_dictionary(scuc_subproblem), :x) &&
        haskey(JuMP.object_dictionary(scuc_subproblem), :sr⁺)
         x_sub = scuc_subproblem[:x]
+        frequency_base_hz = frequency_env_float("FREQUENCY_BASE_HZ", 50.0)
         qss_limit_hz = frequency_env_float("FREQUENCY_QSS_LIMIT_HZ", 5.0)
         nadir_limit_hz = frequency_env_float("FREQUENCY_NADIR_LIMIT_HZ", qss_limit_hz)
         fcr_threshold = frequency_env_float("FREQUENCY_FCR_THRESHOLD", 0.025)
-        _freq_qss_constr = add_qss_frequency_constraints!(scuc_subproblem, NT, NG, NS_copy, units, x_sub, qss_limit_hz)
+        qss_contingency = frequency_contingency_size(units, contingency_size)
+        _freq_qss_constr = add_qss_frequency_constraints!(
+            scuc_subproblem, NT, NG, NS_copy, units, x_sub, qss_limit_hz;
+            contingency = qss_contingency, f0_hz = frequency_base_hz,
+        )
         _freq_sfr_constr = add_sfr_reserve_constraints!(scuc_subproblem, NT, NG, NS_copy, units, x_sub, max(nadir_limit_hz, eps(Float64)), fcr_threshold)
     end
     # @show model_summary(scuc_subproblem)
@@ -201,10 +207,12 @@ function bd_subfunction(
     # all_constraints_dict[:key_units_shutdown_cost_constr] = vec(collect(Iterators.flatten(_units_shutdown_cost_constr.data)))
 
     # DEBUG - Helper
-    all_constraints_dict[:key_winds_curt_constr] = vec(collect(Iterators.flatten(_winds_curt_constr)))
-    all_constraints_dict[:key_loads_curt_constr] = vec(collect(Iterators.flatten(_loads_curt_const)))
-    all_constraints_dict[:key_transmissionline_powerflow_upbound_constr] = vec(vcat(_transmissionline_powerflow_upbound_constr...))
-    all_constraints_dict[:key_transmissionline_powerflow_downbound_constr] = vec(vcat(_transmissionline_powerflow_downbound_constr...))
+    all_constraints_dict[:key_winds_curt_constr] = isempty(_winds_curt_constr) ? ConstraintRef[] : vec(collect(Iterators.flatten(_winds_curt_constr)))
+    all_constraints_dict[:key_loads_curt_constr] = isempty(_loads_curt_const) ? ConstraintRef[] : vec(collect(Iterators.flatten(_loads_curt_const)))
+    all_constraints_dict[:key_transmissionline_powerflow_upbound_constr] =
+        isempty(_transmissionline_powerflow_upbound_constr) ? ConstraintRef[] : vec(vcat(_transmissionline_powerflow_upbound_constr...))
+    all_constraints_dict[:key_transmissionline_powerflow_downbound_constr] =
+        isempty(_transmissionline_powerflow_downbound_constr) ? ConstraintRef[] : vec(vcat(_transmissionline_powerflow_downbound_constr...))
     all_constraints_dict[:key_sys_down_reserve_constr] = vec(_sys_down_reserve_constr)
     all_constraints_dict[:key_units_minpower_constr] = vec(collect(Iterators.flatten(_units_minpower_constr)))
     all_constraints_dict[:key_units_maxpower_constr] = vec(collect(Iterators.flatten(_units_maxpower_constr)))
@@ -307,8 +315,9 @@ function define_subproblem_decision_variables!(
 
     # --- Continuous Generation & Reserve Variables ---
     # pg0: Base active power output; pgk: Output per cost-curve segment
+    num_segments = max(1, Int(config_param.num_segments))
     @variable(scuc_subproblem, pg₀[1:(NG * NS_copy), 1:NT]>=0)
-    @variable(scuc_subproblem, pgₖ[1:(NG * NS_copy), 1:NT, 1:3]>=0)
+    @variable(scuc_subproblem, pgₖ[1:(NG * NS_copy), 1:NT, 1:num_segments]>=0)
 
     # Upward (sr+) and Downward (sr-) spinning reserves
     @variable(scuc_subproblem, sr⁺[1:(NG * NS_copy), 1:NT]>=0)
@@ -430,7 +439,7 @@ function set_subproblem_objective_economic!(
     Δpw = scuc_subproblem[:Δpw]
 
     # Linearize fuel cost curve (assuming function is in linearization.jl)
-    refcost, eachslope = linearizationfuelcurve(units, NG)
+    refcost, eachslope = linearizationfuelcurve(units, NG; num_segments = config_param.num_segments)
 
     obj = @objective(
         scuc_subproblem,

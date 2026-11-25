@@ -63,7 +63,8 @@ if !isdefined(@__MODULE__, :_PCM_CLUSTERED_ADAPTER_INCLUDED)
 			on0=units.x_0[i]>0.5
 			minimum=on0 ? c.min_up : c.min_down
 			raw_age=on0 ? units.t_0[i] : units.t_1[i]
-			age=max(0, round(Int, raw_age > 0 ? raw_age : minimum))
+			init_age=max(0, round(Int, raw_age > 0 ? raw_age : minimum))
+			age=init_age
 			ages=Int[]
 			states=Symbol[]
 			for t ∈ axes(x, 2)
@@ -72,7 +73,7 @@ if !isdefined(@__MODULE__, :_PCM_CLUSTERED_ADAPTER_INCLUDED)
 				push!(states, x[i, t]>0 ? (age>=c.min_up ? :ON_MATURE : Symbol("ON_$(age)")) : (age>=c.min_down ? :OFF_MATURE : Symbol("OFF_$(age)")))
 			end
 			push!(paths,
-				AnonymousUnitPath(; id = local_id, initial_on = on0, initial_duration = age,
+				AnonymousUnitPath(; id = c.id * 10000 + local_id, initial_on = on0, initial_duration = init_age,
 					u = vec(x[i, :]), y = vec(y[i, :]), z = vec(z[i, :]), age = ages, states = states))
 		end
 		paths
