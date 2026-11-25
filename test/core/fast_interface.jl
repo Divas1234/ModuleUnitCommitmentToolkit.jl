@@ -156,4 +156,19 @@ using ModuleUnitCommitmentToolkit
     @test sched["x₀"] == [1.0 0.0]
     @test haskey(sched, "pᵨ")
     @test UCScheduleResult(sched) === sched
+
+    # Strengthened Benders: per-group Jensen partitioning & frequency commitment logic cuts
+    @test ModuleUnitCommitmentToolkit._min_cardinality_for_threshold([3.0, 2.0, 1.0], 4.5) == 2
+    @test ModuleUnitCommitmentToolkit._min_cardinality_for_threshold([3.0, 2.0, 1.0], 0.0) == 0
+    covers = Set{BitVector}()
+    ModuleUnitCommitmentToolkit._collect_cover_logic_masks!(covers, [5.0, 2.0, 1.0], 5.5)
+    @test BitVector([true, false, false]) in covers  # unit 1 is mandatory (2 + 1 = 3 < 5.5)
+
+    setup_j = redirect_stdout(devnull) do
+        build_benders_setup(; input = :excel, scenario_limit = 4)
+    end
+    @test setup_j.jensen_groups !== nothing
+    @test length(setup_j.jensen_groups) == 3  # 1 global + 2 quantile groups
+    @test setup_j.jensen_groups[1].scenarios == [1, 2, 3, 4]
+    @test sort(vcat(setup_j.jensen_groups[2].scenarios, setup_j.jensen_groups[3].scenarios)) == [1, 2, 3, 4]
 end

@@ -105,6 +105,17 @@ function build_benders_setup(;
         OrderedDict{Int64, SCUC_Model}(1 => sub_model_struct)
     end
 
+    jensen_groups = if config_param.consider_multi_cuts == 1 &&
+                       NS >= 2 &&
+                       config_param.consider_bess == 0 &&
+                       uc_env_bool("BENDERS_ENABLE_JENSEN_CUTS", true)
+        build_jensen_subproblem_groups(
+            NT, NB, NL, NG, ND, NC, ND2, NW, units, winds, loads, lines, data_centers, psses, config_param,
+        )
+    else
+        nothing
+    end
+
     # Output constructed structs, models, constraints, and optimization environment settings
     return BendersSetup(
         scuc_masterproblem,
@@ -128,5 +139,6 @@ function build_benders_setup(;
         Int64(ND2),
         data_centers,
         data,
+        jensen_groups,
     )
 end

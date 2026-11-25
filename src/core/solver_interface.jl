@@ -61,6 +61,10 @@ const _EXTRA_CALIBRATION_KEYS = Set{String}([
     "PCM_SOLVER_TIME_LIMIT_SECONDS",
     "PCM_OVERLAP_MODE",
     "PCM_TRAINING_FORMULATION",
+    "BENDERS_ENABLE_JENSEN_CUTS",
+    "BENDERS_ENABLE_JENSEN_CUT",
+    "BENDERS_JENSEN_MAX_GROUPS",
+    "BENDERS_ENABLE_FREQUENCY_LOGIC_CUTS",
 ])
 
 const _CALIBRATION_KEY_SUGGESTIONS = Dict{String, String}(
@@ -253,7 +257,6 @@ function _solve_benders_unified(request::UCSolveRequest)
         data_file = input.data_file,
     )
 
-    jensen_sub = uc_env_bool("BENDERS_ENABLE_JENSEN_CUT", false) ? setup.jensen_subproblem_struct : nothing
     decomposition_result = multiple_benders_decomposition_scuc(
         setup.master_model,
         setup.sub_model,
@@ -266,7 +269,8 @@ function _solve_benders_unified(request::UCSolveRequest)
         length(setup.winds.index),
         setup.ND,
         setup.NL;
-        jensen_subproblem_struct = jensen_sub,
+        jensen_subproblem_groups = setup.jensen_groups,
+        units = setup.units,
     )
     if setup.config_param.consider_frequency_control == 1 &&
        frequency_model_mode() in (:hd_region, :hybrid) &&

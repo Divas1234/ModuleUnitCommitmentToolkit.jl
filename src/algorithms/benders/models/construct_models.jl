@@ -8,7 +8,7 @@ include("subproblem.jl")
 include("batch_subproblems.jl")
 
 # Export public interfaces for Benders initialization and scenario adaptation
-export get_batch_scuc_subproblems_for_scenario, modify_winds_constr_rhs!, build_jensen_subproblem_for_mean_scenario
+export get_batch_scuc_subproblems_for_scenario, modify_winds_constr_rhs!, build_jensen_subproblem_for_mean_scenario, build_jensen_subproblem_groups
 export bd_masterfunction, bd_subfunction
 
 # Export foundational model structures and reformatting utilities

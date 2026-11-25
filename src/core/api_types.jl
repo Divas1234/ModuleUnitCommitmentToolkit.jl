@@ -361,6 +361,21 @@ struct BendersSetup
     ND2::Int64
     data_centers::Any
     data::Any
+    jensen_groups::Any
+
+    function BendersSetup(
+        master_model, sub_model, master_struct, sub_struct, batch_subproblems,
+        config_param, units, lines, loads, winds, psses,
+        NB, NG, NL, ND, NS, NT, NC, ND2, data_centers, data,
+        jensen_groups = nothing,
+    )
+        return new(
+            master_model, sub_model, master_struct, sub_struct, batch_subproblems,
+            config_param, units, lines, loads, winds, psses,
+            Int64(NB), Int64(NG), Int64(NL), Int64(ND), Int64(NS), Int64(NT), Int64(NC), Int64(ND2),
+            data_centers, data, jensen_groups,
+        )
+    end
 end
 
 function Base.getproperty(setup::BendersSetup, name::Symbol)

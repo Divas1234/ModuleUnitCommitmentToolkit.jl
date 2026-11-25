@@ -76,6 +76,7 @@ function bd_masterfunction(
     _master_storage_binary_constr = add_master_storage_binary_constraints!(scuc_masterproblem, NT, NC, NS, config_param)
     _frequency_constr = add_frequency_constraints!(scuc_masterproblem, NT, NG, NC, NS, units, nothing, config_param, Δp_contingency; winds = winds)
     _master_freq_feas_constr = add_master_frequency_feasibility_cuts!(scuc_masterproblem, NT, NG, units, config_param; Δp_contingency = Δp_contingency)
+    _master_freq_logic_constr = add_master_frequency_logic_cuts!(scuc_masterproblem, NT, NG, units, config_param; winds = winds, Δp_contingency = Δp_contingency)
     # add_curtailment_constraints!(scuc_masterproblem, NT, ND, NW, NS, loads, winds)
     # add_generator_power_constraints!(scuc_masterproblem, NT, NG, NS, units)
     # add_reserve_constraints!(scuc_masterproblem, NT, NG, NC, NS, units, loads, winds, config_param)
@@ -275,6 +276,139 @@ function add_master_frequency_feasibility_cuts!(
     )
     println("\t constraints: master frequency reserve feasibility cuts\t\t done")
     return (sfr_unit_feas = sfr_unit_feas, qss_headroom = qss_headroom)
+end
+
+function _min_cardinality_for_threshold(weights::Vector{Float64}, threshold::Float64)
+    threshold <= 1.0e-9 && return 0
+    sorted = sort(weights; rev = true)
+    acc = 0.0
+    for (k, w) in enumerate(sorted)
+        acc += max(0.0, w)
+        acc + 1.0e-9 >= threshold && return k
+    end
+    return length(weights) + 1
+end
+
+function _collect_cover_logic_masks!(covers::Set{BitVector}, weights::Vector{Float64}, threshold::Float64)
+    NG = length(weights)
+    (NG == 0 || threshold <= 1.0e-9) && return covers
+    total_w = sum(max.(0.0, weights))
+    total_w + 1.0e-9 < threshold && return covers
+
+    # 1. Greedy maximal infeasible subset (ascending weight) -> minimal cover on complement
+    asc = sortperm(weights)
+    acc = 0.0
+    in_S = falses(NG)
+    for i in asc
+        w = max(0.0, weights[i])
+        if acc + w < threshold - 1.0e-9
+            acc += w
+            in_S[i] = true
+        else
+            break
+        end
+    end
+    cover = .!in_S
+    if any(cover) && count(cover) < NG
+        push!(covers, cover)
+    end
+
+    # 2. Leave-one-out mandatory units: if total_w - w_j < threshold, unit j must be online
+    for j in 1:NG
+        if total_w - max(0.0, weights[j]) < threshold - 1.0e-9
+            unit_cover = falses(NG)
+            unit_cover[j] = true
+            push!(covers, unit_cover)
+        end
+    end
+    return covers
+end
+
+"""
+    add_master_frequency_logic_cuts!(scuc_masterproblem, NT, NG, units, config_param; winds = nothing, Δp_contingency = maximum(units.p_max))
+
+Exploit the commitment-only, monotone structure of frequency security constraints
+(`RoCoF`, `QSS`, and `H–D` cuts depend solely on `x[:, t]`) to add exact logic cuts:
+1. Minimum online-unit cardinality cut: `sum(x[:, t]) >= k_min` for all `t`.
+2. Mandatory critical-unit & minimal cover logic cuts: `sum(x[i, t] for i in cover) >= 1` for all `t`.
+"""
+function add_master_frequency_logic_cuts!(
+    scuc_masterproblem::Model,
+    NT::Int64,
+    NG::Int64,
+    units::unit,
+    config_param::config;
+    winds = nothing,
+    Δp_contingency::Real = maximum(units.p_max),
+)
+    if config_param.consider_frequency_control == 0 ||
+       !haskey(JuMP.object_dictionary(scuc_masterproblem), :x) ||
+       !uc_env_bool("BENDERS_ENABLE_FREQUENCY_LOGIC_CUTS", true)
+        return nothing
+    end
+    x = scuc_masterproblem[:x]
+    f0_hz = frequency_env_float("FREQUENCY_BASE_HZ", 50.0)
+    rocof_limit = frequency_env_float("FREQUENCY_ROCOF_LIMIT_HZ_PER_S", 5.0)
+    qss_limit = frequency_env_float("FREQUENCY_QSS_LIMIT_HZ", 5.0)
+    contingency = frequency_contingency_size(units, Δp_contingency)
+    wind_support = wind_frequency_capacity_support(winds)
+    damping_pu = qss_limit / max(f0_hz, eps(Float64))
+
+    inertia_weights = [2.0 * safe_frequency_coeff(units.Hg, i) * safe_frequency_coeff(units.p_max, i) for i in 1:NG]
+    rocof_req = max(0.0, contingency * f0_hz / max(rocof_limit, eps(Float64)) - wind_support.inertia)
+
+    qss_weights = [
+        max(0.0, safe_frequency_coeff(units.p_max, i) - safe_frequency_coeff(units.p_min, i)) +
+        safe_frequency_coeff(units.Dg, i) * safe_frequency_coeff(units.p_max, i) * damping_pu for i in 1:NG
+    ]
+
+    k_min = max(
+        _min_cardinality_for_threshold(inertia_weights, rocof_req),
+        _min_cardinality_for_threshold(qss_weights, contingency),
+    )
+
+    covers = Set{BitVector}()
+    _collect_cover_logic_masks!(covers, inertia_weights, rocof_req)
+    _collect_cover_logic_masks!(covers, qss_weights, contingency)
+
+    if frequency_model_mode() in (:hd_region, :hybrid) && isdefined(@__MODULE__, :extract_uc_hd_parameters)
+        hd_params = extract_uc_hd_parameters(units, winds, Δp_contingency)
+        hd_region = assess_hd_frequency_region(hd_params)
+        if !isempty(hd_region.feasible_indices)
+            hd_cuts = build_hd_linear_cuts(hd_region; max_cuts = max(1, floor(Int, frequency_env_float("FREQUENCY_HD_MAX_CUTS", 6.0))))
+            s_base = frequency_sum_apparent_power(units, winds)
+            h_pu = [safe_frequency_coeff(units.Hg, i) * safe_frequency_coeff(units.p_max, i) / s_base for i in 1:NG]
+            d_pu = [safe_frequency_coeff(units.Dg, i) * safe_frequency_coeff(units.p_max, i) / s_base for i in 1:NG]
+            k_min = max(k_min, _min_cardinality_for_threshold(h_pu, hd_cuts.H_min_sync))
+            _collect_cover_logic_masks!(covers, h_pu, hd_cuts.H_min_sync)
+            if hd_cuts.D_min_sync > 0.0
+                k_min = max(k_min, _min_cardinality_for_threshold(d_pu, hd_cuts.D_min_sync))
+                _collect_cover_logic_masks!(covers, d_pu, hd_cuts.D_min_sync)
+            end
+            for m in eachindex(hd_cuts.alpha)
+                combo = h_pu .+ hd_cuts.beta[m] .* d_pu
+                k_min = max(k_min, _min_cardinality_for_threshold(combo, hd_cuts.alpha[m]))
+                _collect_cover_logic_masks!(covers, combo, hd_cuts.alpha[m])
+            end
+        end
+    end
+
+    cardinality_constr = if 1 <= k_min <= NG
+        @constraint(scuc_masterproblem, [t = 1:NT], sum(x[i, t] for i in 1:NG) >= k_min)
+    else
+        nothing
+    end
+
+    cover_constrs = ConstraintRef[]
+    for cover in covers
+        idxs = findall(cover)
+        isempty(idxs) && continue
+        for t in 1:NT
+            push!(cover_constrs, @constraint(scuc_masterproblem, sum(x[i, t] for i in idxs) >= 1))
+        end
+    end
+    println("\t constraints: master frequency logic cuts (k_min=$(k_min), covers=$(length(covers)))\t done")
+    return (k_min = k_min, cardinality = cardinality_constr, covers = cover_constrs)
 end
 
 # Helper function to define first-stage decision variables

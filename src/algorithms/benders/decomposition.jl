@@ -47,6 +47,8 @@ function multiple_benders_decomposition_scuc(
     NL::Int64,
     ;
     jensen_subproblem_struct = nothing,
+    jensen_subproblem_groups = nothing,
+    units = nothing,
 )
 
     # Algorithm tolerances. `ABSOLUTE_OPTIMIZATION_GAP` defines convergence;
@@ -63,6 +65,7 @@ function multiple_benders_decomposition_scuc(
     last_ret_dic = nothing
     last_iter_value = nothing
     final_ret_dic = nothing
+    seen_frequency_covers = Set{BitVector}()
     history = NamedTuple[]
     termination_reason = "maximum_iterations"
     NS = Int64(winds.scenarios_nums)
@@ -183,6 +186,7 @@ function multiple_benders_decomposition_scuc(
                 feasible_subproblems = count(ret -> ret.is_feasible, values(ret_dic)),
                 total_subproblems = length(ret_dic),
                 added_cuts = 0,
+                added_jensen_cuts = 0,
                 added_logic_cuts = 0,
                 memory_mb = process_memory_mb(),
             ),
@@ -239,17 +243,34 @@ function multiple_benders_decomposition_scuc(
                 NL;
                 incumbent = best_incumbent,
             )
-            add_jensen_cut_if_violated!(scuc_masterproblem, jensen_subproblem_struct, iter_value, NG, NT)
+            jensen_cut_refs = if jensen_subproblem_groups !== nothing && !isempty(jensen_subproblem_groups)
+                add_jensen_cuts_if_violated!(scuc_masterproblem, jensen_subproblem_groups, iter_value, NG, NT)
+            else
+                ref = add_jensen_cut_if_violated!(scuc_masterproblem, jensen_subproblem_struct, iter_value, NG, NT)
+                ref === nothing ? ConstraintRef[] : ConstraintRef[ref]
+            end
             added_cuts, added_cut_refs = add_selected_scenario_optimality_cuts!(scuc_masterproblem, candidate_cuts)
             logic_cut_refs = add_storage_logic_based_dominance_cuts!(scuc_masterproblem, ret_dic, x⁽⁰⁾, u⁽⁰⁾, v⁽⁰⁾)
-            history[end] = merge(history[end], (added_cuts = added_cuts, added_logic_cuts = length(logic_cut_refs)))
+            freq_logic_refs = add_frequency_monotone_logic_cuts!(
+                scuc_masterproblem, x⁽⁰⁾, units, config_param, seen_frequency_covers; winds = winds,
+            )
+            append!(logic_cut_refs, freq_logic_refs)
+            history[end] = merge(
+                history[end],
+                (
+                    added_cuts = added_cuts,
+                    added_jensen_cuts = length(jensen_cut_refs),
+                    added_logic_cuts = length(logic_cut_refs),
+                ),
+            )
+            append!(added_cut_refs, jensen_cut_refs)
             append!(added_cut_refs, logic_cut_refs)
             last_added_cut_refs = added_cut_refs
-            last_ret_dic = added_cuts > 0 ? ret_dic : nothing
-            last_iter_value = added_cuts > 0 ? iter_value : nothing
+            last_ret_dic = (added_cuts > 0 || !isempty(jensen_cut_refs)) ? ret_dic : nothing
+            last_iter_value = (added_cuts > 0 || !isempty(jensen_cut_refs)) ? iter_value : nothing
             if !all_subproblems_feasibility_flag
                 add_no_good_cut!(scuc_masterproblem, x⁽⁰⁾, u⁽⁰⁾, v⁽⁰⁾; storage_binary_values = storage_binary_values)
-            elseif added_cuts == 0 && isempty(logic_cut_refs)
+            elseif added_cuts == 0 && isempty(jensen_cut_refs) && isempty(logic_cut_refs)
                 println("No violated Benders cuts found at iteration ", iteration, "; stopping to avoid cycling.")
                 termination_reason = "no_violated_cuts"
                 break
@@ -538,6 +559,121 @@ function add_jensen_cut_if_violated!(
         return @constraint(model, sum(model[:θ]) >= jensen_cut)
     end
     return nothing
+end
+
+"""
+    add_jensen_cuts_if_violated!(model, jensen_groups, iter_value, NG, NT; tolerance = ...) -> Vector{ConstraintRef}
+
+Solve all Jensen-inequality scenario-group subproblems (global mean + local quantile groups
+covering every scenario) in parallel when multi-threaded, and add violated cuts:
+`sum(θ[s] for s in group.scenarios) >= Q(x, E[ξ | group]) + π'(x - x̂)`.
+"""
+function add_jensen_cuts_if_violated!(
+    model::Model,
+    jensen_groups,
+    iter_value,
+    NG::Int64,
+    NT::Int64;
+    tolerance::Float64 = parse(Float64, get(ENV, "BENDERS_JENSEN_CUT_TOL", "1e-5")),
+)
+    added_refs = ConstraintRef[]
+    (jensen_groups === nothing || isempty(jensen_groups)) && return added_refs
+    has_master_storage_binary_variables(model) && return added_refs
+
+    x⁽⁰⁾, u⁽⁰⁾, v⁽⁰⁾ = iter_value
+    theta_vals = value.(model[:θ])
+    n_groups = length(jensen_groups)
+    rets = Vector{Any}(undef, n_groups)
+
+    if should_solve_subproblems_in_parallel(Int64(n_groups))
+        parent_opts = isdefined(@__MODULE__, :current_solver_options) ? current_solver_options() : nothing
+        parent_opt = isdefined(@__MODULE__, :default_uc_optimizer) ? default_uc_optimizer() : nothing
+        Threads.@threads :dynamic for idx in 1:n_groups
+            sub = jensen_groups[idx].subproblem
+            run_jensen = () -> solve_subproblem_with_feasibility_cut(sub, x⁽⁰⁾, u⁽⁰⁾, v⁽⁰⁾, NG, NT)
+            rets[idx] = if isdefined(@__MODULE__, :with_solver_options) && isdefined(@__MODULE__, :with_uc_optimizer)
+                with_solver_options(parent_opts) do
+                    with_uc_optimizer(run_jensen, parent_opt)
+                end
+            else
+                run_jensen()
+            end
+        end
+    else
+        for idx in 1:n_groups
+            rets[idx] = solve_subproblem_with_feasibility_cut(jensen_groups[idx].subproblem, x⁽⁰⁾, u⁽⁰⁾, v⁽⁰⁾, NG, NT)
+        end
+    end
+
+    for idx in 1:n_groups
+        ret = rets[idx]
+        ret.is_feasible == true || continue
+        scenarios = jensen_groups[idx].scenarios
+        group_theta_val = sum(theta_vals[s] for s in scenarios)
+        # At the current master iterate (x⁽⁰⁾, u⁽⁰⁾, v⁽⁰⁾), all linear terms vanish so cut_value == ret.θ.
+        if ret.θ - group_theta_val > tolerance
+            jensen_cut = get_reduced_cost_optimality_cut_expression(model, ret, iter_value)
+            ref = @constraint(model, sum(model[:θ][s] for s in scenarios) >= jensen_cut)
+            push!(added_refs, ref)
+        end
+    end
+    return added_refs
+end
+
+"""
+    add_frequency_monotone_logic_cuts!(model, x_val, units, config_param, seen_covers; winds = nothing) -> Vector{ConstraintRef}
+
+Dynamically check candidate commitment `x_val[:, t]` against RoCoF / QSS frequency margins.
+Because frequency security is monotone in `x[:, t]` and time-invariant across `t = 1..NT`,
+any frequency-infeasible commitment pattern `x_val[:, t₀]` generates a time-lifted monotone
+cover logic cut `sum(x[i, t] for i where x_val[i, t₀] == 0) >= 1` for all `t = 1..NT`.
+"""
+function add_frequency_monotone_logic_cuts!(
+    model::Model,
+    x_val,
+    units,
+    config_param,
+    seen_covers::Set{BitVector};
+    winds = nothing,
+)
+    added_refs = ConstraintRef[]
+    if units === nothing ||
+       config_param.consider_frequency_control == 0 ||
+       !haskey(JuMP.object_dictionary(model), :x) ||
+       !uc_env_bool("BENDERS_ENABLE_FREQUENCY_LOGIC_CUTS", true)
+        return added_refs
+    end
+    x = model[:x]
+    NG, NT = size(x_val)
+    f0_hz = frequency_env_float("FREQUENCY_BASE_HZ", 50.0)
+    rocof_limit = frequency_env_float("FREQUENCY_ROCOF_LIMIT_HZ_PER_S", 5.0)
+    qss_limit = frequency_env_float("FREQUENCY_QSS_LIMIT_HZ", 5.0)
+    contingency = frequency_contingency_size(units, maximum(units.p_max))
+    wind_support = wind_frequency_capacity_support(winds)
+    damping_pu = qss_limit / max(f0_hz, eps(Float64))
+    rocof_req = max(0.0, contingency * f0_hz / max(rocof_limit, eps(Float64)) - wind_support.inertia)
+
+    for t0 in 1:NT
+        inertia_t = sum(
+            2.0 * safe_frequency_coeff(units.Hg, i) * safe_frequency_coeff(units.p_max, i) * (x_val[i, t0] >= 0.5 ? 1.0 : 0.0) for i in 1:NG
+        )
+        qss_t = sum(
+            (max(0.0, safe_frequency_coeff(units.p_max, i) - safe_frequency_coeff(units.p_min, i)) +
+             safe_frequency_coeff(units.Dg, i) * safe_frequency_coeff(units.p_max, i) * damping_pu) *
+            (x_val[i, t0] >= 0.5 ? 1.0 : 0.0) for i in 1:NG
+        )
+        if inertia_t + 1.0e-7 < rocof_req || qss_t + 1.0e-7 < contingency
+            off_mask = BitVector(x_val[i, t0] < 0.5 for i in 1:NG)
+            if any(off_mask) && !(off_mask in seen_covers)
+                push!(seen_covers, off_mask)
+                off_idxs = findall(off_mask)
+                for t in 1:NT
+                    push!(added_refs, @constraint(model, sum(x[i, t] for i in off_idxs) >= 1))
+                end
+            end
+        end
+    end
+    return added_refs
 end
 
 function get_reduced_cost_optimality_cut_expression(model::Model, ret, iter_value; scenario_id::Int64 = 1)
